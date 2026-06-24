@@ -69668,100 +69668,75 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   }
   const isExpanded = Boolean(options.isExpanded);
   const entryAnalytics = options.entryAnalytics || {};
-  const inventoryStatus = entryAnalytics.inventoryStatus || getSeedVaultInventoryStatus(normalizedEntry);
   const archiveLabel = normalizedEntry.isArchived ? "Restore Vault Entry" : "Archive Vault Entry";
   const favoriteStateLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
   const favoriteActionLabel = normalizedEntry.isFavorite ? "Unfavorite" : "Favorite";
   const archiveActionLabel = normalizedEntry.isArchived ? "Restore" : "Archive";
   const statusLabel = normalizedEntry.isArchived ? "Archived" : "In Vault";
-  const compactStatusLabel = `${favoriteStateLabel}, ${statusLabel}`;
   const seedTypeLabel = getSeedTypeLabel(normalizedEntry.seedType) || "Type not set";
-  const seedSexLabel = getSeedSexLabel(normalizedEntry.seedSex);
-  const seedMetaLabel = [seedTypeLabel, seedSexLabel].filter(Boolean).join(" · ");
+  const seedSexLabel = getSeedSexLabel(normalizedEntry.seedSex) || "Sex not set";
   const sourceLabel = normalizedEntry.source || "Source not set";
-  const titleMetaLabel = [sourceLabel, seedMetaLabel].filter(Boolean).join(" · ");
+  const ageMeta = getSeedVaultAgeVisualMeta(normalizedEntry);
+  const visualStatus = getSeedVaultVisualStatusMeta(normalizedEntry, entryAnalytics);
+  const quantity = getSeedVaultEntryAvailableQuantity(normalizedEntry);
+  const quantityLabel = quantity === null ? "Unknown" : String(quantity);
+  const titleMetaItems = [sourceLabel, seedTypeLabel, seedSexLabel].filter(Boolean);
 
   return `
     <article class="seed-vault-entry-card${normalizedEntry.isFavorite ? " is-favorite" : ""}${normalizedEntry.isArchived ? " is-archived" : ""}${isExpanded ? " is-expanded" : ""}" data-seed-vault-entry-id="${escapeHtml(normalizedEntry.id)}">
       <div class="seed-vault-entry-collapsed-row seed-vault-summary-row">
+        ${renderSeedVaultSeedThumbnailMarkup(normalizedEntry)}
         <div class="seed-vault-entry-title">
-          ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-thumb seed-vault-entry-thumb")}
+          ${renderSeedVaultSourceAvatarMarkup(normalizedEntry)}
           <div>
-            <h4>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</h4>
-            <p>${escapeHtml(titleMetaLabel || "Source not set")}</p>
+            <h4>
+              <span>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</span>
+              ${normalizedEntry.isFavorite ? `<span class="seed-vault-title-favorite" title="${escapeHtml(favoriteStateLabel)}" aria-label="${escapeHtml(favoriteStateLabel)}">★</span>` : ""}
+            </h4>
+            <p>${titleMetaItems.map((item, index) => `${index > 0 ? "<span>•</span>" : ""}<strong>${escapeHtml(item)}</strong>`).join("")}</p>
           </div>
         </div>
-        <div class="seed-vault-compact-cell seed-vault-compact-cell--quantity">
-          <span>Qty</span>
-          <strong>${escapeHtml(formatSeedVaultQuantity(normalizedEntry))}</strong>
+        <div class="seed-vault-quantity-cell">
+          <strong>${escapeHtml(quantityLabel)}</strong>
+          <span>Seeds</span>
         </div>
-        <div class="seed-vault-compact-cell">
-          <span>Seed age</span>
-          <strong>${escapeHtml(formatSeedVaultAgeLabel(normalizedEntry))}</strong>
+        <div class="seed-vault-age-cell is-${escapeHtml(ageMeta.tone)}">
+          <i aria-hidden="true"></i>
+          <div>
+            <strong>${escapeHtml(ageMeta.label)}</strong>
+            <span>${escapeHtml(ageMeta.detail)}</span>
+          </div>
         </div>
-        <div class="seed-vault-compact-status" aria-label="${escapeHtml(compactStatusLabel)}">
-          <span class="seed-vault-favorite-indicator${normalizedEntry.isFavorite ? " is-active" : ""}" title="${escapeHtml(favoriteStateLabel)}" aria-hidden="true">
-            ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
-          </span>
-          ${renderSeedVaultIndicatorMarkup(inventoryStatus)}
-          <span class="seed-vault-status-pill${normalizedEntry.isArchived ? "" : " seed-vault-status-pill--active"}">${escapeHtml(statusLabel)}</span>
+        <div class="seed-vault-row-status is-${escapeHtml(visualStatus.tone)}">
+          <strong>${escapeHtml(visualStatus.label)}</strong>
+          <span>${escapeHtml(statusLabel)}</span>
         </div>
-        <div class="seed-vault-entry-actions">
-          <button
-            type="button"
-            class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
-            data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
-            data-action-label="${escapeHtml(favoriteActionLabel)}"
-            aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
-            aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"
-            title="${escapeHtml(favoriteActionLabel)}"
-          >
-            ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
-          </button>
-          <button
-            type="button"
-            class="seed-vault-icon-button seed-vault-edit-button"
-            data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}"
-            data-action-label="Edit"
-            aria-label="Edit Vault Entry"
-            title="Edit"
-          >
-            ${renderMySessionsInlineIconMarkup("edit", "seed-vault-action-icon")}
-          </button>
-          <button
-            type="button"
-            class="seed-vault-icon-button seed-vault-icon-button--archive${normalizedEntry.isArchived ? " is-active" : ""}"
-            data-seed-vault-archive="${escapeHtml(normalizedEntry.id)}"
-            data-action-label="${escapeHtml(archiveActionLabel)}"
-            aria-pressed="${normalizedEntry.isArchived ? "true" : "false"}"
-            aria-label="${archiveLabel}"
-            title="${escapeHtml(archiveActionLabel)}"
-          >
-            ${renderMySessionsInlineIconMarkup("archive", "seed-vault-action-icon")}
-          </button>
-          <button
-            type="button"
-            class="seed-vault-icon-button seed-vault-icon-button--delete"
-            data-seed-vault-delete="${escapeHtml(normalizedEntry.id)}"
-            data-action-label="Delete"
-            aria-label="Delete Vault Entry"
-            title="Delete"
-          >
-            ${renderMySessionsInlineIconMarkup("trash", "seed-vault-action-icon")}
-          </button>
-          <button
-            type="button"
-            class="seed-vault-icon-button seed-vault-expand-button${isExpanded ? " is-active" : ""}"
-            data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}"
-            data-action-label="${isExpanded ? "Collapse" : "Details"}"
-            aria-expanded="${isExpanded ? "true" : "false"}"
-            aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}"
-            aria-label="${isExpanded ? "Collapse Vault Entry" : "Expand Vault Entry details"}"
-            title="${isExpanded ? "Collapse" : "Details"}"
-          >
-            ${renderMySessionsInlineIconMarkup("chevron", "seed-vault-action-icon")}
-          </button>
-        </div>
+        <button
+          type="button"
+          class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
+          data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
+          data-action-label="${escapeHtml(favoriteActionLabel)}"
+          aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
+          aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"
+          title="${escapeHtml(favoriteActionLabel)}"
+        >
+          ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
+        </button>
+        <details class="seed-vault-action-menu">
+          <summary
+            class="seed-vault-icon-button seed-vault-more-button"
+            data-action-label="Actions"
+            aria-label="Vault Entry actions"
+            title="Actions"
+          ><span aria-hidden="true">•••</span></summary>
+          <div class="seed-vault-action-menu-popover">
+            <button type="button" data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}" aria-expanded="${isExpanded ? "true" : "false"}" aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}">${isExpanded ? "Hide Details" : "View Details"}</button>
+            <button type="button" data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}" ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}>Start Session</button>
+            <button type="button" data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}">Edit</button>
+            <button type="button" data-seed-vault-archive="${escapeHtml(normalizedEntry.id)}" aria-pressed="${normalizedEntry.isArchived ? "true" : "false"}" aria-label="${escapeHtml(archiveLabel)}">${escapeHtml(archiveActionLabel)}</button>
+            <button type="button" class="is-danger" data-seed-vault-delete="${escapeHtml(normalizedEntry.id)}">Delete</button>
+          </div>
+        </details>
       </div>
       <div id="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" class="seed-vault-entry-details"${isExpanded ? "" : " hidden"}>
         <div class="seed-vault-detail-grid">
@@ -69788,7 +69763,6 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
     </article>
   `;
 }
-
 function renderSeedVaultSharedWithMeSummaryMarkup(shares = appState.seedVaultSharedWithMe || []) {
   const normalizedShares = (Array.isArray(shares) ? shares : []).map(normalizeSeedVaultUserShare).filter((share) => share.ownerUserId);
   if (!appState.seedVaultSharedWithMeLoaded && !normalizedShares.length) {

@@ -51268,3 +51268,441 @@ body.theme-dark option[selected] {
     grid-template-columns: 1fr;
   }
 }
+
+/* Seed Vault layout repair: compact premium list and stable desktop grid */
+.seed-vault-collection-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 288px;
+  gap: 14px;
+  align-items: start;
+}
+
+.seed-vault-inventory-column {
+  min-width: 0;
+}
+
+.seed-vault-summary-panel {
+  width: 100%;
+  max-width: 288px;
+  justify-self: stretch;
+  position: sticky;
+  top: 12px;
+}
+
+.seed-vault-controls {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.25fr) minmax(360px, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+}
+
+.seed-vault-search-field,
+.seed-vault-filter-row {
+  min-width: 0;
+}
+
+.seed-vault-filter-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(70px, 1fr));
+  gap: 7px;
+}
+
+.seed-vault-results-count {
+  justify-self: end;
+  align-self: center;
+  min-width: 76px;
+  padding: 0;
+  color: rgba(222, 232, 222, 0.82);
+  text-align: right;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.seed-vault-view-toggle {
+  justify-self: end;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.seed-vault-quick-views {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(124px, 1fr));
+  gap: 8px;
+  overflow: visible;
+  min-width: 0;
+}
+
+.seed-vault-quick-view {
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  justify-content: center;
+}
+
+.seed-vault-quick-view span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--list {
+  display: grid;
+  gap: 8px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
+  display: grid;
+  grid-template-columns: 72px minmax(260px, 1fr) 76px 106px 116px 40px 40px;
+  gap: 10px;
+  align-items: center;
+  min-height: 96px;
+  padding: 10px 12px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-seed-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-title {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 11px;
+  align-items: center;
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--list .seed-vault-source-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-title > div {
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-title h4 {
+  display: flex;
+  max-width: 100%;
+  gap: 7px;
+  margin: 0 0 5px;
+  line-height: 1.14;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-title h4 > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-title p {
+  display: flex;
+  max-width: 100%;
+  gap: 6px;
+  margin: 0;
+  overflow: hidden;
+  color: rgba(219, 228, 219, 0.68);
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-title p strong,
+.seed-vault-entry-grid--list .seed-vault-entry-title p span {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--list .seed-vault-quantity-cell,
+.seed-vault-entry-grid--list .seed-vault-age-cell,
+.seed-vault-entry-grid--list .seed-vault-row-status {
+  min-width: 0;
+  align-self: center;
+}
+
+.seed-vault-entry-grid--list .seed-vault-quantity-cell {
+  padding-left: 12px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-quantity-cell strong {
+  font-size: 1.18rem;
+}
+
+.seed-vault-entry-grid--list .seed-vault-age-cell {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-age-cell strong,
+.seed-vault-entry-grid--list .seed-vault-age-cell span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--list .seed-vault-row-status {
+  min-height: 48px;
+  padding: 8px 10px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-row-status strong,
+.seed-vault-entry-grid--list .seed-vault-row-status span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--list .seed-vault-icon-button,
+.seed-vault-entry-grid--list .seed-vault-action-menu {
+  justify-self: center;
+}
+
+.seed-vault-entry-grid--list .seed-vault-icon-button {
+  width: 38px;
+  height: 38px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-details {
+  margin: 0 12px 12px 94px;
+}
+
+.seed-vault-entry-grid--gallery {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-collapsed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px 40px;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-title {
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-title h4 > span:first-child,
+.seed-vault-entry-grid--gallery .seed-vault-entry-title p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1320px) {
+  .seed-vault-collection-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-summary-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 1120px) {
+  .seed-vault-controls {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .seed-vault-search-field,
+  .seed-vault-filter-row {
+    grid-column: 1 / -1;
+  }
+
+  .seed-vault-filter-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .seed-vault-results-count {
+    grid-column: 1;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .seed-vault-view-toggle {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .seed-vault-quick-views {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 7px;
+    scrollbar-width: thin;
+  }
+
+  .seed-vault-quick-view {
+    flex: 0 0 auto;
+    min-width: 142px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
+    grid-template-columns: 72px minmax(0, 1fr) 40px 40px;
+    gap: 10px;
+    align-items: start;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-title {
+    grid-column: 2 / 3;
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-source-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-quantity-cell,
+  .seed-vault-entry-grid--list .seed-vault-age-cell,
+  .seed-vault-entry-grid--list .seed-vault-row-status {
+    grid-column: 2 / -1;
+    width: 100%;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-quantity-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-favorite-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-action-menu {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-details {
+    margin: 0 12px 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .seed-vault-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-results-count,
+  .seed-vault-view-toggle {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
+    grid-template-columns: 68px minmax(0, 1fr) 36px 36px;
+    min-height: 92px;
+    padding: 10px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-seed-thumb {
+    width: 68px;
+    height: 68px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-icon-button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Seed Vault mobile repair: keep list rows thumb-friendly without becoming tall cards */
+@media (max-width: 640px) {
+  .seed-vault-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
+    grid-template-columns: 68px minmax(0, 1fr) 36px 36px;
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    min-height: 0;
+    gap: 8px 9px;
+    padding: 10px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-seed-thumb {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-title {
+    grid-column: 2 / 3;
+    grid-row: 1;
+    align-self: start;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-source-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 0.58rem;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-title h4 {
+    margin-bottom: 4px;
+    font-size: 0.98rem;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-title p {
+    gap: 5px;
+    font-size: 0.72rem;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-quantity-cell {
+    grid-column: 1;
+    grid-row: 2;
+    display: grid;
+    gap: 1px;
+    align-content: center;
+    min-height: 34px;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-quantity-cell strong {
+    font-size: 1rem;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-age-cell {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    min-height: 34px;
+    align-content: center;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-row-status {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 34px;
+    padding: 6px 9px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-row-status strong,
+  .seed-vault-entry-grid--list .seed-vault-row-status span {
+    min-width: 0;
+  }
+}
