@@ -69215,7 +69215,30 @@ function renderSeedVaultMetricCardsMarkup(analytics = null) {
   `;
 }
 
+
+function renderSeedVaultInlineSummaryMarkup(analytics = null) {
+  const overview = analytics?.overview || {};
+  const summaryItems = [
+    { label: "Total Seeds", value: String(overview.totalSeedsOwned || 0) },
+    { label: "Varieties", value: String(overview.totalVarieties || 0) },
+    { label: "Sources", value: String(overview.totalSources || 0) },
+    { label: "Low Inventory", value: String(overview.lowInventoryEntries || 0) },
+    { label: "Unknown Age", value: String(overview.unknownAgeCount || 0) },
+  ];
+
+  return `
+    <div class="seed-vault-inline-summary" aria-label="Seed Vault summary">
+      ${summaryItems.map((item) => `
+        <article class="seed-vault-inline-summary-item">
+          <strong>${escapeHtml(item.value)}</strong>
+          <span>${escapeHtml(item.label)}</span>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
 function renderSeedVaultIndicatorMarkup(indicator = null) {
+
   const status = indicator || { key: "healthy", label: "Healthy inventory", tone: "success" };
   return `<span class="seed-vault-health-pill is-${escapeHtml(status.tone || "neutral")}" data-seed-vault-health="${escapeHtml(status.key || "healthy")}">${escapeHtml(status.label || "Healthy inventory")}</span>`;
 }
@@ -69306,6 +69329,31 @@ function renderSeedVaultRollupMarkup(analytics = null) {
   `;
 }
 
+function renderSeedVaultInsightsMarkup(analytics = null) {
+  const ageInsightsMarkup = renderSeedVaultAgeInsightCardsMarkup(analytics);
+  const rollupMarkup = renderSeedVaultRollupMarkup(analytics);
+  const hasInsightContent = Boolean(ageInsightsMarkup.trim() || rollupMarkup.trim());
+
+  return `
+    <details class="seed-vault-insights" aria-label="Seed Vault insights">
+      <summary>
+        ${renderMySessionsInlineIconMarkup("analytics", "seed-vault-insights-icon")}
+        <span>
+          <strong>Insights</strong>
+          <small>Age buckets, source rollup, and linked-session performance</small>
+        </span>
+      </summary>
+      <div class="seed-vault-insights-body">
+        ${hasInsightContent ? `
+          ${ageInsightsMarkup}
+          ${rollupMarkup}
+        ` : `
+          <p class="seed-vault-insights-empty">Connect Vault Entries to grow sessions to unlock age and performance intelligence.</p>
+        `}
+      </div>
+    </details>
+  `;
+}
 function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   const normalizedEntry = normalizeSeedVaultEntry(entry);
   if (!normalizedEntry) {
@@ -69315,12 +69363,16 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   const entryAnalytics = options.entryAnalytics || {};
   const inventoryStatus = entryAnalytics.inventoryStatus || getSeedVaultInventoryStatus(normalizedEntry);
   const archiveLabel = normalizedEntry.isArchived ? "Restore Vault Entry" : "Archive Vault Entry";
-  const favoriteLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
-  const statusLabel = normalizedEntry.isArchived ? "Archived" : "In vault";
-  const compactStatusLabel = `${favoriteLabel}, ${statusLabel}`;
+  const favoriteStateLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
+  const favoriteActionLabel = normalizedEntry.isFavorite ? "Unfavorite" : "Favorite";
+  const archiveActionLabel = normalizedEntry.isArchived ? "Restore" : "Archive";
+  const statusLabel = normalizedEntry.isArchived ? "Archived" : "In Vault";
+  const compactStatusLabel = `${favoriteStateLabel}, ${statusLabel}`;
   const seedTypeLabel = getSeedTypeLabel(normalizedEntry.seedType) || "Type not set";
   const seedSexLabel = getSeedSexLabel(normalizedEntry.seedSex);
   const seedMetaLabel = [seedTypeLabel, seedSexLabel].filter(Boolean).join(" · ");
+  const sourceLabel = normalizedEntry.source || "Source not set";
+  const titleMetaLabel = [sourceLabel, seedMetaLabel].filter(Boolean).join(" · ");
 
   return `
     <article class="seed-vault-entry-card${normalizedEntry.isFavorite ? " is-favorite" : ""}${normalizedEntry.isArchived ? " is-archived" : ""}${isExpanded ? " is-expanded" : ""}" data-seed-vault-entry-id="${escapeHtml(normalizedEntry.id)}">
@@ -69329,12 +69381,8 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-thumb seed-vault-entry-thumb")}
           <div>
             <h4>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</h4>
-            <p>${escapeHtml(seedMetaLabel || "Type not set")}</p>
+            <p>${escapeHtml(titleMetaLabel || "Source not set")}</p>
           </div>
-        </div>
-        <div class="seed-vault-compact-cell">
-          <span>Source</span>
-          <strong>${escapeHtml(normalizedEntry.source || "Not set")}</strong>
         </div>
         <div class="seed-vault-compact-cell seed-vault-compact-cell--quantity">
           <span>Qty</span>
@@ -69345,7 +69393,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           <strong>${escapeHtml(formatSeedVaultAgeLabel(normalizedEntry))}</strong>
         </div>
         <div class="seed-vault-compact-status" aria-label="${escapeHtml(compactStatusLabel)}">
-          <span class="seed-vault-favorite-indicator${normalizedEntry.isFavorite ? " is-active" : ""}" title="${escapeHtml(favoriteLabel)}" aria-hidden="true">
+          <span class="seed-vault-favorite-indicator${normalizedEntry.isFavorite ? " is-active" : ""}" title="${escapeHtml(favoriteStateLabel)}" aria-hidden="true">
             ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
           </span>
           ${renderSeedVaultIndicatorMarkup(inventoryStatus)}
@@ -69354,19 +69402,20 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
         <div class="seed-vault-entry-actions">
           <button
             type="button"
-            class="seed-vault-icon-button seed-vault-expand-button${isExpanded ? " is-active" : ""}"
-            data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}"
-            aria-expanded="${isExpanded ? "true" : "false"}"
-            aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}"
-            aria-label="${isExpanded ? "Collapse Vault Entry" : "Expand Vault Entry"}"
-            title="${isExpanded ? "Collapse" : "Expand"}"
+            class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
+            data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
+            data-action-label="${escapeHtml(favoriteActionLabel)}"
+            aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
+            aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"
+            title="${escapeHtml(favoriteActionLabel)}"
           >
-            ${renderMySessionsInlineIconMarkup("chevron", "seed-vault-action-icon")}
+            ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
           </button>
           <button
             type="button"
             class="seed-vault-icon-button seed-vault-edit-button"
             data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}"
+            data-action-label="Edit"
             aria-label="Edit Vault Entry"
             title="Edit"
           >
@@ -69374,21 +69423,12 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           </button>
           <button
             type="button"
-            class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
-            data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
-            aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
-            aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"
-            title="${normalizedEntry.isFavorite ? "Remove favorite" : "Favorite"}"
-          >
-            ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
-          </button>
-          <button
-            type="button"
             class="seed-vault-icon-button seed-vault-icon-button--archive${normalizedEntry.isArchived ? " is-active" : ""}"
             data-seed-vault-archive="${escapeHtml(normalizedEntry.id)}"
+            data-action-label="${escapeHtml(archiveActionLabel)}"
             aria-pressed="${normalizedEntry.isArchived ? "true" : "false"}"
             aria-label="${archiveLabel}"
-            title="${normalizedEntry.isArchived ? "Restore" : "Archive"}"
+            title="${escapeHtml(archiveActionLabel)}"
           >
             ${renderMySessionsInlineIconMarkup("archive", "seed-vault-action-icon")}
           </button>
@@ -69396,10 +69436,23 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
             type="button"
             class="seed-vault-icon-button seed-vault-icon-button--delete"
             data-seed-vault-delete="${escapeHtml(normalizedEntry.id)}"
+            data-action-label="Delete"
             aria-label="Delete Vault Entry"
             title="Delete"
           >
             ${renderMySessionsInlineIconMarkup("trash", "seed-vault-action-icon")}
+          </button>
+          <button
+            type="button"
+            class="seed-vault-icon-button seed-vault-expand-button${isExpanded ? " is-active" : ""}"
+            data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}"
+            data-action-label="${isExpanded ? "Collapse" : "Details"}"
+            aria-expanded="${isExpanded ? "true" : "false"}"
+            aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}"
+            aria-label="${isExpanded ? "Collapse Vault Entry" : "Expand Vault Entry details"}"
+            title="${isExpanded ? "Collapse" : "Details"}"
+          >
+            ${renderMySessionsInlineIconMarkup("chevron", "seed-vault-action-icon")}
           </button>
         </div>
       </div>
@@ -69499,6 +69552,27 @@ function renderSeedVaultShareCardMarkup(settings = appState.seedVaultShareSettin
     </section>
   `;
 }
+function renderSeedVaultShareStatusMarkup(settings = appState.seedVaultShareSettings) {
+  const normalizedSettings = normalizeSeedVaultShareSettings(settings || {});
+  const visibility = normalizeSeedVaultShareVisibility(normalizedSettings.visibility);
+  const visibilityLabel = getSeedVaultShareVisibilityLabel(visibility);
+  const shareUrl = visibility === "private" ? "" : getSeedVaultShareUrl(normalizedSettings.publicSlug);
+  const shareFields = [
+    normalizedSettings.showQuantity ? "quantity" : "",
+    normalizedSettings.showStorageLocation ? "storage" : "",
+    normalizedSettings.showStorageNotes ? "storage notes" : "",
+    normalizedSettings.showPrivateNotes ? "notes" : "",
+  ].filter(Boolean);
+  const fieldSummary = visibility === "private" ? "Only you can view your Vault." : (shareFields.length ? `Showing ${shareFields.join(", ")}.` : "Public details only.");
+
+  return `
+    <div class="seed-vault-share-status" aria-label="Seed Vault sharing status">
+      <span>Sharing</span>
+      <strong>${escapeHtml(visibilityLabel)}</strong>
+      <small>${escapeHtml(fieldSummary)}${shareUrl ? ` ${escapeHtml(shareUrl)}` : ""}</small>
+    </div>
+  `;
+}
 function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
   const analytics = buildSeedVaultAnalytics(entries, getSessions());
   const allEntries = analytics.entries || [];
@@ -69524,20 +69598,19 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         <div class="section-title-with-icon app-section-header-main seed-vault-header-main">
           <span class="section-title-icon seed-vault-header-icon" data-app-icon="seedVault" data-icon-variant="plate" aria-hidden="true"></span>
           <div class="seed-vault-header-copy">
-            <p class="eyebrow">MY SEED VAULT</p>
-            <h3 id="my-seed-vault-title">Catalog your seed collection</h3>
-            <p>Track seed age, source, quantity, notes, and session history.</p>
+            <p class="eyebrow">Seed Collection</p>
+            <h3 id="my-seed-vault-title">My Seed Vault</h3>
+            <p>Your inventory, source, age, and session history.</p>
           </div>
         </div>
         <div class="seed-vault-header-actions">
           <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">${renderMySessionsInlineIconMarkup("plus", "seed-vault-button-icon")}<span>Add Seeds</span></button>
+          <a class="button button-secondary seed-vault-import-button" href="#sessions" title="Review sessions for Seed Vault import details">${renderMySessionsInlineIconMarkup("history", "seed-vault-button-icon")}<span>Import from Session</span></a>
+          <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">${renderMySessionsInlineIconMarkup("share", "seed-vault-button-icon")}<span>Share Vault</span></button>
         </div>
       </div>
-      ${renderSeedVaultShareCardMarkup()}
-      ${renderSeedVaultSharedWithMeSummaryMarkup()}
-      ${renderSeedVaultMetricCardsMarkup(analytics)}
-      ${renderSeedVaultAgeInsightCardsMarkup(analytics)}
-      ${renderSeedVaultRollupMarkup(analytics)}
+      ${renderSeedVaultInlineSummaryMarkup(analytics)}
+      ${renderSeedVaultShareStatusMarkup()}
       ${hasEntries ? `
         <div class="seed-vault-controls" aria-label="My Seed Vault controls">
           <label class="seed-vault-search-field">
@@ -69596,6 +69669,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
           </div>
           <span class="seed-vault-results-count" aria-live="polite">${escapeHtml(visibleSummary)}</span>
         </div>
+        ${renderSeedVaultInsightsMarkup(analytics)}
         ${hasVisibleEntries ? `
           <div class="seed-vault-entry-grid" aria-label="My Seed Vault entries">
             ${sortedEntries.map((entry) => renderSeedVaultEntryCardMarkup(entry, {
@@ -84921,3 +84995,4 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
