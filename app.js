@@ -1491,6 +1491,7 @@ const appState = {
   seedVaultStatusFilter: "in-vault",
   seedVaultSort: "newest",
   seedVaultQuickView: "all",
+  seedVaultLayout: "",
   seedVaultSourceFilter: "all",
   seedVaultTypeFilter: "all",
   seedVaultSexFilter: "all",
@@ -2174,6 +2175,7 @@ function resetSessionScopedAppState() {
   appState.seedVaultStatusFilter = "in-vault";
   appState.seedVaultSort = "newest";
   appState.seedVaultQuickView = "all";
+  appState.seedVaultLayout = "";
   appState.seedVaultSourceFilter = "all";
   appState.seedVaultTypeFilter = "all";
   appState.seedVaultSexFilter = "all";
@@ -69172,6 +69174,7 @@ function getSeedVaultCollectionState() {
     statusFilter: normalizeSeedVaultStatusFilter(appState.seedVaultStatusFilter),
     sort: normalizeSeedVaultSort(appState.seedVaultSort),
     quickView: normalizeSeedVaultQuickView(appState.seedVaultQuickView),
+    layout: getSeedVaultLayoutPreference(),
     sourceFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSourceFilter),
     typeFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultTypeFilter),
     sexFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSexFilter),
@@ -69221,6 +69224,35 @@ function renderSeedVaultMetricCardsMarkup(analytics = null) {
 }
 
 
+function normalizeSeedVaultLayout(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return normalizedValue === "gallery" ? "gallery" : "list";
+}
+
+function getSeedVaultLayoutPreference() {
+  const inMemoryLayout = normalizeSeedVaultLayout(appState.seedVaultLayout || "");
+  if (appState.seedVaultLayout) {
+    return inMemoryLayout;
+  }
+  try {
+    const storedLayout = normalizeSeedVaultLayout(localStorage.getItem("cannakan-grow-seed-vault-layout") || "list");
+    appState.seedVaultLayout = storedLayout;
+    return storedLayout;
+  } catch (error) {
+    return "list";
+  }
+}
+
+function setSeedVaultLayoutPreference(value = "list") {
+  const normalizedLayout = normalizeSeedVaultLayout(value);
+  appState.seedVaultLayout = normalizedLayout;
+  try {
+    localStorage.setItem("cannakan-grow-seed-vault-layout", normalizedLayout);
+  } catch (error) {
+    // Non-critical preference persistence.
+  }
+  return normalizedLayout;
+}
 function normalizeSeedVaultQuickView(value = "all") {
   const normalizedValue = String(value || "all").trim().toLowerCase();
   return ["all", "recent", "favorites", "low", "old", "ready"].includes(normalizedValue) ? normalizedValue : "all";
@@ -69397,12 +69429,12 @@ function getSeedVaultQuickViewItems(entries = [], analytics = null) {
   const normalizedEntries = (entries || []).map(normalizeSeedVaultEntry).filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
   const recentIds = getSeedVaultRecentEntryIds(normalizedEntries);
   const items = [
-    { key: "all", label: "All Seeds" },
-    { key: "recent", label: "Recently Added" },
-    { key: "favorites", label: "Favorites" },
-    { key: "low", label: "Low Inventory" },
-    { key: "old", label: "Old Seeds" },
-    { key: "ready", label: "Ready to Test" },
+    { key: "all", label: "All Seeds", icon: "seed" },
+    { key: "recent", label: "Recently Added", icon: "clock" },
+    { key: "favorites", label: "Favorites", icon: "heart" },
+    { key: "low", label: "Low Inventory", icon: "box" },
+    { key: "old", label: "Older Seeds", icon: "flame" },
+    { key: "ready", label: "Ready to Test", icon: "sprout" },
   ];
   return items.map((item) => ({
     ...item,
@@ -69410,12 +69442,28 @@ function getSeedVaultQuickViewItems(entries = [], analytics = null) {
   }));
 }
 
+function renderSeedVaultViewToggleMarkup(activeLayout = "list") {
+  const normalizedLayout = normalizeSeedVaultLayout(activeLayout);
+  return `
+    <div class="seed-vault-view-toggle" role="group" aria-label="Seed Vault display mode">
+      <button type="button" class="seed-vault-view-toggle-button${normalizedLayout === "list" ? " is-active" : ""}" data-seed-vault-layout="list" aria-pressed="${normalizedLayout === "list" ? "true" : "false"}">
+        <span aria-hidden="true">☰</span>
+        <strong>List</strong>
+      </button>
+      <button type="button" class="seed-vault-view-toggle-button${normalizedLayout === "gallery" ? " is-active" : ""}" data-seed-vault-layout="gallery" aria-pressed="${normalizedLayout === "gallery" ? "true" : "false"}">
+        <span aria-hidden="true">⊞</span>
+        <strong>Gallery</strong>
+      </button>
+    </div>
+  `;
+}
 function renderSeedVaultQuickViewTabsMarkup(activeQuickView = "all", entries = [], analytics = null) {
   const normalizedActiveQuickView = normalizeSeedVaultQuickView(activeQuickView);
   return `
     <div class="seed-vault-quick-views" role="tablist" aria-label="Seed Vault quick views">
       ${getSeedVaultQuickViewItems(entries, analytics).map((item) => `
         <button type="button" class="seed-vault-quick-view${normalizedActiveQuickView === item.key ? " is-active" : ""}" data-seed-vault-quick-view="${escapeHtml(item.key)}" aria-selected="${normalizedActiveQuickView === item.key ? "true" : "false"}">
+          <i class="seed-vault-quick-view-icon is-${escapeHtml(item.icon || item.key)}" aria-hidden="true"></i>
           <span>${escapeHtml(item.label)}</span>
           <small>${escapeHtml(String(item.count))}</small>
         </button>
@@ -69930,11 +69978,12 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
                 </label>
               </div>
               <span class="seed-vault-results-count" aria-live="polite">${escapeHtml(visibleSummary)}</span>
+              ${renderSeedVaultViewToggleMarkup(collectionState.layout)}
             </div>
             ${renderSeedVaultQuickViewTabsMarkup(collectionState.quickView, allEntries, analytics)}
             ${renderSeedVaultInsightsMarkup(analytics)}
             ${hasVisibleEntries ? `
-              <div class="seed-vault-entry-grid" aria-label="My Seed Vault entries">
+              <div class="seed-vault-entry-grid seed-vault-entry-grid--${escapeHtml(collectionState.layout)}" aria-label="My Seed Vault entries">
                 ${sortedEntries.map((entry) => renderSeedVaultEntryCardMarkup(entry, {
                   isExpanded: expandedEntryIds.has(entry.id),
                   entryAnalytics: analytics.entryAnalyticsById?.[entry.id],
@@ -70023,6 +70072,13 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
       return;
     }
 
+    const layoutButton = target.closest("[data-seed-vault-layout]");
+    if (layoutButton) {
+      event.preventDefault();
+      setSeedVaultLayoutPreference(layoutButton.getAttribute("data-seed-vault-layout") || "list");
+      renderSeedVaultSection();
+      return;
+    }
     const quickViewButton = target.closest("[data-seed-vault-quick-view]");
     if (quickViewButton) {
       event.preventDefault();
@@ -77304,7 +77360,14 @@ function renderSessionsList() {
         return;
       }
 
-      const quickViewButton = target.closest("[data-seed-vault-quick-view]");
+      const layoutButton = target.closest("[data-seed-vault-layout]");
+    if (layoutButton) {
+      event.preventDefault();
+      setSeedVaultLayoutPreference(layoutButton.getAttribute("data-seed-vault-layout") || "list");
+      renderSeedVaultSection();
+      return;
+    }
+    const quickViewButton = target.closest("[data-seed-vault-quick-view]");
     if (quickViewButton) {
       event.preventDefault();
       appState.seedVaultQuickView = normalizeSeedVaultQuickView(quickViewButton.getAttribute("data-seed-vault-quick-view") || "all");
@@ -85297,6 +85360,10 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
+
+
+
 
 
 
