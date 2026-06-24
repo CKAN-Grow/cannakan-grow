@@ -1490,6 +1490,7 @@ const appState = {
   seedVaultFavoriteFilter: "all",
   seedVaultStatusFilter: "in-vault",
   seedVaultSort: "newest",
+  seedVaultQuickView: "all",
   seedVaultSourceFilter: "all",
   seedVaultTypeFilter: "all",
   seedVaultSexFilter: "all",
@@ -2172,6 +2173,7 @@ function resetSessionScopedAppState() {
   appState.seedVaultFavoriteFilter = "all";
   appState.seedVaultStatusFilter = "in-vault";
   appState.seedVaultSort = "newest";
+  appState.seedVaultQuickView = "all";
   appState.seedVaultSourceFilter = "all";
   appState.seedVaultTypeFilter = "all";
   appState.seedVaultSexFilter = "all";
@@ -5549,6 +5551,8 @@ function normalizeSeedVaultEntry(entry = {}) {
     seedSex,
     feminized: seedSex,
     source: String(entry.source || "").trim(),
+    thumbnailUrl: String(entry.thumbnailUrl || entry.thumbnail_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim(),
+    sourceLogoUrl: String(entry.sourceLogoUrl || entry.source_logo_url || entry.logoUrl || entry.logo_url || "").trim(),
     seedCount: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
     quantity: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
     remainingCount: Number.isFinite(remainingCountValue)
@@ -69167,6 +69171,7 @@ function getSeedVaultCollectionState() {
     favoriteFilter: normalizeSeedVaultFavoriteFilter(appState.seedVaultFavoriteFilter),
     statusFilter: normalizeSeedVaultStatusFilter(appState.seedVaultStatusFilter),
     sort: normalizeSeedVaultSort(appState.seedVaultSort),
+    quickView: normalizeSeedVaultQuickView(appState.seedVaultQuickView),
     sourceFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSourceFilter),
     typeFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultTypeFilter),
     sexFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSexFilter),
@@ -69216,6 +69221,260 @@ function renderSeedVaultMetricCardsMarkup(analytics = null) {
 }
 
 
+function normalizeSeedVaultQuickView(value = "all") {
+  const normalizedValue = String(value || "all").trim().toLowerCase();
+  return ["all", "recent", "favorites", "low", "old", "ready"].includes(normalizedValue) ? normalizedValue : "all";
+}
+
+function getSeedVaultEntryCreatedTime(entry = {}) {
+  return Date.parse(entry.createdAt || entry.created_at || entry.updatedAt || entry.updated_at || "") || 0;
+}
+
+function getSeedVaultEntryThumbnailUrl(entry = {}) {
+  return String(entry.thumbnailUrl || entry.thumbnail_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim();
+}
+
+function getSeedVaultSourceLogoUrl(entry = {}) {
+  return String(entry.sourceLogoUrl || entry.source_logo_url || entry.logoUrl || entry.logo_url || "").trim();
+}
+
+function getSeedVaultTextHash(value = "") {
+  return String(value || "seed-vault").split("").reduce((hash, character) => ((hash * 31) + character.charCodeAt(0)) >>> 0, 7);
+}
+
+function getSeedVaultVisualTone(value = "") {
+  return (getSeedVaultTextHash(value) % 6) + 1;
+}
+
+function getSeedVaultInitials(value = "", fallback = "SV") {
+  const words = String(value || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) {
+    return fallback;
+  }
+  return words.slice(0, 2).map((word) => word[0]).join("").toUpperCase();
+}
+
+function getSeedVaultKnownSourceAvatar(source = "") {
+  const normalizedSource = String(source || "").trim().toLowerCase();
+  if (normalizedSource.includes("seedsman")) {
+    return { label: "Seedsman", mark: "SM", tone: "seedsman" };
+  }
+  if (normalizedSource.includes("poppin")) {
+    return { label: "Poppin Fire", mark: "PF", tone: "poppin-fire" };
+  }
+  if (normalizedSource.includes("good genetix")) {
+    return { label: "Good Genetix", mark: "GG", tone: "good-genetix" };
+  }
+  if (normalizedSource.includes("alpine")) {
+    return { label: "Alpine Seed Works", mark: "AS", tone: "alpine" };
+  }
+  if (normalizedSource.includes("atlas")) {
+    return { label: "Atlas Breeding Labs", mark: "AB", tone: "atlas" };
+  }
+  return null;
+}
+
+function renderSeedVaultSeedThumbnailMarkup(entry = {}) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry) || {};
+  const thumbnailUrl = getSeedVaultEntryThumbnailUrl(normalizedEntry);
+  const label = normalizedEntry.seedName || normalizedEntry.seedVariety || "Seed variety";
+  if (thumbnailUrl) {
+    return `<span class="seed-vault-seed-thumb has-image"><img src="${escapeHtml(thumbnailUrl)}" alt="${escapeHtml(label)} thumbnail" loading="lazy"></span>`;
+  }
+  const tone = getSeedVaultVisualTone(`${label}:${normalizedEntry.source || ""}`);
+  const initials = getSeedVaultInitials(label, "SV");
+  return `<span class="seed-vault-seed-thumb seed-vault-seed-thumb--${escapeHtml(String(tone))}" aria-hidden="true"><span>${escapeHtml(initials)}</span></span>`;
+}
+
+function renderSeedVaultSourceAvatarMarkup(entry = {}) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry) || {};
+  const source = normalizedEntry.source || "Source not set";
+  const logoUrl = getSeedVaultSourceLogoUrl(normalizedEntry);
+  const knownSource = getSeedVaultKnownSourceAvatar(source);
+  if (logoUrl) {
+    return `<span class="seed-vault-source-avatar has-image" title="${escapeHtml(source)}"><img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(source)} logo" loading="lazy"></span>`;
+  }
+  const mark = knownSource?.mark || getSeedVaultInitials(source, "--");
+  const toneClass = knownSource ? ` seed-vault-source-avatar--${knownSource.tone}` : ` seed-vault-source-avatar--${getSeedVaultVisualTone(source)}`;
+  return `<span class="seed-vault-source-avatar${escapeHtml(toneClass)}" title="${escapeHtml(source)}" aria-label="${escapeHtml(source)}"><span>${escapeHtml(mark)}</span></span>`;
+}
+
+function getSeedVaultAgeVisualMeta(entry = null) {
+  const ageYears = getSeedVaultEntryEffectiveAgeYears(entry);
+  if (ageYears === null) {
+    return { tone: "unknown", label: "Unknown", detail: "Seed Age" };
+  }
+  if (ageYears <= 2) {
+    return { tone: "fresh", label: formatSeedAgeYearsLabel(ageYears), detail: "Seed Age" };
+  }
+  if (ageYears <= 5) {
+    return { tone: "mature", label: formatSeedAgeYearsLabel(ageYears), detail: "Seed Age" };
+  }
+  if (ageYears <= 8) {
+    return { tone: "old", label: formatSeedAgeYearsLabel(ageYears), detail: "Seed Age" };
+  }
+  return { tone: "aged", label: formatSeedAgeYearsLabel(ageYears), detail: "Seed Age" };
+}
+
+function getSeedVaultVisualStatusMeta(entry = null, entryAnalytics = null) {
+  const inventoryStatus = entryAnalytics?.inventoryStatus || getSeedVaultInventoryStatus(entry);
+  const ageYears = getSeedVaultEntryEffectiveAgeYears(entry);
+  if (inventoryStatus.key === "low" || inventoryStatus.key === "out") {
+    return { label: "Low Inventory", tone: "attention" };
+  }
+  if (inventoryStatus.key === "unknown-age" || ageYears === null) {
+    return { label: "Unknown Age", tone: "neutral" };
+  }
+  if (ageYears >= 3) {
+    return { label: "Older Seed", tone: ageYears >= 6 ? "warm" : "mature" };
+  }
+  return { label: "Healthy", tone: "success" };
+}
+
+function isSeedVaultEntryRecentlyAdded(entry = {}, recentIds = new Set()) {
+  return recentIds.has(String(entry.id || ""));
+}
+
+function getSeedVaultRecentEntryIds(entries = []) {
+  return new Set((entries || [])
+    .map(normalizeSeedVaultEntry)
+    .filter(Boolean)
+    .sort((left, right) => getSeedVaultEntryCreatedTime(right) - getSeedVaultEntryCreatedTime(left))
+    .slice(0, 14)
+    .map((entry) => entry.id));
+}
+
+function isSeedVaultEntryReadyToTest(entry = {}, entryAnalytics = null) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  if (!normalizedEntry || normalizedEntry.isArchived) {
+    return false;
+  }
+  const quantity = getSeedVaultEntryAvailableQuantity(normalizedEntry);
+  if (quantity !== null && quantity <= 0) {
+    return false;
+  }
+  const ageYears = getSeedVaultEntryEffectiveAgeYears(normalizedEntry);
+  return !entryAnalytics?.sessionsStarted || ageYears === null || ageYears >= 3;
+}
+
+function seedVaultEntryMatchesQuickView(entry = {}, quickView = "all", analytics = null, recentIds = new Set()) {
+  const normalizedQuickView = normalizeSeedVaultQuickView(quickView);
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  if (!normalizedEntry) {
+    return false;
+  }
+  const entryAnalytics = analytics?.entryAnalyticsById?.[normalizedEntry.id] || null;
+  const status = entryAnalytics?.inventoryStatus || getSeedVaultInventoryStatus(normalizedEntry);
+  const ageYears = getSeedVaultEntryEffectiveAgeYears(normalizedEntry);
+  if (normalizedQuickView === "recent") {
+    return isSeedVaultEntryRecentlyAdded(normalizedEntry, recentIds);
+  }
+  if (normalizedQuickView === "favorites") {
+    return Boolean(normalizedEntry.isFavorite);
+  }
+  if (normalizedQuickView === "low") {
+    return ["low", "out"].includes(status.key);
+  }
+  if (normalizedQuickView === "old") {
+    return ageYears !== null && ageYears >= 6;
+  }
+  if (normalizedQuickView === "ready") {
+    return isSeedVaultEntryReadyToTest(normalizedEntry, entryAnalytics);
+  }
+  return true;
+}
+
+function filterSeedVaultEntriesForQuickView(entries = [], quickView = "all", analytics = null, allEntries = entries) {
+  const normalizedQuickView = normalizeSeedVaultQuickView(quickView);
+  if (normalizedQuickView === "all") {
+    return entries;
+  }
+  const recentIds = getSeedVaultRecentEntryIds(allEntries);
+  return (entries || []).filter((entry) => seedVaultEntryMatchesQuickView(entry, normalizedQuickView, analytics, recentIds));
+}
+
+function getSeedVaultQuickViewItems(entries = [], analytics = null) {
+  const normalizedEntries = (entries || []).map(normalizeSeedVaultEntry).filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
+  const recentIds = getSeedVaultRecentEntryIds(normalizedEntries);
+  const items = [
+    { key: "all", label: "All Seeds" },
+    { key: "recent", label: "Recently Added" },
+    { key: "favorites", label: "Favorites" },
+    { key: "low", label: "Low Inventory" },
+    { key: "old", label: "Old Seeds" },
+    { key: "ready", label: "Ready to Test" },
+  ];
+  return items.map((item) => ({
+    ...item,
+    count: normalizedEntries.filter((entry) => seedVaultEntryMatchesQuickView(entry, item.key, analytics, recentIds)).length,
+  }));
+}
+
+function renderSeedVaultQuickViewTabsMarkup(activeQuickView = "all", entries = [], analytics = null) {
+  const normalizedActiveQuickView = normalizeSeedVaultQuickView(activeQuickView);
+  return `
+    <div class="seed-vault-quick-views" role="tablist" aria-label="Seed Vault quick views">
+      ${getSeedVaultQuickViewItems(entries, analytics).map((item) => `
+        <button type="button" class="seed-vault-quick-view${normalizedActiveQuickView === item.key ? " is-active" : ""}" data-seed-vault-quick-view="${escapeHtml(item.key)}" aria-selected="${normalizedActiveQuickView === item.key ? "true" : "false"}">
+          <span>${escapeHtml(item.label)}</span>
+          <small>${escapeHtml(String(item.count))}</small>
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getSeedVaultCollectionSummary(entries = [], analytics = null) {
+  const normalizedEntries = (entries || []).map(normalizeSeedVaultEntry).filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
+  return normalizedEntries.reduce((summary, entry) => {
+    const entryAnalytics = analytics?.entryAnalyticsById?.[entry.id] || null;
+    const status = getSeedVaultVisualStatusMeta(entry, entryAnalytics);
+    const quantity = getSeedVaultEntryAvailableQuantity(entry);
+    summary.totalSeeds += quantity === null ? 0 : quantity;
+    if (status.label === "Healthy") summary.healthy += 1;
+    if (status.label === "Older Seed") summary.older += 1;
+    if (status.label === "Low Inventory") summary.low += 1;
+    if (status.label === "Unknown Age") summary.unknown += 1;
+    return summary;
+  }, { totalSeeds: 0, healthy: 0, older: 0, low: 0, unknown: 0 });
+}
+
+function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
+  const summary = getSeedVaultCollectionSummary(entries, analytics);
+  const totalStatus = Math.max(1, summary.healthy + summary.older + summary.low + summary.unknown);
+  const healthyDeg = (summary.healthy / totalStatus) * 360;
+  const olderDeg = ((summary.healthy + summary.older) / totalStatus) * 360;
+  const lowDeg = ((summary.healthy + summary.older + summary.low) / totalStatus) * 360;
+  const quickViews = getSeedVaultQuickViewItems(entries, analytics).filter((item) => item.key !== "all");
+  return `
+    <aside class="seed-vault-summary-panel" aria-label="Seed Vault collection summary">
+      <section class="seed-vault-side-card">
+        <h4>Collection Summary</h4>
+        <div class="seed-vault-summary-ring" style="--healthy-deg:${healthyDeg.toFixed(1)}deg; --older-deg:${olderDeg.toFixed(1)}deg; --low-deg:${lowDeg.toFixed(1)}deg;">
+          <strong>${escapeHtml(String(summary.totalSeeds))}</strong>
+          <span>Total Seeds</span>
+        </div>
+        <div class="seed-vault-summary-list">
+          <p><span class="is-healthy"></span><strong>Healthy</strong><small>${escapeHtml(String(summary.healthy))}</small></p>
+          <p><span class="is-older"></span><strong>Older Seed</strong><small>${escapeHtml(String(summary.older))}</small></p>
+          <p><span class="is-low"></span><strong>Low Inventory</strong><small>${escapeHtml(String(summary.low))}</small></p>
+          <p><span class="is-unknown"></span><strong>Unknown Age</strong><small>${escapeHtml(String(summary.unknown))}</small></p>
+        </div>
+      </section>
+      <section class="seed-vault-side-card">
+        <h4>Quick Views</h4>
+        <div class="seed-vault-side-list">
+          ${quickViews.map((item) => `<p><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(String(item.count))}</strong></p>`).join("")}
+        </div>
+      </section>
+      <section class="seed-vault-side-card seed-vault-side-card--insights">
+        <h4>Insights</h4>
+        <p>Age buckets, source rollup, and linked-session performance.</p>
+        <button type="button" class="button button-secondary button-compact" data-seed-vault-open-insights="true">View Insights</button>
+      </section>
+    </aside>
+  `;
+}
 function renderSeedVaultInlineSummaryMarkup(analytics = null) {
   const overview = analytics?.overview || {};
   const summaryItems = [
@@ -69581,7 +69840,8 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
     ...(options.collectionState || {}),
   };
   const filteredEntries = filterSeedVaultEntriesForCollection(allEntries, collectionState);
-  const sortedEntries = sortSeedVaultEntriesForCollection(filteredEntries, collectionState.sort, analytics);
+  const quickViewEntries = filterSeedVaultEntriesForQuickView(filteredEntries, collectionState.quickView, analytics, allEntries);
+  const sortedEntries = sortSeedVaultEntriesForCollection(quickViewEntries, collectionState.sort, analytics);
   const hasEntries = allEntries.length > 0;
   const hasVisibleEntries = sortedEntries.length > 0;
   const expandedEntryIds = getSeedVaultExpandedEntryIds();
@@ -69612,78 +69872,84 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
       ${renderSeedVaultInlineSummaryMarkup(analytics)}
       ${renderSeedVaultShareStatusMarkup()}
       ${hasEntries ? `
-        <div class="seed-vault-controls" aria-label="My Seed Vault controls">
-          <label class="seed-vault-search-field">
-            <span>Search My Seed Vault</span>
-            <input type="search" data-seed-vault-search="true" value="${escapeHtml(collectionState.searchQuery)}" placeholder="Search variety, source, type, sex, or notes" autocomplete="off">
-          </label>
-          <div class="seed-vault-filter-row">
-            <label>
-              <span>Favorites</span>
-              <select data-seed-vault-favorite-filter="true" aria-label="Filter My Seed Vault favorites">
-                <option value="all"${collectionState.favoriteFilter === "all" ? " selected" : ""}>All</option>
-                <option value="favorites"${collectionState.favoriteFilter === "favorites" ? " selected" : ""}>Favorites</option>
-              </select>
-            </label>
-            <label>
-              <span>Status</span>
-              <select data-seed-vault-status-filter="true" aria-label="Filter My Seed Vault status">
-                <option value="in-vault"${collectionState.statusFilter === "in-vault" ? " selected" : ""}>In Vault</option>
-                <option value="archived"${collectionState.statusFilter === "archived" ? " selected" : ""}>Archived</option>
-                <option value="all"${collectionState.statusFilter === "all" ? " selected" : ""}>All</option>
-              </select>
-            </label>
-            <label>
-              <span>Source</span>
-              <select data-seed-vault-source-filter="true" aria-label="Filter My Seed Vault source">
-                <option value="all"${collectionState.sourceFilter === "all" ? " selected" : ""}>All sources</option>
-                ${sourceOptions.map((source) => `<option value="${escapeHtml(source)}"${collectionState.sourceFilter === source ? " selected" : ""}>${escapeHtml(source)}</option>`).join("")}
-              </select>
-            </label>
-            <label>
-              <span>Type</span>
-              <select data-seed-vault-type-filter="true" aria-label="Filter My Seed Vault seed type">
-                <option value="all"${collectionState.typeFilter === "all" ? " selected" : ""}>All types</option>
-                ${typeOptions.map((type) => `<option value="${escapeHtml(type)}"${collectionState.typeFilter === type ? " selected" : ""}>${escapeHtml(getSeedTypeLabel(type) || type)}</option>`).join("")}
-              </select>
-            </label>
-            <label>
-              <span>Sex</span>
-              <select data-seed-vault-sex-filter="true" aria-label="Filter My Seed Vault sex">
-                <option value="all"${collectionState.sexFilter === "all" ? " selected" : ""}>All sex</option>
-                ${sexOptions.map((sex) => `<option value="${escapeHtml(sex)}"${collectionState.sexFilter === sex ? " selected" : ""}>${escapeHtml(getSeedSexLabel(sex) || sex)}</option>`).join("")}
-              </select>
-            </label>
-            <label>
-              <span>Sort</span>
-              <select data-seed-vault-sort="true" aria-label="Sort My Seed Vault entries">
-                <option value="newest"${collectionState.sort === "newest" ? " selected" : ""}>Newest</option>
-                <option value="oldest"${collectionState.sort === "oldest" ? " selected" : ""}>Oldest</option>
-                <option value="seed-age"${collectionState.sort === "seed-age" ? " selected" : ""}>Oldest seed age</option>
-                <option value="quantity"${collectionState.sort === "quantity" ? " selected" : ""}>Quantity high first</option>
-                <option value="quantity-low"${collectionState.sort === "quantity-low" ? " selected" : ""}>Quantity low first</option>
-                <option value="performance"${collectionState.sort === "performance" ? " selected" : ""}>Performance</option>
-                <option value="source-az"${collectionState.sort === "source-az" ? " selected" : ""}>Source A-Z</option>
-              </select>
-            </label>
+        <div class="seed-vault-collection-layout">
+          <div class="seed-vault-inventory-column">
+            <div class="seed-vault-controls" aria-label="My Seed Vault controls">
+              <label class="seed-vault-search-field">
+                <span>Search My Seed Vault</span>
+                <input type="search" data-seed-vault-search="true" value="${escapeHtml(collectionState.searchQuery)}" placeholder="Search variety, source, type, sex, or notes" autocomplete="off">
+              </label>
+              <div class="seed-vault-filter-row">
+                <label>
+                  <span>Favorites</span>
+                  <select data-seed-vault-favorite-filter="true" aria-label="Filter My Seed Vault favorites">
+                    <option value="all"${collectionState.favoriteFilter === "all" ? " selected" : ""}>All</option>
+                    <option value="favorites"${collectionState.favoriteFilter === "favorites" ? " selected" : ""}>Favorites</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Status</span>
+                  <select data-seed-vault-status-filter="true" aria-label="Filter My Seed Vault status">
+                    <option value="in-vault"${collectionState.statusFilter === "in-vault" ? " selected" : ""}>In Vault</option>
+                    <option value="archived"${collectionState.statusFilter === "archived" ? " selected" : ""}>Archived</option>
+                    <option value="all"${collectionState.statusFilter === "all" ? " selected" : ""}>All</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Source</span>
+                  <select data-seed-vault-source-filter="true" aria-label="Filter My Seed Vault source">
+                    <option value="all"${collectionState.sourceFilter === "all" ? " selected" : ""}>All sources</option>
+                    ${sourceOptions.map((source) => `<option value="${escapeHtml(source)}"${collectionState.sourceFilter === source ? " selected" : ""}>${escapeHtml(source)}</option>`).join("")}
+                  </select>
+                </label>
+                <label>
+                  <span>Type</span>
+                  <select data-seed-vault-type-filter="true" aria-label="Filter My Seed Vault seed type">
+                    <option value="all"${collectionState.typeFilter === "all" ? " selected" : ""}>All types</option>
+                    ${typeOptions.map((type) => `<option value="${escapeHtml(type)}"${collectionState.typeFilter === type ? " selected" : ""}>${escapeHtml(getSeedTypeLabel(type) || type)}</option>`).join("")}
+                  </select>
+                </label>
+                <label>
+                  <span>Sex</span>
+                  <select data-seed-vault-sex-filter="true" aria-label="Filter My Seed Vault sex">
+                    <option value="all"${collectionState.sexFilter === "all" ? " selected" : ""}>All sex</option>
+                    ${sexOptions.map((sex) => `<option value="${escapeHtml(sex)}"${collectionState.sexFilter === sex ? " selected" : ""}>${escapeHtml(getSeedSexLabel(sex) || sex)}</option>`).join("")}
+                  </select>
+                </label>
+                <label>
+                  <span>Sort</span>
+                  <select data-seed-vault-sort="true" aria-label="Sort My Seed Vault entries">
+                    <option value="newest"${collectionState.sort === "newest" ? " selected" : ""}>Newest</option>
+                    <option value="oldest"${collectionState.sort === "oldest" ? " selected" : ""}>Oldest</option>
+                    <option value="seed-age"${collectionState.sort === "seed-age" ? " selected" : ""}>Oldest seed age</option>
+                    <option value="quantity"${collectionState.sort === "quantity" ? " selected" : ""}>Quantity high first</option>
+                    <option value="quantity-low"${collectionState.sort === "quantity-low" ? " selected" : ""}>Quantity low first</option>
+                    <option value="performance"${collectionState.sort === "performance" ? " selected" : ""}>Performance</option>
+                    <option value="source-az"${collectionState.sort === "source-az" ? " selected" : ""}>Source A-Z</option>
+                  </select>
+                </label>
+              </div>
+              <span class="seed-vault-results-count" aria-live="polite">${escapeHtml(visibleSummary)}</span>
+            </div>
+            ${renderSeedVaultQuickViewTabsMarkup(collectionState.quickView, allEntries, analytics)}
+            ${renderSeedVaultInsightsMarkup(analytics)}
+            ${hasVisibleEntries ? `
+              <div class="seed-vault-entry-grid" aria-label="My Seed Vault entries">
+                ${sortedEntries.map((entry) => renderSeedVaultEntryCardMarkup(entry, {
+                  isExpanded: expandedEntryIds.has(entry.id),
+                  entryAnalytics: analytics.entryAnalyticsById?.[entry.id],
+                })).join("")}
+              </div>
+            ` : `
+              <div class="seed-vault-filter-empty">
+                <span>My Seed Vault</span>
+                <h4>No Vault Entries match these controls</h4>
+                <p>Adjust search, quick view, favorites, status, or sort to bring more of your collection back into view.</p>
+              </div>
+            `}
           </div>
-          <span class="seed-vault-results-count" aria-live="polite">${escapeHtml(visibleSummary)}</span>
+          ${renderSeedVaultSummaryPanelMarkup(analytics, allEntries)}
         </div>
-        ${renderSeedVaultInsightsMarkup(analytics)}
-        ${hasVisibleEntries ? `
-          <div class="seed-vault-entry-grid" aria-label="My Seed Vault entries">
-            ${sortedEntries.map((entry) => renderSeedVaultEntryCardMarkup(entry, {
-              isExpanded: expandedEntryIds.has(entry.id),
-              entryAnalytics: analytics.entryAnalyticsById?.[entry.id],
-            })).join("")}
-          </div>
-        ` : `
-          <div class="seed-vault-filter-empty">
-            <span>My Seed Vault</span>
-            <h4>No Vault Entries match these controls</h4>
-            <p>Adjust search, favorites, status, or sort to bring more of your collection back into view.</p>
-          </div>
-        `}
       ` : `
         <div class="seed-vault-empty-state">
           ${renderMySessionsInlineIconMarkup("vault", "seed-vault-empty-icon")}
@@ -69757,6 +70023,24 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
       return;
     }
 
+    const quickViewButton = target.closest("[data-seed-vault-quick-view]");
+    if (quickViewButton) {
+      event.preventDefault();
+      appState.seedVaultQuickView = normalizeSeedVaultQuickView(quickViewButton.getAttribute("data-seed-vault-quick-view") || "all");
+      renderSeedVaultSection();
+      return;
+    }
+
+    const openInsightsButton = target.closest("[data-seed-vault-open-insights='true']");
+    if (openInsightsButton) {
+      event.preventDefault();
+      const insights = seedVaultSection.querySelector(".seed-vault-insights");
+      if (insights instanceof HTMLDetailsElement) {
+        insights.open = true;
+        insights.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      return;
+    }
     const toggleButton = target.closest("[data-seed-vault-toggle]");
     if (toggleButton) {
       event.preventDefault();
@@ -77020,7 +77304,25 @@ function renderSessionsList() {
         return;
       }
 
-      const toggleButton = target.closest("[data-seed-vault-toggle]");
+      const quickViewButton = target.closest("[data-seed-vault-quick-view]");
+    if (quickViewButton) {
+      event.preventDefault();
+      appState.seedVaultQuickView = normalizeSeedVaultQuickView(quickViewButton.getAttribute("data-seed-vault-quick-view") || "all");
+      renderSeedVaultSection();
+      return;
+    }
+
+    const openInsightsButton = target.closest("[data-seed-vault-open-insights='true']");
+    if (openInsightsButton) {
+      event.preventDefault();
+      const insights = seedVaultSection.querySelector(".seed-vault-insights");
+      if (insights instanceof HTMLDetailsElement) {
+        insights.open = true;
+        insights.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      return;
+    }
+    const toggleButton = target.closest("[data-seed-vault-toggle]");
       if (toggleButton) {
         event.preventDefault();
         const entryId = String(toggleButton.getAttribute("data-seed-vault-toggle") || "").trim();
@@ -84995,4 +85297,14 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
+
+
+
+
+
+
+
+
+
 
