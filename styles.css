@@ -52584,3 +52584,188 @@ body.theme-dark option[selected] {
   grid-row: 2;
   width: 100%;
 }
+
+/* Seed Vault toolbar + Collections balance pass */
+.seed-vault-controls {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.48fr) minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "search . count toggle"
+    "search filters filters filters";
+  align-items: end;
+  gap: 8px 10px;
+}
+
+.seed-vault-controls .seed-vault-search-field {
+  grid-area: search;
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: auto 44px;
+  align-content: end;
+  min-width: 0;
+}
+
+.seed-vault-controls .seed-vault-search-field > span {
+  align-self: start;
+}
+
+.seed-vault-controls .seed-vault-search-field input {
+  min-height: 44px;
+}
+
+.seed-vault-controls .seed-vault-filter-row {
+  grid-area: filters;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(82px, 1fr));
+  align-self: end;
+  width: 100%;
+  min-width: 0;
+  gap: 7px;
+}
+
+.seed-vault-controls .seed-vault-results-count {
+  grid-area: count;
+  justify-self: end;
+  align-self: center;
+  min-width: max-content;
+  padding: 0 2px;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.seed-vault-controls .seed-vault-view-toggle {
+  grid-area: toggle;
+  justify-self: end;
+  align-self: center;
+}
+
+.seed-vault-collections .seed-vault-quick-views {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  overflow-x: visible;
+  overflow-y: visible;
+  padding: 1px 2px 6px;
+  scrollbar-width: none;
+}
+
+.seed-vault-collections .seed-vault-quick-views::-webkit-scrollbar {
+  display: none;
+}
+
+.seed-vault-collections .seed-vault-quick-view {
+  width: auto;
+  min-width: 0;
+  min-height: 56px;
+  padding: 9px 10px;
+  flex: initial;
+}
+
+.seed-vault-collections .seed-vault-quick-view-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 1.05rem;
+}
+
+.seed-vault-collections .seed-vault-quick-view-label {
+  font-size: 0.76rem;
+  line-height: 1.12;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.seed-vault-collections .seed-vault-quick-view small {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 1180px) {
+  .seed-vault-controls {
+    grid-template-columns: minmax(240px, 0.44fr) minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "search . count toggle"
+      "search filters filters filters";
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: repeat(6, minmax(72px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .seed-vault-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "search search"
+      "filters filters"
+      "count toggle";
+  }
+
+  .seed-vault-controls .seed-vault-search-field {
+    grid-template-rows: auto 44px;
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .seed-vault-controls .seed-vault-results-count {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .seed-vault-collections .seed-vault-quick-views {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 10px;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+  }
+
+  .seed-vault-collections .seed-vault-quick-views::-webkit-scrollbar {
+    display: initial;
+  }
+
+  .seed-vault-collections .seed-vault-quick-view {
+    flex: 0 0 132px;
+    width: 132px;
+    min-height: 58px;
+  }
+}
+
+@media (max-width: 560px) {
+  .seed-vault-controls {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "search"
+      "filters"
+      "count"
+      "toggle";
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seed-vault-controls .seed-vault-results-count,
+  .seed-vault-controls .seed-vault-view-toggle {
+    justify-self: start;
+  }
+}
+
+@media (min-width: 901px) {
+  .seed-vault-collections .seed-vault-quick-views {
+    grid-template-columns: repeat(6, minmax(126px, 150px));
+    justify-content: space-between;
+  }
+
+  .seed-vault-collections .seed-vault-quick-view {
+    width: 100%;
+    max-width: 150px;
+  }
+}
