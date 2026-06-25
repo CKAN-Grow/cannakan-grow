@@ -68963,20 +68963,20 @@ function buildSeedVaultAgeInsightCards(ageBuckets = [], context = {}) {
       label: "Best Performing Age Range",
       value: bestPerformingAgeRange
         ? `${bestPerformingAgeRange.label} · ${formatSeedVaultPercent(bestPerformingAgeRange.performance.averageGerminationRate)}`
-        : "Not enough linked data",
+        : "No linked sessions yet",
       detail: bestPerformingAgeRange
         ? `${bestPerformingAgeRange.performance.totalSeedsTested} linked seeds tested`
-        : "Completed linked sessions will unlock this.",
+        : "Complete sessions to unlock this insight.",
     },
     {
       key: "oldest-successful-germination",
       label: "Oldest Successfully Germinated Seeds",
       value: oldestSuccessfulGermination
         ? `${formatSeedAgeYearsLabel(oldestSuccessfulGermination.ageYears)} · ${formatSeedVaultPercent(oldestSuccessfulGermination.rate)}`
-        : "No completed linked result",
+        : "No linked sessions yet",
       detail: oldestSuccessfulGermination
         ? [oldestSuccessfulGermination.source, oldestSuccessfulGermination.variety].filter(Boolean).join(" · ") || "Linked Vault Entry"
-        : "Requires a completed linked session with germination recorded.",
+        : "Complete sessions to unlock this insight.",
     },
     {
       key: "largest-age-group",
@@ -68993,10 +68993,10 @@ function buildSeedVaultAgeInsightCards(ageBuckets = [], context = {}) {
     {
       key: "most-tested-age-group",
       label: "Most Tested Age Group",
-      value: mostTestedAgeGroup ? mostTestedAgeGroup.label : "Not enough linked data",
+      value: mostTestedAgeGroup ? mostTestedAgeGroup.label : "No linked sessions yet",
       detail: mostTestedAgeGroup
         ? `${mostTestedAgeGroup.performance.totalSeedsTested} seeds · ${mostTestedAgeGroup.completedSessionsByAgeBucket} completed session${mostTestedAgeGroup.completedSessionsByAgeBucket === 1 ? "" : "s"}`
-        : "Completed linked sessions will unlock this.",
+        : "Complete sessions to unlock this insight.",
     },
   ];
 }
@@ -69593,7 +69593,7 @@ function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
       <section class="seed-vault-side-card seed-vault-side-card--insights">
         <h4>Insights</h4>
         <p>Age buckets, source rollup, and linked-session performance.</p>
-        <button type="button" class="button button-secondary button-compact" data-seed-vault-open-insights="true">View Insights</button>
+        <button type="button" class="button button-secondary button-compact seed-vault-insights-cta" data-seed-vault-open-insights="true"><span aria-hidden="true">📈</span> View Insights</button>
       </section>
     </aside>
   `;
@@ -69625,24 +69625,67 @@ function renderSeedVaultIndicatorMarkup(indicator = null) {
   return `<span class="seed-vault-health-pill is-${escapeHtml(status.tone || "neutral")}" data-seed-vault-health="${escapeHtml(status.key || "healthy")}">${escapeHtml(status.label || "Healthy inventory")}</span>`;
 }
 
+function getSeedVaultInsightVisualMeta(key = "") {
+  const normalizedKey = String(key || "").trim().toLowerCase();
+  const meta = {
+    "best-performing-age-range": { icon: "📈", tier: "primary", tone: "performance" },
+    "most-tested-age-group": { icon: "🏆", tier: "primary", tone: "tested" },
+    "largest-age-group": { icon: "🌱", tier: "primary", tone: "inventory" },
+    "unknown-age-inventory": { icon: "❓", tier: "tertiary", tone: "unknown" },
+    "oldest-successful-germination": { icon: "🌿", tier: "tertiary", tone: "history" },
+  };
+  return meta[normalizedKey] || { icon: "✨", tier: "tertiary", tone: "neutral" };
+}
+
+function renderSeedVaultInsightCardMarkup(insight = {}) {
+  const meta = getSeedVaultInsightVisualMeta(insight.key);
+  return `
+    <article class="seed-vault-insight-card seed-vault-insight-card--${escapeHtml(meta.tier)} seed-vault-insight-card--${escapeHtml(meta.tone)}" data-seed-vault-insight="${escapeHtml(insight.key)}">
+      <div class="seed-vault-insight-card-topline">
+        <span class="seed-vault-insight-card-icon" aria-hidden="true">${escapeHtml(meta.icon)}</span>
+        <span>${escapeHtml(insight.label)}</span>
+      </div>
+      <strong>${escapeHtml(insight.value)}</strong>
+      <small>${escapeHtml(insight.detail)}</small>
+    </article>
+  `;
+}
+
 function renderSeedVaultAgeInsightCardsMarkup(analytics = null) {
   const insights = analytics?.ageIntelligence?.insights || [];
   if (!insights.length) {
     return "";
   }
+  const primaryKeys = new Set(["best-performing-age-range", "most-tested-age-group", "largest-age-group"]);
+  const primaryInsights = insights.filter((insight) => primaryKeys.has(insight.key));
+  const tertiaryInsights = insights.filter((insight) => !primaryKeys.has(insight.key));
   return `
-    <div class="seed-vault-insight-grid" aria-label="Seed Vault age intelligence insights">
-      ${insights.map((insight) => `
-        <article class="seed-vault-insight-card" data-seed-vault-insight="${escapeHtml(insight.key)}">
-          <span>${escapeHtml(insight.label)}</span>
-          <strong>${escapeHtml(insight.value)}</strong>
-          <small>${escapeHtml(insight.detail)}</small>
-        </article>
-      `).join("")}
+    <div class="seed-vault-insight-stack" aria-label="Seed Vault age intelligence insights">
+      ${primaryInsights.length ? `
+        <section class="seed-vault-insight-tier seed-vault-insight-tier--primary" aria-label="Primary Seed Vault insights">
+          <div class="seed-vault-insight-tier-heading">
+            <span>Primary Insights</span>
+            <small>Performance, testing depth, and inventory concentration</small>
+          </div>
+          <div class="seed-vault-insight-grid seed-vault-insight-grid--primary">
+            ${primaryInsights.map(renderSeedVaultInsightCardMarkup).join("")}
+          </div>
+        </section>
+      ` : ""}
+      ${tertiaryInsights.length ? `
+        <section class="seed-vault-insight-tier seed-vault-insight-tier--tertiary" aria-label="Tertiary Seed Vault insights">
+          <div class="seed-vault-insight-tier-heading">
+            <span>Tertiary Insights</span>
+            <small>Age gaps and historical linked-session signals</small>
+          </div>
+          <div class="seed-vault-insight-grid seed-vault-insight-grid--tertiary">
+            ${tertiaryInsights.map(renderSeedVaultInsightCardMarkup).join("")}
+          </div>
+        </section>
+      ` : ""}
     </div>
   `;
 }
-
 function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
   const analytics = entryAnalytics || {};
   const performance = analytics.performance || {};
@@ -69668,6 +69711,23 @@ function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
   `;
 }
 
+function getSeedVaultAgeBucketTone(bucket = {}) {
+  const key = String(bucket.key || "").trim().toLowerCase();
+  if (key === "unknown") {
+    return "unknown";
+  }
+  if (key === "0-1" || key === "1-2") {
+    return "fresh";
+  }
+  if (key === "2-5") {
+    return "mature";
+  }
+  if (key === "5-10") {
+    return "older";
+  }
+  return "archive";
+}
+
 function renderSeedVaultRollupMarkup(analytics = null) {
   const sourceRows = (analytics?.rollups?.sources || []).slice(0, 4);
   const bucketRows = (analytics?.ageIntelligence?.buckets || [])
@@ -69678,39 +69738,62 @@ function renderSeedVaultRollupMarkup(analytics = null) {
   }
 
   return `
-    <section class="seed-vault-intelligence-panel" aria-label="Seed Vault intelligence">
-      <div class="seed-vault-intelligence-copy">
-        <span>Vault Intelligence</span>
-        <strong>Source, quantity, age, and linked-session performance for your inventory.</strong>
+    <div class="seed-vault-secondary-insights" aria-label="Secondary Seed Vault insights">
+      <div class="seed-vault-insight-tier-heading">
+        <span>Secondary Insights</span>
+        <small>Source concentration and age distribution</small>
       </div>
       <div class="seed-vault-rollup-grid">
         ${sourceRows.length ? `
-          <div class="seed-vault-rollup-card">
-            <span>Source rollup</span>
+          <section class="seed-vault-rollup-card seed-vault-rollup-card--source" aria-label="Source Rollup">
+            <div class="seed-vault-rollup-card-heading">
+              <span class="seed-vault-rollup-icon" aria-hidden="true">📦</span>
+              <div>
+                <span>Source Rollup</span>
+                <small>Inventory by source</small>
+              </div>
+            </div>
             ${sourceRows.map((row) => `
-              <p>
+              <p class="seed-vault-rollup-row seed-vault-rollup-row--source">
+                ${renderSeedVaultSourceAvatarMarkup({ source: row.label })}
                 <strong>${escapeHtml(row.label)}</strong>
                 <small>${escapeHtml(`${row.quantity} seeds · ${formatSeedVaultPercent(row.performance.averageGerminationRate)} avg`)}</small>
               </p>
             `).join("")}
-          </div>
+          </section>
         ` : ""}
         ${bucketRows.length ? `
-          <div class="seed-vault-rollup-card">
-            <span>Age buckets</span>
+          <section class="seed-vault-rollup-card seed-vault-rollup-card--age" aria-label="Age Buckets">
+            <div class="seed-vault-rollup-card-heading">
+              <span class="seed-vault-rollup-icon" aria-hidden="true">🕒</span>
+              <div>
+                <span>Age Buckets</span>
+                <small>Fresh to archive inventory</small>
+              </div>
+            </div>
             ${bucketRows.map((row) => `
-              <p>
+              <p class="seed-vault-rollup-row seed-vault-rollup-row--age is-${escapeHtml(getSeedVaultAgeBucketTone(row))}">
+                <i aria-hidden="true"></i>
                 <strong>${escapeHtml(row.label)}</strong>
                 <small>${escapeHtml(`${row.entryCount} entries · ${row.quantity} seeds · ${formatSeedVaultPercent(row.performance.averageGerminationRate)} avg`)}</small>
               </p>
             `).join("")}
-          </div>
+          </section>
         ` : ""}
       </div>
-    </section>
+      <section class="seed-vault-intelligence-panel" aria-label="Vault Intelligence">
+        <div class="seed-vault-intelligence-visual" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="seed-vault-intelligence-copy">
+          <span><i aria-hidden="true">🧠</i> Vault Intelligence</span>
+          <strong>Source, quantity, age, and linked-session performance for your inventory.</strong>
+          <small>Complete sessions from Vault entries to sharpen these signals over time.</small>
+        </div>
+      </section>
+    </div>
   `;
 }
-
 function renderSeedVaultInsightsMarkup(analytics = null) {
   const ageInsightsMarkup = renderSeedVaultAgeInsightCardsMarkup(analytics);
   const rollupMarkup = renderSeedVaultRollupMarkup(analytics);
@@ -69730,7 +69813,7 @@ function renderSeedVaultInsightsMarkup(analytics = null) {
           ${ageInsightsMarkup}
           ${rollupMarkup}
         ` : `
-          <p class="seed-vault-insights-empty">Connect Vault Entries to grow sessions to unlock age and performance intelligence.</p>
+          <div class="seed-vault-insights-empty"><strong>No linked sessions yet</strong><span>Complete sessions to unlock this insight.</span></div>
         `}
       </div>
     </details>
@@ -70962,7 +71045,7 @@ function renderPrivateAnalyticsDashboardPage() {
     },
     {
       label: "Best Performing Age Range",
-      value: bestAgeRange ? bestAgeRange.label : "Not enough linked data",
+      value: bestAgeRange ? bestAgeRange.label : "No linked sessions yet",
       detail: bestAgeRange ? `${formatPrivateAnalyticsPercent(bestAgeRange.performance.averageGerminationRate)} · ${formatPrivateAnalyticsNumber(bestAgeRange.performance.totalSeedsTested)} seeds tested` : "link Vault entries to completed sessions",
     },
     {
