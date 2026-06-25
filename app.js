@@ -69494,12 +69494,12 @@ function getSeedVaultQuickViewItems(entries = [], analytics = null) {
   const normalizedEntries = (entries || []).map(normalizeSeedVaultEntry).filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
   const recentIds = getSeedVaultRecentEntryIds(normalizedEntries);
   const items = [
-    { key: "all", label: "All Seeds", icon: "seed" },
-    { key: "recent", label: "Recently Added", icon: "clock" },
-    { key: "favorites", label: "Favorites", icon: "heart" },
-    { key: "low", label: "Low Inventory", icon: "box" },
-    { key: "old", label: "Older Seeds", icon: "flame" },
-    { key: "ready", label: "Ready to Test", icon: "sprout" },
+    { key: "all", label: "All Seeds", icon: "seed", emoji: "🌱" },
+    { key: "recent", label: "Recently Added", icon: "clock", emoji: "🆕" },
+    { key: "favorites", label: "Favorites", icon: "heart", emoji: "❤️" },
+    { key: "low", label: "Low Inventory", icon: "box", emoji: "📦" },
+    { key: "old", label: "Older Seeds", icon: "flame", emoji: "🌿" },
+    { key: "ready", label: "Ready to Test", icon: "sprout", emoji: "🧪" },
   ];
   return items.map((item) => ({
     ...item,
@@ -69525,15 +69525,20 @@ function renderSeedVaultViewToggleMarkup(activeLayout = "list") {
 function renderSeedVaultQuickViewTabsMarkup(activeQuickView = "all", entries = [], analytics = null) {
   const normalizedActiveQuickView = normalizeSeedVaultQuickView(activeQuickView);
   return `
-    <div class="seed-vault-quick-views" role="tablist" aria-label="Seed Vault quick views">
-      ${getSeedVaultQuickViewItems(entries, analytics).map((item) => `
-        <button type="button" class="seed-vault-quick-view${normalizedActiveQuickView === item.key ? " is-active" : ""}" data-seed-vault-quick-view="${escapeHtml(item.key)}" aria-selected="${normalizedActiveQuickView === item.key ? "true" : "false"}">
-          <i class="seed-vault-quick-view-icon is-${escapeHtml(item.icon || item.key)}" aria-hidden="true"></i>
-          <span>${escapeHtml(item.label)}</span>
-          <small>${escapeHtml(String(item.count))}</small>
-        </button>
-      `).join("")}
-    </div>
+    <section class="seed-vault-collections" aria-label="Seed Vault collections">
+      <div class="seed-vault-collections-header">
+        <h4>Collections</h4>
+      </div>
+      <div class="seed-vault-quick-views" role="tablist" aria-label="Seed Vault collections">
+        ${getSeedVaultQuickViewItems(entries, analytics).map((item) => `
+          <button type="button" class="seed-vault-quick-view${normalizedActiveQuickView === item.key ? " is-active" : ""}" data-seed-vault-quick-view="${escapeHtml(item.key)}" aria-selected="${normalizedActiveQuickView === item.key ? "true" : "false"}">
+            <span class="seed-vault-quick-view-icon is-${escapeHtml(item.icon || item.key)}" aria-hidden="true">${escapeHtml(item.emoji || "🌱")}</span>
+            <span class="seed-vault-quick-view-label">${escapeHtml(item.label)}</span>
+            <small>${escapeHtml(String(item.count))}</small>
+          </button>
+        `).join("")}
+      </div>
+    </section>
   `;
 }
 
@@ -69575,7 +69580,7 @@ function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
         </div>
       </section>
       <section class="seed-vault-side-card">
-        <h4>Quick Views</h4>
+        <h4>Collections</h4>
         <div class="seed-vault-side-list">
           ${quickViews.map((item) => `<p><span>${escapeHtml(item.label)}</span><strong>${escapeHtml(String(item.count))}</strong></p>`).join("")}
         </div>
@@ -70032,7 +70037,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
               <div class="seed-vault-filter-empty">
                 <span>My Seed Vault</span>
                 <h4>No Vault Entries match these controls</h4>
-                <p>Adjust search, quick view, favorites, status, or sort to bring more of your collection back into view.</p>
+                <p>Adjust search, collections, favorites, status, or sort to bring more of your collection back into view.</p>
               </div>
             `}
           </div>

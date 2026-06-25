@@ -52364,3 +52364,223 @@ body.theme-dark option[selected] {
     height: 70px;
   }
 }
+
+/* Seed Vault Collections browser */
+.seed-vault-collections {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.seed-vault-collections-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.seed-vault-collections-header h4 {
+  margin: 0;
+  color: #f4fbef;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-collections .seed-vault-quick-views {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px 2px 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(181, 232, 111, 0.34) rgba(255, 255, 255, 0.055);
+}
+
+.seed-vault-collections .seed-vault-quick-view {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: 1fr;
+  align-items: center;
+  justify-content: start;
+  gap: 9px;
+  flex: 0 0 clamp(132px, 13vw, 150px);
+  width: clamp(132px, 13vw, 150px);
+  min-width: 132px;
+  min-height: 60px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.014)),
+    rgba(8, 13, 11, 0.58);
+  color: rgba(239, 247, 235, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 10px 18px rgba(0, 0, 0, 0.14);
+  scroll-snap-align: start;
+}
+
+.seed-vault-collections .seed-vault-quick-view::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle at 18% 18%, rgba(181, 232, 111, 0.12), transparent 42%);
+  opacity: 0.72;
+}
+
+.seed-vault-collections .seed-vault-quick-view-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: rgba(148, 209, 89, 0.1);
+  color: #f7fff1;
+  font-size: 1.18rem;
+  line-height: 1;
+}
+
+.seed-vault-collections .seed-vault-quick-view-icon::before {
+  content: none;
+}
+
+.seed-vault-collections .seed-vault-quick-view-label {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+  color: #f5fbef;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.12;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.seed-vault-collections .seed-vault-quick-view small {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.075);
+  color: rgba(238, 248, 232, 0.86);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.seed-vault-collections .seed-vault-quick-view:hover,
+.seed-vault-collections .seed-vault-quick-view:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(181, 232, 111, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018)),
+    rgba(12, 19, 15, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 24px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-collections .seed-vault-quick-view.is-active {
+  border-color: rgba(181, 232, 111, 0.5);
+  background:
+    linear-gradient(180deg, rgba(205, 255, 134, 0.2), rgba(108, 168, 64, 0.12)),
+    rgba(22, 42, 20, 0.72);
+  color: #f9fff3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 16px 26px rgba(40, 84, 31, 0.24),
+    0 0 22px rgba(181, 232, 111, 0.12);
+}
+
+.seed-vault-collections .seed-vault-quick-view.is-active .seed-vault-quick-view-icon {
+  background: rgba(181, 232, 111, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(181, 232, 111, 0.18);
+}
+
+.seed-vault-collections .seed-vault-quick-view.is-active small {
+  background: rgba(181, 232, 111, 0.22);
+  color: #eaffce;
+}
+
+@media (max-width: 760px) {
+  .seed-vault-collections .seed-vault-quick-views {
+    gap: 10px;
+    padding-bottom: 9px;
+  }
+
+  .seed-vault-collections .seed-vault-quick-view {
+    flex-basis: 142px;
+    width: 142px;
+    min-height: 62px;
+  }
+}
+
+/* Seed Vault Collections polish: keep full names readable beside count badges */
+.seed-vault-collections .seed-vault-quick-view {
+  grid-template-columns: auto minmax(0, 1fr);
+  padding-right: 36px;
+}
+
+.seed-vault-collections .seed-vault-quick-view small {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+}
+
+.seed-vault-collections .seed-vault-quick-view-label {
+  max-width: 100%;
+  line-height: 1.15;
+}
+
+@media (max-width: 760px) {
+  .seed-vault-collections .seed-vault-quick-view {
+    padding-right: 34px;
+  }
+
+  .seed-vault-collections .seed-vault-quick-view-label {
+    font-size: 0.8rem;
+  }
+}
+
+/* Seed Vault Collections final album-card layout */
+.seed-vault-collections .seed-vault-quick-view {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 5px 8px;
+  padding: 10px 12px;
+}
+
+.seed-vault-collections .seed-vault-quick-view-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 30px;
+  height: 30px;
+}
+
+.seed-vault-collections .seed-vault-quick-view small {
+  position: relative;
+  top: auto;
+  right: auto;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.seed-vault-collections .seed-vault-quick-view-label {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+}
