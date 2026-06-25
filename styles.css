@@ -52180,3 +52180,187 @@ body.theme-dark option[selected] {
     height: 500px;
   }
 }
+
+/* Seed Vault Add/Edit visuals section */
+.seed-vault-visuals-section {
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
+    rgba(8, 13, 11, 0.42);
+  overflow: hidden;
+}
+
+.seed-vault-visuals-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 14px;
+  color: #f3f8ef;
+  cursor: pointer;
+  list-style: none;
+}
+
+.seed-vault-visuals-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.seed-vault-visuals-section summary span {
+  color: #f4fbef;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.seed-vault-visuals-section summary small {
+  color: rgba(205, 214, 207, 0.66);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.seed-vault-visuals-section summary::after {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.1);
+  color: #b8ef7d;
+  font-weight: 900;
+}
+
+.seed-vault-visuals-section[open] summary::after {
+  content: "-";
+}
+
+.seed-vault-visuals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.seed-vault-visual-control {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.026);
+}
+
+.seed-vault-visual-preview {
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 88px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 13px;
+  overflow: hidden;
+  background: rgba(12, 17, 14, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.seed-vault-visual-preview--logo {
+  width: 82px;
+  height: 82px;
+  justify-self: center;
+  border-radius: 999px;
+}
+
+.seed-vault-visual-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.seed-vault-visual-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(247, 250, 244, 0.92);
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, rgba(148, 209, 89, 0.5), rgba(79, 212, 164, 0.22));
+}
+
+.seed-vault-visual-placeholder--1 { background: linear-gradient(135deg, #273d2c, #83b94d); }
+.seed-vault-visual-placeholder--2 { background: linear-gradient(135deg, #173432, #4fd4a4); }
+.seed-vault-visual-placeholder--3 { background: linear-gradient(135deg, #243145, #7fb8ff); }
+.seed-vault-visual-placeholder--4 { background: linear-gradient(135deg, #3b3020, #f5be60); }
+.seed-vault-visual-placeholder--5 { background: linear-gradient(135deg, #332b42, #a58cff); }
+.seed-vault-visual-placeholder--6 { background: linear-gradient(135deg, #3c2730, #ff7c8d); }
+
+.seed-vault-visual-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.seed-vault-visual-copy strong {
+  color: #f5fbef;
+  font-size: 0.92rem;
+}
+
+.seed-vault-visual-copy > span {
+  color: rgba(205, 214, 207, 0.66);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.seed-vault-visual-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.seed-vault-visual-upload-button {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.seed-vault-visual-upload-button input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.seed-vault-visual-actions .button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .seed-vault-visuals-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-visual-control {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .seed-vault-visual-preview {
+    width: 96px;
+    height: 74px;
+  }
+
+  .seed-vault-visual-preview--logo {
+    width: 70px;
+    height: 70px;
+  }
+}

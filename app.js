@@ -91,6 +91,7 @@ const VARIETY_DIRECTORY_AUTOCOMPLETE_MIN_CHARS = 2;
 const FOUNDERS_TABLE = "founders";
 const ADMIN_USERS_TABLE = "admin_users";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
+const SEED_VAULT_SOURCE_LOGOS_STORAGE_KEY = "cannakanGrowSeedVaultSourceLogos";
 const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed-vault-start";
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
@@ -5598,6 +5599,8 @@ function mapSeedVaultEntryToRow(entry = {}) {
     sex: normalizedEntry.seedSex || null,
     seed_sex: normalizedEntry.seedSex || null,
     source: normalizedEntry.source || null,
+    thumbnail_url: normalizedEntry.thumbnailUrl || null,
+    source_logo_url: normalizedEntry.sourceLogoUrl || null,
     seed_count: normalizedEntry.seedCount,
     quantity: normalizedEntry.quantity,
     remaining_count: normalizedEntry.remainingCount,
@@ -69263,11 +69266,73 @@ function getSeedVaultEntryCreatedTime(entry = {}) {
 }
 
 function getSeedVaultEntryThumbnailUrl(entry = {}) {
-  return String(entry.thumbnailUrl || entry.thumbnail_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim();
+  return String(entry.thumbnailUrl || entry.thumbnail_url || entry.varietyPhotoUrl || entry.variety_photo_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim();
+}
+
+function getSeedVaultSourceLogoStorageKey(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId ? `${SEED_VAULT_SOURCE_LOGOS_STORAGE_KEY}:${normalizedUserId}` : SEED_VAULT_SOURCE_LOGOS_STORAGE_KEY;
+}
+
+function loadSeedVaultSourceLogoMap(userId = appState.user?.id || "") {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(getSeedVaultSourceLogoStorageKey(userId)) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveSeedVaultSourceLogoMap(map = {}, userId = appState.user?.id || "") {
+  try {
+    localStorage.setItem(getSeedVaultSourceLogoStorageKey(userId), JSON.stringify(map || {}));
+  } catch (error) {
+    // Non-critical visual preference persistence.
+  }
+}
+
+function getSeedVaultSourceLogoKey(source = "") {
+  return normalizeSourceNameForMatching(source || "");
+}
+
+function getSeedVaultCustomSourceLogoUrl(source = "", userId = appState.user?.id || "") {
+  const key = getSeedVaultSourceLogoKey(source);
+  if (!key) {
+    return "";
+  }
+  return String(loadSeedVaultSourceLogoMap(userId)[key] || "").trim();
+}
+
+function setSeedVaultCustomSourceLogoUrl(source = "", logoUrl = "", userId = appState.user?.id || "") {
+  const key = getSeedVaultSourceLogoKey(source);
+  if (!key) {
+    return;
+  }
+  const map = loadSeedVaultSourceLogoMap(userId);
+  const normalizedLogoUrl = String(logoUrl || "").trim();
+  if (normalizedLogoUrl) {
+    map[key] = normalizedLogoUrl;
+  } else {
+    delete map[key];
+  }
+  saveSeedVaultSourceLogoMap(map, userId);
+}
+
+function getSeedVaultKnownSourceLogoUrl(source = "") {
+  return getDevDemoSourceLogoUrl(source) || "";
 }
 
 function getSeedVaultSourceLogoUrl(entry = {}) {
-  return String(entry.sourceLogoUrl || entry.source_logo_url || entry.logoUrl || entry.logo_url || "").trim();
+  const source = String(entry.source || entry.sourceName || "").trim();
+  return String(
+    entry.sourceLogoUrl
+    || entry.source_logo_url
+    || entry.logoUrl
+    || entry.logo_url
+    || getSeedVaultCustomSourceLogoUrl(source, entry.userId || entry.user_id || appState.user?.id || "")
+    || getSeedVaultKnownSourceLogoUrl(source)
+    || ""
+  ).trim();
 }
 
 function getSeedVaultTextHash(value = "") {
@@ -71918,6 +71983,8 @@ function getSeedVaultEntryFormSignature(form) {
     seedType: String(formData.get("seedType") || "").trim(),
     seedSex: String(formData.get("seedSex") || "").trim(),
     source: String(formData.get("source") || "").trim(),
+    thumbnailUrl: String(formData.get("thumbnailUrl") || "").trim(),
+    sourceLogoUrl: String(formData.get("sourceLogoUrl") || "").trim(),
     quantity: String(formData.get("quantity") || "").trim(),
     yearAcquired: String(formData.get("yearAcquired") || "").trim(),
     storageLocation: String(formData.get("storageLocation") || "").trim(),
@@ -72129,6 +72196,17 @@ function getSeedVaultEntryFormPayload(form) {
   const yearAcquiredValue = String(formData.get("yearAcquired") || "").trim();
   const existingEntry = (appState.seedVaultEntries || []).find((entry) => entry.id === String(form.dataset.seedVaultEntryId || "").trim()) || {};
   const yearAcquired = yearAcquiredValue ? Number(yearAcquiredValue) : null;
+  const source = String(formData.get("source") || "").trim();
+  const thumbnailUrl = String(formData.get("thumbnailUrl") || "").trim();
+  const sourceLogoFieldUrl = String(formData.get("sourceLogoUrl") || "").trim();
+  const removedLogoSource = String(form.dataset.seedVaultSourceLogoRemovedFor || "").trim();
+  if (removedLogoSource && getSeedVaultSourceLogoKey(removedLogoSource) === getSeedVaultSourceLogoKey(source)) {
+    setSeedVaultCustomSourceLogoUrl(source, "");
+  }
+  if (source && sourceLogoFieldUrl) {
+    setSeedVaultCustomSourceLogoUrl(source, sourceLogoFieldUrl);
+  }
+  const sourceLogoUrl = sourceLogoFieldUrl || getSeedVaultCustomSourceLogoUrl(source) || getSeedVaultKnownSourceLogoUrl(source);
 
   return normalizeSeedVaultEntry({
     id: String(form.dataset.seedVaultEntryId || "").trim(),
@@ -72136,7 +72214,9 @@ function getSeedVaultEntryFormPayload(form) {
     seedVariety: String(formData.get("seedVariety") || formData.get("seedName") || "").trim(),
     seedType: normalizeSeedTypeId(formData.get("seedType") || ""),
     seedSex: normalizeSeedSexValue(formData.get("seedSex") || ""),
-    source: String(formData.get("source") || "").trim(),
+    source,
+    thumbnailUrl,
+    sourceLogoUrl,
     quantity: quantityValue ? Number(quantityValue) : null,
     yearAcquired,
     seedAgeYears: getCalculatedSeedVaultAgeYears(yearAcquired),
@@ -72151,6 +72231,128 @@ function getSeedVaultEntryFormPayload(form) {
   });
 }
 
+function renderSeedVaultVisualPreviewContent(kind = "thumbnail", url = "", options = {}) {
+  const normalizedUrl = String(url || "").trim();
+  const label = String(options.label || (kind === "source-logo" ? "Source logo" : "Variety photo")).trim();
+  if (normalizedUrl) {
+    return `<img src="${escapeHtml(normalizedUrl)}" alt="${escapeHtml(label)} preview">`;
+  }
+  const fallbackText = kind === "source-logo"
+    ? getSeedVaultInitials(options.source || label, "--")
+    : getSeedVaultInitials(options.variety || label, "SV");
+  const tone = getSeedVaultVisualTone(`${options.variety || label}:${options.source || ""}`);
+  return `<span class="seed-vault-visual-placeholder seed-vault-visual-placeholder--${escapeHtml(String(tone))}">${escapeHtml(fallbackText)}</span>`;
+}
+
+function getSeedVaultFormSourceLogoUrl(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return "";
+  }
+  const source = String(form.elements.source?.value || "").trim();
+  const hiddenValue = String(form.elements.sourceLogoUrl?.value || "").trim();
+  const removedSource = String(form.dataset.seedVaultSourceLogoRemovedFor || "").trim();
+  if (hiddenValue) {
+    return hiddenValue;
+  }
+  if (removedSource && getSeedVaultSourceLogoKey(removedSource) === getSeedVaultSourceLogoKey(source)) {
+    return getSeedVaultKnownSourceLogoUrl(source);
+  }
+  return getSeedVaultCustomSourceLogoUrl(source) || getSeedVaultKnownSourceLogoUrl(source);
+}
+
+function updateSeedVaultVisualPreview(form, kind = "thumbnail") {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+  const preview = form.querySelector(`[data-seed-vault-visual-preview="${kind}"]`);
+  if (!preview) {
+    return;
+  }
+  const source = String(form.elements.source?.value || "").trim();
+  const variety = String(form.elements.seedVariety?.value || "").trim();
+  const isSourceLogo = kind === "source-logo";
+  const url = isSourceLogo
+    ? getSeedVaultFormSourceLogoUrl(form)
+    : String(form.elements.thumbnailUrl?.value || "").trim();
+  preview.classList.toggle("has-image", Boolean(url));
+  preview.innerHTML = renderSeedVaultVisualPreviewContent(kind, url, {
+    source,
+    variety,
+    label: isSourceLogo ? source || "Source logo" : variety || "Variety photo",
+  });
+
+  const removeButton = form.querySelector(`[data-seed-vault-visual-remove="${kind}"]`);
+  if (removeButton instanceof HTMLButtonElement) {
+    const hasCustomLogo = isSourceLogo && Boolean(String(form.elements.sourceLogoUrl?.value || "").trim() || getSeedVaultCustomSourceLogoUrl(source));
+    removeButton.disabled = isSourceLogo ? !hasCustomLogo : !Boolean(url);
+  }
+}
+
+async function handleSeedVaultVisualFileSelection(form, input) {
+  if (!(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement)) {
+    return;
+  }
+  const kind = input.dataset.seedVaultVisualFile || "";
+  const file = input.files?.[0] || null;
+  input.value = "";
+  if (!file) {
+    return;
+  }
+  const message = form.querySelector("[data-seed-vault-form-message]");
+  if (!file.type.startsWith("image/")) {
+    setFeedbackMessage(message, "Choose an image file for this visual.", "error");
+    return;
+  }
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    setFeedbackMessage(message, "Choose an image under 12 MB.", "error");
+    return;
+  }
+  try {
+    const maxDimension = kind === "source-logo" ? MAX_SOURCE_LOGO_DIMENSION : 900;
+    const dataUrl = await prepareImageDataUrlForStorage(file, maxDimension, 0.84);
+    if (kind === "source-logo") {
+      form.elements.sourceLogoUrl.value = dataUrl;
+      form.dataset.seedVaultSourceLogoRemovedFor = "";
+      updateSeedVaultVisualPreview(form, "source-logo");
+    } else {
+      form.elements.thumbnailUrl.value = dataUrl;
+      updateSeedVaultVisualPreview(form, "thumbnail");
+    }
+    setFeedbackMessage(message, "");
+  } catch (error) {
+    setFeedbackMessage(message, error.message || "Could not process this image.", "error");
+  }
+}
+
+function bindSeedVaultVisualFields(form) {
+  if (!(form instanceof HTMLFormElement) || form.dataset.seedVaultVisualFieldsBound === "true") {
+    return;
+  }
+  form.dataset.seedVaultVisualFieldsBound = "true";
+  form.querySelectorAll("[data-seed-vault-visual-file]").forEach((input) => {
+    input.addEventListener("change", () => {
+      void handleSeedVaultVisualFileSelection(form, input);
+    });
+  });
+  form.querySelectorAll("[data-seed-vault-visual-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const kind = button.dataset.seedVaultVisualRemove || "";
+      if (kind === "source-logo") {
+        const source = String(form.elements.source?.value || "").trim();
+        form.elements.sourceLogoUrl.value = "";
+        form.dataset.seedVaultSourceLogoRemovedFor = source;
+        updateSeedVaultVisualPreview(form, "source-logo");
+      } else {
+        form.elements.thumbnailUrl.value = "";
+        updateSeedVaultVisualPreview(form, "thumbnail");
+      }
+    });
+  });
+  form.elements.source?.addEventListener("input", () => updateSeedVaultVisualPreview(form, "source-logo"));
+  form.elements.seedVariety?.addEventListener("input", () => updateSeedVaultVisualPreview(form, "thumbnail"));
+  updateSeedVaultVisualPreview(form, "thumbnail");
+  updateSeedVaultVisualPreview(form, "source-logo");
+}
 function validateSeedVaultEntryForm(form) {
   if (!(form instanceof HTMLFormElement)) {
     return {
@@ -72260,6 +72462,9 @@ function openSeedVaultEntryModal(entry = null) {
   closeSeedVaultEntryModal();
   const normalizedEntry = normalizeSeedVaultEntry(entry || {});
   const isEditing = Boolean(entry && normalizedEntry?.id);
+  const initialThumbnailUrl = getSeedVaultEntryThumbnailUrl(normalizedEntry || {});
+  const initialSourceLogoFieldUrl = String(normalizedEntry?.sourceLogoUrl || normalizedEntry?.source_logo_url || "").trim();
+  const initialSourceLogoPreviewUrl = getSeedVaultSourceLogoUrl(normalizedEntry || {});
   const overlay = document.createElement("div");
   overlay.id = "seed-vault-entry-modal-overlay";
   overlay.className = "seed-vault-entry-modal-overlay";
@@ -72307,6 +72512,48 @@ function openSeedVaultEntryModal(entry = null) {
             <small class="seed-vault-calculated-age" data-seed-vault-age-display aria-live="polite"></small>
           </label>
         </div>
+        <input type="hidden" name="thumbnailUrl" value="${escapeHtml(initialThumbnailUrl)}">
+        <input type="hidden" name="sourceLogoUrl" value="${escapeHtml(initialSourceLogoFieldUrl)}">
+        <details class="seed-vault-visuals-section">
+          <summary>
+            <span>Visuals</span>
+            <small>Optional photos and source logos</small>
+          </summary>
+          <div class="seed-vault-visuals-grid">
+            <section class="seed-vault-visual-control" aria-label="Variety Photo">
+              <div class="seed-vault-visual-preview" data-seed-vault-visual-preview="thumbnail">
+                ${renderSeedVaultVisualPreviewContent("thumbnail", initialThumbnailUrl, { variety: normalizedEntry?.seedName || "", source: normalizedEntry?.source || "", label: "Variety photo" })}
+              </div>
+              <div class="seed-vault-visual-copy">
+                <strong>Variety Photo</strong>
+                <span>Used for this Vault Entry only.</span>
+                <div class="seed-vault-visual-actions">
+                  <label class="button button-secondary button-compact seed-vault-visual-upload-button">
+                    <input type="file" accept="image/*" data-seed-vault-visual-file="thumbnail">
+                    <span>${initialThumbnailUrl ? "Replace" : "Upload"}</span>
+                  </label>
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="thumbnail"${initialThumbnailUrl ? "" : " disabled"}>Remove</button>
+                </div>
+              </div>
+            </section>
+            <section class="seed-vault-visual-control" aria-label="Source Logo">
+              <div class="seed-vault-visual-preview seed-vault-visual-preview--logo" data-seed-vault-visual-preview="source-logo">
+                ${renderSeedVaultVisualPreviewContent("source-logo", initialSourceLogoPreviewUrl, { source: normalizedEntry?.source || "", label: "Source logo" })}
+              </div>
+              <div class="seed-vault-visual-copy">
+                <strong>Source Logo</strong>
+                <span>Saved for future entries from this source.</span>
+                <div class="seed-vault-visual-actions">
+                  <label class="button button-secondary button-compact seed-vault-visual-upload-button">
+                    <input type="file" accept="image/*" data-seed-vault-visual-file="source-logo">
+                    <span>${initialSourceLogoFieldUrl ? "Replace" : "Upload"}</span>
+                  </label>
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="source-logo"${initialSourceLogoFieldUrl ? "" : " disabled"}>Remove</button>
+                </div>
+              </div>
+            </section>
+          </div>
+        </details>
         <label>
           <span>Storage location</span>
           <input name="storageLocation" type="text" maxlength="120" autocomplete="off" placeholder="Fridge drawer, jar, vault box" value="${escapeHtml(normalizedEntry?.storageLocation || "")}">
@@ -72361,6 +72608,7 @@ function openSeedVaultEntryModal(entry = null) {
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     bindSeedVaultEntryModalGuards(overlay, form);
     initializeSessionSourceAndVarietyAutocompletes(form);
+    bindSeedVaultVisualFields(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       await saveSeedVaultEntryForm(form);
