@@ -53247,3 +53247,118 @@ body.theme-dark option[selected] {
     text-align: left;
   }
 }
+
+/* Seed Vault toolbar search-first layout pass */
+.seed-vault-controls {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) auto auto;
+  grid-template-areas:
+    "search count toggle"
+    "filters filters filters";
+  align-items: end;
+  gap: 10px 12px;
+}
+
+.seed-vault-controls .seed-vault-search-field {
+  grid-area: search;
+  display: grid;
+  grid-template-rows: auto 46px;
+  gap: 5px;
+  align-self: stretch;
+  align-content: end;
+  min-width: 0;
+  width: 100%;
+}
+
+.seed-vault-controls .seed-vault-search-field input {
+  min-height: 46px;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.seed-vault-controls .seed-vault-results-count {
+  grid-area: count;
+  align-self: center;
+  justify-self: end;
+  margin-bottom: 2px;
+  padding: 0 2px;
+  min-width: max-content;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.seed-vault-controls .seed-vault-view-toggle {
+  grid-area: toggle;
+  align-self: center;
+  justify-self: end;
+  margin-bottom: 0;
+}
+
+.seed-vault-controls .seed-vault-filter-row {
+  grid-area: filters;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(118px, 1fr));
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.seed-vault-controls .seed-vault-filter-row label {
+  min-width: 0;
+}
+
+.seed-vault-controls .seed-vault-filter-row select {
+  min-height: 40px;
+}
+
+@media (max-width: 1180px) {
+  .seed-vault-controls {
+    grid-template-columns: minmax(280px, 1fr) auto auto;
+    grid-template-areas:
+      "search count toggle"
+      "filters filters filters";
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: repeat(6, minmax(96px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .seed-vault-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "search search"
+      "count toggle"
+      "filters filters";
+  }
+
+  .seed-vault-controls .seed-vault-results-count {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .seed-vault-controls {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "search"
+      "count"
+      "toggle"
+      "filters";
+  }
+
+  .seed-vault-controls .seed-vault-view-toggle {
+    justify-self: start;
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: 1fr;
+  }
+}
