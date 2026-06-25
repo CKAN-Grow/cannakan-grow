@@ -5554,7 +5554,8 @@ function normalizeSeedVaultEntry(entry = {}) {
     seedSex,
     feminized: seedSex,
     source: String(entry.source || "").trim(),
-    thumbnailUrl: String(entry.thumbnailUrl || entry.thumbnail_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim(),
+    thumbnailUrl: String(entry.thumbnailUrl || entry.thumbnail_url || entry.varietyImageUrl || entry.variety_image_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim(),
+    varietyImageUrl: String(entry.varietyImageUrl || entry.variety_image_url || entry.thumbnailUrl || entry.thumbnail_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim(),
     sourceLogoUrl: String(entry.sourceLogoUrl || entry.source_logo_url || entry.logoUrl || entry.logo_url || "").trim(),
     seedCount: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
     quantity: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
@@ -5599,7 +5600,8 @@ function mapSeedVaultEntryToRow(entry = {}) {
     sex: normalizedEntry.seedSex || null,
     seed_sex: normalizedEntry.seedSex || null,
     source: normalizedEntry.source || null,
-    thumbnail_url: normalizedEntry.thumbnailUrl || null,
+    thumbnail_url: normalizedEntry.thumbnailUrl || normalizedEntry.varietyImageUrl || null,
+    variety_image_url: normalizedEntry.varietyImageUrl || normalizedEntry.thumbnailUrl || null,
     source_logo_url: normalizedEntry.sourceLogoUrl || null,
     seed_count: normalizedEntry.seedCount,
     quantity: normalizedEntry.quantity,
@@ -6992,6 +6994,9 @@ function isSeedVaultEntriesColumnMissingError(error) {
     "archived_at",
     "is_deleted",
     "deleted_at",
+    "thumbnail_url",
+    "variety_image_url",
+    "source_logo_url",
   ]);
 }
 
@@ -69266,7 +69271,7 @@ function getSeedVaultEntryCreatedTime(entry = {}) {
 }
 
 function getSeedVaultEntryThumbnailUrl(entry = {}) {
-  return String(entry.thumbnailUrl || entry.thumbnail_url || entry.varietyPhotoUrl || entry.variety_photo_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim();
+  return String(entry.thumbnailUrl || entry.thumbnail_url || entry.varietyImageUrl || entry.variety_image_url || entry.varietyPhotoUrl || entry.variety_photo_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim();
 }
 
 function getSeedVaultSourceLogoStorageKey(userId = appState.user?.id || "") {
@@ -85587,18 +85592,4 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
