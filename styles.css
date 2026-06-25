@@ -51900,3 +51900,283 @@ body.theme-dark option[selected] {
     justify-content: center;
   }
 }
+
+/* Seed Vault gallery repair: expanded details become a full-width panel, never a narrow card column */
+.seed-vault-entry-grid--gallery {
+  align-items: start;
+  grid-auto-flow: row dense;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card {
+  min-width: 0;
+  height: auto;
+  align-self: start;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-collapsed-row {
+  min-height: 360px;
+  grid-template-rows: auto auto auto auto auto;
+  align-content: start;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-details {
+  display: none;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0;
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.07), rgba(255, 255, 255, 0.014)),
+    rgba(8, 13, 11, 0.78);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-collapsed-row {
+  grid-template-columns: 116px minmax(260px, 1fr) 86px 124px 128px 42px 42px;
+  gap: 12px;
+  align-items: center;
+  min-height: 132px;
+  padding: 14px;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-seed-thumb {
+  grid-column: auto;
+  width: 116px;
+  height: 92px;
+  aspect-ratio: auto;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-title {
+  grid-column: auto;
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-title h4 {
+  display: flex;
+  gap: 7px;
+  max-width: 100%;
+  margin-bottom: 6px;
+  font-size: 1.14rem;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-title h4 > span:first-child,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-title p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-quantity-cell,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-age-cell,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-row-status {
+  grid-column: auto;
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-quantity-cell {
+  display: grid;
+  gap: 2px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-favorite-button,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-action-menu {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded > .seed-vault-entry-details {
+  display: grid;
+  margin: 0 14px 14px;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(5, 10, 8, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-detail-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-session-history {
+  grid-column: 1 / -1;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-usage-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-field,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-notes,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-session-history,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-usage-grid .seed-vault-field {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-field strong,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-notes p,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-session-history p {
+  overflow-wrap: anywhere;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-footer {
+  justify-content: flex-end;
+}
+
+@media (max-width: 980px) {
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-collapsed-row {
+    grid-template-columns: 92px minmax(0, 1fr) 42px 42px;
+    align-items: start;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-seed-thumb {
+    width: 92px;
+    height: 76px;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-quantity-cell,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-age-cell,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-row-status {
+    grid-column: 2 / -1;
+    width: 100%;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-quantity-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-favorite-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-action-menu {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-detail-grid,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-usage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-collapsed-row {
+    min-height: 0;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-collapsed-row {
+    grid-template-columns: 74px minmax(0, 1fr) 36px 36px;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-seed-thumb {
+    width: 74px;
+    height: 66px;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded > .seed-vault-entry-details {
+    margin: 0 10px 10px;
+    padding: 12px;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-detail-grid,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-usage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-footer {
+    justify-content: stretch;
+  }
+}
+
+/* Seed Vault gallery repair: keep browse cards consistent while details use the expanded panel */
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) {
+  height: 454px;
+  overflow: visible;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-collapsed-row {
+  height: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 40px 40px;
+  grid-template-rows: minmax(150px, 1fr) 58px 40px 38px 48px;
+  align-content: stretch;
+  align-items: center;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-seed-thumb {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-title {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: center;
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-title h4,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-title p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-quantity-cell {
+  grid-column: 1;
+  grid-row: 3;
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-favorite-button {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-action-menu {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-age-cell {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  min-width: 0;
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-row-status {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  min-height: 0;
+  align-self: stretch;
+}
+
+@media (max-width: 640px) {
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) {
+    height: 500px;
+  }
+}
