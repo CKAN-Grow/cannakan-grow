@@ -54325,3 +54325,34 @@ body.theme-dark option[selected] {
     min-height: 54px;
   }
 }
+
+/* Seed Vault sidebar regression repair: restore the two-card support rail */
+@media (min-width: 1181px) {
+  .seed-vault-summary-panel.seed-vault-support-panel {
+    display: grid;
+    align-content: start;
+    grid-auto-rows: max-content;
+    gap: 14px;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .seed-vault-support-panel .seed-vault-side-card--collection,
+  .seed-vault-support-panel .seed-vault-side-card--performance {
+    display: grid;
+    visibility: visible;
+    opacity: 1;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .seed-vault-support-panel .seed-vault-side-card--performance {
+    align-content: start;
+  }
+
+  .seed-vault-support-panel .seed-vault-side-card--performance p {
+    margin: 0;
+  }
+}
