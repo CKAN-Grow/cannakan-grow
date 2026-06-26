@@ -96,6 +96,37 @@ const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
+const SEED_VAULT_ENTRY_WRITE_COLUMNS = Object.freeze([
+  "id",
+  "user_id",
+  "source",
+  "seed_variety",
+  "seed_name",
+  "seed_type",
+  "sex",
+  "seed_sex",
+  "seed_age_years",
+  "seed_count",
+  "quantity",
+  "remaining_count",
+  "year_acquired",
+  "acquired_at",
+  "storage_location",
+  "storage_notes",
+  "notes",
+  "visibility",
+  "is_favorite",
+  "is_archived",
+  "archived_at",
+  "is_deleted",
+  "deleted_at",
+  "is_mock",
+  "dev_mode_only",
+  "mock_source",
+  "created_at",
+  "updated_at",
+]);
+const SEED_VAULT_ENTRY_WRITE_COLUMN_SET = new Set(SEED_VAULT_ENTRY_WRITE_COLUMNS);
 const SOURCE_DIRECTORY_TABLE = "source_directory";
 const SOURCE_DIRECTORY_LEGACY_BASE_SELECT = "id,name,normalized_name,aliases,source_type,country,verified,active,usage_count";
 const SOURCE_DIRECTORY_BASE_SELECT = `${SOURCE_DIRECTORY_LEGACY_BASE_SELECT},source_logo_url`;
@@ -5626,9 +5657,6 @@ function mapSeedVaultEntryToRow(entry = {}) {
     sex: normalizedEntry.seedSex || null,
     seed_sex: normalizedEntry.seedSex || null,
     source: normalizedEntry.source || null,
-    thumbnail_url: normalizedEntry.thumbnailUrl || normalizedEntry.varietyImageUrl || null,
-    variety_image_url: normalizedEntry.varietyImageUrl || normalizedEntry.thumbnailUrl || null,
-    source_logo_url: normalizedEntry.sourceLogoUrl || null,
     seed_count: normalizedEntry.seedCount,
     quantity: normalizedEntry.quantity,
     remaining_count: normalizedEntry.remainingCount,
@@ -5646,6 +5674,27 @@ function mapSeedVaultEntryToRow(entry = {}) {
   };
 }
 
+function sanitizeSeedVaultEntryWritePayload(row = {}) {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const sanitizedRow = {};
+  Object.entries(row).forEach(([key, value]) => {
+    if (!SEED_VAULT_ENTRY_WRITE_COLUMN_SET.has(key) || value === undefined) {
+      return;
+    }
+    sanitizedRow[key] = value;
+  });
+  return Object.keys(sanitizedRow).length ? sanitizedRow : null;
+}
+
+function sanitizeSeedVaultEntryWriteRows(rowsOrRow = null) {
+  const rows = Array.isArray(rowsOrRow) ? rowsOrRow : [rowsOrRow];
+  const sanitizedRows = rows
+    .map(sanitizeSeedVaultEntryWritePayload)
+    .filter(Boolean);
+  return Array.isArray(rowsOrRow) ? sanitizedRows : (sanitizedRows[0] || null);
+}
 function sortSeedVaultEntries(entries = []) {
   return [...(entries || [])]
     .map(normalizeSeedVaultEntry)
@@ -7057,8 +7106,13 @@ function isSeedVaultEntriesSchemaError(error) {
 async function upsertSeedVaultRows(rowsOrRow, options = {}) {
   const { single = false } = options || {};
   const isBulk = Array.isArray(rowsOrRow);
-  const payloadRows = isBulk ? rowsOrRow : [rowsOrRow];
+  const sanitizedPayload = sanitizeSeedVaultEntryWriteRows(rowsOrRow);
+  const payloadRows = isBulk ? sanitizedPayload : (sanitizedPayload ? [sanitizedPayload] : []);
   const payload = isBulk ? payloadRows : payloadRows[0];
+  if (!payload || (Array.isArray(payload) && !payload.length)) {
+    return { data: isBulk ? [] : null, error: null };
+  }
+
   let query = appState.supabase
     .from(SEED_VAULT_ENTRIES_TABLE)
     .upsert(payload, { onConflict: "id" })
@@ -7277,7 +7331,13 @@ async function persistSeedVaultEntry(entry = {}) {
     });
     throw new Error(message);
   }
-  const savedEntry = normalizeSeedVaultEntry(data);
+  const savedEntry = normalizeSeedVaultEntry({
+    ...normalizedEntry,
+    ...(data || {}),
+    thumbnailUrl: normalizedEntry.thumbnailUrl,
+    varietyImageUrl: normalizedEntry.varietyImageUrl,
+    sourceLogoUrl: normalizedEntry.sourceLogoUrl,
+  });
   if (savedEntry) {
     saveSeedVaultEntries([
       ...nextEntries.filter((candidate) => candidate.id !== savedEntry.id),
@@ -73019,13 +73079,71 @@ async function updateSeedVaultEntryFlag(entryId = "", updates = {}) {
   if (!entry) {
     return;
   }
+
+  const updatedAt = new Date().toISOString();
+  const nextUpdates = { ...updates, updatedAt };
+  if (Object.prototype.hasOwnProperty.call(updates, "isArchived")
+    && !Object.prototype.hasOwnProperty.call(updates, "archivedAt")) {
+    nextUpdates.archivedAt = updates.isArchived ? updatedAt : "";
+  }
+  const nextEntry = normalizeSeedVaultEntry({
+    ...entry,
+    ...nextUpdates,
+  });
+  if (!nextEntry) {
+    return;
+  }
+
+  const previousEntries = sortSeedVaultEntries(appState.seedVaultEntries || []);
+  const nextEntries = sortSeedVaultEntries([
+    ...previousEntries.filter((candidate) => candidate.id !== normalizedEntryId),
+    nextEntry,
+  ]);
+
   try {
-    await persistSeedVaultEntry({
-      ...entry,
-      ...updates,
+    saveSeedVaultEntries(nextEntries, nextEntry.userId || appState.user?.id || "", {
+      notifyOnFailure: true,
+      throwOnFailure: true,
     });
+
+    if (appState.supabase && nextEntry.userId && !appState.seedVaultTableUnavailable) {
+      const rowUpdate = { updated_at: updatedAt };
+      if (Object.prototype.hasOwnProperty.call(updates, "isFavorite")) {
+        rowUpdate.is_favorite = Boolean(updates.isFavorite);
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, "isArchived")) {
+        rowUpdate.is_archived = Boolean(updates.isArchived);
+      }
+      if (Object.prototype.hasOwnProperty.call(nextUpdates, "archivedAt")) {
+        rowUpdate.archived_at = nextUpdates.archivedAt || null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, "isDeleted")) {
+        rowUpdate.is_deleted = Boolean(updates.isDeleted);
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, "deletedAt")) {
+        rowUpdate.deleted_at = updates.deletedAt || null;
+      }
+
+      const sanitizedUpdate = sanitizeSeedVaultEntryWritePayload(rowUpdate);
+      if (sanitizedUpdate) {
+        const { error } = await appState.supabase
+          .from(SEED_VAULT_ENTRIES_TABLE)
+          .update(sanitizedUpdate)
+          .eq("id", normalizedEntryId)
+          .eq("user_id", nextEntry.userId);
+
+        if (error) {
+          if (isSeedVaultEntriesSchemaError(error)) {
+            handleSeedVaultEntriesSchemaMissing(error);
+          }
+          throw error;
+        }
+      }
+    }
+
     refreshSeedVaultViewAfterMutation();
   } catch (error) {
+    saveSeedVaultEntries(previousEntries, entry.userId || appState.user?.id || "", { notifyOnFailure: false });
     console.error("[My Seed Vault] Entry flag update failed.", {
       entryId: normalizedEntryId,
       updates,
@@ -73036,6 +73154,7 @@ async function updateSeedVaultEntryFlag(entryId = "", updates = {}) {
       error,
     });
     showSeedVaultSaveFailureToast(error.message || "My Seed Vault could not be updated. Please try again.");
+    refreshSeedVaultViewAfterMutation();
   }
 }
 
@@ -85975,6 +86094,10 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
+
+
+
 
 
 
