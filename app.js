@@ -29096,6 +29096,49 @@ function renderAppIconMarkup(iconName = "info", options = {}) {
   `;
 }
 
+function getGrowKpiVisualMeta(input = "") {
+  if (input && typeof input === "object") {
+    const tone = String(input.tone || "neutral").trim() || "neutral";
+    const icon = String(input.icon || "info").trim() || "info";
+    return { tone, icon };
+  }
+
+  const normalized = String(input || "").trim().toLowerCase();
+  const matches = (terms = []) => terms.some((term) => normalized.includes(term));
+
+  if (matches(["low inventory", "warning", "alert", "awaiting", "new reports"])) {
+    return { tone: "warning", icon: "warning" };
+  }
+  if (matches(["unknown", "age", "oldest", "older"])) {
+    return { tone: "unknown", icon: "clock" };
+  }
+  if (matches(["source", "breeder", "vendor", "trusted"])) {
+    return { tone: "source", icon: "sourceDirectoryBars" };
+  }
+  if (matches(["variet", "genetic", "collection", "vault", "tracked"])) {
+    return { tone: "collection", icon: "seedVault" };
+  }
+  if (matches(["seed", "sprout", "plant", "grow", "germination", "average", "success", "performance", "best", "rate"])) {
+    return { tone: "growth", icon: "mySessionsSprout" };
+  }
+  if (matches(["session", "active", "completed", "linked"])) {
+    return { tone: "performance", icon: "activeSessionWaveform" };
+  }
+  if (matches(["community", "member", "network", "shared"])) {
+    return { tone: "community", icon: "communityGroup" };
+  }
+  if (matches(["report", "review", "resolved", "published", "draft", "tutorial", "video"])) {
+    return { tone: "performance", icon: "reportDocument" };
+  }
+
+  return { tone: "neutral", icon: "info" };
+}
+
+function renderGrowKpiWatermarkMarkup(input = "", className = "") {
+  const meta = getGrowKpiVisualMeta(input);
+  const wrapperClassName = ["grow-kpi-watermark", className].filter(Boolean).join(" ");
+  return `<i class="${escapeHtml(wrapperClassName)}" aria-hidden="true">${renderAppIconSvgMarkup(meta.icon, { className: "grow-kpi-watermark-icon" })}</i>`;
+}
 function formatAppNotificationDateTime(createdAt = "") {
   const parsedDate = parseCompletedAtValue(createdAt);
   if (!parsedDate) {
@@ -31100,13 +31143,17 @@ function buildCommunityInsightsState() {
 function renderCommunityInsightsKpiGrid(cards = [], options = {}) {
   return `
     <div class="community-insights-kpi-grid${options.className ? ` ${escapeHtml(options.className)}` : ""}">
-      ${cards.map((card, index) => `
-        <article class="community-insights-kpi-card${index === 0 ? " is-primary" : ""}">
-          <span>${escapeHtml(card.label || "")}</span>
-          <strong>${escapeHtml(card.value || "")}</strong>
-          <small>${escapeHtml(card.detail || "")}</small>
-        </article>
-      `).join("")}
+      ${cards.map((card, index) => {
+        const visualMeta = getGrowKpiVisualMeta(card.label || card.value || "");
+        return `
+          <article class="community-insights-kpi-card grow-kpi-card is-${escapeHtml(visualMeta.tone)}${index === 0 ? " is-primary" : ""}">
+            <span>${escapeHtml(card.label || "")}</span>
+            <strong>${escapeHtml(card.value || "")}</strong>
+            <small>${escapeHtml(card.detail || "")}</small>
+            ${renderGrowKpiWatermarkMarkup(visualMeta)}
+          </article>
+        `;
+      }).join("")}
     </div>
   `;
 }
@@ -47254,12 +47301,14 @@ function renderAdminAccessDeniedScreen() {
 }
 
 function renderAdminOverviewCardMarkup({ label, value, subtext = "", className = "" }) {
-  const cardClassName = `card stat-card card-accent card-accent-green admin-overview-card ${String(className || "").trim()}`.trim();
+  const visualMeta = getGrowKpiVisualMeta(label);
+  const cardClassName = `card stat-card card-accent card-accent-green admin-overview-card grow-kpi-card is-${visualMeta.tone} ${String(className || "").trim()}`.trim();
   return `
     <article class="${escapeHtml(cardClassName)}">
       <span class="stat-label">${escapeHtml(label)}</span>
       <strong class="stat-value">${escapeHtml(value)}</strong>
       <p class="summary-subtext">${escapeHtml(subtext)}</p>
+      ${renderGrowKpiWatermarkMarkup(visualMeta)}
     </article>
   `;
 }
@@ -69843,19 +69892,20 @@ function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
 function renderSeedVaultInlineSummaryMarkup(analytics = null) {
   const overview = analytics?.overview || {};
   const summaryItems = [
-    { label: "Total Seeds", value: String(overview.totalSeedsOwned || 0) },
-    { label: "Varieties", value: String(overview.totalVarieties || 0) },
-    { label: "Sources", value: String(overview.totalSources || 0) },
-    { label: "Low Inventory", value: String(overview.lowInventoryEntries || 0) },
-    { label: "Unknown Age", value: String(overview.unknownAgeCount || 0) },
+    { key: "total-seeds", label: "Total Seeds", value: String(overview.totalSeedsOwned || 0), icon: "mySessionsSprout", tone: "growth" },
+    { key: "varieties", label: "Varieties", value: String(overview.totalVarieties || 0), icon: "seedVault", tone: "collection" },
+    { key: "sources", label: "Sources", value: String(overview.totalSources || 0), icon: "sourceDirectoryBars", tone: "source" },
+    { key: "low-inventory", label: "Low Inventory", value: String(overview.lowInventoryEntries || 0), icon: "warning", tone: "warning" },
+    { key: "unknown-age", label: "Unknown Age", value: String(overview.unknownAgeCount || 0), icon: "clock", tone: "unknown" },
   ];
 
   return `
     <div class="seed-vault-inline-summary" aria-label="Seed Vault summary">
       ${summaryItems.map((item) => `
-        <article class="seed-vault-inline-summary-item">
+        <article class="seed-vault-inline-summary-item grow-kpi-card is-${escapeHtml(item.tone)}" data-seed-vault-summary-card="${escapeHtml(item.key)}">
           <strong>${escapeHtml(item.value)}</strong>
           <span>${escapeHtml(item.label)}</span>
+          ${renderGrowKpiWatermarkMarkup(item, "seed-vault-inline-summary-watermark")}
         </article>
       `).join("")}
     </div>

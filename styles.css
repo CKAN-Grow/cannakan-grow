@@ -12037,7 +12037,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-learn-section::after {
   content: "";
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -35940,7 +35940,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .seed-sessions-panel::after {
   content: "";
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -54503,5 +54503,114 @@ body.theme-dark option[selected] {
 
   .source-explorer-hero-metric {
     width: 100%;
+  }
+}
+
+/* Grow KPI visual identity system */
+.grow-kpi-card {
+  --grow-kpi-accent: rgba(148, 209, 89, 0.1);
+  --grow-kpi-icon: #b8ef7d;
+  --grow-kpi-glow: rgba(148, 209, 89, 0.08);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.grow-kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.58;
+  background:
+    radial-gradient(circle at 92% 12%, var(--grow-kpi-accent), transparent 44%);
+}
+
+.grow-kpi-card > :not(.grow-kpi-watermark) {
+  position: relative;
+  z-index: 1;
+}
+
+.grow-kpi-watermark {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  z-index: 0;
+  display: inline-flex;
+  width: 58px;
+  height: 58px;
+  color: var(--grow-kpi-icon);
+  opacity: 0.064;
+  pointer-events: none;
+  transform: rotate(-8deg);
+}
+
+.grow-kpi-watermark-icon {
+  width: 100%;
+  height: 100%;
+  color: currentColor;
+  filter: drop-shadow(0 0 18px var(--grow-kpi-glow));
+}
+
+.grow-kpi-watermark-icon .cg-icon-main-shape,
+.grow-kpi-watermark-icon .cg-icon-shadow-shape {
+  stroke: currentColor;
+  fill: none;
+}
+
+.grow-kpi-watermark-icon .cg-icon-main-shape[data-solid="true"],
+.grow-kpi-watermark-icon .cg-icon-shadow-shape[data-solid="true"] {
+  fill: currentColor;
+}
+
+.grow-kpi-card.is-growth {
+  --grow-kpi-accent: rgba(148, 209, 89, 0.16);
+  --grow-kpi-icon: #b8ef7d;
+  --grow-kpi-glow: rgba(148, 209, 89, 0.16);
+}
+
+.grow-kpi-card.is-collection {
+  --grow-kpi-accent: rgba(127, 184, 255, 0.14);
+  --grow-kpi-icon: #8fc7ff;
+  --grow-kpi-glow: rgba(127, 184, 255, 0.14);
+}
+
+.grow-kpi-card.is-source {
+  --grow-kpi-accent: rgba(124, 211, 171, 0.14);
+  --grow-kpi-icon: #7cd3ab;
+  --grow-kpi-glow: rgba(124, 211, 171, 0.14);
+}
+
+.grow-kpi-card.is-warning {
+  --grow-kpi-accent: rgba(255, 198, 76, 0.15);
+  --grow-kpi-icon: #ffc64c;
+  --grow-kpi-glow: rgba(255, 198, 76, 0.14);
+}
+
+.grow-kpi-card.is-unknown,
+.grow-kpi-card.is-neutral {
+  --grow-kpi-accent: rgba(190, 198, 195, 0.12);
+  --grow-kpi-icon: #bec6c3;
+  --grow-kpi-glow: rgba(190, 198, 195, 0.1);
+}
+
+.grow-kpi-card.is-performance {
+  --grow-kpi-accent: rgba(176, 221, 113, 0.13);
+  --grow-kpi-icon: #c2ee83;
+  --grow-kpi-glow: rgba(176, 221, 113, 0.12);
+}
+
+.grow-kpi-card.is-community {
+  --grow-kpi-accent: rgba(116, 198, 255, 0.12);
+  --grow-kpi-icon: #9bd8ff;
+  --grow-kpi-glow: rgba(116, 198, 255, 0.12);
+}
+
+@media (max-width: 640px) {
+  .grow-kpi-watermark {
+    width: 50px;
+    height: 50px;
+    right: 7px;
   }
 }
