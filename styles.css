@@ -54537,7 +54537,8 @@ body.theme-dark option[selected] {
   gap: 16px;
   align-items: start;
   min-width: 0;
-  overflow: visible;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .seed-vault-expanded-summary .seed-vault-detail-section--storage {
@@ -54558,9 +54559,10 @@ body.theme-dark option[selected] {
   height: auto;
   min-height: 0;
   min-width: 0;
+  max-width: 100%;
   align-self: start;
   transform: none;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .seed-vault-expanded-summary .seed-vault-detail-section:hover {
@@ -54572,6 +54574,7 @@ body.theme-dark option[selected] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
 }
 
@@ -54603,11 +54606,11 @@ body.theme-dark option[selected] {
   gap: 14px;
   width: 100%;
   min-width: 0;
-  max-width: 260px;
+  max-width: 100%;
   justify-self: stretch;
   align-self: start;
   height: auto;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .seed-vault-expanded-summary .seed-vault-detail-section--actions .seed-vault-detail-section-heading,
@@ -54658,8 +54661,10 @@ body.theme-dark option[selected] {
 
 @media (min-width: 1181px) {
   .seed-vault-entry-details .seed-vault-expanded-summary {
-    grid-template-columns: minmax(240px, 29%) minmax(420px, 1fr) minmax(220px, 260px);
-    grid-template-areas: "storage performance actions";
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    grid-template-areas:
+      "storage performance"
+      "actions performance";
   }
 
   .seed-vault-expanded-summary .seed-vault-performance-grid {
@@ -54669,18 +54674,15 @@ body.theme-dark option[selected] {
 
 @media (min-width: 861px) and (max-width: 1180px) {
   .seed-vault-entry-details .seed-vault-expanded-summary {
-    grid-template-columns: minmax(210px, 30%) minmax(0, 1fr);
+    grid-template-columns: 1fr;
     grid-template-areas:
-      "storage performance"
-      "actions performance";
+      "storage"
+      "performance"
+      "actions";
   }
 
   .seed-vault-expanded-summary .seed-vault-performance-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .seed-vault-expanded-summary .seed-vault-detail-section--actions {
-    max-width: none;
   }
 }
 
@@ -54695,10 +54697,6 @@ body.theme-dark option[selected] {
 
   .seed-vault-expanded-summary .seed-vault-performance-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .seed-vault-expanded-summary .seed-vault-detail-section--actions {
-    max-width: none;
   }
 }
 
