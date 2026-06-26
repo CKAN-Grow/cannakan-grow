@@ -54569,14 +54569,16 @@ body.theme-dark option[selected] {
 
 .seed-vault-expanded-summary .seed-vault-performance-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(118px, 100%), 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
   min-width: 0;
   overflow: hidden;
 }
 
 .seed-vault-expanded-summary .seed-vault-performance-metric {
   min-width: 0;
+  min-height: 86px;
+  padding: 10px 8px;
   overflow: hidden;
 }
 
@@ -54588,6 +54590,11 @@ body.theme-dark option[selected] {
 .seed-vault-expanded-summary .seed-vault-performance-metric > span {
   min-width: 0;
   max-width: 100%;
+}
+
+.seed-vault-expanded-summary .seed-vault-performance-insight {
+  grid-column: 1 / -1;
+  margin-top: 12px;
 }
 
 .seed-vault-expanded-summary .seed-vault-detail-section--actions {
@@ -54651,17 +54658,25 @@ body.theme-dark option[selected] {
 
 @media (min-width: 1181px) {
   .seed-vault-entry-details .seed-vault-expanded-summary {
-    grid-template-columns: minmax(240px, 30%) minmax(0, 1fr) minmax(220px, 260px);
+    grid-template-columns: minmax(240px, 29%) minmax(420px, 1fr) minmax(220px, 260px);
     grid-template-areas: "storage performance actions";
+  }
+
+  .seed-vault-expanded-summary .seed-vault-performance-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 861px) and (max-width: 1180px) {
   .seed-vault-entry-details .seed-vault-expanded-summary {
-    grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+    grid-template-columns: minmax(210px, 30%) minmax(0, 1fr);
     grid-template-areas:
       "storage performance"
-      "storage actions";
+      "actions performance";
+  }
+
+  .seed-vault-expanded-summary .seed-vault-performance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .seed-vault-expanded-summary .seed-vault-detail-section--actions {
@@ -54678,7 +54693,17 @@ body.theme-dark option[selected] {
       "actions";
   }
 
+  .seed-vault-expanded-summary .seed-vault-performance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .seed-vault-expanded-summary .seed-vault-detail-section--actions {
     max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .seed-vault-expanded-summary .seed-vault-performance-grid {
+    grid-template-columns: 1fr;
   }
 }
