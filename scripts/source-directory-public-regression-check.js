@@ -34,9 +34,9 @@ for (const needle of [
   "latest-activity",
   "public-entries",
   "Top public varieties/genetics",
-  "Public Transparency Directory",
-  "Results are observational and may not represent all seeds from a source.",
-  "Future CSTP certifications will display separately when available.",
+  "Source Explorer",
+  "Discover trusted seed sources through real community performance.",
+  "Trusted Source Reports",
   "CSTP status pending",
   "Gold/Silver Certification",
   "Public Report Links",
@@ -106,4 +106,4 @@ for (const sortNeedle of [
   requireNeedle(sortBlock, sortNeedle, `source sorting: ${sortNeedle}`);
 }
 
-console.log("Public Source Directory regression check passed.");
+console.log("Public Source Explorer regression check passed.");

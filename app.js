@@ -361,7 +361,7 @@ const APP_HINTS = Object.freeze([
   { text: "Use the My Sessions page to track each grow separately so your germination history stays easy to compare." },
   { text: "Add session notes while a run is active so your conditions and observations stay attached to the right batch." },
   { text: "Completed sessions keep their timing and germination data, which makes it easier to review what worked later." },
-  { text: "Source Profiles only show published CSTP certifications, so admin lab work stays private until it is approved." },
+  { text: "Source Reports only show published CSTP certifications, so admin lab work stays private until it is approved." },
   { text: "The Source Directory is a quick way to review tested varieties and published CSTP qualification levels." },
   { text: "Use Community Grow snapshots for public sharing and keep private test notes inside the session detail page." },
   { text: "Cannakan® Grow is tuned for a dark-first workspace so your session data, glass panels, and progress visuals stay clear." },
@@ -732,18 +732,21 @@ const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
 const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Sources" }),
   Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
-  Object.freeze({ key: "gold-certified", label: "Gold Certified" }),
-  Object.freeze({ key: "silver-certified", label: "Silver Certified" }),
+  Object.freeze({ key: "high-confidence", label: "High Confidence" }),
   Object.freeze({ key: "report-available", label: "Report Available" }),
+  Object.freeze({ key: "partner-sources", label: "Partner Sources" }),
 ]);
 const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Community Grow" }),
   Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
-  Object.freeze({ key: "most-logged", label: "Most Logged" }),
-  Object.freeze({ key: "recently-logged", label: "Recently Logged" }),
-  Object.freeze({ key: "a-z", label: "A-Z" }),
+  Object.freeze({ key: "most-trusted", label: "Most Trusted" }),
+  Object.freeze({ key: "highest-germination", label: "Highest Germination" }),
+  Object.freeze({ key: "most-sessions", label: "Most Sessions" }),
+  Object.freeze({ key: "most-popular", label: "Most Popular" }),
+  Object.freeze({ key: "recently-active", label: "Recently Active" }),
+  Object.freeze({ key: "alphabetical", label: "Alphabetical" }),
 ]);
 const SOURCE_DIRECTORY_LIST_SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: "germination-rate", label: "Germination Rate" }),
@@ -770,7 +773,7 @@ const SOURCE_DIRECTORY_LIST_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "no-germination-data", label: "No Germination Data" }),
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
-const SOURCE_DIRECTORY_DEFAULT_SORT = "most-logged";
+const SOURCE_DIRECTORY_DEFAULT_SORT = "most-trusted";
 const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
@@ -13781,7 +13784,7 @@ function getCurrentSiteAnalyticsPageContext() {
       ? buildSiteAnalyticsPageContext({
         pageGroup: "sources",
         pageKey: "source-profile",
-        pageLabel: "Source Profile",
+        pageLabel: "Source Report",
         pagePath: `#sources/${id}`,
       })
       : buildSiteAnalyticsPageContext({
@@ -38308,7 +38311,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "sources",
       pageKey: "source-profile",
-      pageLabel: "Source Profile",
+      pageLabel: "Source Report",
       pagePath: `#sources/${encodeURIComponent(sourceProfileId)}`,
     }));
     return;
@@ -48125,7 +48128,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       publishedAt: publishedCertification.publishedAt || "",
       testedAt: publishedCertification.completedAt || publishedCertification.publishedAt || "",
       expiresAt: lifecycleState.expiresAt || "",
-      heading: "2. CSTP Verification",
+      heading: "7. CSTP Verification",
       helperText: CSTP_DEFINITION,
       statusLabel: `${qualificationLabel} Certified`,
       toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver",
@@ -48160,7 +48163,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       publishedAt: "",
       testedAt: String(mockCstp.testedDate || "").trim(),
       expiresAt: String(mockCstp.validUntil || "").trim(),
-      heading: "2. CSTP Verification",
+      heading: "7. CSTP Verification",
       helperText: CSTP_DEFINITION,
       statusLabel: qualificationResult
         ? `${getAdminCstpQualificationLabel(qualificationResult)} Certified`
@@ -48193,7 +48196,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
     publishedAt: "",
     testedAt: "",
     expiresAt: "",
-    heading: "2. CSTP Verification",
+    heading: "7. CSTP Verification",
     helperText: CSTP_DEFINITION,
     statusLabel: "Report Unavailable",
     toneClass: "is-neutral",
@@ -49005,25 +49008,85 @@ function renderCstpHubPage() {
   `;
 }
 
-function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEFAULT_SORT) {
-  switch (sortKey) {
-    case "recently-logged":
-      return Date.parse(source?.directoryStats?.lastLoggedAt || "") || 0;
-    case "a-z":
-      return 0;
-    case "most-logged":
-    default:
-      return parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged);
-  }
+function getSourceDirectoryTrustScore(source = {}) {
+  const rate = Math.max(0, Math.min(100, getSourceDirectoryReportedRateNumber(source)));
+  const sessions = Math.max(
+    parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged),
+    parseSourceDirectoryMetricNumber(source?.community?.sessions),
+  );
+  const seedsTracked = Math.max(0, parseSourceDirectoryMetricNumber(source?.community?.seedsTracked));
+  const cstpState = getSourceDirectoryCstpCardState(source);
+  const lastActivityTime = getSourceDirectoryMostRecentTimestamp(source);
+  const daysSinceActivity = lastActivityTime ? Math.max(0, (Date.now() - lastActivityTime) / 86400000) : Number.POSITIVE_INFINITY;
+  const rateScore = rate * 0.45;
+  const sessionScore = Math.min(22, sessions * 1.6);
+  const seedScore = Math.min(16, seedsTracked / 45);
+  const recencyScore = daysSinceActivity <= 90 ? 9 : (daysSinceActivity <= 365 ? 5 : (daysSinceActivity <= 730 ? 2 : 0));
+  const reportScore = cstpState?.hasReport ? 8 : (cstpState ? 4 : 0);
+  const score = Math.round(Math.max(0, Math.min(100, rateScore + sessionScore + seedScore + recencyScore + reportScore)));
+  const confidenceLabel = sessions >= 25 && seedsTracked >= 500
+    ? "Very High Confidence"
+    : (sessions >= 10 && seedsTracked >= 150
+      ? "High Confidence"
+      : (sessions >= 3 && seedsTracked >= 40 ? "Moderate Confidence" : "Limited Data"));
+  const hasEnoughData = confidenceLabel !== "Limited Data";
+  return {
+    score,
+    scoreLabel: hasEnoughData ? String(score) : "Limited Data",
+    confidenceLabel,
+    hasEnoughData,
+    sessions,
+    seedsTracked,
+    explanation: hasEnoughData
+      ? `Based on ${sessions.toLocaleString()} community sessions and ${seedsTracked.toLocaleString()} seeds tracked.`
+      : "More community sessions are needed before confidence is scored.",
+  };
 }
 
+function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEFAULT_SORT) {
+  switch (sortKey) {
+    case "highest-germination":
+      return getSourceDirectoryReportedRateNumber(source);
+    case "most-sessions":
+      return parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged);
+    case "most-popular":
+      return parseSourceDirectoryMetricNumber(source?.community?.seedsTracked);
+    case "recently-active":
+      return Date.parse(source?.directoryStats?.lastLoggedAt || "") || 0;
+    case "alphabetical":
+      return 0;
+    case "most-trusted":
+    default:
+      return getSourceDirectoryTrustScore(source).score;
+  }
+}
 function getSourceDirectoryMetrics(records = getSourceDirectoryMockRecords()) {
   const aggregate = buildSourceDirectorySessionAggregate();
+  const totalSeeds = records.reduce((sum, source) => sum + parseSourceDirectoryMetricNumber(source?.community?.seedsTracked), 0);
+  const totalSessions = records.reduce((sum, source) => sum + Math.max(
+    parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged),
+    parseSourceDirectoryMetricNumber(source?.community?.sessions),
+  ), 0);
+  const totalRateSeeds = records.reduce((sum, source) => {
+    const rate = getSourceDirectoryReportedRateNumber(source);
+    const seeds = parseSourceDirectoryMetricNumber(source?.community?.seedsTracked);
+    return rate > 0 && seeds > 0 ? sum + seeds : sum;
+  }, 0);
+  const weightedGermination = totalRateSeeds > 0
+    ? records.reduce((sum, source) => {
+      const rate = getSourceDirectoryReportedRateNumber(source);
+      const seeds = parseSourceDirectoryMetricNumber(source?.community?.seedsTracked);
+      return rate > 0 && seeds > 0 ? sum + (rate * seeds) : sum;
+    }, 0) / totalRateSeeds
+    : 0;
   return {
     totalSourcesLogged: records.length,
     totalBreedersGerminated: aggregate.totalBreedersLogged,
     totalVarietiesLogged: aggregate.totalVarietiesLogged,
     cstpCertifiedSources: records.filter((source) => Boolean(getSourceDirectoryCstpPreview(source))).length,
+    communitySessions: totalSessions,
+    seedsTracked: totalSeeds,
+    averageGermination: weightedGermination,
   };
 }
 
@@ -49031,14 +49094,13 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
   const metrics = getSourceDirectoryMetrics(records);
   return `
     <div class="summary-grid source-directory-metrics-grid">
-      ${renderAdminOverviewCardMarkup({ label: "Total Sources Logged", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources logged by members", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "Total Breeders Germinated", value: metrics.totalBreedersGerminated.toLocaleString(), subtext: "breeders represented in sessions", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "Total Varieties Logged", value: metrics.totalVarietiesLogged.toLocaleString(), subtext: "varieties recorded by members", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "Report Available", value: metrics.cstpCertifiedSources.toLocaleString(), subtext: "active Gold or Silver reports", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
+      ${renderAdminOverviewCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources with community evidence", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
+      ${renderAdminOverviewCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", className: "source-directory-metric-card" })}
+      ${renderAdminOverviewCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", className: "source-directory-metric-card" })}
+      ${renderAdminOverviewCardMarkup({ label: "Average Germination", value: formatTestedSourceMockPercent(Math.round(metrics.averageGermination * 10) / 10), subtext: "weighted by tracked seeds", className: "source-directory-metric-card" })}
     </div>
   `;
 }
-
 function getSourceDirectoryReportedRateNumber(source = {}) {
   return parseSourceDirectoryMetricNumber(source?.community?.avgRate);
 }
@@ -49314,6 +49376,12 @@ function getFilteredAndSortedSourceDirectoryRecords({
       if (isSourceDirectoryCstpFilterKey(normalizedFilterKey) && !matchesSourceDirectoryCstpFilter(source, normalizedFilterKey)) {
         return false;
       }
+      if (normalizedFilterKey === "high-confidence" && !["High Confidence", "Very High Confidence"].includes(getSourceDirectoryTrustScore(source).confidenceLabel)) {
+        return false;
+      }
+      if (normalizedFilterKey === "partner-sources" && source?.partnerSource !== true && source?.isPartner !== true && source?.partner !== true) {
+        return false;
+      }
       if (!normalizedQuery) {
         return true;
       }
@@ -49338,9 +49406,16 @@ function getFilteredAndSortedSourceDirectoryRecords({
         }
       }
 
+      if (effectiveSortKey === "alphabetical") {
+        return String(left?.name || "").localeCompare(String(right?.name || ""));
+      }
       const valueDelta = getSourceDirectorySortValue(right, effectiveSortKey) - getSourceDirectorySortValue(left, effectiveSortKey);
       if (valueDelta !== 0) {
         return valueDelta;
+      }
+      const trustDelta = getSourceDirectoryTrustScore(right).score - getSourceDirectoryTrustScore(left).score;
+      if (trustDelta !== 0) {
+        return trustDelta;
       }
       return String(left?.name || "").localeCompare(String(right?.name || ""));
     });
@@ -49363,8 +49438,9 @@ function renderSourceDirectoryCardMarkup(source = {}) {
   const cstpState = getSourceDirectoryCstpCardState(source);
   const cstpBadgeMarkup = renderSourceDirectoryCstpCardBadgeMarkup(cstpState);
   const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
+  const trust = getSourceDirectoryTrustScore(source);
   return `
-    <article class="card source-directory-card">
+    <article class="card source-directory-card source-directory-report-card">
       ${cstpBadgeMarkup ? `
         <div class="source-directory-card-seal">
           ${cstpBadgeMarkup}
@@ -49378,39 +49454,45 @@ function renderSourceDirectoryCardMarkup(source = {}) {
           alt: `${source.name} logo`,
         })}
         <div class="source-directory-card-copy">
+          <span class="source-directory-report-eyebrow">Source Report</span>
           <h3>${renderSourceNameWithCountryFlagMarkup(source.name, source.countryCode || source.country_code || "", "source-directory-source-name")}</h3>
           <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || "Source / Breeder")}</p>
           ${renderSourceCountryMarkup(source, "source-directory-card-country source-country-badge")}
         </div>
       </div>
-      <div class="source-directory-rate-block">
-        <strong class="source-directory-rate-value">${escapeHtml(reportedRateLabel)}</strong>
-        <span class="source-directory-rate-label">reported germination</span>
+      <div class="source-directory-trust-score-block">
+        <span>Trust Score</span>
+        <strong>${escapeHtml(trust.scoreLabel)}</strong>
+        <small>${escapeHtml(trust.confidenceLabel)}</small>
       </div>
-      <div class="source-directory-stats-grid">
+      <div class="source-directory-stats-grid source-directory-report-stats-grid">
         <article class="source-directory-stat">
-          <span class="stat-label">Sessions Logged</span>
-          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || "0")}</strong>
+          <span class="stat-label">Average Germination</span>
+          <strong>${escapeHtml(reportedRateLabel)}</strong>
         </article>
         <article class="source-directory-stat">
-          <span class="stat-label">Varieties Logged</span>
-          <strong>${escapeHtml(source.directoryStats?.varietiesLogged || "0")}</strong>
+          <span class="stat-label">Total Sessions</span>
+          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || source.community?.sessions || "0")}</strong>
+        </article>
+        <article class="source-directory-stat">
+          <span class="stat-label">Seeds Tracked</span>
+          <strong>${escapeHtml(source.community?.seedsTracked || "0")}</strong>
         </article>
         <article class="source-directory-stat">
           <span class="stat-label">Last Activity</span>
           <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
         </article>
       </div>
+      <p class="source-directory-confidence-note">${escapeHtml(trust.explanation)}</p>
       <div class="inline-actions source-directory-card-actions">
-        <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
+        <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(source.id)}">View Source Report</a>
         ${cstpState?.hasReport && cstpState.href ? `
-          <a class="button button-secondary source-directory-report-link" href="${escapeHtml(cstpState.href)}">View Report</a>
+          <a class="button button-secondary source-directory-report-link" href="${escapeHtml(cstpState.href)}">View CSTP Report</a>
         ` : ""}
       </div>
     </article>
   `;
 }
-
 function renderSourceDirectoryResultsMarkup(records = []) {
   if (!records.length) {
     return `
@@ -49775,7 +49857,7 @@ function renderSourceDirectoryPublicCard(record = {}) {
     <article class="source-directory-public-card">
       <div class="source-directory-public-card-head">
         <div>
-          <span>Public Source</span>
+          <span>Source Report</span>
           <h3>${renderSourceNameWithCountryFlagMarkup(record.label || "Source", record.countryCode || record.country_code || "", "source-directory-public-source-name")}</h3>
           ${renderSourceCountryMarkup(record, "source-directory-public-country source-country-badge")}
         </div>
@@ -49797,7 +49879,7 @@ function renderSourceDirectoryPublicCard(record = {}) {
         <p>${escapeHtml(cstpPresence.hasPublicCstpStatus ? cstpPresence.description : hooks.placeholderDetail)}</p>
       </div>
       <div class="source-directory-public-card-actions">
-        <a class="button button-secondary" href="${escapeHtml(record.route)}">View Source Detail</a>
+        <a class="button button-secondary" href="${escapeHtml(record.route)}">View Source Report</a>
       </div>
     </article>
   `;
@@ -49848,9 +49930,9 @@ function renderSourceDirectoryPublicPage() {
     <section class="source-directory-public-page">
       <header class="source-directory-public-hero">
         <div>
-          <p class="eyebrow">Public Transparency Directory</p>
-          <h2>Source Directory</h2>
-          <p>Public source performance based on approved Cannakan Grow submissions only. Results are observational and may not represent all seeds from a source. Future CSTP certifications will display separately when available.</p>
+          <p class="eyebrow">Sources</p>
+          <h2>Source Explorer</h2>
+          <p>Discover trusted seed sources through real community performance.</p>
         </div>
         <div class="source-directory-public-hero-actions">
           <a class="button button-secondary" href="#community-insights">Community Insights</a>
@@ -49859,16 +49941,16 @@ function renderSourceDirectoryPublicPage() {
       </header>
 
       ${renderSourceDirectoryPublicMetricGrid([
-        { label: "Public Sources", value: formatPrivateAnalyticsNumber(records.length), detail: "sources with approved public data" },
+        { label: "Trusted Sources", value: formatPrivateAnalyticsNumber(records.length), detail: "sources with approved public data" },
         { label: "Average Germination", value: formatPrivateAnalyticsPercent(averageRate), detail: "weighted across public source entries" },
-        { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(aggregate.totalSeeds), detail: `${formatPrivateAnalyticsNumber(aggregate.totalGerminated)} public germinations` },
-        { label: "Approved Entries", value: formatPrivateAnalyticsNumber(aggregate.publicEntries), detail: "approved public Community Grow entries" },
+        { label: "Seeds Tracked", value: formatPrivateAnalyticsNumber(aggregate.totalSeeds), detail: `${formatPrivateAnalyticsNumber(aggregate.totalGerminated)} public germinations` },
+        { label: "Community Sessions", value: formatPrivateAnalyticsNumber(aggregate.publicEntries), detail: "approved public Community Grow entries" },
       ])}
 
       <section class="source-directory-public-controls">
         <div>
-          <p class="eyebrow">Directory Controls</p>
-          <h3>Find Sources</h3>
+          <p class="eyebrow">Explorer Controls</p>
+            <h3>Find Trusted Sources</h3>
         </div>
         <label class="source-directory-public-field">
           <span>Search by source name</span>
@@ -49877,19 +49959,19 @@ function renderSourceDirectoryPublicPage() {
         <label class="source-directory-public-field">
           <span>Sort</span>
           <select id="source-directory-public-sort">
-            <option value="average-germination">Average germination</option>
-            <option value="seeds-tested">Seeds tested</option>
-            <option value="latest-activity">Latest activity</option>
-            <option value="public-entries">Public entries</option>
+            <option value="average-germination">Highest Germination</option>
+            <option value="seeds-tested">Most Popular</option>
+            <option value="latest-activity">Recently Active</option>
+            <option value="public-entries">Most Sessions</option>
           </select>
         </label>
       </section>
 
       <div class="source-directory-public-results-head">
-        <h3>Public Source Cards</h3>
+        <h3>Trusted Source Reports</h3>
         <p id="source-directory-public-summary">Showing 0 of ${records.length} public sources</p>
       </div>
-      <section id="source-directory-public-results" class="source-directory-public-grid" aria-label="Public Source Directory entries"></section>
+      <section id="source-directory-public-results" class="source-directory-public-grid" aria-label="Trusted Source Reports"></section>
     </section>
   `;
   bindSourceDirectoryPublicControls(records);
@@ -49917,9 +49999,9 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
     app.innerHTML = `
       <section class="source-directory-public-page">
         <article class="source-directory-public-empty">
-          <h3>Source detail unavailable</h3>
+          <h3>Source report unavailable</h3>
           <p>This source does not have approved public Community Grow data yet.</p>
-          <a class="button button-secondary" href="#source-directory">Back to Source Directory</a>
+          <a class="button button-secondary" href="#source-directory">Back to Source Explorer</a>
         </article>
       </section>
     `;
@@ -49941,13 +50023,13 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
     <section class="source-directory-public-page">
       <header class="source-directory-public-hero">
         <div>
-          <p class="eyebrow">Source Detail</p>
+          <p class="eyebrow">Source Report</p>
           <h2>${renderSourceNameWithCountryFlagMarkup(detail.label, detail.countryCode || detail.country_code || "", "source-directory-public-detail-source-name")}</h2>
           ${renderSourceCountryMarkup(detail, "source-directory-public-detail-country source-country-badge")}
-          <p>Public-safe source detail from approved Community Grow submissions. No private sessions, Seed Vault inventory, private profiles, emails, admin fields, owner analytics, or CSTP-private data are used.</p>
+          <p>Public-safe source report from approved Community Grow submissions. No private sessions, Seed Vault inventory, private profiles, emails, admin fields, owner analytics, or CSTP-private data are used.</p>
         </div>
         <div class="source-directory-public-hero-actions">
-          <a class="button button-secondary" href="#source-directory">Back to Source Directory</a>
+          <a class="button button-secondary" href="#source-directory">Back to Source Explorer</a>
         </div>
       </header>
 
@@ -49968,7 +50050,7 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
       <section class="source-directory-public-panel">
         <div class="community-insights-panel-heading">
           <span>Approved Public Snapshots</span>
-          <h3>Public Grow History</h3>
+          <h3>Community Gallery</h3>
           <p>Snapshot links remain within approved Community Grow data.</p>
         </div>
         <div class="source-directory-public-snapshot-list">
@@ -49980,7 +50062,7 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
                 <span>${escapeHtml(`${details.germinationRateLabel} · ${details.seedCountLabel} · ${details.activityLabel}`)}</span>
               </a>
             `;
-          }).join("") : `<p class="source-directory-public-muted">No approved public snapshots are available for this source yet.</p>`}
+          }).join("") : `<p class="source-directory-public-muted">No community photos yet.</p>`}
         </div>
       </section>
 
@@ -49997,9 +50079,9 @@ function renderSourcesLandingPage() {
       ${renderAppHeroMarkup({
         className: "source-directory-hero app-hero--sources app-hero--contained-right",
         iconMarkup: renderAppSectionHeaderIcon("sources"),
-        eyebrow: "Source Directory",
-        title: "Source Directory",
-        description: SOURCE_DIRECTORY_DESCRIPTION,
+        eyebrow: "Sources",
+        title: "Source Explorer",
+        description: "Discover trusted seed sources through real community performance.",
         primaryAction: {
           href: "#contact",
           label: "Request Testing",
@@ -50012,12 +50094,7 @@ function renderSourcesLandingPage() {
           className: "button button-secondary",
           attributes: { "data-source-directory-contact-link": "correction" },
         },
-        beforeActionsMarkup: `<p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>`,
-        afterActionsMarkup: `
-          <p class="source-directory-helper-note">Directory entries expand as ${BRAND_APP_NAME} members share more germination sessions across the platform.</p>
-          <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
-          <p class="source-directory-helper-line">Represent a source? Need account or listing help? Use the buttons above and we will route the request.</p>
-        `,
+        beforeActionsMarkup: `<div class="source-explorer-hero-metric"><strong>${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())}</strong><span>Trusted Sources</span><small>Built from community germination sessions.</small></div>`,
       })}
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
@@ -50025,8 +50102,8 @@ function renderSourcesLandingPage() {
       <section class="card source-directory-controls-card">
         <div class="source-directory-controls-head">
           <div>
-            <p class="eyebrow">Directory Controls</p>
-            <h3>Find Sources</h3>
+            <p class="eyebrow">Explorer Controls</p>
+            <h3>Find Trusted Sources</h3>
           </div>
           <span class="source-directory-mock-note">Mock data preview</span>
         </div>
@@ -50051,21 +50128,21 @@ function renderSourcesLandingPage() {
 
       <div class="source-directory-results-head source-directory-results-head--cards">
         <div>
-          <h3>Source Cards</h3>
-          <p class="muted">Overview of sources logged by the community.</p>
+          <h3>Trusted Source Reports</h3>
+          <p class="muted">Evidence-first reports from community germination data.</p>
         </div>
-        <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in the directory</p>
+        <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in Source Explorer</p>
       </div>
 
-      <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Directory entries">
+      <section id="source-directory-card-results" class="source-directory-grid" aria-label="Trusted Source Reports">
       </section>
 
       <section class="card source-directory-list-section">
         <div class="source-directory-results-head source-directory-results-head--list">
           <div>
-            <p class="eyebrow">Directory List</p>
-            <h3>Source Directory List</h3>
-            <p class="muted">Community-reported germination rates (combined across all member sessions).</p>
+            <p class="eyebrow">Report List</p>
+            <h3>Source Reports List</h3>
+            <p class="muted">Community-reported performance, confidence, and session volume.</p>
           </div>
           <p id="source-directory-list-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in the list</p>
         </div>
@@ -50121,22 +50198,22 @@ function renderSourceProfilePage(sourceId = "") {
 
   if (!sourceProfile) {
     const unavailableCopy = isMockDataEnabled()
-      ? "This mock source profile could not be loaded."
-      : "This source profile could not be loaded.";
+      ? "This mock source report could not be loaded."
+      : "This source report could not be loaded.";
     app.innerHTML = `
       <section class="card source-profile-page">
         <div class="section-heading app-section-header">
           <div class="section-title-with-icon app-section-header-main">
             ${renderAppSectionHeaderIcon("sources")}
             <div>
-              <p class="eyebrow">Source Profile</p>
-              <h2>Source profile unavailable</h2>
+              <p class="eyebrow">Source Report</p>
+              <h2>Source report unavailable</h2>
               <p class="muted">${escapeHtml(unavailableCopy)}</p>
             </div>
           </div>
           <div class="inline-actions">
             <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Example Source</a>
-            <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
+            <a class="button button-secondary" href="#sources">&larr; Back to Source Explorer</a>
           </div>
         </div>
       </section>
@@ -50200,15 +50277,34 @@ function renderSourceProfilePage(sourceId = "") {
     },
   ];
   const sourceTypeLabel = String(sourceProfile.sourceTypeLabel || "").trim() || "Breeder / Seed Source";
+  const sourceTrust = getSourceDirectoryTrustScore(sourceProfile);
 
   app.innerHTML = `
     <section class="source-profile-page">
       <div class="source-profile-page-head">
         <a class="source-profile-back-link" href="#sources">&larr; Back to Sources</a>
         <div class="source-profile-title-block">
-          <h1>Source Profile</h1>
+          <h1>Source Report</h1>
         </div>
       </div>
+
+      <article class="card source-profile-trust-hero-card">
+        <div class="source-profile-section-head">
+          <div class="source-profile-section-copy">
+            <p class="eyebrow">Trust Score</p>
+            <h3 class="source-profile-section-title">1. Trust Score</h3>
+            <p class="muted">${escapeHtml(sourceTrust.explanation)}</p>
+          </div>
+        </div>
+        <div class="summary-grid source-profile-community-grid">
+          ${[
+            { label: "Trust Score", value: sourceTrust.scoreLabel, detail: sourceTrust.confidenceLabel, progressValue: sourceTrust.hasEnoughData ? sourceTrust.score : Number.NaN },
+            { label: "Average Germination", value: averageGermRate, detail: `Based on ${communitySessionCount} sessions`, progressValue: averageGermRateNumber },
+            { label: "Community Sessions", value: sourceProfile.community.sessions, detail: "sessions represented" },
+            { label: "Seeds Tracked", value: sourceProfile.community.seedsTracked, detail: "community seed count" },
+          ].map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+        </div>
+      </article>
 
       <article class="card source-profile-identity-card">
         ${showDemoDataBadge ? `<span class="source-profile-demo-badge" aria-hidden="true">Demo Data</span>` : ""}
@@ -50236,13 +50332,13 @@ function renderSourceProfilePage(sourceId = "") {
       <article class="card source-profile-community-card">
         <div class="source-profile-section-head">
           <div class="source-profile-section-copy">
-            <h3 class="source-profile-section-title">1. Community Performance</h3>
+            <h3 class="source-profile-section-title">2. Performance Report</h3>
           </div>
         </div>
         <div class="summary-grid source-profile-community-grid">
           ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
-        <p class="source-profile-trust-note">Data based on real user sessions using the KAN system.</p>
+        <p class="source-profile-trust-note">Performance and confidence are based on community session data. Trust Score is not sponsorship or paid ranking.</p>
       </article>
 
       <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
@@ -50286,7 +50382,7 @@ function renderSourceProfilePage(sourceId = "") {
       <article class="card source-profile-track-record-card">
         <div class="source-profile-section-head">
           <div class="source-profile-section-copy">
-            <h3 class="source-profile-section-title">3. CSTP Track Record</h3>
+            <h3 class="source-profile-section-title">5. Community Confidence</h3>
           </div>
         </div>
         <div class="summary-grid source-profile-track-grid">
@@ -50296,14 +50392,16 @@ function renderSourceProfilePage(sourceId = "") {
 
       <article class="card source-profile-request-card">
         <div class="source-profile-request-copy">
-          <p class="eyebrow">Source Actions</p>
-          <h3>Need to update or review this source?</h3>
+          <p class="eyebrow">Company Information</p>
+          <h3>Visit or update this source report</h3>
           <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
         </div>
         <div class="source-profile-request-actions">
+          ${sourceProfile.websiteUrl || sourceProfile.website ? `<a class="button button-secondary source-profile-visit-source-button" href="${escapeHtml(sourceProfile.websiteUrl || sourceProfile.website)}" target="_blank" rel="noopener noreferrer">Visit Source</a>` : ""}
           <a class="button button-secondary" href="#contact" data-source-request-cstp="${escapeHtml(sourceProfile.id)}">Request CSTP Testing</a>
           <a class="button button-secondary" href="#contact" data-source-request-correction="${escapeHtml(sourceProfile.id)}">Claim or Correct This Source</a>
         </div>
+        ${sourceProfile.partnerSource || sourceProfile.isPartner || sourceProfile.partner ? `<p class="source-profile-partner-note">Partner links help support Grow.</p>` : ""}
       </article>
     </section>
   `;
@@ -50518,8 +50616,8 @@ function renderSourceCstpReportUnavailablePage(sourceProfile = null) {
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
-          ${sourceProfileLink ? `<a class="button button-secondary" href="${escapeHtml(sourceProfileLink)}">View Source Profile</a>` : ""}
+          <a class="button button-secondary" href="#sources">&larr; Back to Source Explorer</a>
+          ${sourceProfileLink ? `<a class="button button-secondary" href="${escapeHtml(sourceProfileLink)}">View Source Report</a>` : ""}
         </div>
       </div>
     </section>
@@ -50556,7 +50654,7 @@ function renderSourceCstpReportPage(sourceId = "") {
   app.innerHTML = `
     <section class="cstp-cert-page">
       <div class="cstp-cert-page-head">
-        <a class="source-profile-back-link" href="#sources/${escapeHtml(sourceProfile.id)}">&larr; Back to Source Profile</a>
+        <a class="source-profile-back-link" href="#sources/${escapeHtml(sourceProfile.id)}">&larr; Back to Source Report</a>
       </div>
 
       <section class="card cstp-cert-hero cstp-cert-hero--${escapeHtml(certification.qualificationResult)}" aria-labelledby="cstp-cert-title">
@@ -50898,7 +50996,7 @@ const CONTACT_REASON_OPTIONS = Object.freeze([
   Object.freeze({
     key: "source-correction",
     title: "Source Correction / Directory Issue",
-    description: "Corrections to Source Directory or Source Profile records.",
+    description: "Corrections to Source Explorer or Source Report records.",
   }),
   Object.freeze({
     key: "partnership",
@@ -64462,7 +64560,7 @@ function renderAdminDevAccessSectionMarkup() {
     bodyMarkup: `
       <div class="admin-dev-access-grid">
             <a class="button button-secondary" href="#source-directory">View Source Directory</a>
-        <a class="button button-secondary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">View Source Profile</a>
+        <a class="button button-secondary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">View Source Report</a>
         <a class="button button-secondary" href="#contact">View Contact Page</a>
         <a class="button button-secondary" href="#home">View CSTP Overview</a>
         <a class="button button-secondary" href="#admin">View CSTP Testing Lab</a>
