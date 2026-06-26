@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Good Genetix logo">
+  <defs>
+    <radialGradient id="bg" cx="42%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#b5e86f"/>
+      <stop offset="1" stop-color="#23351c"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="rgba(255,255,255,0.72)"/>
+      <stop offset="1" stop-color="rgba(255,255,255,0.08)"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="38" fill="url(#bg)"/>
+  <circle cx="80" cy="80" r="52" fill="rgba(0,0,0,0.20)" stroke="rgba(255,255,255,0.34)" stroke-width="3"/>
+  <text x="80" y="91" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800" letter-spacing="1" fill="white">GG</text>
+  <path d="M48 114 C68 104 92 104 112 114" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="5" stroke-linecap="round"/>
+</svg>

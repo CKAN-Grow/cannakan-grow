@@ -53362,3 +53362,43 @@ body.theme-dark option[selected] {
     grid-template-columns: 1fr;
   }
 }
+
+/* Seed Vault global visual asset indicators */
+.seed-vault-visual-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 22px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(213, 223, 214, 0.72);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.seed-vault-visual-status.is-library {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.1);
+  color: #b8ee7a;
+}
+
+.seed-vault-visual-status.is-custom {
+  border-color: rgba(127, 184, 255, 0.22);
+  background: rgba(127, 184, 255, 0.09);
+  color: #b8d9ff;
+}
+
+.seed-vault-visual-status.is-placeholder {
+  color: rgba(205, 214, 207, 0.58);
+}
+
+.seed-vault-visual-actions {
+  flex-wrap: wrap;
+}
+
+.seed-vault-visual-actions [data-seed-vault-visual-revert] {
+  min-width: max-content;
+}

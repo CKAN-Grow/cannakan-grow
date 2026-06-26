@@ -12,6 +12,10 @@ const FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY = "cannakanGrowFilterPaperDedu
 const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/real/seedsman-logo.png";
+const POPPIN_FIRE_DEMO_LOGO_URL = "/assets/images/sources/real/poppin-fire-logo.svg";
+const GOOD_GENETIX_DEMO_LOGO_URL = "/assets/images/sources/real/good-genetix-logo.svg";
+const ATLAS_BREEDING_LABS_DEMO_LOGO_URL = "/assets/images/sources/real/atlas-breeding-labs-logo.svg";
+const ALPINE_SEED_WORKS_DEMO_LOGO_URL = "/assets/images/sources/real/alpine-seed-works-logo.svg";
 const DEMO_SNAPSHOT_IMAGE_URLS = Object.freeze([
   "/assets/demo/snapshots/5678.jpg",
   "/assets/demo/snapshots/7890.jpg",
@@ -34,6 +38,24 @@ const DEMO_SNAPSHOT_IMAGE_URLS = Object.freeze([
 ]);
 const DEV_DEMO_SOURCE_LOGOS = Object.freeze({
   seedsman: SEEDSMAN_DEMO_LOGO_URL,
+  "poppin fire": POPPIN_FIRE_DEMO_LOGO_URL,
+  "poppin fire genetics": POPPIN_FIRE_DEMO_LOGO_URL,
+  "good genetix": GOOD_GENETIX_DEMO_LOGO_URL,
+  "good genetics": GOOD_GENETIX_DEMO_LOGO_URL,
+  "atlas breeding labs": ATLAS_BREEDING_LABS_DEMO_LOGO_URL,
+  "atlas breeding": ATLAS_BREEDING_LABS_DEMO_LOGO_URL,
+  "alpine seed works": ALPINE_SEED_WORKS_DEMO_LOGO_URL,
+  "alpine seedworks": ALPINE_SEED_WORKS_DEMO_LOGO_URL,
+});
+const SEED_VAULT_GLOBAL_VARIETY_IMAGE_URLS = Object.freeze({
+  "alaskan purple": "/assets/demo/snapshots/5678.jpg",
+  "alpine trial lot": "/assets/demo/snapshots/7890.jpg",
+  "atlas apex": "/assets/demo/snapshots/IMG_0086.jpg",
+  "badazz cookies og": "/assets/demo/snapshots/IMG_0327.jpg",
+  "badazz og cheese": "/assets/demo/snapshots/IMG_5254.jpg",
+  "banana jealousy": "/assets/demo/snapshots/IMG_5587.jpg",
+  "wedding cake": "/assets/demo/snapshots/IMG_5590.jpg",
+  "double blueberry muffin": "/assets/demo/snapshots/IMG_E5598.JPG",
 });
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
@@ -75,8 +97,10 @@ const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
 const SOURCE_DIRECTORY_TABLE = "source_directory";
-const SOURCE_DIRECTORY_BASE_SELECT = "id,name,normalized_name,aliases,source_type,country,verified,active,usage_count";
+const SOURCE_DIRECTORY_LEGACY_BASE_SELECT = "id,name,normalized_name,aliases,source_type,country,verified,active,usage_count";
+const SOURCE_DIRECTORY_BASE_SELECT = `${SOURCE_DIRECTORY_LEGACY_BASE_SELECT},source_logo_url`;
 const SOURCE_DIRECTORY_COMMUNITY_SELECT = `${SOURCE_DIRECTORY_BASE_SELECT},distinct_user_count,first_used_at,last_used_at,needs_admin_review,review_status`;
+const SOURCE_DIRECTORY_ASSET_COLUMNS = Object.freeze(["source_logo_url"]);
 const SOURCE_DIRECTORY_COMMUNITY_COLUMNS = Object.freeze([
   "distinct_user_count",
   "first_used_at",
@@ -85,7 +109,9 @@ const SOURCE_DIRECTORY_COMMUNITY_COLUMNS = Object.freeze([
   "review_status",
 ]);
 const VARIETY_DIRECTORY_TABLE = "variety_directory";
-const VARIETY_DIRECTORY_BASE_SELECT = "id,name,normalized_name,aliases,source_id,source_name,variety_type,verified,active,usage_count,distinct_user_count,first_used_at,last_used_at,needs_admin_review";
+const VARIETY_DIRECTORY_LEGACY_BASE_SELECT = "id,name,normalized_name,aliases,source_id,source_name,variety_type,verified,active,usage_count,distinct_user_count,first_used_at,last_used_at,needs_admin_review";
+const VARIETY_DIRECTORY_BASE_SELECT = `${VARIETY_DIRECTORY_LEGACY_BASE_SELECT},variety_image_url`;
+const VARIETY_DIRECTORY_ASSET_COLUMNS = Object.freeze(["variety_image_url"]);
 const VARIETY_DIRECTORY_AUTOCOMPLETE_LIMIT = 10;
 const VARIETY_DIRECTORY_AUTOCOMPLETE_MIN_CHARS = 2;
 const FOUNDERS_TABLE = "founders";
@@ -6154,6 +6180,7 @@ function mapSourceDirectoryRow(row = {}) {
     verified: Boolean(row.verified),
     active: row.active !== false,
     usageCount: Math.max(0, Number(row.usage_count) || 0),
+    sourceLogoUrl: String(row.source_logo_url || row.sourceLogoUrl || getDevDemoSourceLogoUrl(name) || "").trim(),
     distinctUserCount: Math.max(0, Number(row.distinct_user_count) || 0),
     firstUsedAt: String(row.first_used_at || "").trim(),
     lastUsedAt: String(row.last_used_at || "").trim(),
@@ -6214,6 +6241,14 @@ async function loadSourceDirectoryEntries() {
     ({ data, error } = await appState.supabase
       .from(SOURCE_DIRECTORY_TABLE)
       .select(SOURCE_DIRECTORY_BASE_SELECT)
+      .eq("active", true)
+      .order("name", { ascending: true }));
+  }
+
+  if (error && isSupabaseColumnMissingError(error, SOURCE_DIRECTORY_TABLE, SOURCE_DIRECTORY_ASSET_COLUMNS)) {
+    ({ data, error } = await appState.supabase
+      .from(SOURCE_DIRECTORY_TABLE)
+      .select(SOURCE_DIRECTORY_LEGACY_BASE_SELECT)
       .eq("active", true)
       .order("name", { ascending: true }));
   }
@@ -6410,6 +6445,7 @@ function mapVarietyDirectoryRow(row = {}) {
     firstUsedAt: row.first_used_at || "",
     lastUsedAt: row.last_used_at || "",
     needsAdminReview: row.needs_admin_review === true,
+    varietyImageUrl: String(row.variety_image_url || row.varietyImageUrl || "").trim(),
   };
 }
 
@@ -6438,12 +6474,21 @@ async function loadVarietyDirectoryEntries(reason = "unspecified") {
     return getVarietyDirectoryAutocompleteEntries();
   }
 
-  const { data, error } = await appState.supabase
+  let { data, error } = await appState.supabase
     .from(VARIETY_DIRECTORY_TABLE)
     .select(VARIETY_DIRECTORY_BASE_SELECT)
     .eq("active", true)
     .order("name", { ascending: true })
     .limit(2000);
+
+  if (error && isSupabaseColumnMissingError(error, VARIETY_DIRECTORY_TABLE, VARIETY_DIRECTORY_ASSET_COLUMNS)) {
+    ({ data, error } = await appState.supabase
+      .from(VARIETY_DIRECTORY_TABLE)
+      .select(VARIETY_DIRECTORY_LEGACY_BASE_SELECT)
+      .eq("active", true)
+      .order("name", { ascending: true })
+      .limit(2000));
+  }
 
   if (error) {
     if (isVarietyDirectoryTableMissingError(error)) {
@@ -69270,8 +69315,40 @@ function getSeedVaultEntryCreatedTime(entry = {}) {
   return Date.parse(entry.createdAt || entry.created_at || entry.updatedAt || entry.updated_at || "") || 0;
 }
 
-function getSeedVaultEntryThumbnailUrl(entry = {}) {
+function getSeedVaultEntryUserThumbnailUrl(entry = {}) {
   return String(entry.thumbnailUrl || entry.thumbnail_url || entry.varietyImageUrl || entry.variety_image_url || entry.varietyPhotoUrl || entry.variety_photo_url || entry.imageUrl || entry.image_url || entry.photoUrl || entry.photo_url || entry.image || "").trim();
+}
+
+function getSeedVaultDirectoryMatchByName(entries = [], value = "", normalizer = normalizeSourceDirectoryText) {
+  const normalizedValue = normalizer(value);
+  if (!normalizedValue) {
+    return null;
+  }
+  return (entries || []).find((entry) => {
+    const names = [entry.name, entry.normalizedName, ...(Array.isArray(entry.aliases) ? entry.aliases : [])];
+    return names.some((name) => normalizer(name) === normalizedValue);
+  }) || null;
+}
+
+function getSeedVaultGlobalVarietyImageUrl(entryOrName = {}) {
+  const varietyName = typeof entryOrName === "string"
+    ? entryOrName
+    : String(entryOrName.seedName || entryOrName.seedVariety || entryOrName.varietyName || entryOrName.variety_name || "").trim();
+  const matchedVariety = getSeedVaultDirectoryMatchByName(
+    getVarietyDirectoryAutocompleteEntries(),
+    varietyName,
+    normalizeVarietyDirectoryText,
+  );
+  const directoryImageUrl = String(matchedVariety?.varietyImageUrl || matchedVariety?.variety_image_url || "").trim();
+  if (directoryImageUrl) {
+    return directoryImageUrl;
+  }
+  return String(SEED_VAULT_GLOBAL_VARIETY_IMAGE_URLS[normalizeSeedVarietyNameForMatching(varietyName)] || "").trim();
+}
+
+function getSeedVaultEntryThumbnailUrl(entry = {}) {
+  const userImageUrl = getSeedVaultEntryUserThumbnailUrl(entry);
+  return userImageUrl || getSeedVaultGlobalVarietyImageUrl(entry);
 }
 
 function getSeedVaultSourceLogoStorageKey(userId = appState.user?.id || "") {
@@ -69323,23 +69400,33 @@ function setSeedVaultCustomSourceLogoUrl(source = "", logoUrl = "", userId = app
   saveSeedVaultSourceLogoMap(map, userId);
 }
 
+function getSeedVaultGlobalSourceLogoUrl(source = "") {
+  const matchedSource = getSeedVaultDirectoryMatchByName(
+    getSourceDirectoryAutocompleteEntries(),
+    source,
+    normalizeSourceDirectoryText,
+  );
+  const directoryLogoUrl = String(matchedSource?.sourceLogoUrl || matchedSource?.source_logo_url || "").trim();
+  return directoryLogoUrl || getDevDemoSourceLogoUrl(source) || "";
+}
+
 function getSeedVaultKnownSourceLogoUrl(source = "") {
-  return getDevDemoSourceLogoUrl(source) || "";
+  return getSeedVaultGlobalSourceLogoUrl(source);
 }
 
 function getSeedVaultSourceLogoUrl(entry = {}) {
   const source = String(entry.source || entry.sourceName || "").trim();
+  const userId = entry.userId || entry.user_id || appState.user?.id || "";
+  const globalLogoUrl = getSeedVaultGlobalSourceLogoUrl(source);
+  const entryLogoUrl = String(entry.sourceLogoUrl || entry.source_logo_url || entry.logoUrl || entry.logo_url || "").trim();
+  const entryOverrideUrl = entryLogoUrl && entryLogoUrl !== globalLogoUrl ? entryLogoUrl : "";
   return String(
-    entry.sourceLogoUrl
-    || entry.source_logo_url
-    || entry.logoUrl
-    || entry.logo_url
-    || getSeedVaultCustomSourceLogoUrl(source, entry.userId || entry.user_id || appState.user?.id || "")
-    || getSeedVaultKnownSourceLogoUrl(source)
+    getSeedVaultCustomSourceLogoUrl(source, userId)
+    || entryOverrideUrl
+    || globalLogoUrl
     || ""
   ).trim();
 }
-
 function getSeedVaultTextHash(value = "") {
   return String(value || "seed-vault").split("").reduce((hash, character) => ((hash * 31) + character.charCodeAt(0)) >>> 0, 7);
 }
@@ -72299,7 +72386,7 @@ function getSeedVaultEntryFormPayload(form) {
   if (source && sourceLogoFieldUrl) {
     setSeedVaultCustomSourceLogoUrl(source, sourceLogoFieldUrl);
   }
-  const sourceLogoUrl = sourceLogoFieldUrl || getSeedVaultCustomSourceLogoUrl(source) || getSeedVaultKnownSourceLogoUrl(source);
+  const sourceLogoUrl = sourceLogoFieldUrl || getSeedVaultCustomSourceLogoUrl(source) || "";
 
   return normalizeSeedVaultEntry({
     id: String(form.dataset.seedVaultEntryId || "").trim(),
@@ -72353,6 +72440,47 @@ function getSeedVaultFormSourceLogoUrl(form) {
   return getSeedVaultCustomSourceLogoUrl(source) || getSeedVaultKnownSourceLogoUrl(source);
 }
 
+function getSeedVaultFormThumbnailUrl(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return "";
+  }
+  const hiddenValue = String(form.elements.thumbnailUrl?.value || "").trim();
+  if (hiddenValue) {
+    return hiddenValue;
+  }
+  const variety = String(form.elements.seedVariety?.value || "").trim();
+  return getSeedVaultGlobalVarietyImageUrl(variety);
+}
+
+function getSeedVaultVisualState(form, kind = "thumbnail") {
+  if (!(form instanceof HTMLFormElement)) {
+    return { label: "Premium placeholder", tone: "placeholder", isCustom: false, hasLibrary: false };
+  }
+  if (kind === "source-logo") {
+    const source = String(form.elements.source?.value || "").trim();
+    const removedSource = String(form.dataset.seedVaultSourceLogoRemovedFor || "").trim();
+    const isRemovedSource = removedSource && getSeedVaultSourceLogoKey(removedSource) === getSeedVaultSourceLogoKey(source);
+    const customUrl = isRemovedSource ? "" : (String(form.elements.sourceLogoUrl?.value || "").trim() || getSeedVaultCustomSourceLogoUrl(source));
+    const libraryUrl = getSeedVaultGlobalSourceLogoUrl(source);
+    if (customUrl) {
+      return { label: "Custom Image", tone: "custom", isCustom: true, hasLibrary: Boolean(libraryUrl) };
+    }
+    if (libraryUrl) {
+      return { label: "✓ Using Grow Library Image", tone: "library", isCustom: false, hasLibrary: true };
+    }
+    return { label: "Generated avatar", tone: "placeholder", isCustom: false, hasLibrary: false };
+  }
+  const variety = String(form.elements.seedVariety?.value || "").trim();
+  const customUrl = String(form.elements.thumbnailUrl?.value || "").trim();
+  const libraryUrl = getSeedVaultGlobalVarietyImageUrl(variety);
+  if (customUrl) {
+    return { label: "Custom Image", tone: "custom", isCustom: true, hasLibrary: Boolean(libraryUrl) };
+  }
+  if (libraryUrl) {
+    return { label: "✓ Using Grow Library Image", tone: "library", isCustom: false, hasLibrary: true };
+  }
+  return { label: "Premium placeholder", tone: "placeholder", isCustom: false, hasLibrary: false };
+}
 function updateSeedVaultVisualPreview(form, kind = "thumbnail") {
   if (!(form instanceof HTMLFormElement)) {
     return;
@@ -72366,7 +72494,7 @@ function updateSeedVaultVisualPreview(form, kind = "thumbnail") {
   const isSourceLogo = kind === "source-logo";
   const url = isSourceLogo
     ? getSeedVaultFormSourceLogoUrl(form)
-    : String(form.elements.thumbnailUrl?.value || "").trim();
+    : getSeedVaultFormThumbnailUrl(form);
   preview.classList.toggle("has-image", Boolean(url));
   preview.innerHTML = renderSeedVaultVisualPreviewContent(kind, url, {
     source,
@@ -72374,13 +72502,28 @@ function updateSeedVaultVisualPreview(form, kind = "thumbnail") {
     label: isSourceLogo ? source || "Source logo" : variety || "Variety photo",
   });
 
+  const state = getSeedVaultVisualState(form, kind);
+  const status = form.querySelector(`[data-seed-vault-visual-status="${kind}"]`);
+  if (status) {
+    status.textContent = state.label;
+    status.className = `seed-vault-visual-status is-${state.tone}`;
+  }
+
   const removeButton = form.querySelector(`[data-seed-vault-visual-remove="${kind}"]`);
   if (removeButton instanceof HTMLButtonElement) {
-    const hasCustomLogo = isSourceLogo && Boolean(String(form.elements.sourceLogoUrl?.value || "").trim() || getSeedVaultCustomSourceLogoUrl(source));
-    removeButton.disabled = isSourceLogo ? !hasCustomLogo : !Boolean(url);
+    removeButton.disabled = !state.isCustom;
+  }
+
+  const revertButton = form.querySelector(`[data-seed-vault-visual-revert="${kind}"]`);
+  if (revertButton instanceof HTMLButtonElement) {
+    revertButton.disabled = !state.isCustom || !state.hasLibrary;
+  }
+
+  const uploadLabel = form.querySelector(`[data-seed-vault-visual-upload-label="${kind}"]`);
+  if (uploadLabel) {
+    uploadLabel.textContent = state.isCustom || state.hasLibrary ? "Replace" : "Upload";
   }
 }
-
 async function handleSeedVaultVisualFileSelection(form, input) {
   if (!(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement)) {
     return;
@@ -72427,19 +72570,24 @@ function bindSeedVaultVisualFields(form) {
       void handleSeedVaultVisualFileSelection(form, input);
     });
   });
+  const clearVisualOverride = (kind = "") => {
+    if (kind === "source-logo") {
+      const source = String(form.elements.source?.value || "").trim();
+      form.elements.sourceLogoUrl.value = "";
+      form.dataset.seedVaultSourceLogoRemovedFor = source;
+      updateSeedVaultVisualPreview(form, "source-logo");
+    } else {
+      form.elements.thumbnailUrl.value = "";
+      updateSeedVaultVisualPreview(form, "thumbnail");
+    }
+  };
+
   form.querySelectorAll("[data-seed-vault-visual-remove]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const kind = button.dataset.seedVaultVisualRemove || "";
-      if (kind === "source-logo") {
-        const source = String(form.elements.source?.value || "").trim();
-        form.elements.sourceLogoUrl.value = "";
-        form.dataset.seedVaultSourceLogoRemovedFor = source;
-        updateSeedVaultVisualPreview(form, "source-logo");
-      } else {
-        form.elements.thumbnailUrl.value = "";
-        updateSeedVaultVisualPreview(form, "thumbnail");
-      }
-    });
+    button.addEventListener("click", () => clearVisualOverride(button.dataset.seedVaultVisualRemove || ""));
+  });
+
+  form.querySelectorAll("[data-seed-vault-visual-revert]").forEach((button) => {
+    button.addEventListener("click", () => clearVisualOverride(button.dataset.seedVaultVisualRevert || ""));
   });
   form.elements.source?.addEventListener("input", () => updateSeedVaultVisualPreview(form, "source-logo"));
   form.elements.seedVariety?.addEventListener("input", () => updateSeedVaultVisualPreview(form, "thumbnail"));
@@ -72555,9 +72703,12 @@ function openSeedVaultEntryModal(entry = null) {
   closeSeedVaultEntryModal();
   const normalizedEntry = normalizeSeedVaultEntry(entry || {});
   const isEditing = Boolean(entry && normalizedEntry?.id);
-  const initialThumbnailUrl = getSeedVaultEntryThumbnailUrl(normalizedEntry || {});
-  const initialSourceLogoFieldUrl = String(normalizedEntry?.sourceLogoUrl || normalizedEntry?.source_logo_url || "").trim();
-  const initialSourceLogoPreviewUrl = getSeedVaultSourceLogoUrl(normalizedEntry || {});
+  const initialThumbnailFieldUrl = getSeedVaultEntryUserThumbnailUrl(normalizedEntry || {});
+  const initialThumbnailPreviewUrl = initialThumbnailFieldUrl || getSeedVaultGlobalVarietyImageUrl(normalizedEntry || {});
+  const initialSourceGlobalLogoUrl = getSeedVaultGlobalSourceLogoUrl(normalizedEntry?.source || "");
+  const initialSourceLogoStoredUrl = String(normalizedEntry?.sourceLogoUrl || normalizedEntry?.source_logo_url || "").trim();
+  const initialSourceLogoFieldUrl = initialSourceLogoStoredUrl && initialSourceLogoStoredUrl !== initialSourceGlobalLogoUrl ? initialSourceLogoStoredUrl : "";
+  const initialSourceLogoPreviewUrl = getSeedVaultSourceLogoUrl({ ...(normalizedEntry || {}), sourceLogoUrl: initialSourceLogoFieldUrl });
   const overlay = document.createElement("div");
   overlay.id = "seed-vault-entry-modal-overlay";
   overlay.className = "seed-vault-entry-modal-overlay";
@@ -72605,7 +72756,7 @@ function openSeedVaultEntryModal(entry = null) {
             <small class="seed-vault-calculated-age" data-seed-vault-age-display aria-live="polite"></small>
           </label>
         </div>
-        <input type="hidden" name="thumbnailUrl" value="${escapeHtml(initialThumbnailUrl)}">
+        <input type="hidden" name="thumbnailUrl" value="${escapeHtml(initialThumbnailFieldUrl)}">
         <input type="hidden" name="sourceLogoUrl" value="${escapeHtml(initialSourceLogoFieldUrl)}">
         <details class="seed-vault-visuals-section">
           <summary>
@@ -72615,17 +72766,19 @@ function openSeedVaultEntryModal(entry = null) {
           <div class="seed-vault-visuals-grid">
             <section class="seed-vault-visual-control" aria-label="Variety Photo">
               <div class="seed-vault-visual-preview" data-seed-vault-visual-preview="thumbnail">
-                ${renderSeedVaultVisualPreviewContent("thumbnail", initialThumbnailUrl, { variety: normalizedEntry?.seedName || "", source: normalizedEntry?.source || "", label: "Variety photo" })}
+                ${renderSeedVaultVisualPreviewContent("thumbnail", initialThumbnailPreviewUrl, { variety: normalizedEntry?.seedName || "", source: normalizedEntry?.source || "", label: "Variety photo" })}
               </div>
               <div class="seed-vault-visual-copy">
                 <strong>Variety Photo</strong>
                 <span>Used for this Vault Entry only.</span>
+                <small class="seed-vault-visual-status" data-seed-vault-visual-status="thumbnail"></small>
                 <div class="seed-vault-visual-actions">
                   <label class="button button-secondary button-compact seed-vault-visual-upload-button">
                     <input type="file" accept="image/*" data-seed-vault-visual-file="thumbnail">
-                    <span>${initialThumbnailUrl ? "Replace" : "Upload"}</span>
+                    <span data-seed-vault-visual-upload-label="thumbnail">${initialThumbnailFieldUrl || initialThumbnailPreviewUrl ? "Replace" : "Upload"}</span>
                   </label>
-                  <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="thumbnail"${initialThumbnailUrl ? "" : " disabled"}>Remove</button>
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="thumbnail"${initialThumbnailFieldUrl ? "" : " disabled"}>Remove</button>
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-revert="thumbnail"${initialThumbnailFieldUrl && getSeedVaultGlobalVarietyImageUrl(normalizedEntry || {}) ? "" : " disabled"}>Revert to Grow Library</button>
                 </div>
               </div>
             </section>
@@ -72636,12 +72789,14 @@ function openSeedVaultEntryModal(entry = null) {
               <div class="seed-vault-visual-copy">
                 <strong>Source Logo</strong>
                 <span>Saved for future entries from this source.</span>
+                <small class="seed-vault-visual-status" data-seed-vault-visual-status="source-logo"></small>
                 <div class="seed-vault-visual-actions">
                   <label class="button button-secondary button-compact seed-vault-visual-upload-button">
                     <input type="file" accept="image/*" data-seed-vault-visual-file="source-logo">
-                    <span>${initialSourceLogoFieldUrl ? "Replace" : "Upload"}</span>
+                    <span data-seed-vault-visual-upload-label="source-logo">${initialSourceLogoFieldUrl || initialSourceLogoPreviewUrl ? "Replace" : "Upload"}</span>
                   </label>
                   <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="source-logo"${initialSourceLogoFieldUrl ? "" : " disabled"}>Remove</button>
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-revert="source-logo"${initialSourceLogoFieldUrl && getSeedVaultGlobalSourceLogoUrl(normalizedEntry?.source || "") ? "" : " disabled"}>Revert to Grow Library</button>
                 </div>
               </div>
             </section>
