@@ -69777,29 +69777,35 @@ function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
   const analytics = entryAnalytics || {};
   const performance = analytics.performance || {};
   const latestResult = performance.latestResult || null;
+  const sessionsStarted = Number(analytics.sessionsStarted || 0);
+  const totalSeedsUsed = Number(analytics.totalSeedsUsed || 0);
+  const completedLinkedSessions = Number(performance.completedLinkedSessions || 0);
+  const remainingSeeds = getSeedVaultEntryAvailableQuantity(entry);
+  const remainingSeedsLabel = remainingSeeds === null ? "Unknown" : String(remainingSeeds);
   const lastSessionLabel = analytics.lastSessionStartedAt
     ? analytics.lastSessionLabel || formatSessionNameDate(String(analytics.lastSessionStartedAt).slice(0, 10))
     : "No linked sessions";
   const latestResultLabel = latestResult
     ? `${formatSeedVaultPercent(latestResult.rate)} (${latestResult.totalGerminated}/${latestResult.totalSeeds})`
-    : "No completed result";
+    : "No results yet";
 
   return `
     <section class="seed-vault-detail-section seed-vault-detail-section--performance" aria-label="Vault Entry performance">
       <div class="seed-vault-detail-section-heading">
-        <span>Performance</span>
+        <span><i aria-hidden="true">📊</i> Performance</span>
         <small>Linked sessions and germination outcomes</small>
       </div>
       <div class="seed-vault-performance-grid">
-        ${renderSeedVaultPerformanceMetricMarkup("Sessions From Vault", analytics.sessionsStarted || 0)}
-        ${renderSeedVaultPerformanceMetricMarkup("Seeds Used", analytics.totalSeedsUsed || 0)}
-        ${renderSeedVaultPerformanceMetricMarkup("Remaining", formatSeedVaultQuantity(entry), "highlight")}
+        ${renderSeedVaultPerformanceMetricMarkup("Sessions From Vault", sessionsStarted)}
+        ${renderSeedVaultPerformanceMetricMarkup("Seeds Used", totalSeedsUsed)}
+        ${renderSeedVaultPerformanceMetricMarkup("Remaining Seeds", remainingSeedsLabel, "highlight")}
         ${renderSeedVaultPerformanceMetricMarkup("Last Session", lastSessionLabel)}
         ${renderSeedVaultPerformanceMetricMarkup("Latest Result", latestResultLabel)}
         ${renderSeedVaultPerformanceMetricMarkup("Average Result", formatSeedVaultPercent(performance.averageGerminationRate))}
         ${renderSeedVaultPerformanceMetricMarkup("Best Result", formatSeedVaultPercent(performance.bestGerminationRate), "success")}
-        ${renderSeedVaultPerformanceMetricMarkup("Completed Linked", performance.completedLinkedSessions || 0)}
+        ${renderSeedVaultPerformanceMetricMarkup("Completed Linked Sessions", completedLinkedSessions)}
       </div>
+      ${renderSeedVaultPerformanceInsightMarkup(analytics)}
     </section>
   `;
 }
@@ -69811,6 +69817,77 @@ function renderSeedVaultPerformanceMetricMarkup(label = "", value = "", tone = "
       <strong>${escapeHtml(normalizedValue)}</strong>
       <span>${escapeHtml(label)}</span>
     </article>
+  `;
+}
+
+function renderSeedVaultPerformanceInsightMarkup(entryAnalytics = {}) {
+  const analytics = entryAnalytics || {};
+  const performance = analytics.performance || {};
+  const latestResult = performance.latestResult || null;
+  const completedLinkedSessions = Number(performance.completedLinkedSessions || 0);
+  const hasBestGermination = performance.bestGerminationRate !== null && performance.bestGerminationRate !== undefined;
+  const hasLinkedSessionData = Boolean(
+    Number(analytics.sessionsStarted || 0)
+    || Number(analytics.totalSeedsUsed || 0)
+    || completedLinkedSessions
+    || latestResult
+    || hasBestGermination
+    || performance.averageGerminationRate !== null && performance.averageGerminationRate !== undefined
+  );
+
+  if (!hasLinkedSessionData) {
+    return `
+      <aside class="seed-vault-performance-insight is-empty" aria-label="Performance insight">
+        <span aria-hidden="true">🌱</span>
+        <div>
+          <strong>No linked sessions yet</strong>
+          <small>Start a session from this vault entry to unlock performance.</small>
+        </div>
+      </aside>
+    `;
+  }
+
+  if (hasBestGermination) {
+    return renderSeedVaultPerformanceInsightCardMarkup(
+      "Best Germination",
+      formatSeedVaultPercent(performance.bestGerminationRate),
+      "Best completed result from linked vault sessions."
+    );
+  }
+
+  if (completedLinkedSessions > 0) {
+    return renderSeedVaultPerformanceInsightCardMarkup(
+      "Completed Linked Sessions",
+      completedLinkedSessions,
+      "Completed sessions are now informing this entry."
+    );
+  }
+
+  if (latestResult) {
+    return renderSeedVaultPerformanceInsightCardMarkup(
+      "Best Result",
+      `${formatSeedVaultPercent(latestResult.rate)} (${latestResult.totalGerminated}/${latestResult.totalSeeds})`,
+      "Most recent completed linked-session result."
+    );
+  }
+
+  return renderSeedVaultPerformanceInsightCardMarkup(
+    "Linked Session Activity",
+    Number(analytics.sessionsStarted || 0),
+    "Keep completing linked sessions to unlock result insights."
+  );
+}
+
+function renderSeedVaultPerformanceInsightCardMarkup(label = "", value = "", detail = "") {
+  return `
+    <aside class="seed-vault-performance-insight" aria-label="Performance insight">
+      <span aria-hidden="true">🏆</span>
+      <div>
+        <small>${escapeHtml(label)}</small>
+        <strong>${escapeHtml(String(value))}</strong>
+        <em>${escapeHtml(detail)}</em>
+      </div>
+    </aside>
   `;
 }
 
@@ -69831,7 +69908,7 @@ function renderSeedVaultStorageSummaryMarkup(entry = {}) {
   return `
     <section class="seed-vault-detail-section seed-vault-detail-section--storage" aria-label="Vault Entry storage">
       <div class="seed-vault-detail-section-heading">
-        <span>Storage</span>
+        <span><i aria-hidden="true">📦</i> Storage</span>
         <small>Inventory placement and notes</small>
       </div>
       <div class="seed-vault-storage-summary">
@@ -69861,7 +69938,7 @@ function renderSeedVaultDetailActionsMarkup(entry = {}) {
   return `
     <section class="seed-vault-detail-section seed-vault-detail-section--actions" aria-label="Vault Entry actions">
       <div class="seed-vault-detail-section-heading">
-        <span>Actions</span>
+        <span><i aria-hidden="true">🚀</i> Actions</span>
         <small>Start a session or update this entry</small>
       </div>
       <div class="seed-vault-detail-actions">
@@ -69870,7 +69947,7 @@ function renderSeedVaultDetailActionsMarkup(entry = {}) {
           class="button button-secondary seed-vault-start-session-button"
           data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}"
           ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}
-        ><span aria-hidden="true">▶</span> Start Session from Vault Entry</button>
+        ><span aria-hidden="true">▶</span> Start Session</button>
         <button
           type="button"
           class="button button-secondary seed-vault-edit-entry-button"
@@ -70019,7 +70096,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           <div>
             <h4>
               <span>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</span>
-              ${normalizedEntry.isFavorite ? `<span class="seed-vault-favorite-badge" title="${escapeHtml(favoriteStateLabel)}" aria-label="${escapeHtml(favoriteStateLabel)}">⭐ Favorite</span>` : ""}
+              ${normalizedEntry.isFavorite ? `<button type="button" class="seed-vault-favorite-badge" data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}" data-action-label="${escapeHtml(favoriteActionLabel)}" aria-pressed="true" title="${escapeHtml(favoriteActionLabel)}" aria-label="${escapeHtml(favoriteActionLabel)}">⭐ Favorite</button>` : ""}
             </h4>
             <p>${titleMetaItems.map((item, index) => `${index > 0 ? "<span>•</span>" : ""}<strong>${escapeHtml(item)}</strong>`).join("")}</p>
           </div>
@@ -85898,5 +85975,8 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
+
+
 
 

@@ -53664,3 +53664,252 @@ body.theme-dark option[selected] {
     justify-content: center;
   }
 }
+
+/* Seed Vault final expanded-entry finish */
+.seed-vault-favorite-badge {
+  appearance: none;
+  border-style: solid;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.seed-vault-favorite-badge:hover,
+.seed-vault-favorite-badge:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(255, 220, 92, 0.72);
+  background:
+    linear-gradient(180deg, rgba(255, 226, 119, 0.3), rgba(184, 130, 28, 0.18)),
+    rgba(60, 43, 11, 0.72);
+  color: #ffe184;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 6px 18px rgba(255, 199, 64, 0.12),
+    0 0 0 3px rgba(255, 210, 86, 0.08);
+}
+
+.seed-vault-expanded-summary {
+  gap: 16px;
+}
+
+@media (min-width: 1120px) {
+  .seed-vault-expanded-summary {
+    grid-template-columns: minmax(220px, 0.92fr) minmax(360px, 1.42fr) minmax(220px, 0.86fr);
+    align-items: stretch;
+  }
+
+  .seed-vault-detail-section {
+    height: 100%;
+  }
+}
+
+.seed-vault-detail-section {
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.seed-vault-detail-section:hover {
+  transform: translateY(-1px);
+  border-color: rgba(181, 232, 111, 0.17);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 34px rgba(0, 0, 0, 0.2);
+}
+
+.seed-vault-detail-section-heading span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #c8f47f;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-detail-section-heading span i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 1px solid rgba(181, 232, 111, 0.2);
+  background: rgba(181, 232, 111, 0.08);
+  font-style: normal;
+  font-size: 0.94rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.seed-vault-detail-section--storage .seed-vault-storage-summary {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.seed-vault-storage-location,
+.seed-vault-storage-notes,
+.seed-vault-performance-metric {
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.seed-vault-storage-location:hover,
+.seed-vault-storage-notes:hover,
+.seed-vault-performance-metric:hover {
+  transform: translateY(-1px);
+  border-color: rgba(181, 232, 111, 0.16);
+  background: rgba(255, 255, 255, 0.044);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+.seed-vault-performance-grid {
+  grid-template-columns: repeat(4, minmax(104px, 1fr));
+  gap: 12px;
+}
+
+.seed-vault-performance-metric {
+  min-height: 104px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.046), rgba(255, 255, 255, 0.016)),
+    rgba(5, 13, 10, 0.42);
+}
+
+.seed-vault-performance-metric strong {
+  max-width: 100%;
+  font-size: 1.52rem;
+  letter-spacing: 0;
+}
+
+.seed-vault-performance-metric > span {
+  max-width: 100%;
+  color: rgba(226, 236, 225, 0.66);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  line-height: 1.28;
+  text-align: center;
+}
+
+.seed-vault-performance-metric.is-highlight,
+.seed-vault-performance-metric.is-success {
+  border-color: rgba(181, 232, 111, 0.22);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(181, 232, 111, 0.12), transparent 48%),
+    rgba(16, 30, 14, 0.46);
+}
+
+.seed-vault-performance-insight {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(181, 232, 111, 0.18);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(181, 232, 111, 0.14), transparent 38%),
+    linear-gradient(180deg, rgba(181, 232, 111, 0.085), rgba(181, 232, 111, 0.028)),
+    rgba(15, 26, 12, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.seed-vault-performance-insight > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(181, 232, 111, 0.22);
+  background: rgba(181, 232, 111, 0.09);
+  color: #bdf279;
+}
+
+.seed-vault-performance-insight div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seed-vault-performance-insight small {
+  color: rgba(196, 241, 128, 0.88);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.seed-vault-performance-insight strong {
+  color: #f7fff0;
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1.16;
+}
+
+.seed-vault-performance-insight em {
+  color: rgba(226, 236, 225, 0.66);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.seed-vault-performance-insight.is-empty {
+  border-color: rgba(181, 232, 111, 0.14);
+  background:
+    linear-gradient(180deg, rgba(181, 232, 111, 0.075), rgba(181, 232, 111, 0.024)),
+    rgba(16, 27, 13, 0.5);
+}
+
+.seed-vault-performance-insight.is-empty small {
+  color: rgba(226, 236, 225, 0.66);
+  font-size: 0.82rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.seed-vault-detail-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 13px;
+}
+
+.seed-vault-detail-actions .seed-vault-start-session-button.button,
+.seed-vault-entry-details .seed-vault-start-session-button.button {
+  width: 100%;
+  min-height: 58px;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.seed-vault-detail-actions .seed-vault-start-session-button.button:hover,
+.seed-vault-detail-actions .seed-vault-start-session-button.button:focus-visible {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 22px 42px rgba(38, 82, 30, 0.42),
+    0 0 0 1px rgba(205, 255, 134, 0.12),
+    0 0 30px rgba(181, 232, 111, 0.18);
+}
+
+.seed-vault-edit-entry-button.button {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 1320px) {
+  .seed-vault-performance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .seed-vault-performance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-performance-metric {
+    min-height: 88px;
+  }
+}
