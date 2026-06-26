@@ -53913,3 +53913,119 @@ body.theme-dark option[selected] {
     min-height: 88px;
   }
 }
+
+/* Seed Vault toolbar final search-focused layout */
+.seed-vault-controls {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "label count toggle"
+    "search search search"
+    "filters filters filters";
+  align-items: center;
+  gap: 9px 12px;
+  padding: 14px;
+}
+
+.seed-vault-controls .seed-vault-search-field {
+  display: contents;
+}
+
+.seed-vault-controls .seed-vault-search-field > span {
+  grid-area: label;
+  align-self: end;
+  color: rgba(226, 236, 225, 0.74);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-controls .seed-vault-search-field input {
+  grid-area: search;
+  min-height: 48px;
+  width: 100%;
+  font-size: 0.94rem;
+}
+
+.seed-vault-controls .seed-vault-results-count {
+  grid-area: count;
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+  padding: 0;
+  min-width: max-content;
+  color: rgba(235, 243, 233, 0.86);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.seed-vault-controls .seed-vault-view-toggle {
+  grid-area: toggle;
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+}
+
+.seed-vault-controls .seed-vault-filter-row {
+  grid-area: filters;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.seed-vault-controls .seed-vault-filter-row label {
+  min-width: 0;
+}
+
+.seed-vault-controls .seed-vault-filter-row select {
+  min-height: 42px;
+}
+
+@media (max-width: 1080px) {
+  .seed-vault-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label label"
+      "count toggle"
+      "search search"
+      "filters filters";
+  }
+
+  .seed-vault-controls .seed-vault-results-count {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .seed-vault-controls {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "label"
+      "count"
+      "toggle"
+      "search"
+      "filters";
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .seed-vault-controls .seed-vault-results-count,
+  .seed-vault-controls .seed-vault-view-toggle {
+    justify-self: start;
+  }
+
+  .seed-vault-controls .seed-vault-filter-row {
+    grid-template-columns: 1fr;
+  }
+}
