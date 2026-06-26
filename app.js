@@ -69720,7 +69720,6 @@ function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
       <section class="seed-vault-side-card seed-vault-side-card--overview seed-vault-side-card--collection">
         <div class="seed-vault-side-card-heading">
           <span>My Collection</span>
-          <small>Inventory health</small>
         </div>
         <div class="seed-vault-summary-ring" style="--healthy-deg:${healthyDeg.toFixed(1)}deg; --older-deg:${olderDeg.toFixed(1)}deg; --low-deg:${lowDeg.toFixed(1)}deg;">
           <strong>${escapeHtml(String(summary.totalSeeds))}</strong>
@@ -69736,7 +69735,6 @@ function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
       <section class="seed-vault-side-card seed-vault-side-card--insights seed-vault-side-card--performance">
         <div class="seed-vault-side-card-heading">
           <span>Performance Insights</span>
-          <small>Trends and signals</small>
         </div>
         <p>Discover trends, analytics, and performance across your seed collection.</p>
         <button type="button" class="button button-secondary button-compact seed-vault-insights-cta" data-seed-vault-open-insights="true"><span aria-hidden="true">📈</span> View Insights</button>
@@ -86093,6 +86091,7 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
 
 
 
