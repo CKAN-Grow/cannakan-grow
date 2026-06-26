@@ -70482,7 +70482,6 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         </div>
         <div class="seed-vault-header-actions">
           <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">${renderMySessionsInlineIconMarkup("plus", "seed-vault-button-icon")}<span>Add Seeds</span></button>
-          <a class="button button-secondary seed-vault-import-button" href="#sessions" title="Review sessions for Seed Vault import details">${renderMySessionsInlineIconMarkup("history", "seed-vault-button-icon")}<span>Import from Session</span></a>
           <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">${renderMySessionsInlineIconMarkup("share", "seed-vault-button-icon")}<span>Share Vault</span></button>
         </div>
       </div>
