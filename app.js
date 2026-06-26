@@ -50131,19 +50131,7 @@ function renderSourcesLandingPage() {
         eyebrow: "Sources",
         title: "Source Explorer",
         description: "Discover trusted seed sources through real community performance.",
-        primaryAction: {
-          href: "#contact",
-          label: "Request Testing",
-          className: "button button-secondary",
-          attributes: { "data-source-directory-contact-link": "cstp" },
-        },
-        secondaryAction: {
-          href: "#contact",
-          label: "Submit a Correction",
-          className: "button button-secondary",
-          attributes: { "data-source-directory-contact-link": "correction" },
-        },
-        beforeActionsMarkup: `<div class="source-explorer-hero-metric"><strong>${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())}</strong><span>Trusted Sources</span><small>Built from community germination sessions.</small></div>`,
+        beforeActionsMarkup: `<div class="source-explorer-hero-metric"><strong>${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())}</strong><span>Trusted Sources</span><small>Built from community sessions.</small></div>`,
       })}
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
