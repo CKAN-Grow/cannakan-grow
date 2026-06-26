@@ -29112,6 +29112,9 @@ function getGrowKpiVisualMeta(input = "") {
   if (matches(["unknown", "age", "oldest", "older"])) {
     return { tone: "unknown", icon: "clock" };
   }
+  if (matches(["trust", "confidence", "evidence"])) {
+    return { tone: "source", icon: "certificationShield" };
+  }
   if (matches(["source", "breeder", "vendor", "trusted"])) {
     return { tone: "source", icon: "sourceDirectoryBars" };
   }
@@ -49143,7 +49146,7 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
   const metrics = getSourceDirectoryMetrics(records);
   return `
     <div class="summary-grid source-directory-metrics-grid">
-      ${renderAdminOverviewCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources with community evidence", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
+      ${renderAdminOverviewCardMarkup({ label: "Trust Score", value: "Developing", subtext: "Growing community data", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
       ${renderAdminOverviewCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", className: "source-directory-metric-card" })}
       ${renderAdminOverviewCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", className: "source-directory-metric-card" })}
       ${renderAdminOverviewCardMarkup({ label: "Average Germination", value: formatTestedSourceMockPercent(Math.round(metrics.averageGermination * 10) / 10), subtext: "weighted by tracked seeds", className: "source-directory-metric-card" })}
@@ -49990,7 +49993,7 @@ function renderSourceDirectoryPublicPage() {
       </header>
 
       ${renderSourceDirectoryPublicMetricGrid([
-        { label: "Trusted Sources", value: formatPrivateAnalyticsNumber(records.length), detail: "sources with approved public data" },
+        { label: "Trust Score", value: "Developing", detail: "Growing community data" },
         { label: "Average Germination", value: formatPrivateAnalyticsPercent(averageRate), detail: "weighted across public source entries" },
         { label: "Seeds Tracked", value: formatPrivateAnalyticsNumber(aggregate.totalSeeds), detail: `${formatPrivateAnalyticsNumber(aggregate.totalGerminated)} public germinations` },
         { label: "Community Sessions", value: formatPrivateAnalyticsNumber(aggregate.publicEntries), detail: "approved public Community Grow entries" },
@@ -49999,7 +50002,7 @@ function renderSourceDirectoryPublicPage() {
       <section class="source-directory-public-controls">
         <div>
           <p class="eyebrow">Explorer Controls</p>
-            <h3>Find Trusted Sources</h3>
+            <h3>Explore Source Reports</h3>
         </div>
         <label class="source-directory-public-field">
           <span>Search by source name</span>
@@ -50020,7 +50023,7 @@ function renderSourceDirectoryPublicPage() {
         <h3>Trusted Source Reports</h3>
         <p id="source-directory-public-summary">Showing 0 of ${records.length} public sources</p>
       </div>
-      <section id="source-directory-public-results" class="source-directory-public-grid" aria-label="Trusted Source Reports"></section>
+      <section id="source-directory-public-results" class="source-directory-public-grid" aria-label="Source Reports"></section>
     </section>
   `;
   bindSourceDirectoryPublicControls(records);
@@ -50140,7 +50143,7 @@ function renderSourcesLandingPage() {
         <div class="source-directory-controls-head">
           <div>
             <p class="eyebrow">Explorer Controls</p>
-            <h3>Find Trusted Sources</h3>
+            <h3>Explore Source Reports</h3>
           </div>
           <span class="source-directory-mock-note">Mock data preview</span>
         </div>
@@ -50171,7 +50174,7 @@ function renderSourcesLandingPage() {
         <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in Source Explorer</p>
       </div>
 
-      <section id="source-directory-card-results" class="source-directory-grid" aria-label="Trusted Source Reports">
+      <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Reports">
       </section>
 
       <section class="card source-directory-list-section">
