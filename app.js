@@ -69996,7 +69996,6 @@ function renderSeedVaultDetailActionsMarkup(entry = {}) {
     <section class="seed-vault-detail-section seed-vault-detail-section--actions" aria-label="Vault Entry actions">
       <div class="seed-vault-detail-section-heading">
         <span><i aria-hidden="true">🚀</i> Actions</span>
-        <small>Start a session or update this entry</small>
       </div>
       <div class="seed-vault-detail-actions">
         <button
@@ -70009,8 +70008,9 @@ function renderSeedVaultDetailActionsMarkup(entry = {}) {
           type="button"
           class="button button-secondary seed-vault-edit-entry-button"
           data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}"
-        >Edit Entry</button>
+        ><span aria-hidden="true">✏</span> Edit Entry</button>
       </div>
+      <p class="seed-vault-detail-actions-helper">Start a grow session or update this vault entry.</p>
     </section>
   `;
 }
