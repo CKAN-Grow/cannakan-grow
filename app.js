@@ -69785,16 +69785,99 @@ function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
     : "No completed result";
 
   return `
-    <div class="seed-vault-usage-grid" aria-label="Vault Entry session usage">
-      ${renderSeedVaultFieldMarkup("Sessions from vault", analytics.sessionsStarted || 0)}
-      ${renderSeedVaultFieldMarkup("Seeds used", analytics.totalSeedsUsed || 0)}
-      ${renderSeedVaultFieldMarkup("Remaining", formatSeedVaultQuantity(entry))}
-      ${renderSeedVaultFieldMarkup("Last session", lastSessionLabel)}
-      ${renderSeedVaultFieldMarkup("Latest result", latestResultLabel)}
-      ${renderSeedVaultFieldMarkup("Average result", formatSeedVaultPercent(performance.averageGerminationRate))}
-      ${renderSeedVaultFieldMarkup("Best result", formatSeedVaultPercent(performance.bestGerminationRate))}
-      ${renderSeedVaultFieldMarkup("Completed linked", performance.completedLinkedSessions || 0)}
-    </div>
+    <section class="seed-vault-detail-section seed-vault-detail-section--performance" aria-label="Vault Entry performance">
+      <div class="seed-vault-detail-section-heading">
+        <span>Performance</span>
+        <small>Linked sessions and germination outcomes</small>
+      </div>
+      <div class="seed-vault-performance-grid">
+        ${renderSeedVaultPerformanceMetricMarkup("Sessions From Vault", analytics.sessionsStarted || 0)}
+        ${renderSeedVaultPerformanceMetricMarkup("Seeds Used", analytics.totalSeedsUsed || 0)}
+        ${renderSeedVaultPerformanceMetricMarkup("Remaining", formatSeedVaultQuantity(entry), "highlight")}
+        ${renderSeedVaultPerformanceMetricMarkup("Last Session", lastSessionLabel)}
+        ${renderSeedVaultPerformanceMetricMarkup("Latest Result", latestResultLabel)}
+        ${renderSeedVaultPerformanceMetricMarkup("Average Result", formatSeedVaultPercent(performance.averageGerminationRate))}
+        ${renderSeedVaultPerformanceMetricMarkup("Best Result", formatSeedVaultPercent(performance.bestGerminationRate), "success")}
+        ${renderSeedVaultPerformanceMetricMarkup("Completed Linked", performance.completedLinkedSessions || 0)}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeedVaultPerformanceMetricMarkup(label = "", value = "", tone = "") {
+  const normalizedValue = value === 0 ? "0" : (String(value || "").trim() || "Not set");
+  return `
+    <article class="seed-vault-performance-metric${tone ? ` is-${escapeHtml(tone)}` : ""}">
+      <strong>${escapeHtml(normalizedValue)}</strong>
+      <span>${escapeHtml(label)}</span>
+    </article>
+  `;
+}
+
+function renderSeedVaultStorageSummaryMarkup(entry = {}) {
+  const storageLocation = String(entry.storageLocation || "").trim();
+  const storageNotes = String(entry.storageNotes || "").trim();
+  const notes = String(entry.notes || "").trim();
+  const normalizedStorageNotes = storageNotes.toLowerCase();
+  const normalizedNotes = notes.toLowerCase();
+  const noteBlocks = [];
+  if (storageNotes) {
+    noteBlocks.push({ label: notes && normalizedStorageNotes !== normalizedNotes ? "Storage" : "", value: storageNotes });
+  }
+  if (notes && normalizedStorageNotes !== normalizedNotes) {
+    noteBlocks.push({ label: storageNotes ? "Entry" : "", value: notes });
+  }
+
+  return `
+    <section class="seed-vault-detail-section seed-vault-detail-section--storage" aria-label="Vault Entry storage">
+      <div class="seed-vault-detail-section-heading">
+        <span>Storage</span>
+        <small>Inventory placement and notes</small>
+      </div>
+      <div class="seed-vault-storage-summary">
+        <article class="seed-vault-storage-location">
+          <span>Storage Location</span>
+          <strong>${escapeHtml(storageLocation || "Not set")}</strong>
+        </article>
+        <article class="seed-vault-storage-notes">
+          <span>Notes</span>
+          <div class="seed-vault-note-stack">
+            ${noteBlocks.length ? noteBlocks.map((note) => `
+              <p>${note.label ? `<small>${escapeHtml(note.label)}</small>` : ""}${escapeHtml(note.value)}</p>
+            `).join("") : "<p>No notes yet.</p>"}
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderSeedVaultDetailActionsMarkup(entry = {}) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  if (!normalizedEntry) {
+    return "";
+  }
+
+  return `
+    <section class="seed-vault-detail-section seed-vault-detail-section--actions" aria-label="Vault Entry actions">
+      <div class="seed-vault-detail-section-heading">
+        <span>Actions</span>
+        <small>Start a session or update this entry</small>
+      </div>
+      <div class="seed-vault-detail-actions">
+        <button
+          type="button"
+          class="button button-secondary seed-vault-start-session-button"
+          data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}"
+          ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}
+        ><span aria-hidden="true">▶</span> Start Session from Vault Entry</button>
+        <button
+          type="button"
+          class="button button-secondary seed-vault-edit-entry-button"
+          data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}"
+        >Edit Entry</button>
+      </div>
+    </section>
   `;
 }
 
@@ -69936,7 +70019,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           <div>
             <h4>
               <span>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</span>
-              ${normalizedEntry.isFavorite ? `<span class="seed-vault-title-favorite" title="${escapeHtml(favoriteStateLabel)}" aria-label="${escapeHtml(favoriteStateLabel)}">★</span>` : ""}
+              ${normalizedEntry.isFavorite ? `<span class="seed-vault-favorite-badge" title="${escapeHtml(favoriteStateLabel)}" aria-label="${escapeHtml(favoriteStateLabel)}">⭐ Favorite</span>` : ""}
             </h4>
             <p>${titleMetaItems.map((item, index) => `${index > 0 ? "<span>•</span>" : ""}<strong>${escapeHtml(item)}</strong>`).join("")}</p>
           </div>
@@ -69984,25 +70067,10 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
         </details>
       </div>
       <div id="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" class="seed-vault-entry-details"${isExpanded ? "" : " hidden"}>
-        <div class="seed-vault-detail-grid">
-          ${renderSeedVaultFieldMarkup("Storage location", normalizedEntry.storageLocation)}
-          ${renderSeedVaultFieldMarkup("Storage notes", normalizedEntry.storageNotes)}
-          <div class="seed-vault-notes">
-            <span>Notes</span>
-            <p>${escapeHtml(normalizedEntry.notes || "No notes yet.")}</p>
-          </div>
-          <div class="seed-vault-session-history">
-            <span>Session history</span>
-            ${renderSeedVaultUsageMarkup(normalizedEntry, entryAnalytics)}
-          </div>
-        </div>
-        <div class="seed-vault-entry-footer">
-          <button
-            type="button"
-            class="button button-secondary seed-vault-start-session-button"
-            data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}"
-            ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}
-          >Start Session from Vault Entry</button>
+        <div class="seed-vault-expanded-summary">
+          ${renderSeedVaultStorageSummaryMarkup(normalizedEntry)}
+          ${renderSeedVaultUsageMarkup(normalizedEntry, entryAnalytics)}
+          ${renderSeedVaultDetailActionsMarkup(normalizedEntry)}
         </div>
       </div>
     </article>
@@ -85830,4 +85898,5 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
 
