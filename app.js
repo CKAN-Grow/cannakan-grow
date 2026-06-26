@@ -69368,7 +69368,7 @@ function setSeedVaultLayoutPreference(value = "list") {
 }
 function normalizeSeedVaultQuickView(value = "all") {
   const normalizedValue = String(value || "all").trim().toLowerCase();
-  return ["all", "recent", "favorites", "low", "old", "ready", "unknown-age"].includes(normalizedValue) ? normalizedValue : "all";
+  return ["all", "recent", "favorites", "low", "old", "ready"].includes(normalizedValue) ? normalizedValue : "all";
 }
 
 function getSeedVaultEntryCreatedTime(entry = {}) {
@@ -69630,9 +69630,6 @@ function seedVaultEntryMatchesQuickView(entry = {}, quickView = "all", analytics
   if (normalizedQuickView === "ready") {
     return isSeedVaultEntryReadyToTest(normalizedEntry, entryAnalytics);
   }
-  if (normalizedQuickView === "unknown-age") {
-    return ageYears === null;
-  }
   return true;
 }
 
@@ -69712,99 +69709,18 @@ function getSeedVaultCollectionSummary(entries = [], analytics = null) {
   }, { totalSeeds: 0, healthy: 0, older: 0, low: 0, unknown: 0 });
 }
 
-function getSeedVaultSidebarNextActions(summary = {}, entries = [], analytics = null) {
-  const quickViews = new Map(getSeedVaultQuickViewItems(entries, analytics).map((item) => [item.key, item]));
-  const actions = [
-    {
-      key: "low",
-      icon: "⚠",
-      label: "Low Inventory",
-      detail: "Review low-stock entries",
-      count: Number(summary.low || quickViews.get("low")?.count || 0),
-      quickView: "low",
-      tone: "attention",
-    },
-    {
-      key: "ready",
-      icon: "🌱",
-      label: "Ready to Test",
-      detail: "Start a session from Vault",
-      count: Number(quickViews.get("ready")?.count || 0),
-      quickView: "ready",
-      tone: "success",
-    },
-    {
-      key: "unknown-age",
-      icon: "❓",
-      label: "Unknown Age",
-      detail: "Add age details when known",
-      count: Number(summary.unknown || 0),
-      quickView: "unknown-age",
-      tone: "neutral",
-    },
-    {
-      key: "old",
-      icon: "🕒",
-      label: "Oldest Seeds",
-      detail: "Prioritize older inventory",
-      count: Number(quickViews.get("old")?.count || 0),
-      quickView: "old",
-      tone: "warm",
-    },
-  ];
-  return actions.filter((action) => action.count > 0);
-}
-
-function renderSeedVaultSidebarNextActionsMarkup(actions = [], activeQuickView = appState.seedVaultQuickView) {
-  const normalizedActiveQuickView = normalizeSeedVaultQuickView(activeQuickView);
-  if (!actions.length) {
-    return `
-      <div class="seed-vault-command-empty">
-        <strong>No urgent actions</strong>
-        <span>Your active Vault entries look tidy right now.</span>
-      </div>
-    `;
-  }
-
-  return `
-    <div class="seed-vault-next-actions-list">
-      ${actions.map((action) => `
-        <button type="button" class="seed-vault-next-action is-${escapeHtml(action.tone)}${normalizedActiveQuickView === action.quickView ? " is-active" : ""}" data-seed-vault-quick-view="${escapeHtml(action.quickView)}">
-          <span class="seed-vault-next-action-icon" aria-hidden="true">${escapeHtml(action.icon)}</span>
-          <span class="seed-vault-next-action-copy">
-            <strong>${escapeHtml(action.label)}</strong>
-            <small>${escapeHtml(action.detail)}</small>
-          </span>
-          <b>${escapeHtml(String(action.count))}</b>
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderSeedVaultRecentActivityMarkup() {
-  return `
-    <div class="seed-vault-activity-empty">
-      <span aria-hidden="true">✦</span>
-      <strong>No recent activity yet.</strong>
-      <small>Start building your collection.</small>
-    </div>
-  `;
-}
-
 function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
   const summary = getSeedVaultCollectionSummary(entries, analytics);
   const totalStatus = Math.max(1, summary.healthy + summary.older + summary.low + summary.unknown);
   const healthyDeg = (summary.healthy / totalStatus) * 360;
   const olderDeg = ((summary.healthy + summary.older) / totalStatus) * 360;
   const lowDeg = ((summary.healthy + summary.older + summary.low) / totalStatus) * 360;
-  const nextActions = getSeedVaultSidebarNextActions(summary, entries, analytics);
   return `
-    <aside class="seed-vault-summary-panel seed-vault-command-center" aria-label="Seed Vault command center">
-      <section class="seed-vault-side-card seed-vault-side-card--overview">
+    <aside class="seed-vault-summary-panel seed-vault-support-panel" aria-label="Seed Vault collection support">
+      <section class="seed-vault-side-card seed-vault-side-card--overview seed-vault-side-card--collection">
         <div class="seed-vault-side-card-heading">
-          <span>Vault Overview</span>
-          <small>Collection health</small>
+          <span>My Collection</span>
+          <small>Inventory health</small>
         </div>
         <div class="seed-vault-summary-ring" style="--healthy-deg:${healthyDeg.toFixed(1)}deg; --older-deg:${olderDeg.toFixed(1)}deg; --low-deg:${lowDeg.toFixed(1)}deg;">
           <strong>${escapeHtml(String(summary.totalSeeds))}</strong>
@@ -69817,26 +69733,12 @@ function renderSeedVaultSummaryPanelMarkup(analytics = null, entries = []) {
           <p><span class="is-unknown"></span><strong>Unknown Age</strong><small>${escapeHtml(String(summary.unknown))}</small></p>
         </div>
       </section>
-      <section class="seed-vault-side-card seed-vault-side-card--actions">
-        <div class="seed-vault-side-card-heading">
-          <span>Next Actions</span>
-          <small>What to review now</small>
-        </div>
-        ${renderSeedVaultSidebarNextActionsMarkup(nextActions, appState.seedVaultQuickView)}
-      </section>
-      <section class="seed-vault-side-card seed-vault-side-card--activity">
-        <div class="seed-vault-side-card-heading">
-          <span>Recent Activity</span>
-          <small>Vault timeline</small>
-        </div>
-        ${renderSeedVaultRecentActivityMarkup()}
-      </section>
       <section class="seed-vault-side-card seed-vault-side-card--insights seed-vault-side-card--performance">
         <div class="seed-vault-side-card-heading">
           <span>Performance Insights</span>
           <small>Trends and signals</small>
         </div>
-        <p>Discover trends and performance across your seed collection.</p>
+        <p>Discover trends, analytics, and performance across your seed collection.</p>
         <button type="button" class="button button-secondary button-compact seed-vault-insights-cta" data-seed-vault-open-insights="true"><span aria-hidden="true">📈</span> View Insights</button>
       </section>
     </aside>
@@ -86191,6 +86093,8 @@ window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
+
+
 
 
 
