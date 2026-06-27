@@ -720,7 +720,7 @@ const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
     totalCerts: 9,
     gold: 4,
     silver: 3,
-    qualificationRate: 91,
+    qualificationRate: 92,
     lastTest: "May 2026",
   }),
   directoryStats: Object.freeze({
@@ -780,6 +780,17 @@ const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
+const SOURCE_DIRECTORY_DEMO_SHOWCASE_ORDER = Object.freeze([
+  "seedsman",
+  "good genetix",
+  "poppin fire",
+  "atlas breeding labs",
+  "alpine seed works",
+  "summit seed co.",
+]);
+const SOURCE_DIRECTORY_DEMO_SHOWCASE_PRIORITY = new Map(
+  SOURCE_DIRECTORY_DEMO_SHOWCASE_ORDER.map((sourceName, index) => [normalizeSourceNameForMatching(sourceName), index]),
+);
 const DEMO_SOURCE_COUNTRY_CODES = Object.freeze({
   seedsman: "ES",
   "poppin fire": "CO",
@@ -820,33 +831,32 @@ const testedSourcesMock = Object.freeze([
     website: "https://www.seedsman.com",
     websiteUrl: "https://www.seedsman.com",
     establishedLabel: "Established 2002",
+    demoConfidenceLabel: "Very High Confidence",
     community: Object.freeze({
-      avgRate: 94,
-      sessions: 4213,
+      avgRate: 92,
+      sessions: 203,
       rank: 1,
-      seedsTracked: 8642,
+      seedsTracked: 2375,
       topVarieties: Object.freeze([
         Object.freeze({ label: "Banana Jealousy" }),
-        Object.freeze({ label: "Wedding Cake" }),
         Object.freeze({ label: "Gorilla Runtz" }),
-        Object.freeze({ label: "Blue Dream" }),
+        Object.freeze({ label: "Gelato OG" }),
       ]),
     }),
     directoryStats: Object.freeze({
-      sessionsLogged: 4213,
+      sessionsLogged: 203,
       varietiesLogged: 57,
       lastLoggedAt: "2026-05-18T14:20:00.000Z",
       topVarieties: Object.freeze([
         Object.freeze({ label: "Banana Jealousy" }),
-        Object.freeze({ label: "Wedding Cake" }),
         Object.freeze({ label: "Gorilla Runtz" }),
+        Object.freeze({ label: "Gelato OG" }),
       ]),
     }),
     topVarieties: Object.freeze([
       Object.freeze({ label: "Banana Jealousy" }),
-      Object.freeze({ label: "Wedding Cake" }),
       Object.freeze({ label: "Gorilla Runtz" }),
-      Object.freeze({ label: "Blue Dream" }),
+      Object.freeze({ label: "Gelato OG" }),
     ]),
     cstp: Object.freeze({
       status: "tested",
@@ -854,14 +864,14 @@ const testedSourcesMock = Object.freeze([
       validUntil: "",
       sampleSize: 30,
       avgTime: "38 hrs",
-      resultPercent: 94,
+      resultPercent: 92,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
       totalCerts: 9,
       gold: 4,
       silver: 3,
-      qualificationRate: 91,
+      qualificationRate: 92,
       lastTest: "May 2026",
     }),
   }),
@@ -876,11 +886,12 @@ const testedSourcesMock = Object.freeze([
     website: "",
     websiteUrl: "",
     establishedLabel: "Partner source",
+    demoConfidenceLabel: "High Confidence",
     community: Object.freeze({
-      avgRate: 91,
-      sessions: 2156,
-      rank: 2,
-      seedsTracked: 5038,
+      avgRate: 98,
+      sessions: 56,
+      rank: 3,
+      seedsTracked: 980,
       topVarieties: Object.freeze([
         Object.freeze({ label: "Double Blueberry Muffin" }),
         Object.freeze({ label: "Grape Frost Bomb" }),
@@ -888,9 +899,14 @@ const testedSourcesMock = Object.freeze([
       ]),
     }),
     directoryStats: Object.freeze({
-      sessionsLogged: 2156,
+      sessionsLogged: 56,
       varietiesLogged: 32,
       lastLoggedAt: "2026-05-12T16:30:00.000Z",
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Double Blueberry Muffin" }),
+        Object.freeze({ label: "Grape Frost Bomb" }),
+        Object.freeze({ label: "Ice Cream Cake" }),
+      ]),
     }),
     topVarieties: Object.freeze([
       Object.freeze({ label: "Double Blueberry Muffin" }),
@@ -925,26 +941,32 @@ const testedSourcesMock = Object.freeze([
     website: "",
     websiteUrl: "",
     establishedLabel: "Partner source",
+    demoConfidenceLabel: "High Confidence",
     community: Object.freeze({
-      avgRate: 88,
-      sessions: 980,
-      rank: 3,
-      seedsTracked: 2310,
+      avgRate: 95,
+      sessions: 80,
+      rank: 2,
+      seedsTracked: 1600,
       topVarieties: Object.freeze([
-        Object.freeze({ label: "Permanent G Auto" }),
         Object.freeze({ label: "G Breath Auto" }),
         Object.freeze({ label: "G Donutz Auto" }),
+        Object.freeze({ label: "Permanent G Auto" }),
       ]),
     }),
     directoryStats: Object.freeze({
-      sessionsLogged: 980,
+      sessionsLogged: 80,
       varietiesLogged: 24,
-      lastLoggedAt: "2026-05-08T12:40:00.000Z",
+      lastLoggedAt: "2026-05-16T12:40:00.000Z",
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "G Breath Auto" }),
+        Object.freeze({ label: "G Donutz Auto" }),
+        Object.freeze({ label: "Permanent G Auto" }),
+      ]),
     }),
     topVarieties: Object.freeze([
-      Object.freeze({ label: "Permanent G Auto" }),
       Object.freeze({ label: "G Breath Auto" }),
       Object.freeze({ label: "G Donutz Auto" }),
+      Object.freeze({ label: "Permanent G Auto" }),
     ]),
     cstp: Object.freeze({
       status: "not-tested",
@@ -974,11 +996,12 @@ const testedSourcesMock = Object.freeze([
     website: "",
     websiteUrl: "",
     establishedLabel: "Demo source",
+    demoConfidenceLabel: "Growing Data",
     community: Object.freeze({
-      avgRate: 92,
-      sessions: 203,
+      avgRate: 96,
+      sessions: 38,
       rank: 4,
-      seedsTracked: 642,
+      seedsTracked: 760,
       topVarieties: Object.freeze([
         Object.freeze({ label: "Atlas Apex" }),
         Object.freeze({ label: "Atlas Runtz" }),
@@ -986,9 +1009,14 @@ const testedSourcesMock = Object.freeze([
       ]),
     }),
     directoryStats: Object.freeze({
-      sessionsLogged: 203,
+      sessionsLogged: 38,
       varietiesLogged: 16,
-      lastLoggedAt: "2026-04-29T18:47:00.000Z",
+      lastLoggedAt: "2026-05-06T18:47:00.000Z",
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Atlas Apex" }),
+        Object.freeze({ label: "Atlas Runtz" }),
+        Object.freeze({ label: "Atlas Glue" }),
+      ]),
     }),
     topVarieties: Object.freeze([
       Object.freeze({ label: "Atlas Apex" }),
@@ -1023,26 +1051,32 @@ const testedSourcesMock = Object.freeze([
     website: "",
     websiteUrl: "",
     establishedLabel: "Demo source",
+    demoConfidenceLabel: "Growing Data",
     community: Object.freeze({
-      avgRate: 86,
-      sessions: 56,
+      avgRate: 91,
+      sessions: 24,
       rank: 5,
-      seedsTracked: 1184,
+      seedsTracked: 480,
       topVarieties: Object.freeze([
         Object.freeze({ label: "Alpine Trial Lot" }),
+        Object.freeze({ label: "Alpine Gold" }),
         Object.freeze({ label: "Mountain Lime" }),
-        Object.freeze({ label: "Glacier Kush" }),
       ]),
     }),
     directoryStats: Object.freeze({
-      sessionsLogged: 56,
+      sessionsLogged: 24,
       varietiesLogged: 11,
-      lastLoggedAt: "2026-04-21T09:15:00.000Z",
+      lastLoggedAt: "2026-04-29T09:15:00.000Z",
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Alpine Trial Lot" }),
+        Object.freeze({ label: "Alpine Gold" }),
+        Object.freeze({ label: "Mountain Lime" }),
+      ]),
     }),
     topVarieties: Object.freeze([
       Object.freeze({ label: "Alpine Trial Lot" }),
+      Object.freeze({ label: "Alpine Gold" }),
       Object.freeze({ label: "Mountain Lime" }),
-      Object.freeze({ label: "Glacier Kush" }),
     ]),
     cstp: Object.freeze({
       status: "not-tested",
@@ -1065,29 +1099,39 @@ const testedSourcesMock = Object.freeze([
     id: "summit-seed-co",
     name: "Summit Seed Co.",
     type: "Seed Company",
+    countryCode: "US",
+    country_code: "US",
     logo: "",
     logoUrl: "",
     website: "",
     websiteUrl: "",
     establishedLabel: "Demo source",
+    demoConfidenceLabel: "Growing Data",
     community: Object.freeze({
-      avgRate: 84,
-      sessions: 12,
+      avgRate: 88,
+      sessions: 20,
       rank: 6,
-      seedsTracked: 188,
+      seedsTracked: 400,
       topVarieties: Object.freeze([
         Object.freeze({ label: "Summit Snowcap" }),
-        Object.freeze({ label: "Basecamp OG" }),
+        Object.freeze({ label: "Summit Haze" }),
+        Object.freeze({ label: "Granite Glue" }),
       ]),
     }),
     directoryStats: Object.freeze({
-      sessionsLogged: 12,
-      varietiesLogged: 6,
-      lastLoggedAt: "2026-04-14T10:10:00.000Z",
+      sessionsLogged: 20,
+      varietiesLogged: 8,
+      lastLoggedAt: "2026-04-21T10:10:00.000Z",
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Summit Snowcap" }),
+        Object.freeze({ label: "Summit Haze" }),
+        Object.freeze({ label: "Granite Glue" }),
+      ]),
     }),
     topVarieties: Object.freeze([
       Object.freeze({ label: "Summit Snowcap" }),
-      Object.freeze({ label: "Basecamp OG" }),
+      Object.freeze({ label: "Summit Haze" }),
+      Object.freeze({ label: "Granite Glue" }),
     ]),
     cstp: Object.freeze({
       status: "not-tested",
@@ -10568,7 +10612,7 @@ function buildMaryJaneDemoFillerSourceMockRecords() {
     Object.freeze({ avgRate: 84, sessions: 12, seedsTracked: 188 }),
     Object.freeze({ avgRate: 82, sessions: 5, seedsTracked: 72 }),
     Object.freeze({ avgRate: 81, sessions: 2, seedsTracked: 28 }),
-    Object.freeze({ avgRate: 0, sessions: 0, seedsTracked: 0, limited: true }),
+    Object.freeze({ avgRate: 81, sessions: 5, seedsTracked: 64, limited: true }),
   ]);
   const varietyPresets = Object.freeze([
     Object.freeze(["North Valley Diesel", "Aurora Cake", "Pine Ridge"]),
@@ -48506,10 +48550,27 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
   `;
 }
 
+function getSourceDirectoryDemoShowcasePriority(source = {}) {
+  const keys = [source?.name, source?.id, source?.label]
+    .map((value) => normalizeSourceNameForMatching(value || ""))
+    .filter(Boolean);
+  for (const key of keys) {
+    if (SOURCE_DIRECTORY_DEMO_SHOWCASE_PRIORITY.has(key)) {
+      return SOURCE_DIRECTORY_DEMO_SHOWCASE_PRIORITY.get(key);
+    }
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
+function hasSourceDirectoryDemoShowcasePriority(source = {}) {
+  return Number.isFinite(getSourceDirectoryDemoShowcasePriority(source));
+}
+
 function getSourceDirectoryMockRecords() {
+  const mockDataEnabled = isMockDataEnabled();
   const { sourceMap } = buildSourceDirectorySessionAggregate();
   const baseSourcesByKey = new Map(
-    (isMockDataEnabled() ? testedSourcesMock : [])
+    (mockDataEnabled ? testedSourcesMock : [])
       .map((source) => normalizeTestedSourceMockRecord(source))
       .filter(Boolean)
       .map((source) => [normalizeSourceNameForMatching(source.name || source.id || ""), source]),
@@ -48522,30 +48583,44 @@ function getSourceDirectoryMockRecords() {
     const totalGerminated = entry.totalGerminated;
     const averageRate = totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 100) : 0;
     const trackRecord = getSourceDirectoryTrackRecordForSource(entry.name, baseSource?.trackRecord || {});
+    const useCuratedMockSource = Boolean(mockDataEnabled && baseSource && hasSourceDirectoryDemoShowcasePriority(baseSource));
     mergedRecords.push(normalizeTestedSourceMockRecord({
       ...(baseSource || {}),
       id: String(baseSource?.id || sourceKey).trim(),
-      name: entry.name,
+      name: baseSource?.name || entry.name,
       type: baseSource?.type || "Source / Breeder",
       sourceTypeLabel: baseSource?.sourceTypeLabel || baseSource?.type || "Source / Breeder",
       logoUrl: baseSource?.logoUrl || baseSource?.logo || "",
       website: baseSource?.website || "",
       establishedLabel: baseSource?.establishedLabel || "",
-      community: {
-        avgRate: averageRate,
-        sessions: entry.sessionsLogged,
-        rank: 0,
-        seedsTracked: totalSeeds,
-      },
+      community: useCuratedMockSource
+        ? {
+          ...(baseSource?.community || {}),
+          rank: baseSource?.community?.rank || 0,
+        }
+        : {
+          avgRate: averageRate,
+          sessions: entry.sessionsLogged,
+          rank: 0,
+          seedsTracked: totalSeeds,
+        },
       cstp: {
         ...(baseSource?.cstp || {}),
       },
       trackRecord,
-      directoryStats: {
-        sessionsLogged: entry.sessionsLogged,
-        varietiesLogged: entry.varieties.size,
-        lastLoggedAt: entry.lastLoggedAt,
-      },
+      directoryStats: useCuratedMockSource
+        ? {
+          ...(baseSource?.directoryStats || {}),
+          sessionsLogged: parseSourceDirectoryMetricNumber(baseSource?.directoryStats?.sessionsLogged)
+            || parseSourceDirectoryMetricNumber(baseSource?.community?.sessions),
+          varietiesLogged: parseSourceDirectoryMetricNumber(baseSource?.directoryStats?.varietiesLogged) || entry.varieties.size,
+          lastLoggedAt: String(baseSource?.directoryStats?.lastLoggedAt || entry.lastLoggedAt || "").trim(),
+        }
+        : {
+          sessionsLogged: entry.sessionsLogged,
+          varietiesLogged: entry.varieties.size,
+          lastLoggedAt: entry.lastLoggedAt,
+        },
     }));
     baseSourcesByKey.delete(sourceKey);
   });
@@ -48570,6 +48645,12 @@ function getSourceDirectoryMockRecords() {
   const rankedRecords = mergedRecords
     .filter(Boolean)
     .sort((left, right) => {
+      if (mockDataEnabled) {
+        const showcaseDelta = getSourceDirectoryDemoShowcasePriority(left) - getSourceDirectoryDemoShowcasePriority(right);
+        if (showcaseDelta !== 0) {
+          return showcaseDelta;
+        }
+      }
       const sessionDelta = parseSourceDirectoryMetricNumber(right?.directoryStats?.sessionsLogged)
         - parseSourceDirectoryMetricNumber(left?.directoryStats?.sessionsLogged);
       if (sessionDelta !== 0) {
@@ -48587,7 +48668,6 @@ function getSourceDirectoryMockRecords() {
 
   return rankedRecords;
 }
-
 function normalizePersistedSessionImageEntry(image) {
   return normalizePersistedSessionImages(image ? [image] : [])[0] || null;
 }
@@ -49276,11 +49356,12 @@ function getSourceDirectoryTrustScore(source = {}) {
   const recencyScore = daysSinceActivity <= 90 ? 9 : (daysSinceActivity <= 365 ? 5 : (daysSinceActivity <= 730 ? 2 : 0));
   const reportScore = cstpState?.hasReport ? 8 : (cstpState ? 4 : 0);
   const score = Math.round(Math.max(0, Math.min(100, rateScore + sessionScore + seedScore + recencyScore + reportScore)));
-  const confidenceLabel = sessions >= 25 && seedsTracked >= 500
+  const demoConfidenceLabel = String(source?.demoConfidenceLabel || source?.confidenceLabel || "").trim();
+  const confidenceLabel = demoConfidenceLabel || (sessions >= 25 && seedsTracked >= 500
     ? "Very High Confidence"
     : (sessions >= 10 && seedsTracked >= 150
       ? "High Confidence"
-      : (sessions >= 3 && seedsTracked >= 40 ? "Moderate Confidence" : "Limited Data"));
+      : (sessions >= 3 && seedsTracked >= 40 ? "Moderate Confidence" : "Limited Data")));
   const hasEnoughData = confidenceLabel !== "Limited Data";
   return {
     score,
@@ -49704,6 +49785,12 @@ function getFilteredAndSortedSourceDirectoryRecords({
       ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     })
     .sort((left, right) => {
+      if (isMockDataEnabled() && !normalizedQuery) {
+        const showcaseDelta = getSourceDirectoryDemoShowcasePriority(left) - getSourceDirectoryDemoShowcasePriority(right);
+        if (showcaseDelta !== 0) {
+          return showcaseDelta;
+        }
+      }
       if (isSourceDirectoryCstpFilterKey(normalizedFilterKey)) {
         const priorityDelta = getSourceDirectoryCstpPriority(left) - getSourceDirectoryCstpPriority(right);
         if (priorityDelta !== 0) {
