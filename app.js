@@ -741,7 +741,7 @@ const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
-  Object.freeze({ key: "most-trusted", label: "Most Trusted" }),
+  Object.freeze({ key: "most-trusted", label: "Highest Confidence" }),
   Object.freeze({ key: "highest-germination", label: "Highest Germination" }),
   Object.freeze({ key: "most-sessions", label: "Most Sessions" }),
   Object.freeze({ key: "most-popular", label: "Most Popular" }),
@@ -49159,14 +49159,50 @@ function getSourceDirectoryCommunityConfidenceLabel(metrics = {}) {
   }
   return "Limited";
 }
+
+function getSourceDirectoryCommunityConfidencePercent(label = "") {
+  const normalizedLabel = String(label || "").trim().toLowerCase();
+  if (normalizedLabel.includes("very high")) {
+    return 94;
+  }
+  if (normalizedLabel.includes("high")) {
+    return 78;
+  }
+  if (normalizedLabel.includes("moderate")) {
+    return 58;
+  }
+  if (normalizedLabel.includes("growing")) {
+    return 38;
+  }
+  return 22;
+}
+
+function renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics = {}) {
+  const confidenceLabel = getSourceDirectoryCommunityConfidenceLabel(metrics);
+  const confidencePercent = getSourceDirectoryCommunityConfidencePercent(confidenceLabel);
+  return `
+    <article class="card stat-card admin-overview-card grow-kpi-card source-directory-metric-card source-directory-community-confidence-card">
+      <div class="stat-card-content">
+        <span class="stat-label">Community Confidence</span>
+        <strong class="stat-value">${escapeHtml(confidenceLabel)}</strong>
+        <p class="summary-subtext">${escapeHtml(Number(metrics.communitySessions || 0).toLocaleString())} sessions tracked</p>
+        <div class="source-directory-kpi-confidence-meter" aria-label="${escapeHtml(confidenceLabel)} community confidence">
+          <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
+        </div>
+      </div>
+      ${renderGrowKpiWatermarkMarkup({ label: "Community Confidence" })}
+    </article>
+  `;
+}
+
 function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockRecords()) {
   const metrics = getSourceDirectoryMetrics(records);
   return `
     <div class="summary-grid source-directory-metrics-grid">
-      ${renderAdminOverviewCardMarkup({ label: "Trust Score", value: "Developing", subtext: "Growing community data", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
       ${renderAdminOverviewCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", className: "source-directory-metric-card" })}
       ${renderAdminOverviewCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "Community Confidence", value: getSourceDirectoryCommunityConfidenceLabel(metrics), subtext: `${metrics.communitySessions.toLocaleString()} sessions tracked`, className: "source-directory-metric-card" })}
+      ${renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics)}
+      ${renderAdminOverviewCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "actively tracked", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
     </div>
   `;
 }
@@ -49631,10 +49667,10 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
         </div>
         ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust)}
       </div>
-      <div class="source-directory-trust-zone">
-        <div class="source-directory-trust-score-block">
-          <span>Trust Score</span>
-          <strong>${escapeHtml(trust.scoreLabel)}</strong>
+      <div class="source-directory-performance-zone">
+        <div class="source-directory-average-germination-block">
+          <span>Average Germination</span>
+          <strong>${escapeHtml(reportedRateLabel)}</strong>
           <small>${escapeHtml(confidenceMeta.label)}</small>
         </div>
         <div class="source-directory-confidence-meter" aria-label="${escapeHtml(confidenceMeta.label)}">
@@ -49642,11 +49678,7 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
           <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
         </div>
       </div>
-      <div class="source-directory-report-kpis" aria-label="Source performance summary">
-        <article>
-          <strong>${escapeHtml(reportedRateLabel)}</strong>
-          <span>Average Germination</span>
-        </article>
+      <div class="source-directory-report-kpis" aria-label="Source community evidence summary">
         <article>
           <strong>${escapeHtml(String(sessionsLabel))}</strong>
           <span>Sessions</span>
@@ -50096,7 +50128,6 @@ function renderSourceDirectoryPublicPage() {
     accumulator.publicEntries += record.snapshotCount;
     return accumulator;
   }, { totalSeeds: 0, totalGerminated: 0, publicEntries: 0 });
-  const averageRate = aggregate.totalSeeds > 0 ? Math.round((aggregate.totalGerminated / aggregate.totalSeeds) * 1000) / 10 : null;
   app.innerHTML = `
     <section class="source-directory-public-page">
       <header class="source-directory-public-hero">
@@ -50112,10 +50143,10 @@ function renderSourceDirectoryPublicPage() {
       </header>
 
       ${renderSourceDirectoryPublicMetricGrid([
-        { label: "Trust Score", value: "Developing", detail: "Growing community data" },
-        { label: "Average Germination", value: formatPrivateAnalyticsPercent(averageRate), detail: "weighted across public source entries" },
-        { label: "Seeds Tracked", value: formatPrivateAnalyticsNumber(aggregate.totalSeeds), detail: `${formatPrivateAnalyticsNumber(aggregate.totalGerminated)} public germinations` },
         { label: "Community Sessions", value: formatPrivateAnalyticsNumber(aggregate.publicEntries), detail: "approved public Community Grow entries" },
+        { label: "Seeds Tracked", value: formatPrivateAnalyticsNumber(aggregate.totalSeeds), detail: `${formatPrivateAnalyticsNumber(aggregate.totalGerminated)} public germinations` },
+        { label: "Community Confidence", value: getSourceDirectoryCommunityConfidenceLabel({ communitySessions: aggregate.publicEntries, seedsTracked: aggregate.totalSeeds }), detail: `${formatPrivateAnalyticsNumber(aggregate.publicEntries)} sessions tracked` },
+        { label: "Trusted Sources", value: formatPrivateAnalyticsNumber(records.length), detail: "actively tracked" },
       ])}
 
       <section class="source-directory-public-controls">
@@ -50244,7 +50275,6 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
 
 function renderSourcesLandingPage() {
   const directoryRecords = getSourceDirectoryMockRecords();
-  const directoryMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
       ${renderAppHeroMarkup({
@@ -50253,7 +50283,6 @@ function renderSourcesLandingPage() {
         eyebrow: "Sources",
         title: "Source Explorer",
         description: "Discover trusted seed sources through real community performance.",
-        beforeActionsMarkup: `<div class="source-explorer-hero-metric"><strong>${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())}</strong><span>Trusted Sources</span><small>Built from community sessions.</small></div>`,
       })}
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
@@ -50295,7 +50324,7 @@ function renderSourcesLandingPage() {
 
       <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Reports">
       </section>
-      <p class="source-directory-grid-footnote">Trust Score combines germination performance, sample size, consistency, data recency, and CSTP verification.</p>
+      <p class="source-directory-grid-footnote">Confidence reflects sample size, consistency, data freshness, and available verification.</p>
 
       <section class="card source-directory-list-section">
         <div class="source-directory-results-head source-directory-results-head--list">
@@ -50451,14 +50480,14 @@ function renderSourceProfilePage(sourceId = "") {
       <article class="card source-profile-trust-hero-card">
         <div class="source-profile-section-head">
           <div class="source-profile-section-copy">
-            <p class="eyebrow">Trust Score</p>
-            <h3 class="source-profile-section-title">1. Trust Score</h3>
+            <p class="eyebrow">Community Evidence</p>
+            <h3 class="source-profile-section-title">1. Confidence Level</h3>
             <p class="muted">${escapeHtml(sourceTrust.explanation)}</p>
           </div>
         </div>
         <div class="summary-grid source-profile-community-grid">
           ${[
-            { label: "Trust Score", value: sourceTrust.scoreLabel, detail: sourceTrust.confidenceLabel, progressValue: sourceTrust.hasEnoughData ? sourceTrust.score : Number.NaN },
+            { label: "Confidence Level", value: sourceTrust.confidenceLabel, detail: sourceTrust.hasEnoughData ? "Evidence weighted by community data" : "Growing community data", progressValue: sourceTrust.hasEnoughData ? sourceTrust.score : Number.NaN },
             { label: "Average Germination", value: averageGermRate, detail: `Based on ${communitySessionCount} sessions`, progressValue: averageGermRateNumber },
             { label: "Community Sessions", value: sourceProfile.community.sessions, detail: "sessions represented" },
             { label: "Seeds Tracked", value: sourceProfile.community.seedsTracked, detail: "community seed count" },
@@ -50498,7 +50527,7 @@ function renderSourceProfilePage(sourceId = "") {
         <div class="summary-grid source-profile-community-grid">
           ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
-        <p class="source-profile-trust-note">Performance and confidence are based on community session data. Trust Score is not sponsorship or paid ranking.</p>
+        <p class="source-profile-trust-note">Performance and confidence are based on community session data, not sponsorship or paid ranking.</p>
       </article>
 
       <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
