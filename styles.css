@@ -54560,6 +54560,67 @@ body.theme-dark option[selected] {
     right: 7px;
   }
 }
+
+/* Seed Vault expanded details collapse control */
+.seed-vault-expanded-details-head {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0 0 10px;
+  min-width: 0;
+}
+
+.seed-vault-collapse-details-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(181, 210, 134, 0.24);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018)),
+    rgba(148, 172, 112, 0.09);
+  color: rgba(238, 248, 231, 0.9);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    0 8px 18px rgba(0, 0, 0, 0.14);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.seed-vault-collapse-details-button span {
+  color: #b8ec71;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.seed-vault-collapse-details-button:hover,
+.seed-vault-collapse-details-button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(181, 210, 134, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.03)),
+    rgba(148, 172, 112, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 10px 20px rgba(0, 0, 0, 0.18),
+    0 0 16px rgba(150, 190, 110, 0.1);
+}
+
+@media (max-width: 640px) {
+  .seed-vault-expanded-details-head {
+    justify-content: stretch;
+  }
+
+  .seed-vault-collapse-details-button {
+    width: 100%;
+  }
+}
 /* Seed Vault expanded details permanent layout guard */
 .seed-vault-entry-details .seed-vault-expanded-summary {
   display: grid;

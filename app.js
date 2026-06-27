@@ -70901,6 +70901,18 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
         </details>
       </div>
       <div id="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" class="seed-vault-entry-details"${isExpanded ? "" : " hidden"}>
+        <div class="seed-vault-expanded-details-head">
+          <button
+            type="button"
+            class="seed-vault-collapse-details-button"
+            data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}"
+            aria-expanded="true"
+            aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}"
+          >
+            <span aria-hidden="true">⌃</span>
+            Collapse
+          </button>
+        </div>
         <div class="seed-vault-expanded-summary">
           ${renderSeedVaultStorageSummaryMarkup(normalizedEntry)}
           ${renderSeedVaultUsageMarkup(normalizedEntry, entryAnalytics)}
