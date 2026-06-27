@@ -55442,6 +55442,67 @@ body.theme-dark option[selected] {
     height: 14px;
   }
 }
+
+/* Source Explorer card equal-height and variety clamp */
+.source-directory-card.source-directory-report-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.source-directory-report-top,
+.source-directory-performance-zone,
+.source-directory-report-kpis,
+.source-directory-top-varieties {
+  flex: 0 0 auto;
+}
+
+.source-directory-top-varieties {
+  min-height: 68px;
+  max-height: 68px;
+  overflow: hidden;
+}
+
+.source-directory-variety-chip-row {
+  flex-wrap: nowrap;
+  align-items: center;
+  min-height: 34px;
+  max-height: 34px;
+  overflow: hidden;
+}
+
+.source-directory-variety-chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-directory-variety-chip--more {
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.source-directory-card .source-directory-card-actions {
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.source-directory-card .source-directory-view-report-button.button {
+  align-self: stretch;
+}
+
+@media (max-width: 760px) {
+  .source-directory-top-varieties {
+    min-height: 72px;
+    max-height: 72px;
+  }
+
+  .source-directory-variety-chip {
+    max-width: 100%;
+  }
+}
 /* Source Explorer Cards / Compare final polish */
 .source-directory-results-tools {
   display: flex;
