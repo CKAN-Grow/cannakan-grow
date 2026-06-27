@@ -49487,15 +49487,45 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
     </div>
   `;
 }
+function getSourceDirectoryReportedRateValue(source = {}) {
+  const candidateValues = [
+    source?.community?.avgRate,
+    source?.community?.averageGermination,
+    source?.community?.averageGerminationRate,
+    source?.community?.germinationRate,
+    source?.community?.germinationRateLabel,
+    source?.directoryStats?.avgRate,
+    source?.directoryStats?.averageGermination,
+    source?.directoryStats?.averageGerminationRate,
+    source?.averageGermination,
+    source?.averageGerminationRate,
+    source?.germinationRate,
+    source?.germinationRateLabel,
+  ];
+  for (const candidateValue of candidateValues) {
+    const rawValue = String(candidateValue ?? "").trim();
+    if (!rawValue) {
+      continue;
+    }
+    const parsedValue = parseSourceDirectoryMetricNumber(rawValue);
+    if (Number.isFinite(parsedValue)) {
+      return Math.max(0, Math.min(100, parsedValue));
+    }
+  }
+  return null;
+}
+
 function getSourceDirectoryReportedRateNumber(source = {}) {
-  return parseSourceDirectoryMetricNumber(source?.community?.avgRate);
+  return getSourceDirectoryReportedRateValue(source) ?? 0;
 }
 
 function getSourceDirectoryReportedRateLabel(source = {}) {
-  const rate = getSourceDirectoryReportedRateNumber(source);
-  return rate > 0 ? `${rate}%` : "—";
+  const rate = getSourceDirectoryReportedRateValue(source);
+  if (rate === null) {
+    return "—";
+  }
+  return `${String(Number(rate.toFixed(1))).replace(/\.0$/, "")}%`;
 }
-
 function getSortedSourceDirectoryListRecords(records = []) {
   return [...records].sort((left, right) => {
     const rateDelta = getSourceDirectoryReportedRateNumber(right) - getSourceDirectoryReportedRateNumber(left);
@@ -50020,8 +50050,8 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
       </div>
       <div class="source-directory-performance-zone">
         <div class="source-directory-average-germination-block">
+          <strong class="source-directory-average-germination-value">${escapeHtml(reportedRateLabel)}</strong>
           <span>Average Germination</span>
-          <strong>${escapeHtml(reportedRateLabel)}</strong>
           ${performanceContextLabel ? `<small class="source-directory-performance-context">${escapeHtml(performanceContextLabel)}</small>` : ""}
         </div>
         <div class="source-directory-confidence-meter" aria-label="${escapeHtml(confidenceMeta.label)}">

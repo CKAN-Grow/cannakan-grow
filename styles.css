@@ -55004,6 +55004,12 @@ body.theme-dark option[selected] {
   letter-spacing: -0.02em;
   text-shadow: 0 0 18px rgba(148, 209, 89, 0.16);
 }
+.source-directory-card .source-directory-average-germination-value {
+  display: block;
+  min-height: 0.9em;
+  max-width: 100%;
+  white-space: nowrap;
+}
 
 .source-directory-card .source-directory-average-germination-block small {
   color: #c9ff88;
