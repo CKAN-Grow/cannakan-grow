@@ -49624,6 +49624,35 @@ function getSourceDirectoryCardTopVarieties(source = {}, topVarietyLookup = new 
   return [];
 }
 
+function getSourceDirectoryCardTypeLabel(source = {}) {
+  const rawLabel = String(source?.sourceTypeLabel || source?.type || "").trim();
+  if (!rawLabel || rawLabel.toLowerCase() === "source / breeder" || rawLabel.toLowerCase() === "breeder / seed source") {
+    return "Seed Source";
+  }
+  return rawLabel;
+}
+
+function getSourceDirectoryPerformanceContextLabel(source = {}, totalSources = 0) {
+  const rank = Number(source?.community?.rank || source?.directoryStats?.rank || 0);
+  const total = Math.max(0, Number(totalSources) || 0);
+  if (!Number.isFinite(rank) || rank <= 0 || !Number.isFinite(total) || total <= 0) {
+    return "";
+  }
+  const percentile = Math.max(1, Math.ceil((rank / total) * 100));
+  if (percentile <= 10) {
+    return "Top 10%";
+  }
+  if (percentile <= 25) {
+    return "Top Quartile";
+  }
+  if (percentile <= 50) {
+    return "Top 50%";
+  }
+  if (percentile >= 80) {
+    return "Bottom 20%";
+  }
+  return "Top 75%";
+}
 function renderSourceDirectoryTopVarietiesMarkup(varieties = []) {
   const normalizedVarieties = (Array.isArray(varieties) ? varieties : [])
     .map((variety) => ({ label: String(variety?.label || variety?.name || variety || "").trim() }))
@@ -49651,6 +49680,8 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
   const sessionsLabel = source.directoryStats?.sessionsLogged || source.community?.sessions || "0";
   const seedsTrackedLabel = source.community?.seedsTracked || "0";
   const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
+  const performanceContextLabel = getSourceDirectoryPerformanceContextLabel(source, options.totalSources || 0);
+  const sourceTypeLabel = getSourceDirectoryCardTypeLabel(source);
   return `
     <article class="card source-directory-card source-directory-report-card is-${escapeHtml(confidenceMeta.tone)}">
       <div class="source-directory-report-top">
@@ -49662,7 +49693,7 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
         })}
         <div class="source-directory-report-identity">
           <h3>${escapeHtml(source.name || "Source")}</h3>
-          <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || source.type || "Source / Breeder")}</p>
+          <p class="source-directory-card-type">${escapeHtml(sourceTypeLabel)}</p>
           ${renderSourceDirectoryFlagStackMarkup(source)}
         </div>
         ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust)}
@@ -49671,19 +49702,20 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
         <div class="source-directory-average-germination-block">
           <span>Average Germination</span>
           <strong>${escapeHtml(reportedRateLabel)}</strong>
-          <small>${escapeHtml(confidenceMeta.label)}</small>
+          ${performanceContextLabel ? `<small class="source-directory-performance-context">${escapeHtml(performanceContextLabel)}</small>` : ""}
         </div>
         <div class="source-directory-confidence-meter" aria-label="${escapeHtml(confidenceMeta.label)}">
           <span>Confidence Level</span>
+          <small>${escapeHtml(confidenceMeta.label)}</small>
           <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
         </div>
       </div>
       <div class="source-directory-report-kpis" aria-label="Source community evidence summary">
-        <article>
+        <article class="source-directory-report-kpi--sessions">
           <strong>${escapeHtml(String(sessionsLabel))}</strong>
           <span>Sessions</span>
         </article>
-        <article>
+        <article class="source-directory-report-kpi--seeds">
           <strong>${escapeHtml(String(seedsTrackedLabel))}</strong>
           <span>Seeds Tracked</span>
         </article>
@@ -49706,7 +49738,7 @@ function renderSourceDirectoryResultsMarkup(records = []) {
   }
 
   const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
-  return records.map((source) => renderSourceDirectoryCardMarkup(source, { topVarietyLookup })).join("");
+  return records.map((source) => renderSourceDirectoryCardMarkup(source, { topVarietyLookup, totalSources: getSourceDirectoryMockRecords().length })).join("");
 }
 
 function bindSourcesLandingPage() {

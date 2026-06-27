@@ -55294,3 +55294,151 @@ body.theme-dark option[selected] {
 .seed-vault-support-panel .seed-vault-side-card--performance p {
   color: var(--vault-env-text-soft, rgba(217, 225, 211, 0.74));
 }
+/* Source Explorer final evidence-card polish */
+.source-directory-report-top {
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 9px 13px;
+}
+
+.source-directory-report-top .source-directory-logo {
+  width: 68px;
+  height: 68px;
+  box-shadow:
+    0 0 0 1px rgba(181, 232, 111, 0.2),
+    0 12px 22px rgba(0, 0, 0, 0.24);
+}
+
+.source-directory-report-identity h3 {
+  font-size: clamp(1.08rem, 1.45vw, 1.38rem);
+  line-height: 1.08;
+}
+
+.source-directory-report-identity .source-directory-card-type {
+  color: rgba(226, 236, 225, 0.68);
+  font-size: 0.82rem;
+}
+
+.source-directory-performance-zone {
+  grid-template-columns: minmax(138px, auto) minmax(142px, 1fr);
+  gap: 18px;
+  align-items: end;
+  padding-top: 2px;
+  padding-bottom: 8px;
+}
+
+.source-directory-card .source-directory-average-germination-block {
+  gap: 7px;
+  min-width: 138px;
+}
+
+.source-directory-card .source-directory-average-germination-block span {
+  color: rgba(230, 244, 224, 0.86);
+  font-size: 0.7rem;
+}
+
+.source-directory-card .source-directory-average-germination-block strong {
+  font-size: clamp(3.15rem, 6.1vw, 4.75rem);
+  line-height: 0.82;
+  text-shadow:
+    0 0 18px rgba(148, 209, 89, 0.18),
+    0 0 34px rgba(76, 219, 191, 0.06);
+}
+
+.source-directory-card .source-directory-average-germination-block .source-directory-performance-context {
+  justify-self: start;
+  min-height: 24px;
+  padding: 4px 9px;
+  border: 1px solid rgba(181, 232, 111, 0.22);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.085);
+  color: #d8ff9e;
+  font-size: 0.73rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.source-directory-confidence-meter {
+  gap: 7px;
+  align-self: end;
+}
+
+.source-directory-confidence-meter small {
+  color: #c9ff88;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.source-directory-confidence-meter i {
+  height: 15px;
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.source-directory-confidence-meter b {
+  min-width: 22px;
+  background: linear-gradient(90deg, #39aaff 0%, #51d6c5 46%, #9be13d 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 0 18px rgba(76, 219, 191, 0.2);
+}
+
+.source-directory-report-kpis {
+  gap: 14px;
+  padding-top: 1px;
+}
+
+.source-directory-report-kpi--sessions strong {
+  color: #f7fff1;
+  font-size: clamp(1.42rem, 2.35vw, 1.82rem);
+}
+
+.source-directory-report-kpi--sessions span {
+  color: rgba(232, 244, 226, 0.82);
+}
+
+.source-directory-report-kpi--seeds strong {
+  color: rgba(235, 246, 230, 0.86);
+  font-size: clamp(1.15rem, 1.85vw, 1.42rem);
+}
+
+.source-directory-report-kpi--seeds span {
+  color: rgba(226, 236, 225, 0.62);
+}
+
+.source-directory-top-varieties {
+  gap: 10px;
+}
+
+.source-directory-variety-chip-row {
+  gap: 8px;
+}
+
+.source-directory-variety-chip {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.052);
+  color: rgba(248, 252, 246, 0.93);
+  font-size: 0.84rem;
+  font-weight: 780;
+}
+
+@media (max-width: 760px) {
+  .source-directory-report-top {
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+
+  .source-directory-report-top .source-directory-logo {
+    width: 62px;
+    height: 62px;
+  }
+
+  .source-directory-card .source-directory-average-germination-block strong {
+    font-size: clamp(2.8rem, 16vw, 3.8rem);
+  }
+
+  .source-directory-confidence-meter i {
+    height: 14px;
+  }
+}
