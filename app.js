@@ -50051,14 +50051,14 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
   if (!records.length) {
     return `
       <article class="card source-directory-empty-state source-directory-compare-empty">
-        <h3>No source directory entries match your filters yet.</h3>
-        <p class="muted">Try a different search or directory filter.</p>
+        <h3>No source explorer entries match your filters yet.</h3>
+        <p class="muted">Try a different search or source filter.</p>
       </article>
     `;
   }
   const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
   const totalSources = getSourceDirectoryMockRecords().length;
-  return records.map((source) => {
+  const rowsMarkup = records.map((source) => {
     const cstpState = getSourceDirectoryCstpCardState(source);
     const trust = getSourceDirectoryTrustScore(source);
     const confidenceMeta = getSourceDirectoryConfidenceMeta(trust);
@@ -50070,8 +50070,8 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
     const performanceContextLabel = getSourceDirectoryPerformanceContextLabel(source, totalSources);
     const sourceTypeLabel = getSourceDirectoryCardTypeLabel(source);
     return `
-      <article class="source-directory-compare-row is-${escapeHtml(confidenceMeta.tone)}">
-        <div class="source-directory-compare-source">
+      <div class="source-directory-compare-row is-${escapeHtml(confidenceMeta.tone)}" role="row">
+        <div class="source-directory-compare-cell source-directory-compare-source" role="cell">
           ${renderSourceLogoMarkup(source, {
             className: "source-directory-logo source-directory-compare-logo",
             imageClassName: "source-profile-logo-image",
@@ -50084,32 +50084,49 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
             ${renderSourceDirectoryFlagStackMarkup(source)}
           </div>
         </div>
-        <div class="source-directory-compare-rate">
-          <span>Average Germination</span>
+        <div class="source-directory-compare-cell source-directory-compare-rate" role="cell">
           <strong>${escapeHtml(getSourceDirectoryReportedRateLabel(source))}</strong>
-          ${performanceContextLabel ? `<small>${escapeHtml(performanceContextLabel)}</small>` : ""}
+          <span>${performanceContextLabel ? escapeHtml(performanceContextLabel) : "Average Germination"}</span>
         </div>
-        <div class="source-directory-compare-confidence" aria-label="${escapeHtml(confidenceMeta.label)}">
+        <div class="source-directory-compare-cell source-directory-compare-confidence" role="cell" aria-label="${escapeHtml(confidenceMeta.label)}">
           <span>${escapeHtml(confidenceMeta.label)}</span>
           <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
         </div>
-        <div class="source-directory-compare-kpi source-directory-compare-kpi--sessions">
+        <div class="source-directory-compare-cell source-directory-compare-kpi source-directory-compare-kpi--sessions" role="cell">
           <strong>${escapeHtml(String(sessionsLabel))}</strong>
-          <span>Sessions</span>
         </div>
-        <div class="source-directory-compare-kpi source-directory-compare-kpi--seeds">
+        <div class="source-directory-compare-cell source-directory-compare-kpi source-directory-compare-kpi--seeds" role="cell">
           <strong>${escapeHtml(String(seedsTrackedLabel))}</strong>
-          <span>Seeds Tracked</span>
         </div>
-        <div class="source-directory-compare-variety">
-          <span>Top Variety</span>
-          <strong>${escapeHtml(topVarietyLabel || "No variety performance yet")}</strong>
+        <div class="source-directory-compare-cell source-directory-compare-variety" role="cell">
+          <strong>${escapeHtml(topVarietyLabel || "No variety data")}</strong>
         </div>
-        ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust) || `<div class="source-directory-evidence-badges" aria-hidden="true"></div>`}
-        <a class="button button-secondary source-directory-view-report-button source-directory-compare-report-button" href="#sources/${escapeHtml(source.id)}">View Report</a>
-      </article>
+        <div class="source-directory-compare-cell source-directory-compare-badges" role="cell">
+          ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust) || `<span class="source-directory-evidence-badge is-limited">Community Data</span>`}
+        </div>
+        <div class="source-directory-compare-cell source-directory-compare-action" role="cell">
+          <a class="button button-secondary source-directory-view-report-button source-directory-compare-report-button" href="#sources/${escapeHtml(source.id)}">View Report</a>
+        </div>
+      </div>
     `;
   }).join("");
+  return `
+    <div class="source-directory-compare-table-shell">
+      <div class="source-directory-compare-table" role="table" aria-label="Source evidence comparison">
+        <div class="source-directory-compare-head" role="row">
+          <span role="columnheader">Source</span>
+          <span role="columnheader">Avg Germ.</span>
+          <span role="columnheader">Confidence</span>
+          <span role="columnheader">Sessions</span>
+          <span role="columnheader">Seeds</span>
+          <span role="columnheader">Top Variety</span>
+          <span role="columnheader">Evidence</span>
+          <span role="columnheader">Report</span>
+        </div>
+        ${rowsMarkup}
+      </div>
+    </div>
+  `;
 }
 function renderSourceDirectoryResultsMarkup(records = []) {
   if (!records.length) {
