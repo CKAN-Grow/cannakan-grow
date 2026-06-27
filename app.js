@@ -48846,20 +48846,17 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
   const sessionsLogged = teaserRecords.reduce((total, source) => (
     total + parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged)
   ), 0);
-  const varietiesRecorded = directoryMetrics.totalVarietiesLogged || teaserRecords.reduce((total, source) => (
-    total + parseSourceDirectoryMetricNumber(source?.directoryStats?.varietiesLogged)
-  ), 0);
-  const topSources = teaserRecords.slice(0, 3);
-  const newestSource = [...teaserRecords]
-    .filter((source) => Date.parse(source?.directoryStats?.lastLoggedAt || ""))
-    .sort((left, right) => Date.parse(right?.directoryStats?.lastLoggedAt || "") - Date.parse(left?.directoryStats?.lastLoggedAt || ""))[0] || null;
-  const kpis = [
-    { label: "Sources Tracked", value: directoryMetrics.totalSourcesLogged },
-    { label: "Varieties Recorded", value: varietiesRecorded },
-    { label: "Sessions Logged", value: sessionsLogged },
+  const featuredSourceNames = ["Seedsman", "Good Genetix", "Poppin Fire"];
+  const sourceByName = new Map(teaserRecords.map((source) => [normalizeSourceNameForMatching(source?.name || ""), source]));
+  const topSources = featuredSourceNames
+    .map((sourceName) => sourceByName.get(normalizeSourceNameForMatching(sourceName)))
+    .filter(Boolean);
+  const fallbackTopSources = teaserRecords.filter((source) => !topSources.includes(source)).slice(0, Math.max(0, 3 - topSources.length));
+  const previewSources = [...topSources, ...fallbackTopSources].slice(0, 3);
+  const summaryStats = [
+    { label: "Trusted Sources", value: directoryMetrics.totalSourcesLogged },
+    { label: "Community Sessions", value: sessionsLogged },
   ];
-  const medalLabels = ["#1 Source", "#2 Source", "#3 Source"];
-  const medalSymbols = ["#1", "#2", "#3"];
 
   return `
     <section class="card home-tested-sources-preview-section">
@@ -48875,8 +48872,8 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         <a class="button button-secondary home-tested-sources-header-cta" href="#sources">View Source Explorer</a>
       </div>
       <div class="home-tested-sources-overview">
-        <div class="home-tested-sources-kpis" aria-label="Source Explorer overview">
-          ${kpis.map((kpi) => `
+        <div class="home-tested-sources-kpis" aria-label="Source Explorer preview summary">
+          ${summaryStats.map((kpi) => `
             <article class="home-tested-source-kpi">
               <strong>${escapeHtml(Number(kpi.value || 0).toLocaleString())}</strong>
               <span>${escapeHtml(kpi.label)}</span>
@@ -48885,20 +48882,17 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         </div>
         <div class="home-tested-sources-rankings">
           <div class="home-tested-sources-rankings-head">
-            <p class="eyebrow">Top Sources</p>
-            ${newestSource ? `<span>Newest Source Added: ${escapeHtml(newestSource.name || "Source")}</span>` : ""}
+            <p class="eyebrow">Trending Sources</p>
+            <span>Community evidence preview</span>
           </div>
-          <div class="home-tested-sources-list" role="list" aria-label="Top Source Explorer sources">
-            ${topSources.map((source, index) => {
-              const varietiesLogged = parseSourceDirectoryMetricNumber(source?.directoryStats?.varietiesLogged);
-              const sourceSessionsLogged = parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged);
-              const detailLabel = varietiesLogged > 0
-                ? `${varietiesLogged.toLocaleString()} variet${varietiesLogged === 1 ? "y" : "ies"} recorded`
-                : `${sourceSessionsLogged.toLocaleString()} session${sourceSessionsLogged === 1 ? "" : "s"} logged`;
+          <div class="home-tested-sources-list" role="list" aria-label="Trending Source Explorer sources">
+            ${previewSources.map((source) => {
+              const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
+              const confidenceMeta = getSourceDirectoryConfidenceMeta(getSourceDirectoryTrustScore(source));
+              const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
 
               return `
                 <article class="home-tested-source-row" role="listitem">
-                  <span class="home-tested-source-rank" aria-label="${escapeHtml(medalLabels[index] || `#${index + 1} Source`)}">${escapeHtml(medalSymbols[index] || String(index + 1))}</span>
                   ${renderSourceLogoMarkup(source, {
                     className: "home-tested-source-logo",
                     imageClassName: "source-profile-logo-image",
@@ -48907,7 +48901,11 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
                   })}
                   <span class="home-tested-source-row-copy">
                     <strong>${escapeHtml(source.name || "Source")}</strong>
-                    <small>${escapeHtml(detailLabel)}</small>
+                    <small><b>${escapeHtml(reportedRateLabel)}</b> Average Germination</small>
+                  </span>
+                  <span class="home-tested-source-confidence" aria-label="${escapeHtml(confidenceMeta.label)}">
+                    <span>${escapeHtml(confidenceMeta.label)}</span>
+                    <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
                   </span>
                 </article>
               `;
@@ -48918,7 +48916,6 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
     </section>
   `;
 }
-
 function renderHomeCstpTestingIconMarkup() {
   return renderAppIconMarkup("labFlask", {
     variant: "plate",
