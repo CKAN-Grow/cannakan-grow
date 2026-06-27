@@ -735,6 +735,8 @@ const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "high-confidence", label: "High Confidence" }),
   Object.freeze({ key: "report-available", label: "Report Available" }),
   Object.freeze({ key: "partner-sources", label: "Partner Sources" }),
+  Object.freeze({ key: "auto-results", label: "Auto Results" }),
+  Object.freeze({ key: "photo-results", label: "Photo Results" }),
 ]);
 const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Community Grow" }),
@@ -48089,6 +48091,7 @@ function buildSourceDirectorySessionAggregate() {
         totalSeeds: 0,
         totalGerminated: 0,
         varieties: new Map(),
+        seedTypeStats: {},
         lastLoggedAt: "",
         lastLoggedTime: 0,
       };
@@ -48099,6 +48102,13 @@ function buildSourceDirectorySessionAggregate() {
       sourceGroup.contributingPartitions.forEach((partitionResult) => {
         if (partitionResult.seedVariety) {
           existingEntry.varieties.set(partitionResult.varietyKey, partitionResult.seedVariety);
+        }
+        const seedType = normalizeSeedTypeId(partitionResult.seedType || partitionResult.rawPartition?.seedType || partitionResult.rawPartition?.seed_type || "");
+        if (seedType) {
+          const currentSeedTypeStats = existingEntry.seedTypeStats[seedType] || { totalSeeds: 0, totalGerminated: 0 };
+          currentSeedTypeStats.totalSeeds += Math.max(0, Number(partitionResult.totalCount ?? partitionResult.totalSeeds) || 0);
+          currentSeedTypeStats.totalGerminated += Math.max(0, Number(partitionResult.germinatedCount ?? partitionResult.totalGerminated ?? partitionResult.totalPlanted) || 0);
+          existingEntry.seedTypeStats[seedType] = currentSeedTypeStats;
         }
       });
       existingEntry.sessionsLogged += 1;
@@ -48604,6 +48614,7 @@ function getSourceDirectoryMockRecords() {
           rank: 0,
           seedsTracked: totalSeeds,
         },
+      seedTypeStats: entry.seedTypeStats || baseSource?.seedTypeStats || {},
       cstp: {
         ...(baseSource?.cstp || {}),
       },
@@ -49608,6 +49619,32 @@ function hasSourceDirectoryGerminationData(source = {}) {
   return getSourceDirectoryReportedRateNumber(source) > 0;
 }
 
+function hasSourceDirectorySeedTypeResults(source = {}, seedType = "") {
+  const normalizedSeedType = normalizeSeedTypeId(seedType);
+  if (!normalizedSeedType) {
+    return false;
+  }
+  const seedTypeStats = source?.seedTypeStats?.[normalizedSeedType] || null;
+  if (seedTypeStats && Math.max(0, Number(seedTypeStats.totalSeeds) || 0) > 0) {
+    return true;
+  }
+  const topVarietyText = [
+    ...(Array.isArray(source?.topVarieties) ? source.topVarieties : []),
+    ...(Array.isArray(source?.community?.topVarieties) ? source.community.topVarieties : []),
+    ...(Array.isArray(source?.directoryStats?.topVarieties) ? source.directoryStats.topVarieties : []),
+  ]
+    .map((variety) => String(variety?.label || variety?.name || variety || "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (normalizedSeedType === "auto") {
+    return /\bauto\b|autoflower/.test(topVarietyText);
+  }
+  if (normalizedSeedType === "photoperiod") {
+    return Boolean(getSourceDirectoryReportedRateNumber(source) > 0 && !/\bauto\b|autoflower/.test(topVarietyText));
+  }
+  return false;
+}
 function getSourceDirectoryMostRecentTimestamp(source = {}) {
   return Date.parse(source?.directoryStats?.lastLoggedAt || "") || 0;
 }
@@ -49793,6 +49830,12 @@ function getFilteredAndSortedSourceDirectoryRecords({
         return false;
       }
       if (normalizedFilterKey === "partner-sources" && source?.partnerSource !== true && source?.isPartner !== true && source?.partner !== true) {
+        return false;
+      }
+      if (normalizedFilterKey === "auto-results" && !hasSourceDirectorySeedTypeResults(source, "auto")) {
+        return false;
+      }
+      if (normalizedFilterKey === "photo-results" && !hasSourceDirectorySeedTypeResults(source, "photoperiod")) {
         return false;
       }
       if (!normalizedQuery) {
