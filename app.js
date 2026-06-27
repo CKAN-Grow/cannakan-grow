@@ -49142,6 +49142,23 @@ function getSourceDirectoryMetrics(records = getSourceDirectoryMockRecords()) {
   };
 }
 
+function getSourceDirectoryCommunityConfidenceLabel(metrics = {}) {
+  const sessions = Number(metrics?.communitySessions || 0);
+  const seeds = Number(metrics?.seedsTracked || 0);
+  if (sessions >= 500 && seeds >= 10000) {
+    return "Very High";
+  }
+  if (sessions >= 200 && seeds >= 4000) {
+    return "High";
+  }
+  if (sessions >= 75 && seeds >= 1500) {
+    return "Moderate";
+  }
+  if (sessions > 0 || seeds > 0) {
+    return "Growing";
+  }
+  return "Limited";
+}
 function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockRecords()) {
   const metrics = getSourceDirectoryMetrics(records);
   return `
@@ -49149,7 +49166,7 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
       ${renderAdminOverviewCardMarkup({ label: "Trust Score", value: "Developing", subtext: "Growing community data", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
       ${renderAdminOverviewCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", className: "source-directory-metric-card" })}
       ${renderAdminOverviewCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "Average Germination", value: formatTestedSourceMockPercent(Math.round(metrics.averageGermination * 10) / 10), subtext: "weighted by tracked seeds", className: "source-directory-metric-card" })}
+      ${renderAdminOverviewCardMarkup({ label: "Community Confidence", value: getSourceDirectoryCommunityConfidenceLabel(metrics), subtext: `${metrics.communitySessions.toLocaleString()} sessions tracked`, className: "source-directory-metric-card" })}
     </div>
   `;
 }
