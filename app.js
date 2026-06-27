@@ -362,7 +362,7 @@ const APP_HINTS = Object.freeze([
   { text: "Add session notes while a run is active so your conditions and observations stay attached to the right batch." },
   { text: "Completed sessions keep their timing and germination data, which makes it easier to review what worked later." },
   { text: "Source Reports only show published CSTP certifications, so admin lab work stays private until it is approved." },
-  { text: "The Source Directory is a quick way to review tested varieties and published CSTP qualification levels." },
+  { text: "The Source Explorer is a quick way to review tested varieties and published CSTP qualification levels." },
   { text: "Use Community Grow snapshots for public sharing and keep private test notes inside the session detail page." },
   { text: "Cannakan® Grow is tuned for a dark-first workspace so your session data, glass panels, and progress visuals stay clear." },
   { text: "Admin CSTP sessions are stored separately from member grow sessions, so lab testing never changes a member’s grow history." },
@@ -4117,7 +4117,7 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#seed-vault" data-mobile-nav-link="true">Vault</a>
       <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community</a>
-      <a class="mobile-nav-link" href="#source-directory" data-mobile-nav-link="true">Sources</a>
+      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Sources</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Network${growNetworkBadge}</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
@@ -5311,7 +5311,7 @@ function serializeSessionPartitions(partitions = []) {
   }));
 }
 
-// Shared seed-age resolver for future Community Grow, Source Directory,
+// Shared seed-age resolver for future Community Grow, Source Explorer,
 // analytics, CSTP reporting, and snapshot/report summaries.
 function getSessionSeedAgeMetadata(session = null) {
   const trackingEnabled = Boolean(session?.seedAgeTrackingEnabled ?? session?.seed_age_tracking_enabled);
@@ -6416,7 +6416,7 @@ function markSourceDirectoryUnavailable(error = null) {
   logRuntimeIssueOnce(
     "warn",
     "source-directory-unavailable",
-    "Source Directory autocomplete unavailable. Custom source text remains enabled.",
+    "Source Explorer autocomplete unavailable. Custom source text remains enabled.",
     error || undefined,
   );
 }
@@ -6456,7 +6456,7 @@ async function loadSourceDirectoryEntries() {
       markSourceDirectoryUnavailable(error);
       return [];
     }
-    logRuntimeIssueOnce("warn", "source-directory-load-failed", "Could not load Source Directory autocomplete entries.", error);
+    logRuntimeIssueOnce("warn", "source-directory-load-failed", "Could not load Source Explorer autocomplete entries.", error);
     return appState.sourceDirectoryEntries || [];
   }
 
@@ -6519,7 +6519,7 @@ function getSourceDirectorySuggestionReason(suggestion = {}) {
   if (suggestion.matchedAlias && suggestion.matchedAlias !== suggestion.name) {
     parts.push(`Alias: ${suggestion.matchedAlias}`);
   }
-  return parts.join(" · ") || "Source Directory";
+  return parts.join(" · ") || "Source Explorer";
 }
 
 function getSourceDirectorySuggestions(query = "") {
@@ -6584,7 +6584,7 @@ async function recordSourceDirectoryUsage(sourceName = "") {
       markSourceDirectoryUnavailable(error);
       return null;
     }
-    logRuntimeIssueOnce("warn", "source-directory-usage-record-failed", "Could not record Source Directory usage.", error);
+    logRuntimeIssueOnce("warn", "source-directory-usage-record-failed", "Could not record Source Explorer usage.", error);
     return null;
   }
 
@@ -6844,7 +6844,7 @@ async function loadSourceDirectoryReviewRows(reason = "unspecified") {
       appState.sourceDirectoryReviewError = "Community source review is pending the latest database migration.";
       return [];
     }
-    console.error("Failed to load Source Directory review rows", { reason, error });
+    console.error("Failed to load Source Explorer review rows", { reason, error });
     appState.sourceDirectoryReviewError = error.message || "Could not load community source review rows.";
     return [];
   }
@@ -7026,7 +7026,7 @@ function renderSourceDirectoryDiagnosticsMarkup() {
       <div class="profile-notification-heading">
         <div>
           <strong>Source Autocomplete Diagnostics</strong>
-          <span>Admin-only live checks for Source Directory autocomplete.</span>
+          <span>Admin-only live checks for Source Explorer autocomplete.</span>
         </div>
       </div>
       <div class="profile-push-diagnostics-grid">
@@ -10174,7 +10174,7 @@ function buildSampleSessions() {
       germinationStartedAt: "2026-05-13T07:15:00",
       firstPlantedAt: "2026-05-13T22:40:00",
       completedAt: "2026-05-14T09:18:00",
-      sessionNotes: "Polished demo completion: fresh Seedsman Wedding Cake pack, clean partition labels, and a 100% KAN result for Source Directory and leaderboard previews.",
+      sessionNotes: "Polished demo completion: fresh Seedsman Wedding Cake pack, clean partition labels, and a 100% KAN result for Source Explorer and leaderboard previews.",
       partitionSeeds: [
         ["Wedding Cake", "Seedsman", "photoperiod", "feminized", 10, 9, 1],
         ["Wedding Cake", "Seedsman", "photoperiod", "feminized", 10, 9, 1],
@@ -13968,17 +13968,17 @@ function getCurrentSiteAnalyticsPageContext() {
       })
       : buildSiteAnalyticsPageContext({
         pageGroup: "sources",
-        pageKey: "sources-directory",
-        pageLabel: "Source Directory",
+        pageKey: "source-explorer",
+        pageLabel: "Source Explorer",
         pagePath: "#sources",
       });
   }
   if (route === "source-directory") {
     return buildSiteAnalyticsPageContext({
       pageGroup: "sources",
-      pageKey: id ? "source-directory-detail" : "source-directory",
-      pageLabel: id ? "Source Directory Detail" : "Source Directory",
-      pagePath: rawRoute ? `#${rawRoute}` : "#source-directory",
+      pageKey: id ? "source-profile" : "source-explorer",
+      pageLabel: id ? "Source Report" : "Source Explorer",
+      pagePath: id ? `#sources/${id}` : "#sources",
     });
   }
   if (route === "disclaimer") {
@@ -28981,7 +28981,7 @@ function renderGalleryTopMembersSummary(entries = []) {
           <h4>Source Activity</h4>
           <p class="gallery-top-members-summary-note">Top approved source signals.</p>
         </div>
-        ${renderGalleryLeaderboardViewAllButton("#source-directory", "View all sources in Source Directory")}
+        ${renderGalleryLeaderboardViewAllButton("#sources", "View all sources in Source Explorer")}
       </div>
       <ol class="gallery-top-members-summary-list">
         ${summaryEntries.length ? summaryEntries.map((entry, index) => `
@@ -30644,9 +30644,12 @@ function getPublicCstpPresence(source = {}) {
 function getPublicCstpFutureRoutePlaceholder(sourceKey = "", routeType = "report") {
   const normalizedSourceKey = String(sourceKey || "").trim();
   const normalizedRouteType = String(routeType || "report").trim().toLowerCase();
-  return normalizedSourceKey
-    ? `#source-directory/${encodeURIComponent(normalizedSourceKey)}?cstp=${encodeURIComponent(normalizedRouteType)}`
-    : `#source-directory?cstp=${encodeURIComponent(normalizedRouteType)}`;
+  if (!normalizedSourceKey) {
+    return "#sources";
+  }
+  return normalizedRouteType === "report"
+    ? `#sources/${encodeURIComponent(normalizedSourceKey)}/cstp-report`
+    : `#sources/${encodeURIComponent(normalizedSourceKey)}`;
 }
 
 function renderPublicCstpStatusBadge(source = {}, options = {}) {
@@ -31938,7 +31941,7 @@ function getCommunitySeedAgeOverviewMockCards() {
   ];
 }
 
-// Reusable public/community seed-age rollup for future Source Directory,
+// Reusable public/community seed-age rollup for future Source Explorer,
 // Community Grow deep-dive analytics, and CSTP/public reporting.
 function buildCommunitySeedAgeOverviewState() {
   if (isFirstSessionAccessGateActive(getSessions())) {
@@ -38276,24 +38279,42 @@ function render() {
   }
 
   if (route === "source-directory") {
-    if (id) {
-      renderSourceDirectoryPublicDetailPage(id);
-      finalizeRender(buildSiteAnalyticsPageContext({
-        pageGroup: "sources",
-        pageKey: "source-directory-detail",
-        pageLabel: "Source Directory Detail",
-        pagePath: rawRoute ? `#${rawRoute}` : "#source-directory",
-      }));
-    } else {
-      renderSourceDirectoryPublicPage();
-      finalizeRender(buildSiteAnalyticsPageContext({
-        pageGroup: "sources",
-        pageKey: "source-directory",
-        pageLabel: "Source Directory",
-        pagePath: pathRoute === "source-directory" && isUsingPathRoute("source-directory") ? "/source-directory" : "#source-directory",
-      }));
+    const legacySourceId = id ? decodeURIComponent(String(id || "").split("?")[0]) : "";
+    const legacyWantsCstpReport = /[?&]cstp=report\b/i.test(String(rawRoute || ""));
+    const legacyRedirectHash = legacySourceId
+      ? `#sources/${encodeURIComponent(legacySourceId)}${legacyWantsCstpReport ? "/cstp-report" : ""}`
+      : "#sources";
+    if (normalizeNavigationHash(window.location.hash || "") !== legacyRedirectHash) {
+      appState.currentRouteHash = replaceLocationHashWithoutNavigation(legacyRedirectHash);
+      updateNavState();
     }
-    void refreshGallerySnapshots("route:source-directory");
+    if (legacySourceId && legacyWantsCstpReport) {
+      renderSourceCstpReportPage(legacySourceId);
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "source-cstp-report",
+        pageLabel: "CSTP Report",
+        pagePath: legacyRedirectHash,
+      }));
+      return;
+    }
+    if (legacySourceId) {
+      renderSourceProfilePage(legacySourceId);
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "source-profile",
+        pageLabel: "Source Report",
+        pagePath: legacyRedirectHash,
+      }));
+      return;
+    }
+    renderSourcesLandingPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sources",
+      pageKey: "source-explorer",
+      pageLabel: "Source Explorer",
+      pagePath: "#sources",
+    }));
     return;
   }
 
@@ -38519,8 +38540,8 @@ function render() {
       renderSourcesLandingPage();
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "sources",
-        pageKey: "sources-directory",
-        pageLabel: "Source Directory",
+        pageKey: "source-explorer",
+        pageLabel: "Source Explorer",
         pagePath: "#sources",
       }));
       return;
@@ -47121,7 +47142,7 @@ function renderHomeAnalyticsUnlockCardMarkup() {
               <li><span aria-hidden="true">✓</span>Community Insights</li>
               <li><span aria-hidden="true">✓</span>Seed Vault</li>
               <li><span aria-hidden="true">✓</span>Analytics Dashboard</li>
-              <li><span aria-hidden="true">✓</span>Source Directory</li>
+              <li><span aria-hidden="true">✓</span>Source Explorer</li>
             </ul>
           </div>
         </div>
@@ -47312,8 +47333,8 @@ function renderHomeLockedEcosystemPreviewMarkup() {
       })}
       ${renderHomeLockedSectionPreviewMarkup({
         key: "source-directory",
-        eyebrow: "Source Directory",
-        title: "Source Directory",
+        eyebrow: "Source Explorer",
+        title: "Source Explorer",
         iconType: "sources",
         description: "Public-safe source transparency, performance rollups, and future CSTP hooks.",
         modifierClass: "home-locked-ecosystem-section--source-directory",
@@ -48766,15 +48787,15 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         <div class="section-title-with-icon app-section-header-main home-section-header-main">
           ${renderPremiumSectionHeaderIcon("sourceDirectoryBars")}
           <div>
-            <p class="eyebrow">Source Directory</p>
-            <h2>Source Directory</h2>
-            <p class="muted">Discover sources and breeders recorded by the Cannakan Grow community.</p>
+            <p class="eyebrow">Source Explorer</p>
+            <h2>Source Explorer</h2>
+            <p class="muted">Discover trusted seed sources through real community performance.</p>
           </div>
         </div>
-        <a class="button button-secondary home-tested-sources-header-cta" href="#source-directory">View Source Directory</a>
+        <a class="button button-secondary home-tested-sources-header-cta" href="#sources">View Source Explorer</a>
       </div>
       <div class="home-tested-sources-overview">
-        <div class="home-tested-sources-kpis" aria-label="Source Directory overview">
+        <div class="home-tested-sources-kpis" aria-label="Source Explorer overview">
           ${kpis.map((kpi) => `
             <article class="home-tested-source-kpi">
               <strong>${escapeHtml(Number(kpi.value || 0).toLocaleString())}</strong>
@@ -48787,7 +48808,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
             <p class="eyebrow">Top Sources</p>
             ${newestSource ? `<span>Newest Source Added: ${escapeHtml(newestSource.name || "Source")}</span>` : ""}
           </div>
-          <div class="home-tested-sources-list" role="list" aria-label="Top Source Directory sources">
+          <div class="home-tested-sources-list" role="list" aria-label="Top Source Explorer sources">
             ${topSources.map((source, index) => {
               const varietiesLogged = parseSourceDirectoryMetricNumber(source?.directoryStats?.varietiesLogged);
               const sourceSessionsLogged = parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged);
@@ -49124,7 +49145,7 @@ function renderCstpHubPage() {
           <p class="cstp-hub-hero-body">Standardized testing and certification performed under controlled KAN® System conditions.</p>
           <div class="cstp-hub-hero-actions">
             <button type="button" class="button button-secondary cstp-hub-disabled-button cstp-hub-hero-cta" disabled aria-disabled="true">Request CSTP Testing <span>Coming Soon</span></button>
-            <a class="button button-secondary cstp-hub-hero-cta" href="/source-directory">Browse Seed Sources</a>
+            <a class="button button-secondary cstp-hub-hero-cta" href="#sources">Browse Seed Sources</a>
           </div>
         </div>
         <div class="cstp-hub-hero-proof" aria-label="CSTP certification badges">
@@ -49211,11 +49232,11 @@ function renderCstpHubPage() {
 
         <article class="cstp-hub-panel cstp-hub-source-card">
           <div class="cstp-hub-request-copy">
-            <p class="eyebrow">Source Directory</p>
+            <p class="eyebrow">Source Explorer</p>
             <h2>Browse Seed Sources</h2>
-            <p>Review public source activity and approved community observations in the Source Directory.</p>
+            <p>Review source activity and community evidence in Source Explorer.</p>
           </div>
-          <a class="button button-secondary" href="/source-directory">Browse Seed Sources</a>
+          <a class="button button-secondary" href="#sources">Browse Seed Sources</a>
         </article>
       </section>
 
@@ -50164,7 +50185,7 @@ function bindSourcesLandingPage() {
 
 function getSourceDirectoryPublicRoute(sourceKey = "") {
   const normalizedKey = String(sourceKey || "").trim();
-  return normalizedKey ? `#source-directory/${encodeURIComponent(normalizedKey)}` : "#source-directory";
+  return normalizedKey ? `#sources/${encodeURIComponent(normalizedKey)}` : "#sources";
 }
 
 function getSourceDirectoryPublicTrustHooks(sourceRecord = {}) {
@@ -50536,7 +50557,7 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
         <article class="source-directory-public-empty">
           <h3>Source report unavailable</h3>
           <p>This source does not have approved public Community Grow data yet.</p>
-          <a class="button button-secondary" href="#source-directory">Back to Source Explorer</a>
+          <a class="button button-secondary" href="#sources">Back to Source Explorer</a>
         </article>
       </section>
     `;
@@ -50564,7 +50585,7 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
           <p>Public-safe source report from approved Community Grow submissions. No private sessions, Seed Vault inventory, private profiles, emails, admin fields, owner analytics, or CSTP-private data are used.</p>
         </div>
         <div class="source-directory-public-hero-actions">
-          <a class="button button-secondary" href="#source-directory">Back to Source Explorer</a>
+          <a class="button button-secondary" href="#sources">Back to Source Explorer</a>
         </div>
       </header>
 
@@ -65035,13 +65056,13 @@ function renderAdminDevAccessSectionMarkup() {
     defaultOpen: false,
     bodyMarkup: `
       <div class="admin-dev-access-grid">
-            <a class="button button-secondary" href="#source-directory">View Source Directory</a>
+            <a class="button button-secondary" href="#sources">View Source Explorer</a>
         <a class="button button-secondary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">View Source Report</a>
         <a class="button button-secondary" href="#contact">View Contact Page</a>
         <a class="button button-secondary" href="#home">View CSTP Overview</a>
         <a class="button button-secondary" href="#admin">View CSTP Testing Lab</a>
       </div>
-      <p class="muted admin-dev-access-note">The CSTP Overview lives on Home beneath the Source Directory preview during development.</p>
+      <p class="muted admin-dev-access-note">The CSTP Overview lives on Home beneath the Source Explorer preview during development.</p>
     `,
   });
 }
@@ -75370,7 +75391,7 @@ function renderAdminSeedAgeAnalyticsSection(target = app) {
       <div class="admin-seed-age-analytics-toolbar">
         <div class="admin-seed-age-analytics-toolbar-copy">
           <strong>Seed age filter</strong>
-          <p class="muted">Reusable bucket logic for Admin, Community Grow, Source Directory, and CSTP reporting.</p>
+          <p class="muted">Reusable bucket logic for Admin, Community Grow, Source Explorer, and CSTP reporting.</p>
         </div>
         <label class="admin-seed-age-analytics-filter">
           <span>Age bucket</span>

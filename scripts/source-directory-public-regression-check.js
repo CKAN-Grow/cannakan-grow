@@ -7,18 +7,19 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
 
 function requireNeedle(source, needle, label = needle) {
   if (!source.includes(needle)) {
-    throw new Error(`Missing public Source Directory behavior: ${label}`);
+    throw new Error(`Missing public Source Explorer behavior: ${label}`);
   }
 }
 
 for (const needle of [
   "\"source-directory\": \"source-directory\"",
   "route === \"source-directory\"",
-  "renderSourceDirectoryPublicPage()",
-  "renderSourceDirectoryPublicDetailPage(id)",
-  "pageKey: \"source-directory\"",
-  "pageKey: \"source-directory-detail\"",
+  "replaceLocationHashWithoutNavigation(legacyRedirectHash)",
+  "renderSourcesLandingPage()",
+  "pageKey: \"source-explorer\"",
+  "pageLabel: \"Source Explorer\"",
   "function getSourceDirectoryPublicRoute(sourceKey = \"\")",
+  "return normalizedKey ? `#sources/${encodeURIComponent(normalizedKey)}` : \"#sources\";",
   "function getSourceDirectoryPublicTrustHooks(sourceRecord = {})",
   "function buildSourceDirectoryPublicSourceDetail(sourceKey = \"\", communityState = buildCommunityInsightsState())",
   "function buildSourceDirectoryPublicRecords()",
@@ -42,7 +43,7 @@ for (const needle of [
   "Public Report Links",
   "Certification placeholder",
   "placeholder only",
-  "href=\"#source-directory\"",
+  "href=\"#sources\"",
   "href=\"#community-insights\"",
 ]) {
   requireNeedle(appSource, needle);
@@ -64,7 +65,7 @@ for (const needle of [
 
 const publicBlock = appSource.match(/function getSourceDirectoryPublicRoute[\s\S]*?function renderSourcesLandingPage/)?.[0] || "";
 if (!publicBlock) {
-  throw new Error("Could not locate public Source Directory helper block.");
+  throw new Error("Could not locate public Source Explorer helper block.");
 }
 
 for (const forbiddenNeedle of [
@@ -79,7 +80,7 @@ for (const forbiddenNeedle of [
   "getGallerySnapshotPublicSessionDetails",
 ]) {
   if (publicBlock.includes(forbiddenNeedle)) {
-    throw new Error(`Public Source Directory must stay aggregate/public-safe only: ${forbiddenNeedle}`);
+    throw new Error(`Public Source Explorer must stay aggregate/public-safe only: ${forbiddenNeedle}`);
   }
 }
 
@@ -92,7 +93,7 @@ for (const forbiddenPattern of [
   /["']email["']\s*:/,
 ]) {
   if (forbiddenPattern.test(publicBlock)) {
-    throw new Error(`Public Source Directory must not access email fields: ${forbiddenPattern}`);
+    throw new Error(`Public Source Explorer must not access email fields: ${forbiddenPattern}`);
   }
 }
 
