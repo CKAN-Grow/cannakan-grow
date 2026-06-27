@@ -821,18 +821,40 @@ const testedSourcesMock = Object.freeze([
     websiteUrl: "https://www.seedsman.com",
     establishedLabel: "Established 2002",
     community: Object.freeze({
-      avgRate: 98,
-      sessions: 164,
+      avgRate: 94,
+      sessions: 4213,
       rank: 1,
-      seedsTracked: 3896,
+      seedsTracked: 8642,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Banana Jealousy" }),
+        Object.freeze({ label: "Wedding Cake" }),
+        Object.freeze({ label: "Gorilla Runtz" }),
+        Object.freeze({ label: "Blue Dream" }),
+      ]),
     }),
+    directoryStats: Object.freeze({
+      sessionsLogged: 4213,
+      varietiesLogged: 57,
+      lastLoggedAt: "2026-05-18T14:20:00.000Z",
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Banana Jealousy" }),
+        Object.freeze({ label: "Wedding Cake" }),
+        Object.freeze({ label: "Gorilla Runtz" }),
+      ]),
+    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Banana Jealousy" }),
+      Object.freeze({ label: "Wedding Cake" }),
+      Object.freeze({ label: "Gorilla Runtz" }),
+      Object.freeze({ label: "Blue Dream" }),
+    ]),
     cstp: Object.freeze({
       status: "tested",
       testedDate: "May 2026",
       validUntil: "",
       sampleSize: 30,
       avgTime: "38 hrs",
-      resultPercent: 98,
+      resultPercent: 94,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
@@ -855,11 +877,26 @@ const testedSourcesMock = Object.freeze([
     websiteUrl: "",
     establishedLabel: "Partner source",
     community: Object.freeze({
-      avgRate: 96,
-      sessions: 100,
+      avgRate: 91,
+      sessions: 2156,
       rank: 2,
-      seedsTracked: 2000,
+      seedsTracked: 5038,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Double Blueberry Muffin" }),
+        Object.freeze({ label: "Grape Frost Bomb" }),
+        Object.freeze({ label: "Ice Cream Cake" }),
+      ]),
     }),
+    directoryStats: Object.freeze({
+      sessionsLogged: 2156,
+      varietiesLogged: 32,
+      lastLoggedAt: "2026-05-12T16:30:00.000Z",
+    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Double Blueberry Muffin" }),
+      Object.freeze({ label: "Grape Frost Bomb" }),
+      Object.freeze({ label: "Ice Cream Cake" }),
+    ]),
     cstp: Object.freeze({
       status: "not-tested",
       testedDate: "",
@@ -889,11 +926,124 @@ const testedSourcesMock = Object.freeze([
     websiteUrl: "",
     establishedLabel: "Partner source",
     community: Object.freeze({
-      avgRate: 95,
-      sessions: 80,
+      avgRate: 88,
+      sessions: 980,
       rank: 3,
-      seedsTracked: 1600,
+      seedsTracked: 2310,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Permanent G Auto" }),
+        Object.freeze({ label: "G Breath Auto" }),
+        Object.freeze({ label: "G Donutz Auto" }),
+      ]),
     }),
+    directoryStats: Object.freeze({
+      sessionsLogged: 980,
+      varietiesLogged: 24,
+      lastLoggedAt: "2026-05-08T12:40:00.000Z",
+    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Permanent G Auto" }),
+      Object.freeze({ label: "G Breath Auto" }),
+      Object.freeze({ label: "G Donutz Auto" }),
+    ]),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: 0,
+      avgTime: "",
+      resultPercent: 0,
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
+      lastTest: "Not tested",
+    }),
+  }),
+  Object.freeze({
+    id: "atlas-breeding-labs",
+    name: "Atlas Breeding Labs",
+    type: "Breeding Lab",
+    countryCode: "US",
+    country_code: "US",
+    logo: "",
+    logoUrl: "",
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
+    community: Object.freeze({
+      avgRate: 92,
+      sessions: 203,
+      rank: 4,
+      seedsTracked: 642,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Atlas Apex" }),
+        Object.freeze({ label: "Atlas Runtz" }),
+        Object.freeze({ label: "Atlas Glue" }),
+      ]),
+    }),
+    directoryStats: Object.freeze({
+      sessionsLogged: 203,
+      varietiesLogged: 16,
+      lastLoggedAt: "2026-04-29T18:47:00.000Z",
+    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Atlas Apex" }),
+      Object.freeze({ label: "Atlas Runtz" }),
+      Object.freeze({ label: "Atlas Glue" }),
+    ]),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: 0,
+      avgTime: "",
+      resultPercent: 0,
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
+      lastTest: "Not tested",
+    }),
+  }),
+  Object.freeze({
+    id: "alpine-seed-works",
+    name: "Alpine Seed Works",
+    type: "Seed Bank",
+    countryCode: "CH",
+    country_code: "CH",
+    logo: "",
+    logoUrl: "",
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
+    community: Object.freeze({
+      avgRate: 86,
+      sessions: 56,
+      rank: 5,
+      seedsTracked: 1184,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Alpine Trial Lot" }),
+        Object.freeze({ label: "Mountain Lime" }),
+        Object.freeze({ label: "Glacier Kush" }),
+      ]),
+    }),
+    directoryStats: Object.freeze({
+      sessionsLogged: 56,
+      varietiesLogged: 11,
+      lastLoggedAt: "2026-04-21T09:15:00.000Z",
+    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Alpine Trial Lot" }),
+      Object.freeze({ label: "Mountain Lime" }),
+      Object.freeze({ label: "Glacier Kush" }),
+    ]),
     cstp: Object.freeze({
       status: "not-tested",
       testedDate: "",
@@ -921,11 +1071,24 @@ const testedSourcesMock = Object.freeze([
     websiteUrl: "",
     establishedLabel: "Demo source",
     community: Object.freeze({
-      avgRate: 92,
-      sessions: 20,
-      rank: 4,
-      seedsTracked: 400,
+      avgRate: 84,
+      sessions: 12,
+      rank: 6,
+      seedsTracked: 188,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Summit Snowcap" }),
+        Object.freeze({ label: "Basecamp OG" }),
+      ]),
     }),
+    directoryStats: Object.freeze({
+      sessionsLogged: 12,
+      varietiesLogged: 6,
+      lastLoggedAt: "2026-04-14T10:10:00.000Z",
+    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Summit Snowcap" }),
+      Object.freeze({ label: "Basecamp OG" }),
+    ]),
     cstp: Object.freeze({
       status: "not-tested",
       testedDate: "",
@@ -953,43 +1116,24 @@ const testedSourcesMock = Object.freeze([
     websiteUrl: "",
     establishedLabel: "Demo source",
     community: Object.freeze({
-      avgRate: 91,
-      sessions: 20,
-      rank: 5,
-      seedsTracked: 400,
+      avgRate: 83,
+      sessions: 5,
+      rank: 7,
+      seedsTracked: 72,
+      topVarieties: Object.freeze([
+        Object.freeze({ label: "Evergreen Pineapple" }),
+        Object.freeze({ label: "Forest Gas" }),
+      ]),
     }),
-    cstp: Object.freeze({
-      status: "not-tested",
-      testedDate: "",
-      validUntil: "",
-      sampleSize: 0,
-      avgTime: "",
-      resultPercent: 0,
-      expiringSoon: false,
+    directoryStats: Object.freeze({
+      sessionsLogged: 5,
+      varietiesLogged: 4,
+      lastLoggedAt: "2026-04-09T13:50:00.000Z",
     }),
-    trackRecord: Object.freeze({
-      totalCerts: 0,
-      gold: 0,
-      silver: 0,
-      qualificationRate: 0,
-      lastTest: "Not tested",
-    }),
-  }),
-  Object.freeze({
-    id: "atlas-breeding-labs",
-    name: "Atlas Breeding Labs",
-    type: "Breeding Lab",
-    logo: "",
-    logoUrl: "",
-    website: "",
-    websiteUrl: "",
-    establishedLabel: "Demo source",
-    community: Object.freeze({
-      avgRate: 90,
-      sessions: 20,
-      rank: 6,
-      seedsTracked: 400,
-    }),
+    topVarieties: Object.freeze([
+      Object.freeze({ label: "Evergreen Pineapple" }),
+      Object.freeze({ label: "Forest Gas" }),
+    ]),
     cstp: Object.freeze({
       status: "not-tested",
       testedDate: "",
@@ -10415,43 +10559,76 @@ function buildMaryJaneDemoFillerSourceMockRecords() {
     "Summit Seed Co.",
     "Evergreen Genetics",
     "Atlas Breeding Labs",
+    "Alpine Seed Works",
   ].map((sourceName) => normalizeSourceNameForMatching(sourceName)));
+  const metricPresets = Object.freeze([
+    Object.freeze({ avgRate: 89, sessions: 80, seedsTracked: 1740 }),
+    Object.freeze({ avgRate: 87, sessions: 56, seedsTracked: 1180 }),
+    Object.freeze({ avgRate: 85, sessions: 38, seedsTracked: 760 }),
+    Object.freeze({ avgRate: 84, sessions: 12, seedsTracked: 188 }),
+    Object.freeze({ avgRate: 82, sessions: 5, seedsTracked: 72 }),
+    Object.freeze({ avgRate: 81, sessions: 2, seedsTracked: 28 }),
+    Object.freeze({ avgRate: 0, sessions: 0, seedsTracked: 0, limited: true }),
+  ]);
+  const varietyPresets = Object.freeze([
+    Object.freeze(["North Valley Diesel", "Aurora Cake", "Pine Ridge"]),
+    Object.freeze(["Riverbend Runtz", "Creekside Kush", "Bluewater OG"]),
+    Object.freeze(["Stonebridge Haze", "Granite Glue", "Bridge Fuel"]),
+    Object.freeze(["Harborlight Dream", "Lighthouse Lime", "Dockside Cake"]),
+    Object.freeze(["Nova Nebula", "Orbit OG", "Photon Punch"]),
+    Object.freeze(["Prairie Gold", "Tallgrass Gelato", "Meadow Gas"]),
+    Object.freeze([]),
+  ]);
   return MARY_JANE_DEMO_FILLER_SOURCE_NAMES
     .filter((sourceName) => !explicitlyConfiguredSources.has(normalizeSourceNameForMatching(sourceName)))
-    .map((sourceName, index) => Object.freeze({
-      id: slugifyMaryJaneDemoValue(sourceName),
-      name: sourceName,
-      type: index % 3 === 0 ? "Seed Company" : (index % 3 === 1 ? "Breeder" : "Breeding Lab"),
-      logo: "",
-      logoUrl: "",
-      website: "",
-      websiteUrl: "",
-      establishedLabel: "Demo source",
-      community: Object.freeze({
-        avgRate: Math.max(82, 90 - (index % 7)),
-        sessions: 3,
-        rank: 7 + index,
-        seedsTracked: 54,
-      }),
-      cstp: Object.freeze({
-        status: "not-tested",
-        testedDate: "",
-        validUntil: "",
-        sampleSize: 0,
-        avgTime: "",
-        resultPercent: 0,
-        expiringSoon: false,
-      }),
-      trackRecord: Object.freeze({
-        totalCerts: 0,
-        gold: 0,
-        silver: 0,
-        qualificationRate: 0,
-        lastTest: "Not tested",
-      }),
-    }));
+    .map((sourceName, index) => {
+      const preset = metricPresets[index % metricPresets.length];
+      const varietyLabels = varietyPresets[index % varietyPresets.length];
+      const topVarieties = Object.freeze(varietyLabels.map((label) => Object.freeze({ label })));
+      const latestActivity = new Date(Date.UTC(2026, 3, 18, 10, 0, 0));
+      latestActivity.setUTCDate(latestActivity.getUTCDate() - index);
+      return Object.freeze({
+        id: slugifyMaryJaneDemoValue(sourceName),
+        name: sourceName,
+        type: index % 3 === 0 ? "Seed Company" : (index % 3 === 1 ? "Breeder" : "Breeding Lab"),
+        logo: "",
+        logoUrl: "",
+        website: "",
+        websiteUrl: "",
+        establishedLabel: preset.limited ? "Limited Data" : "Demo source",
+        community: Object.freeze({
+          avgRate: preset.avgRate,
+          sessions: preset.sessions,
+          rank: 8 + index,
+          seedsTracked: preset.seedsTracked,
+          topVarieties,
+        }),
+        directoryStats: Object.freeze({
+          sessionsLogged: preset.sessions,
+          varietiesLogged: Math.max(0, topVarieties.length + (preset.sessions > 10 ? 4 : 1)),
+          lastLoggedAt: preset.sessions > 0 ? latestActivity.toISOString() : "",
+          topVarieties,
+        }),
+        topVarieties,
+        cstp: Object.freeze({
+          status: "not-tested",
+          testedDate: "",
+          validUntil: "",
+          sampleSize: 0,
+          avgTime: "",
+          resultPercent: 0,
+          expiringSoon: false,
+        }),
+        trackRecord: Object.freeze({
+          totalCerts: 0,
+          gold: 0,
+          silver: 0,
+          qualificationRate: 0,
+          lastTest: "Not tested",
+        }),
+      });
+    });
 }
-
 function buildMaryJaneDemoGrowNetworkActivities() {
   return DEMO_GALLERY_CONTRIBUTOR_PROFILES
     .slice(8, 30)
