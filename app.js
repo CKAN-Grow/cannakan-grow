@@ -49754,9 +49754,10 @@ function bindSourcesLandingPage() {
   const listFilterSelect = app.querySelector("#source-directory-list-filter");
   const listSummary = app.querySelector("#source-directory-list-summary");
   const filterButtons = Array.from(app.querySelectorAll("[data-source-directory-filter]"));
-  if (!cardResults || !listResults || !pagination || !summary || !listSummary) {
+  if (!cardResults || !summary) {
     return;
   }
+  const hasListView = Boolean(listResults && pagination && listSummary);
   const totalSources = getSourceDirectoryMockRecords().length;
   let currentListPage = 1;
 
@@ -49772,6 +49773,9 @@ function bindSourcesLandingPage() {
   };
 
   const bindListPagination = (filteredRecords = []) => {
+    if (!hasListView) {
+      return;
+    }
     pagination.querySelectorAll("[data-source-directory-page]").forEach((button) => {
       if (!(button instanceof HTMLButtonElement) || button.dataset.sourceDirectoryPageBound === "true") {
         return;
@@ -49787,6 +49791,9 @@ function bindSourcesLandingPage() {
   };
 
   const applyDirectoryListView = ({ preservePage = false } = {}) => {
+    if (!hasListView) {
+      return;
+    }
     const listRecords = getFilteredAndSortedSourceDirectoryListRecords({
       query: listSearchInput?.value || "",
       sortKey: listSortSelect?.value || SOURCE_DIRECTORY_LIST_DEFAULT_SORT,
@@ -49852,13 +49859,13 @@ function bindSourcesLandingPage() {
   });
 
   applyDirectoryView();
-  if (listOrderSelect) {
+  if (hasListView && listOrderSelect) {
     listOrderSelect.value = normalizeSourceDirectoryListOrder(
       listSortSelect?.value || SOURCE_DIRECTORY_LIST_DEFAULT_SORT,
       listOrderSelect.value || SOURCE_DIRECTORY_LIST_DEFAULT_ORDER,
     );
+    applyDirectoryListView();
   }
-  applyDirectoryListView();
 }
 
 function getSourceDirectoryPublicRoute(sourceKey = "") {
@@ -50358,55 +50365,6 @@ function renderSourcesLandingPage() {
       </section>
       <p class="source-directory-grid-footnote">Confidence reflects sample size, consistency, data freshness, and available verification.</p>
 
-      <section class="card source-directory-list-section">
-        <div class="source-directory-results-head source-directory-results-head--list">
-          <div>
-            <p class="eyebrow">Report List</p>
-            <h3>Source Reports List</h3>
-            <p class="muted">Community-reported performance, confidence, and session volume.</p>
-          </div>
-          <p id="source-directory-list-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in the list</p>
-        </div>
-        <div class="source-directory-list-controls-grid">
-          <label class="source-directory-search-field">
-            <span class="stat-label">Search</span>
-            <input id="source-directory-list-search" type="search" placeholder="Search sources..." autocomplete="off">
-          </label>
-          <label class="source-directory-sort-field">
-            <span class="stat-label">Sort By</span>
-            <select id="source-directory-list-sort">
-              ${SOURCE_DIRECTORY_LIST_SORT_OPTIONS.map((option) => `
-                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_LIST_DEFAULT_SORT ? " selected" : ""}>${escapeHtml(option.label)}</option>
-              `).join("")}
-            </select>
-          </label>
-          <label class="source-directory-sort-field">
-            <span class="stat-label">Order</span>
-            <select id="source-directory-list-order">
-              ${SOURCE_DIRECTORY_LIST_ORDER_OPTIONS.map((option) => `
-                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_LIST_DEFAULT_ORDER ? " selected" : ""}>${escapeHtml(option.label)}</option>
-              `).join("")}
-            </select>
-          </label>
-          <label class="source-directory-sort-field">
-            <span class="stat-label">Filter</span>
-            <select id="source-directory-list-filter">
-              ${SOURCE_DIRECTORY_LIST_FILTER_OPTIONS.map((option) => `
-                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_LIST_DEFAULT_FILTER ? " selected" : ""}>${escapeHtml(option.label)}</option>
-              `).join("")}
-            </select>
-          </label>
-        </div>
-        <div class="source-directory-list-shell">
-          <div class="source-directory-list-head">
-            <span>#</span>
-            <span>Source / Breeder</span>
-            <span>Reported Germination Rate</span>
-          </div>
-          <div id="source-directory-list-results" class="source-directory-list-results"></div>
-        </div>
-        <div id="source-directory-pagination"></div>
-      </section>
     </section>
   `;
 
