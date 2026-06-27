@@ -49486,61 +49486,162 @@ function renderSourceDirectoryFilterPills(activeFilterKey = SOURCE_DIRECTORY_DEF
   `).join("");
 }
 
-function renderSourceDirectoryCardMarkup(source = {}) {
+function getSourceDirectoryConfidenceMeta(trust = {}) {
+  const label = String(trust?.confidenceLabel || "Limited Data").trim() || "Limited Data";
+  const normalizedLabel = label.toLowerCase();
+  if (normalizedLabel.includes("very high")) {
+    return { label: "Very High Confidence", percent: 94, tone: "very-high" };
+  }
+  if (normalizedLabel.includes("high")) {
+    return { label: "High Confidence", percent: 78, tone: "high" };
+  }
+  if (normalizedLabel.includes("moderate")) {
+    return { label: "Moderate Confidence", percent: 58, tone: "moderate" };
+  }
+  const hasGrowingData = Number(trust?.sessions || 0) > 0 || Number(trust?.seedsTracked || 0) > 0;
+  return hasGrowingData
+    ? { label: "Growing Data", percent: 36, tone: "growing" }
+    : { label: "Limited Data", percent: 22, tone: "limited" };
+}
+
+function renderSourceDirectoryFlagStackMarkup(source = {}) {
+  const countryCode = getSourceCountryCode(source);
+  if (!countryCode) {
+    return "";
+  }
+  return `<div class="source-directory-card-flags" aria-label="Source location">${renderCountryFlagMarkup(countryCode, "source-directory-card-flag country-flag")}</div>`;
+}
+
+function renderSourceDirectoryEvidenceBadgesMarkup(source = {}, cstpState = null, trust = {}) {
+  const badges = [];
+  if (cstpState) {
+    badges.push({ label: "CSTP Tested", tone: "cstp" });
+  }
+  const establishedLabel = String(source?.establishedLabel || "").trim().toLowerCase();
+  if (establishedLabel.includes("partner")) {
+    badges.push({ label: "Partner Source", tone: "partner" });
+  }
+  const confidenceMeta = getSourceDirectoryConfidenceMeta(trust);
+  if (confidenceMeta.tone === "growing") {
+    badges.push({ label: "Growing Data", tone: "growing" });
+  } else if (confidenceMeta.tone === "limited") {
+    badges.push({ label: "Limited Data", tone: "limited" });
+  }
+  if (!badges.length) {
+    return "";
+  }
+  return `
+    <div class="source-directory-evidence-badges" aria-label="Source evidence badges">
+      ${badges.slice(0, 3).map((badge) => `<span class="source-directory-evidence-badge is-${escapeHtml(badge.tone)}">${escapeHtml(badge.label)}</span>`).join("")}
+    </div>
+  `;
+}
+
+function buildSourceDirectoryTopVarietyLookup() {
+  const lookup = new Map();
+  try {
+    buildSourceDirectoryPublicRecords().forEach((record) => {
+      const varieties = Array.isArray(record?.topVarieties) ? record.topVarieties : [];
+      const keys = [record?.key, record?.label, record?.name, record?.id]
+        .map((value) => normalizeSourceNameForMatching(value || ""))
+        .filter(Boolean);
+      keys.forEach((key) => lookup.set(key, varieties));
+    });
+  } catch (error) {
+    logRuntimeIssueOnce("warn", "source-directory-card-variety-lookup-failed", "Could not build Source Explorer top variety lookup.", error);
+  }
+  return lookup;
+}
+
+function getSourceDirectoryCardTopVarieties(source = {}, topVarietyLookup = new Map()) {
+  const directVarieties = [source?.topVarieties, source?.community?.topVarieties, source?.directoryStats?.topVarieties]
+    .find((value) => Array.isArray(value) && value.length);
+  if (directVarieties) {
+    return directVarieties;
+  }
+  const keys = [source?.id, source?.name, source?.label]
+    .map((value) => normalizeSourceNameForMatching(value || ""))
+    .filter(Boolean);
+  for (const key of keys) {
+    const varieties = topVarietyLookup.get(key);
+    if (Array.isArray(varieties) && varieties.length) {
+      return varieties;
+    }
+  }
+  return [];
+}
+
+function renderSourceDirectoryTopVarietiesMarkup(varieties = []) {
+  const normalizedVarieties = (Array.isArray(varieties) ? varieties : [])
+    .map((variety) => ({ label: String(variety?.label || variety?.name || variety || "").trim() }))
+    .filter((variety) => variety.label);
+  const visibleVarieties = normalizedVarieties.slice(0, 3);
+  const extraCount = Math.max(0, normalizedVarieties.length - visibleVarieties.length);
+  return `
+    <div class="source-directory-top-varieties">
+      <span>Top Performing Varieties</span>
+      ${visibleVarieties.length ? `
+        <div class="source-directory-variety-chip-row">
+          ${visibleVarieties.map((variety) => `<span class="source-directory-variety-chip">${escapeHtml(variety.label)}</span>`).join("")}
+          ${extraCount ? `<span class="source-directory-variety-chip source-directory-variety-chip--more">+${escapeHtml(String(extraCount))}</span>` : ""}
+        </div>
+      ` : `<p>No variety performance yet.</p>`}
+    </div>
+  `;
+}
+function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
   const cstpState = getSourceDirectoryCstpCardState(source);
-  const cstpBadgeMarkup = renderSourceDirectoryCstpCardBadgeMarkup(cstpState);
   const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
   const trust = getSourceDirectoryTrustScore(source);
+  const confidenceMeta = getSourceDirectoryConfidenceMeta(trust);
+  const topVarieties = getSourceDirectoryCardTopVarieties(source, options.topVarietyLookup || new Map());
+  const sessionsLabel = source.directoryStats?.sessionsLogged || source.community?.sessions || "0";
+  const seedsTrackedLabel = source.community?.seedsTracked || "0";
+  const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
   return `
-    <article class="card source-directory-card source-directory-report-card">
-      ${cstpBadgeMarkup ? `
-        <div class="source-directory-card-seal">
-          ${cstpBadgeMarkup}
-        </div>
-      ` : ""}
-      <div class="source-directory-card-hero">
+    <article class="card source-directory-card source-directory-report-card is-${escapeHtml(confidenceMeta.tone)}">
+      <div class="source-directory-report-top">
         ${renderSourceLogoMarkup(source, {
           className: "source-directory-logo",
           imageClassName: "source-profile-logo-image",
           placeholderClassName: "source-profile-logo-placeholder",
           alt: `${source.name} logo`,
         })}
-        <div class="source-directory-card-copy">
-          <span class="source-directory-report-eyebrow">Source Report</span>
-          <h3>${renderSourceNameWithCountryFlagMarkup(source.name, source.countryCode || source.country_code || "", "source-directory-source-name")}</h3>
-          <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || "Source / Breeder")}</p>
-          ${renderSourceCountryMarkup(source, "source-directory-card-country source-country-badge")}
+        <div class="source-directory-report-identity">
+          <h3>${escapeHtml(source.name || "Source")}</h3>
+          <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || source.type || "Source / Breeder")}</p>
+          ${renderSourceDirectoryFlagStackMarkup(source)}
+        </div>
+        ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust)}
+      </div>
+      <div class="source-directory-trust-zone">
+        <div class="source-directory-trust-score-block">
+          <span>Trust Score</span>
+          <strong>${escapeHtml(trust.scoreLabel)}</strong>
+          <small>${escapeHtml(confidenceMeta.label)}</small>
+        </div>
+        <div class="source-directory-confidence-meter" aria-label="${escapeHtml(confidenceMeta.label)}">
+          <span>Confidence Level</span>
+          <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
         </div>
       </div>
-      <div class="source-directory-trust-score-block">
-        <span>Trust Score</span>
-        <strong>${escapeHtml(trust.scoreLabel)}</strong>
-        <small>${escapeHtml(trust.confidenceLabel)}</small>
-      </div>
-      <div class="source-directory-stats-grid source-directory-report-stats-grid">
-        <article class="source-directory-stat">
-          <span class="stat-label">Average Germination</span>
+      <div class="source-directory-report-kpis" aria-label="Source performance summary">
+        <article>
           <strong>${escapeHtml(reportedRateLabel)}</strong>
+          <span>Average Germination</span>
         </article>
-        <article class="source-directory-stat">
-          <span class="stat-label">Total Sessions</span>
-          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || source.community?.sessions || "0")}</strong>
+        <article>
+          <strong>${escapeHtml(String(sessionsLabel))}</strong>
+          <span>Sessions</span>
         </article>
-        <article class="source-directory-stat">
-          <span class="stat-label">Seeds Tracked</span>
-          <strong>${escapeHtml(source.community?.seedsTracked || "0")}</strong>
-        </article>
-        <article class="source-directory-stat">
-          <span class="stat-label">Last Activity</span>
-          <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
+        <article>
+          <strong>${escapeHtml(String(seedsTrackedLabel))}</strong>
+          <span>Seeds Tracked</span>
         </article>
       </div>
-      <p class="source-directory-confidence-note">${escapeHtml(trust.explanation)}</p>
+      ${renderSourceDirectoryTopVarietiesMarkup(topVarieties)}
       <div class="inline-actions source-directory-card-actions">
         <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(source.id)}">View Source Report</a>
-        ${cstpState?.hasReport && cstpState.href ? `
-          <a class="button button-secondary source-directory-report-link" href="${escapeHtml(cstpState.href)}">View CSTP Report</a>
-        ` : ""}
       </div>
     </article>
   `;
@@ -49555,7 +49656,8 @@ function renderSourceDirectoryResultsMarkup(records = []) {
     `;
   }
 
-  return records.map((source) => renderSourceDirectoryCardMarkup(source)).join("");
+  const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
+  return records.map((source) => renderSourceDirectoryCardMarkup(source, { topVarietyLookup })).join("");
 }
 
 function bindSourcesLandingPage() {
@@ -50176,6 +50278,7 @@ function renderSourcesLandingPage() {
 
       <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Reports">
       </section>
+      <p class="source-directory-grid-footnote">Trust Score combines germination performance, sample size, consistency, data recency, and CSTP verification.</p>
 
       <section class="card source-directory-list-section">
         <div class="source-directory-results-head source-directory-results-head--list">
