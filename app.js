@@ -774,6 +774,8 @@ const SOURCE_DIRECTORY_LIST_FILTER_OPTIONS = Object.freeze([
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
 const SOURCE_DIRECTORY_DEFAULT_SORT = "most-trusted";
+const SOURCE_DIRECTORY_DISPLAY_MODE_STORAGE_KEY = "cannakan-grow-source-directory-display-mode";
+const SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE = "cards";
 const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
@@ -49526,6 +49528,39 @@ function getFilteredAndSortedSourceDirectoryRecords({
     });
 }
 
+function normalizeSourceDirectoryDisplayMode(value = SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE) {
+  const normalizedValue = String(value || SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE).trim().toLowerCase();
+  return normalizedValue === "compare" ? "compare" : "cards";
+}
+
+function getSourceDirectoryDisplayModePreference() {
+  try {
+    return normalizeSourceDirectoryDisplayMode(localStorage.getItem(SOURCE_DIRECTORY_DISPLAY_MODE_STORAGE_KEY) || SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE);
+  } catch (error) {
+    console.warn("Could not read Source Explorer display mode preference.", error);
+    return SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE;
+  }
+}
+
+function setSourceDirectoryDisplayModePreference(mode = SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE) {
+  const normalizedMode = normalizeSourceDirectoryDisplayMode(mode);
+  try {
+    localStorage.setItem(SOURCE_DIRECTORY_DISPLAY_MODE_STORAGE_KEY, normalizedMode);
+  } catch (error) {
+    console.warn("Could not save Source Explorer display mode preference.", error);
+  }
+  return normalizedMode;
+}
+
+function renderSourceDirectoryViewToggleMarkup(activeMode = SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE) {
+  const normalizedMode = normalizeSourceDirectoryDisplayMode(activeMode);
+  return `
+    <div class="source-directory-view-toggle" role="group" aria-label="Source Explorer display mode">
+      <button type="button" class="source-directory-view-toggle-button${normalizedMode === "cards" ? " is-active" : ""}" data-source-directory-view="cards" aria-pressed="${normalizedMode === "cards" ? "true" : "false"}">Cards</button>
+      <button type="button" class="source-directory-view-toggle-button${normalizedMode === "compare" ? " is-active" : ""}" data-source-directory-view="compare" aria-pressed="${normalizedMode === "compare" ? "true" : "false"}">Compare</button>
+    </div>
+  `;
+}
 function renderSourceDirectoryFilterPills(activeFilterKey = SOURCE_DIRECTORY_DEFAULT_FILTER) {
   return SOURCE_DIRECTORY_FILTER_OPTIONS.map((option) => `
     <button
@@ -49722,10 +49757,74 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
       </div>
       ${renderSourceDirectoryTopVarietiesMarkup(topVarieties)}
       <div class="inline-actions source-directory-card-actions">
-        <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(source.id)}">View Source Report</a>
+        <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(source.id)}">View Report</a>
       </div>
     </article>
   `;
+}
+function renderSourceDirectoryCompareRowsMarkup(records = []) {
+  if (!records.length) {
+    return `
+      <article class="card source-directory-empty-state source-directory-compare-empty">
+        <h3>No source directory entries match your filters yet.</h3>
+        <p class="muted">Try a different search or directory filter.</p>
+      </article>
+    `;
+  }
+  const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
+  const totalSources = getSourceDirectoryMockRecords().length;
+  return records.map((source) => {
+    const cstpState = getSourceDirectoryCstpCardState(source);
+    const trust = getSourceDirectoryTrustScore(source);
+    const confidenceMeta = getSourceDirectoryConfidenceMeta(trust);
+    const topVarieties = getSourceDirectoryCardTopVarieties(source, topVarietyLookup);
+    const topVarietyLabel = String(topVarieties?.[0]?.label || topVarieties?.[0]?.name || topVarieties?.[0] || "").trim();
+    const sessionsLabel = source.directoryStats?.sessionsLogged || source.community?.sessions || "0";
+    const seedsTrackedLabel = source.community?.seedsTracked || "0";
+    const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
+    const performanceContextLabel = getSourceDirectoryPerformanceContextLabel(source, totalSources);
+    const sourceTypeLabel = getSourceDirectoryCardTypeLabel(source);
+    return `
+      <article class="source-directory-compare-row is-${escapeHtml(confidenceMeta.tone)}">
+        <div class="source-directory-compare-source">
+          ${renderSourceLogoMarkup(source, {
+            className: "source-directory-logo source-directory-compare-logo",
+            imageClassName: "source-profile-logo-image",
+            placeholderClassName: "source-profile-logo-placeholder",
+            alt: `${source.name} logo`,
+          })}
+          <div class="source-directory-compare-identity">
+            <h3>${escapeHtml(source.name || "Source")}</h3>
+            <p>${escapeHtml(sourceTypeLabel)}</p>
+            ${renderSourceDirectoryFlagStackMarkup(source)}
+          </div>
+        </div>
+        <div class="source-directory-compare-rate">
+          <span>Average Germination</span>
+          <strong>${escapeHtml(getSourceDirectoryReportedRateLabel(source))}</strong>
+          ${performanceContextLabel ? `<small>${escapeHtml(performanceContextLabel)}</small>` : ""}
+        </div>
+        <div class="source-directory-compare-confidence" aria-label="${escapeHtml(confidenceMeta.label)}">
+          <span>${escapeHtml(confidenceMeta.label)}</span>
+          <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
+        </div>
+        <div class="source-directory-compare-kpi source-directory-compare-kpi--sessions">
+          <strong>${escapeHtml(String(sessionsLabel))}</strong>
+          <span>Sessions</span>
+        </div>
+        <div class="source-directory-compare-kpi source-directory-compare-kpi--seeds">
+          <strong>${escapeHtml(String(seedsTrackedLabel))}</strong>
+          <span>Seeds Tracked</span>
+        </div>
+        <div class="source-directory-compare-variety">
+          <span>Top Variety</span>
+          <strong>${escapeHtml(topVarietyLabel || "No variety performance yet")}</strong>
+        </div>
+        ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust) || `<div class="source-directory-evidence-badges" aria-hidden="true"></div>`}
+        <a class="button button-secondary source-directory-view-report-button source-directory-compare-report-button" href="#sources/${escapeHtml(source.id)}">View Report</a>
+      </article>
+    `;
+  }).join("");
 }
 function renderSourceDirectoryResultsMarkup(records = []) {
   if (!records.length) {
@@ -49754,11 +49853,13 @@ function bindSourcesLandingPage() {
   const listFilterSelect = app.querySelector("#source-directory-list-filter");
   const listSummary = app.querySelector("#source-directory-list-summary");
   const filterButtons = Array.from(app.querySelectorAll("[data-source-directory-filter]"));
+  const viewButtons = Array.from(app.querySelectorAll("[data-source-directory-view]"));
   if (!cardResults || !summary) {
     return;
   }
   const hasListView = Boolean(listResults && pagination && listSummary);
   const totalSources = getSourceDirectoryMockRecords().length;
+  let activeDisplayMode = getSourceDirectoryDisplayModePreference();
   let currentListPage = 1;
 
   const applyDirectoryView = () => {
@@ -49768,8 +49869,17 @@ function bindSourcesLandingPage() {
       filterKey: activeFilter,
       sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
     });
-    cardResults.innerHTML = renderSourceDirectoryResultsMarkup(records);
-    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in the directory`;
+    const isCompareMode = activeDisplayMode === "compare";
+    cardResults.className = isCompareMode ? "source-directory-compare-list" : "source-directory-grid";
+    cardResults.setAttribute("aria-label", isCompareMode ? "Compare Source Reports" : "Source Reports");
+    cardResults.innerHTML = isCompareMode ? renderSourceDirectoryCompareRowsMarkup(records) : renderSourceDirectoryResultsMarkup(records);
+    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in ${isCompareMode ? "Compare" : "Cards"}`;
+    viewButtons.forEach((button) => {
+      const buttonMode = normalizeSourceDirectoryDisplayMode(button.getAttribute("data-source-directory-view") || "cards");
+      const isActive = buttonMode === activeDisplayMode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
   };
 
   const bindListPagination = (filteredRecords = []) => {
@@ -49826,6 +49936,13 @@ function bindSourcesLandingPage() {
         entry.classList.toggle("is-active", isActive);
         entry.setAttribute("aria-pressed", isActive ? "true" : "false");
       });
+      applyDirectoryView();
+    });
+  });
+
+  viewButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeDisplayMode = setSourceDirectoryDisplayModePreference(button.getAttribute("data-source-directory-view") || "cards");
       applyDirectoryView();
     });
   });
@@ -50358,7 +50475,10 @@ function renderSourcesLandingPage() {
           <h3>Trusted Source Reports</h3>
           <p class="muted">Evidence-first reports from community germination data.</p>
         </div>
-        <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in Source Explorer</p>
+        <div class="source-directory-results-tools">
+          <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in Source Explorer</p>
+          ${renderSourceDirectoryViewToggleMarkup(getSourceDirectoryDisplayModePreference())}
+        </div>
       </div>
 
       <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Reports">

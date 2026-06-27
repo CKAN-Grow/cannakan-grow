@@ -55442,3 +55442,317 @@ body.theme-dark option[selected] {
     height: 14px;
   }
 }
+/* Source Explorer Cards / Compare final polish */
+.source-directory-results-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.source-directory-results-tools p {
+  margin: 0;
+}
+
+.source-directory-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(181, 232, 111, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.source-directory-view-toggle-button {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(232, 242, 226, 0.76);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.source-directory-view-toggle-button:hover,
+.source-directory-view-toggle-button:focus-visible {
+  border-color: rgba(181, 232, 111, 0.22);
+  background: rgba(148, 209, 89, 0.075);
+  color: #f7fff1;
+}
+
+.source-directory-view-toggle-button.is-active {
+  border-color: rgba(181, 232, 111, 0.34);
+  background:
+    linear-gradient(180deg, rgba(181, 232, 111, 0.17), rgba(148, 209, 89, 0.08)),
+    rgba(148, 209, 89, 0.08);
+  color: #eaffce;
+  box-shadow: 0 0 16px rgba(148, 209, 89, 0.08);
+}
+
+.source-directory-card .source-directory-view-report-button.button,
+.source-directory-view-report-button.button {
+  width: 100%;
+  min-height: 44px;
+  justify-content: center;
+  border-color: rgba(181, 232, 111, 0.28);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    rgba(7, 14, 10, 0.72);
+  color: #f7fff1;
+  font-size: 0.95rem;
+  font-weight: 950;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 22px rgba(0, 0, 0, 0.18),
+    0 0 16px rgba(148, 209, 89, 0.055);
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.source-directory-card .source-directory-view-report-button.button:hover,
+.source-directory-card .source-directory-view-report-button.button:focus-visible,
+.source-directory-view-report-button.button:hover,
+.source-directory-view-report-button.button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(218, 255, 145, 0.62);
+  background:
+    linear-gradient(180deg, rgba(218, 255, 145, 0.84), rgba(130, 203, 61, 0.86)),
+    rgba(148, 209, 89, 0.9);
+  color: #071007;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 16px 30px rgba(83, 152, 38, 0.28),
+    0 0 26px rgba(148, 209, 89, 0.16);
+}
+
+.source-directory-compare-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.source-directory-compare-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.2fr) minmax(116px, 0.62fr) minmax(138px, 0.9fr) minmax(74px, 0.42fr) minmax(92px, 0.48fr) minmax(130px, 0.74fr) minmax(132px, 0.78fr) minmax(108px, 0.48fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 0% 50%, rgba(148, 209, 89, 0.075), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.012)),
+    rgba(6, 14, 10, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.source-directory-compare-row:hover,
+.source-directory-compare-row:focus-within {
+  border-color: rgba(181, 232, 111, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 28px rgba(0, 0, 0, 0.2),
+    0 0 22px rgba(148, 209, 89, 0.08);
+}
+
+.source-directory-compare-source {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.source-directory-compare-logo.source-directory-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+}
+
+.source-directory-compare-identity {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.source-directory-compare-identity h3,
+.source-directory-compare-identity p,
+.source-directory-compare-rate span,
+.source-directory-compare-rate strong,
+.source-directory-compare-rate small,
+.source-directory-compare-kpi strong,
+.source-directory-compare-kpi span,
+.source-directory-compare-variety span,
+.source-directory-compare-variety strong {
+  margin: 0;
+  min-width: 0;
+}
+
+.source-directory-compare-identity h3 {
+  color: #f7fff1;
+  font-size: 1rem;
+  font-weight: 930;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-directory-compare-identity p {
+  color: rgba(226, 236, 225, 0.68);
+  font-size: 0.78rem;
+  font-weight: 720;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-directory-compare-row .source-directory-card-flags {
+  min-height: 0;
+}
+
+.source-directory-compare-rate,
+.source-directory-compare-kpi,
+.source-directory-compare-variety {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.source-directory-compare-rate span,
+.source-directory-compare-kpi span,
+.source-directory-compare-variety span {
+  color: rgba(226, 236, 225, 0.62);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.source-directory-compare-rate strong {
+  color: #aeea58;
+  font-size: 1.75rem;
+  font-weight: 950;
+  line-height: 0.95;
+}
+
+.source-directory-compare-rate small {
+  justify-self: start;
+  color: #d8ff9e;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.source-directory-compare-confidence {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.source-directory-compare-confidence span {
+  color: #c9ff88;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.source-directory-compare-confidence i {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.085);
+  overflow: hidden;
+}
+
+.source-directory-compare-confidence b {
+  display: block;
+  height: 100%;
+  min-width: 20px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #39aaff 0%, #51d6c5 46%, #9be13d 100%);
+  box-shadow: 0 0 16px rgba(76, 219, 191, 0.18);
+}
+
+.source-directory-compare-kpi strong {
+  color: #f7fff1;
+  font-size: 1.18rem;
+  font-weight: 930;
+  line-height: 1;
+}
+
+.source-directory-compare-kpi--seeds strong {
+  color: rgba(235, 246, 230, 0.84);
+  font-size: 1.02rem;
+}
+
+.source-directory-compare-variety strong {
+  color: rgba(248, 252, 246, 0.9);
+  font-size: 0.84rem;
+  font-weight: 790;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-directory-compare-row .source-directory-evidence-badges {
+  justify-content: flex-start;
+  gap: 5px;
+}
+
+.source-directory-compare-row .source-directory-evidence-badge {
+  min-height: 22px;
+  padding: 0 7px;
+  font-size: 0.6rem;
+}
+
+.source-directory-compare-report-button.button {
+  min-height: 38px;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .source-directory-compare-row {
+    grid-template-columns: minmax(210px, 1.25fr) minmax(110px, 0.56fr) minmax(132px, 0.82fr) repeat(2, minmax(80px, 0.44fr));
+  }
+
+  .source-directory-compare-variety,
+  .source-directory-compare-row .source-directory-evidence-badges,
+  .source-directory-compare-report-button.button {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 860px) {
+  .source-directory-results-tools {
+    justify-content: flex-start;
+  }
+
+  .source-directory-compare-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .source-directory-compare-source,
+  .source-directory-compare-confidence,
+  .source-directory-compare-variety,
+  .source-directory-compare-row .source-directory-evidence-badges {
+    grid-column: 1 / -1;
+  }
+
+  .source-directory-compare-report-button.button {
+    grid-column: 1 / -1;
+  }
+}
