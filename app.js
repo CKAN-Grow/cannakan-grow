@@ -51096,13 +51096,24 @@ function formatSourceReportNumber(value = "") {
   return parsed > 0 ? parsed.toLocaleString() : "—";
 }
 
+function getSourceReportRegionFlagLabel(row = {}) {
+  const code = String(row?.code || "").trim().toUpperCase();
+  const flags = {
+    US: "🇺🇸",
+    CO: "🇨🇴",
+    DE: "🇩🇪",
+    CA: "🇨🇦",
+  };
+  return flags[code] || "➕";
+}
+
 function renderSourceReportRegionMarkup(regions = []) {
   return `
     <div class="source-report-region-layout">
       <div class="source-report-region-list">
         ${regions.map((row) => `
           <article class="source-report-region-row">
-            ${row.code ? renderCountryFlagMarkup(row.code, "source-report-region-flag country-flag") : `<span class="source-report-region-more" aria-hidden="true">+</span>`}
+            <span class="source-report-region-flag-emoji" aria-hidden="true">${escapeHtml(getSourceReportRegionFlagLabel(row))}</span>
             <strong>${escapeHtml(row.country)}</strong>
             <span>${escapeHtml(row.sessions.toLocaleString())} sessions</span>
             <em>${escapeHtml(String(row.share))}%</em>
@@ -51120,13 +51131,27 @@ function renderSourceReportRegionMarkup(regions = []) {
               </feMerge>
             </filter>
           </defs>
+          <g class="source-report-map-graticule">
+            <path d="M48 180H672"></path>
+            <path d="M360 34V326"></path>
+            <ellipse cx="360" cy="180" rx="292" ry="112"></ellipse>
+            <ellipse cx="360" cy="180" rx="292" ry="64"></ellipse>
+          </g>
           <g class="source-report-map-land">
-            <path d="M87 110c20-24 59-31 95-22 24 6 43 20 50 39 7 20-2 41-19 58-16 16-41 23-66 20-30-4-58-20-70-45-9-19-5-36 10-50Z"></path>
-            <path d="M205 189c23 6 44 22 53 43 10 23 4 49-15 73-12 15-25 30-31 48-2 6-11 7-15 1-12-18-25-36-39-53-15-20-23-44-17-67 7-28 32-51 64-45Z"></path>
-            <path d="M332 96c39-22 92-25 137-13 26 7 51 21 62 43 9 19 6 42-10 57-22 21-58 21-88 15-33-7-64-13-97-2-25 8-55 11-74-6-16-15-17-39-6-58 15-24 48-24 76-36Z"></path>
-            <path d="M430 200c24-9 54-4 73 12 22 19 28 51 17 78-9 22-28 38-50 44-19 5-42 2-55-13-13-14-14-36-8-55 7-22 7-50 23-66Z"></path>
-            <path d="M548 135c29-10 69-4 88 17 15 17 12 40-5 54-18 15-46 14-68 8-22-7-45-12-68-7-12 3-25-4-29-15-5-13 4-27 17-33 22-9 43-17 65-24Z"></path>
-            <path d="M553 251c25-14 62-10 85 8 19 15 24 40 12 59-15 24-54 28-81 17-25-10-44-32-42-55 1-12 11-22 26-29Z"></path>
+            <path class="is-north-america" d="M69 106 88 88 119 73 151 63 187 69 215 83 250 86 272 108 262 132 239 141 224 158 207 168 190 185 163 172 147 153 128 168 101 160 82 145 55 137 48 119Z"></path>
+            <path class="is-canada-archipelago" d="M96 64 121 51 151 54 138 69 111 75Z M166 47 194 43 223 53 213 67 178 64Z M235 61 263 54 292 63 277 79 245 76Z"></path>
+            <path class="is-greenland" d="M250 43 287 27 325 35 345 57 331 80 296 89 258 75 236 58Z"></path>
+            <path class="is-central-america" d="M183 181 207 184 231 196 247 207 236 220 210 210 184 196Z"></path>
+            <path class="is-south-america" d="M225 207 251 222 264 250 254 281 239 311 214 346 199 319 187 287 169 259 178 229Z"></path>
+            <path class="is-europe" d="M342 96 363 82 394 84 421 103 426 122 404 137 375 130 351 118Z"></path>
+            <path class="is-africa" d="M374 137 407 145 437 174 449 209 438 248 415 294 381 284 359 244 346 201 353 165Z"></path>
+            <path class="is-asia" d="M412 91 459 76 515 79 568 94 622 121 659 154 646 184 609 194 571 181 543 160 514 174 477 156 442 158 407 134Z"></path>
+            <path class="is-middle-east" d="M429 139 460 149 484 170 463 190 431 174Z"></path>
+            <path class="is-india" d="M489 172 509 194 501 224 478 197Z"></path>
+            <path class="is-southeast-asia" d="M528 184 553 194 583 203 607 219 592 237 558 226 535 208Z"></path>
+            <path class="is-japan" d="M620 138 634 149 628 167 616 159Z"></path>
+            <path class="is-australia" d="M557 255 603 245 642 264 631 296 585 304 548 282Z"></path>
+            <path class="is-new-zealand" d="M650 314 666 323 656 337 638 327Z"></path>
           </g>
           <g class="source-report-map-markers">
             <circle class="source-report-map-pulse" cx="156" cy="144" r="28"></circle>
