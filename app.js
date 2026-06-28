@@ -48001,27 +48001,27 @@ function normalizeTestedSourceMockRecord(source = {}) {
     logoUrl: String(source?.logoUrl || source?.logo || "").trim(),
     community: {
       ...community,
-      avgRate: formatTestedSourceMockPercent(Number(community?.avgRate)),
-      sessions: formatTestedSourceMockNumber(Number(community?.sessions)),
-      rank: formatTestedSourceMockRank(Number(community?.rank)),
-      seedsTracked: formatTestedSourceMockNumber(Number(community?.seedsTracked)),
+      avgRate: formatTestedSourceMockPercent(parseSourceDirectoryGerminationRateCandidate(community?.avgRate)),
+      sessions: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(community?.sessions)),
+      rank: formatTestedSourceMockRank(parseSourceDirectoryMetricNumber(community?.rank)),
+      seedsTracked: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(community?.seedsTracked)),
     },
     cstp: {
       ...cstp,
-      sampleSize: formatTestedSourceMockSampleSize(Number(cstp?.sampleSize)),
-      resultPercent: Number(cstp?.resultPercent) > 0 ? formatTestedSourceMockPercent(Number(cstp?.resultPercent)) : "",
+      sampleSize: formatTestedSourceMockSampleSize(parseSourceDirectoryMetricNumber(cstp?.sampleSize)),
+      resultPercent: parseSourceDirectoryGerminationRateCandidate(cstp?.resultPercent) > 0 ? formatTestedSourceMockPercent(parseSourceDirectoryGerminationRateCandidate(cstp?.resultPercent)) : "",
     },
     trackRecord: {
       ...trackRecord,
-      totalCerts: formatTestedSourceMockNumber(Number(trackRecord?.totalCerts)),
-      gold: formatTestedSourceMockNumber(Number(trackRecord?.gold)),
-      silver: formatTestedSourceMockNumber(Number(trackRecord?.silver)),
-      qualificationRate: Number(trackRecord?.qualificationRate) > 0 ? formatTestedSourceMockPercent(Number(trackRecord?.qualificationRate)) : "—",
+      totalCerts: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(trackRecord?.totalCerts)),
+      gold: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(trackRecord?.gold)),
+      silver: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(trackRecord?.silver)),
+      qualificationRate: parseSourceDirectoryGerminationRateCandidate(trackRecord?.qualificationRate) > 0 ? formatTestedSourceMockPercent(parseSourceDirectoryGerminationRateCandidate(trackRecord?.qualificationRate)) : "—",
     },
     directoryStats: {
       ...directoryStats,
-      sessionsLogged: formatTestedSourceMockNumber(Number(directoryStats?.sessionsLogged)),
-      varietiesLogged: formatTestedSourceMockNumber(Number(directoryStats?.varietiesLogged)),
+      sessionsLogged: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(directoryStats?.sessionsLogged)),
+      varietiesLogged: formatTestedSourceMockNumber(parseSourceDirectoryMetricNumber(directoryStats?.varietiesLogged)),
       lastLoggedAt: String(directoryStats?.lastLoggedAt || "").trim(),
     },
   };
@@ -49495,6 +49495,19 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
     </div>
   `;
 }
+function parseSourceDirectoryGerminationRateCandidate(value = null) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue || rawValue === "—") {
+    return null;
+  }
+  const match = rawValue.match(/\d+(?:\.\d+)?/);
+  if (!match) {
+    return null;
+  }
+  const parsedValue = Number(match[0]);
+  return Number.isFinite(parsedValue) ? Math.max(0, Math.min(100, parsedValue)) : null;
+}
+
 function getSourceDirectoryReportedRateValue(source = {}) {
   const candidateValues = [
     source?.community?.avgRate,
@@ -49511,13 +49524,9 @@ function getSourceDirectoryReportedRateValue(source = {}) {
     source?.germinationRateLabel,
   ];
   for (const candidateValue of candidateValues) {
-    const rawValue = String(candidateValue ?? "").trim();
-    if (!rawValue) {
-      continue;
-    }
-    const parsedValue = parseSourceDirectoryMetricNumber(rawValue);
-    if (Number.isFinite(parsedValue)) {
-      return Math.max(0, Math.min(100, parsedValue));
+    const parsedValue = parseSourceDirectoryGerminationRateCandidate(candidateValue);
+    if (parsedValue !== null) {
+      return parsedValue;
     }
   }
   return null;
