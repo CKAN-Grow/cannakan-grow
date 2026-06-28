@@ -48412,7 +48412,7 @@ function renderSourceProfileMetricCard({
 function getSourceProfileCstpState(sourceProfile = {}) {
   const publishedCertification = getLatestPublishedAdminCstpCertificationForSource(sourceProfile, { activeOnly: false });
   const activePublishedCertification = getPublishedAdminCstpCertificationForSource(sourceProfile);
-  const mockCstp = isMockDataEnabled() && sourceProfile?.cstp && typeof sourceProfile.cstp === "object"
+  const mockCstp = sourceProfile?.cstp && typeof sourceProfile.cstp === "object"
     ? sourceProfile.cstp
     : null;
 
@@ -51191,6 +51191,54 @@ function renderSourceReportRecentActivityMarkup(activity = {}, topVarieties = []
     </div>
   `;
 }
+
+function isSourceReportCstpTested(cstpState = {}) {
+  const status = String(cstpState?.status || "").trim().toLowerCase();
+  return Boolean(status && status !== "not-tested");
+}
+
+function renderSourceReportCstpSectionMarkup(sourceProfile = {}, cstpState = {}) {
+  if (!isSourceReportCstpTested(cstpState)) {
+    return `
+      <article class="card source-report-section-card source-report-cstp-compact-card is-muted">
+        <span class="source-report-cstp-compact-icon" aria-hidden="true">CSTP</span>
+        <div class="source-report-cstp-compact-copy">
+          <strong>CSTP Verification: Not tested yet.</strong>
+          <p>No public CSTP test data is available for this source.</p>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="card source-report-section-card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
+      ${renderSourceReportSectionTitle(6, "CSTP Verification")}
+      <div class="source-profile-verification-layout source-report-cstp-layout">
+        <div class="source-profile-verification-visual-column">
+          ${renderSourceProfileCstpVisualMarkup(cstpState)}
+        </div>
+        <div class="source-profile-verification-main">
+          <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
+          <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
+          <div class="source-profile-detail-grid source-profile-detail-grid--verification">
+            ${cstpState.rows.map((row) => `
+              <article class="meta-card source-profile-detail-card">
+                <span class="stat-label">${escapeHtml(row.label)}</span>
+                <strong>${escapeHtml(row.value)}</strong>
+              </article>
+            `).join("")}
+          </div>
+          <div class="source-profile-verification-actions">
+            ${cstpState.hasReport
+              ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Report</a>`
+              : `<button type="button" class="button button-secondary" disabled>Report Unavailable</button>`}
+          </div>
+        </div>
+      </div>
+      <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
+    </article>
+  `;
+}
 function renderSourceProfilePage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
   const sourceProfile = getSourceProfileRecord(requestedId);
@@ -51329,32 +51377,7 @@ function renderSourceProfilePage(sourceId = "") {
         ${renderSourceReportRecentActivityMarkup(activity, topVarieties)}
       </article>
 
-      <article class="card source-report-section-card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
-        ${renderSourceReportSectionTitle(6, "CSTP Verification")}
-        <div class="source-profile-verification-layout source-report-cstp-layout">
-          <div class="source-profile-verification-visual-column">
-            ${renderSourceProfileCstpVisualMarkup(cstpState)}
-          </div>
-          <div class="source-profile-verification-main">
-            <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
-            <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
-            <div class="source-profile-detail-grid source-profile-detail-grid--verification">
-              ${cstpState.rows.map((row) => `
-                <article class="meta-card source-profile-detail-card">
-                  <span class="stat-label">${escapeHtml(row.label)}</span>
-                  <strong>${escapeHtml(row.value)}</strong>
-                </article>
-              `).join("")}
-            </div>
-            <div class="source-profile-verification-actions">
-              ${cstpState.hasReport
-                ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Report</a>`
-                : `<button type="button" class="button button-secondary" disabled>Report Unavailable</button>`}
-            </div>
-          </div>
-        </div>
-        <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
-      </article>
+      ${renderSourceReportCstpSectionMarkup(sourceProfile, cstpState)}
 
       <article class="card source-report-section-card source-profile-track-record-card">
         ${renderSourceReportSectionTitle(7, "Community Confidence")}
