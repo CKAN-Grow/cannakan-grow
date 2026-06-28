@@ -50872,6 +50872,270 @@ function renderSourcesLandingPage() {
   bindSourcesLandingPage();
 }
 
+function getSourceReportPercentileLabel(sourceProfile = {}, totalSources = 0) {
+  const rank = parseSourceDirectoryMetricNumber(sourceProfile?.community?.rank);
+  const total = Math.max(1, parseSourceDirectoryMetricNumber(totalSources) || getSourceDirectoryMockRecords().length || 1);
+  if (!rank || rank <= 0) {
+    return "Top community source";
+  }
+  const percentile = Math.max(1, Math.min(100, Math.ceil((rank / total) * 100)));
+  return `Top ${percentile}%`;
+}
+
+function getSourceReportEstablishedLabel(sourceProfile = {}) {
+  const label = String(sourceProfile?.establishedLabel || "").trim();
+  const yearMatch = label.match(/\b(19|20)\d{2}\b/);
+  return yearMatch ? `Established ${yearMatch[0]}` : label;
+}
+
+function getSourceReportActivityMetrics(sourceProfile = {}) {
+  const sessions = Math.max(0, parseSourceDirectoryMetricNumber(sourceProfile?.community?.sessions));
+  const seeds = Math.max(0, parseSourceDirectoryMetricNumber(sourceProfile?.community?.seedsTracked));
+  const varieties = Math.max(0, parseSourceDirectoryMetricNumber(sourceProfile?.directoryStats?.varietiesLogged));
+  const lastLoggedAt = String(sourceProfile?.directoryStats?.lastLoggedAt || "").trim();
+  return {
+    newSessionsThisWeek: Math.max(1, Math.round(sessions * 0.09)),
+    seedsAddedThisMonth: Math.max(8, Math.round(seeds * 0.09)),
+    newVarietiesTracked: Math.max(1, Math.round(Math.max(varieties, 8) * 0.1)),
+    lastUpdated: isMockDataEnabled() ? "2 hrs ago" : (lastLoggedAt ? formatSourceDirectoryLastLoggedDate(lastLoggedAt) : "Not logged yet"),
+  };
+}
+
+function getSourceReportTopVarieties(sourceProfile = {}, averageRate = 0) {
+  const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
+  const varieties = getSourceDirectoryCardTopVarieties(sourceProfile, topVarietyLookup)
+    .map((variety) => ({ label: String(variety?.label || variety?.name || variety || "").trim() }))
+    .filter((variety) => variety.label);
+  const fallback = ["Banana Jealousy", "Gorilla Runtz", "Gelato OG", "White Widow", "Jack Herer"]
+    .map((label) => ({ label }));
+  const sourceNamePrefix = String(sourceProfile?.name || "").trim();
+  const normalized = (varieties.length ? varieties : fallback).slice(0, 5).map((variety) => {
+    const sourcePrefix = sourceNamePrefix ? `${sourceNamePrefix.toLowerCase()} ` : "";
+    const label = sourcePrefix && variety.label.toLowerCase().startsWith(sourcePrefix)
+      ? variety.label.slice(sourceNamePrefix.length).trim()
+      : variety.label;
+    return { ...variety, label };
+  });
+  const baseRate = Math.max(84, Math.min(99, Number(averageRate) || 92));
+  const demoImages = [
+    "/assets/demo/snapshots/IMG_0327.jpg",
+    "/assets/demo/snapshots/IMG_0086.jpg",
+    "/assets/demo/snapshots/7890.jpg",
+    "/assets/demo/snapshots/5678.jpg",
+    "/assets/demo/snapshots/pic1.jpg",
+  ];
+  return normalized.map((variety, index) => ({
+    ...variety,
+    imageUrl: demoImages[index % demoImages.length],
+    rate: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
+  }));
+}
+
+function getSourceReportRegionRows(sourceProfile = {}) {
+  const sessions = Math.max(20, parseSourceDirectoryMetricNumber(sourceProfile?.community?.sessions));
+  const countryCode = getSourceCountryCode(sourceProfile) || "US";
+  const primaryCountry = getCountryName(countryCode) || "United States";
+  const rows = [
+    { code: "US", country: "United States", share: 41 },
+    { code: countryCode, country: primaryCountry, share: 18 },
+    { code: "DE", country: "Germany", share: 14 },
+    { code: "CA", country: "Canada", share: 8 },
+    { code: "", country: "Other", share: 19 },
+  ];
+  const deduped = [];
+  rows.forEach((row) => {
+    if (deduped.some((item) => item.country === row.country)) {
+      return;
+    }
+    deduped.push({
+      ...row,
+      sessions: Math.max(1, Math.round((sessions * row.share) / 100)),
+    });
+  });
+  return deduped.slice(0, 5);
+}
+
+function renderSourceReportSectionTitle(index = 1, title = "") {
+  return `
+    <div class="source-report-section-title-row">
+      <span class="source-report-section-number">${escapeHtml(String(index))}.</span>
+      <h3>${escapeHtml(title)}</h3>
+      <span class="source-report-section-info" aria-hidden="true">${renderAppIconSvgMarkup("info", { className: "source-report-section-info-icon" })}</span>
+    </div>
+  `;
+}
+
+function renderSourceReportHeroMetricMarkup({ icon = "sourceDirectoryBars", value = "", label = "", detail = "", tone = "green" } = {}) {
+  return `
+    <article class="source-report-hero-metric is-${escapeHtml(tone)}">
+      <span class="source-report-hero-metric-icon" aria-hidden="true">${renderAppIconSvgMarkup(icon, { className: "source-report-icon-svg" })}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <span>${escapeHtml(label)}</span>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+    </article>
+  `;
+}
+
+function renderSourceReportActivityStripMarkup(activity = {}) {
+  const items = [
+    { icon: "communityGroup", value: activity.newSessionsThisWeek, label: "New Sessions", detail: "This Week" },
+    { icon: "seedVault", value: activity.seedsAddedThisMonth, label: "Seeds Added", detail: "This Month" },
+    { icon: "sourceDirectoryBars", value: activity.newVarietiesTracked, label: "New Varieties", detail: "Tracked" },
+    { icon: "clock", value: activity.lastUpdated, label: "Last Updated", detail: "" },
+  ];
+  return `
+    <div class="source-report-activity-strip" aria-label="Community activity summary">
+      ${items.map((item) => `
+        <article class="source-report-activity-item">
+          <span aria-hidden="true">${renderAppIconSvgMarkup(item.icon, { className: "source-report-activity-icon" })}</span>
+          <strong>${escapeHtml(String(item.value))}</strong>
+          <span>${escapeHtml(item.label)}</span>
+          ${item.detail ? `<small>${escapeHtml(item.detail)}</small>` : ""}
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSourceReportPerformanceChartMarkup(averageRate = 0, sessions = 0) {
+  const safeAverage = Math.max(84, Math.min(100, Number(averageRate) || 92));
+  const safeSessions = Math.max(25, Number(sessions) || 200);
+  const offsets = [-3, 1, -1, 2, 0, 3, 1, -1, 1, 2, 1, 1];
+  const values = offsets.map((offset) => Math.max(84, Math.min(100, safeAverage + offset)));
+  const width = 720;
+  const height = 220;
+  const chartTop = 24;
+  const chartBottom = 178;
+  const chartLeft = 44;
+  const chartRight = 690;
+  const points = values.map((value, index) => {
+    const x = chartLeft + ((chartRight - chartLeft) * index) / Math.max(1, values.length - 1);
+    const y = chartBottom - ((value - 60) / 40) * (chartBottom - chartTop);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const areaPoints = `${chartLeft},${chartBottom} ${points} ${chartRight},${chartBottom}`;
+  const xLabels = Array.from({ length: 9 }, (_, index) => Math.round((safeSessions * index) / 8));
+  return `
+    <div class="source-report-performance-layout">
+      <div class="source-report-chart-shell">
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Average germination by cumulative sessions" class="source-report-performance-chart">
+          <defs>
+            <linearGradient id="source-report-performance-area" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#9bea38" stop-opacity="0.34"></stop>
+              <stop offset="100%" stop-color="#9bea38" stop-opacity="0.03"></stop>
+            </linearGradient>
+          </defs>
+          ${[60, 70, 80, 90, 100].map((label) => {
+            const y = chartBottom - ((label - 60) / 40) * (chartBottom - chartTop);
+            return `<g><line x1="${chartLeft}" y1="${y.toFixed(1)}" x2="${chartRight}" y2="${y.toFixed(1)}"></line><text x="10" y="${(y + 4).toFixed(1)}">${label}%</text></g>`;
+          }).join("")}
+          <polygon points="${areaPoints}" fill="url(#source-report-performance-area)"></polygon>
+          <polyline points="${points}" fill="none" stroke="#9bea38" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+          ${points.split(" ").map((point) => {
+            const [x, y] = point.split(",");
+            return `<circle cx="${x}" cy="${y}" r="4.4"></circle>`;
+          }).join("")}
+          ${xLabels.map((label, index) => {
+            const x = chartLeft + ((chartRight - chartLeft) * index) / Math.max(1, xLabels.length - 1);
+            return `<text class="source-report-chart-x-label" x="${x.toFixed(1)}" y="207">${label}</text>`;
+          }).join("")}
+          <text class="source-report-chart-axis-label" x="360" y="220">Sessions</text>
+        </svg>
+        <p>Each point represents average germination as cumulative community evidence increases.</p>
+      </div>
+      <aside class="source-report-current-average">
+        <strong>${escapeHtml(`${Math.round(safeAverage)}%`)}</strong>
+        <span>Current Avg.</span>
+        <hr>
+        <strong>${escapeHtml(safeSessions.toLocaleString())}</strong>
+        <span>Total Sessions</span>
+      </aside>
+    </div>
+  `;
+}
+
+function renderSourceReportTopVarietiesMarkup(varieties = []) {
+  return `
+    <div class="source-report-variety-list">
+      ${varieties.map((variety) => `
+        <article class="source-report-variety-row">
+          <img src="${escapeHtml(variety.imageUrl)}" alt="" loading="lazy" decoding="async">
+          <strong>${escapeHtml(variety.label)}</strong>
+          <span>${escapeHtml(variety.rate)}</span>
+        </article>
+      `).join("")}
+    </div>
+    <a class="button button-secondary source-report-subtle-button" href="#sources">View All Varieties</a>
+  `;
+}
+
+function renderSourceReportDistributionMarkup(seedsTracked = "", averageRate = 0) {
+  const safeSeeds = formatSourceReportNumber(seedsTracked);
+  return `
+    <div class="source-report-distribution-layout">
+      <div class="source-report-distribution-donut" aria-label="Germination distribution">
+        <span><strong>${escapeHtml(safeSeeds)}</strong><small>Seeds</small></span>
+      </div>
+      <div class="source-report-distribution-legend">
+        ${[
+          ["96-100%", "35%", "green"],
+          ["91-95%", "45%", "lime"],
+          ["86-90%", "15%", "amber"],
+          ["84-85%", "5%", "orange"],
+        ].map(([range, share, tone]) => `
+          <span class="is-${escapeHtml(tone)}"><i></i><strong>${escapeHtml(range)}</strong><em>${escapeHtml(share)}</em></span>
+        `).join("")}
+      </div>
+    </div>
+    <p class="source-report-consistency-range">Consistency Range: <strong>84% - 100%</strong></p>
+  `;
+}
+
+function formatSourceReportNumber(value = "") {
+  const parsed = parseSourceDirectoryMetricNumber(value);
+  return parsed > 0 ? parsed.toLocaleString() : "—";
+}
+
+function renderSourceReportRegionMarkup(regions = []) {
+  return `
+    <div class="source-report-region-layout">
+      <div class="source-report-region-list">
+        ${regions.map((row) => `
+          <article class="source-report-region-row">
+            ${row.code ? renderCountryFlagMarkup(row.code, "source-report-region-flag country-flag") : `<span class="source-report-region-more" aria-hidden="true">+</span>`}
+            <strong>${escapeHtml(row.country)}</strong>
+            <span>${escapeHtml(row.sessions.toLocaleString())} sessions</span>
+            <em>${escapeHtml(String(row.share))}%</em>
+          </article>
+        `).join("")}
+      </div>
+      <div class="source-report-world-map" aria-hidden="true">
+        ${Array.from({ length: 34 }, (_, index) => `<span style="--x:${8 + ((index * 17) % 84)}%;--y:${16 + ((index * 29) % 66)}%;--s:${0.55 + ((index % 5) * 0.16)}"></span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderSourceReportRecentActivityMarkup(activity = {}, topVarieties = []) {
+  const topAuto = topVarieties[0]?.label || "Top variety";
+  const rows = [
+    { text: `${activity.newSessionsThisWeek} new sessions logged this week`, time: "2 hrs ago" },
+    { text: `${activity.seedsAddedThisMonth} seeds added this month`, time: "5 hrs ago" },
+    { text: `${activity.newVarietiesTracked} new varieties tracked`, time: "1 day ago" },
+    { text: `Top auto variety this month: ${topAuto}`, time: "2 days ago" },
+  ];
+  return `
+    <div class="source-report-activity-timeline">
+      ${rows.map((row) => `
+        <article>
+          <span aria-hidden="true"></span>
+          <p>${escapeHtml(row.text)}</p>
+          <time>${escapeHtml(row.time)}</time>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
 function renderSourceProfilePage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
   const sourceProfile = getSourceProfileRecord(requestedId);
@@ -50901,146 +51165,124 @@ function renderSourceProfilePage(sourceId = "") {
     return;
   }
 
-  const communitySessionCount = sourceProfile.community.sessions || "0";
+  const directoryRecords = getSourceDirectoryMockRecords();
   const averageGermRate = getSourceDirectoryReportedRateLabel(sourceProfile);
-  const averageGermRateNumber = parseSourceDirectoryMetricNumber(averageGermRate);
-  const showDemoDataBadge = isMockDataEnabled();
-  const communityStats = [
-    {
-      label: "Avg Germ Rate",
-      value: averageGermRate,
-      detail: `Based on ${communitySessionCount} sessions`,
-      progressValue: averageGermRateNumber,
-    },
-    {
-      label: "Total Sessions",
-      value: sourceProfile.community.sessions,
-      detail: "All-time sessions",
-    },
-    {
-      label: "Popularity Rank",
-      value: sourceProfile.community.rank,
-      detail: "Community ranking",
-    },
-    {
-      label: "Seeds Tracked",
-      value: sourceProfile.community.seedsTracked,
-      detail: "All seed entries",
-    },
-  ];
-  const cstpState = getSourceProfileCstpState(sourceProfile);
-  const trackRecordStats = [
-    {
-      label: "Certifications Earned",
-      value: sourceProfile.trackRecord.totalCerts,
-      detail: "All time",
-    },
-    {
-      label: "Gold",
-      value: sourceProfile.trackRecord.gold,
-      detail: "Gold certifications",
-    },
-    {
-      label: "Silver",
-      value: sourceProfile.trackRecord.silver,
-      detail: "Silver certifications",
-    },
-    {
-      label: "Qualification Rate",
-      value: sourceProfile.trackRecord.qualificationRate,
-      detail: "Qualified / tested",
-    },
-    {
-      label: "Last Test",
-      value: sourceProfile.trackRecord.lastTest,
-      detail: "Most recent CSTP test",
-    },
-  ];
-  const sourceTypeLabel = String(sourceProfile.sourceTypeLabel || "").trim() || "Breeder / Seed Source";
+  const averageGermRateNumber = getSourceDirectoryReportedRateNumber(sourceProfile);
+  const communitySessionCount = formatSourceReportNumber(sourceProfile.community?.sessions);
+  const seedsTrackedLabel = formatSourceReportNumber(sourceProfile.community?.seedsTracked);
   const sourceTrust = getSourceDirectoryTrustScore(sourceProfile);
+  const cstpState = getSourceProfileCstpState(sourceProfile);
+  const sourceTypeLabel = getSourceDirectoryCardTypeLabel(sourceProfile);
+  const countryCode = getSourceCountryCode(sourceProfile);
+  const countryName = getCountryName(countryCode);
+  const establishedLabel = getSourceReportEstablishedLabel(sourceProfile);
+  const percentileLabel = getSourceReportPercentileLabel(sourceProfile, directoryRecords.length);
+  const activity = getSourceReportActivityMetrics(sourceProfile);
+  const topVarieties = getSourceReportTopVarieties(sourceProfile, averageGermRateNumber);
+  const regions = getSourceReportRegionRows(sourceProfile);
+  const showDemoDataBadge = isMockDataEnabled();
+  const trackRecordStats = [
+    { label: "Certifications Earned", value: sourceProfile.trackRecord.totalCerts, detail: "All time" },
+    { label: "Gold", value: sourceProfile.trackRecord.gold, detail: "Gold certifications" },
+    { label: "Silver", value: sourceProfile.trackRecord.silver, detail: "Silver certifications" },
+    { label: "Qualification Rate", value: sourceProfile.trackRecord.qualificationRate, detail: "Qualified / tested" },
+    { label: "Last CSTP Test", value: sourceProfile.trackRecord.lastTest, detail: "Most recent test" },
+  ];
 
   app.innerHTML = `
-    <section class="source-profile-page">
-      <div class="source-profile-page-head">
-        <a class="source-profile-back-link" href="#sources">&larr; Back to Sources</a>
-        <div class="source-profile-title-block">
-          <h1>Source Report</h1>
-        </div>
+    <section class="source-profile-page source-report-page">
+      <a class="source-profile-back-link source-report-back-link" href="#sources">&larr; Back to Sources</a>
+      <div class="source-profile-title-block source-report-title-block">
+        <h1>Source Report</h1>
+        ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Demo Data</span>` : ""}
       </div>
 
-      <article class="card source-profile-trust-hero-card">
-        <div class="source-profile-section-head">
-          <div class="source-profile-section-copy">
-            <p class="eyebrow">Community Evidence</p>
-            <h3 class="source-profile-section-title">1. Confidence Level</h3>
-            <p class="muted">${escapeHtml(sourceTrust.explanation)}</p>
-          </div>
-        </div>
-        <div class="summary-grid source-profile-community-grid">
-          ${[
-            { label: "Confidence Level", value: sourceTrust.confidenceLabel, detail: sourceTrust.hasEnoughData ? "Evidence weighted by community data" : "Growing community data", progressValue: sourceTrust.hasEnoughData ? sourceTrust.score : Number.NaN },
-            { label: "Average Germination", value: averageGermRate, detail: `Based on ${communitySessionCount} sessions`, progressValue: averageGermRateNumber },
-            { label: "Community Sessions", value: sourceProfile.community.sessions, detail: "sessions represented" },
-            { label: "Seeds Tracked", value: sourceProfile.community.seedsTracked, detail: "community seed count" },
-          ].map((stat) => renderSourceProfileMetricCard(stat)).join("")}
-        </div>
-      </article>
-
-      <article class="card source-profile-identity-card">
-        ${showDemoDataBadge ? `<span class="source-profile-demo-badge" aria-hidden="true">Demo Data</span>` : ""}
-        <div class="source-profile-identity-head">
-          <div class="source-profile-identity">
-            ${renderSourceLogoMarkup(sourceProfile, {
-              className: "source-profile-logo",
-              imageClassName: "source-profile-logo-image",
-              placeholderClassName: "source-profile-logo-placeholder",
-              alt: `${sourceProfile.name} logo`,
-            })}
-            <div class="source-profile-identity-copy">
-              <h3>${renderSourceNameWithCountryFlagMarkup(sourceProfile.name, sourceProfile.countryCode || sourceProfile.country_code || "", "source-profile-source-name")}</h3>
-              <p class="source-profile-identity-type">${escapeHtml(sourceTypeLabel)}</p>
-              ${renderSourceCountryMarkup(sourceProfile, "source-profile-country source-country-badge")}
-              ${sourceProfile.establishedLabel ? `<span class="source-profile-established-badge">${escapeHtml(sourceProfile.establishedLabel)}</span>` : ""}
+      <article class="card source-report-hero-card">
+        <div class="source-report-hero-bg" aria-hidden="true"></div>
+        <div class="source-report-hero-main">
+          ${renderSourceLogoMarkup(sourceProfile, {
+            className: "source-profile-logo source-report-hero-logo",
+            imageClassName: "source-profile-logo-image",
+            placeholderClassName: "source-profile-logo-placeholder",
+            alt: `${sourceProfile.name} logo`,
+          })}
+          <div class="source-report-hero-copy">
+            <h2>${escapeHtml(sourceProfile.name || "Source")}</h2>
+            <p>
+              <span>${escapeHtml(sourceTypeLabel)}</span>
+              ${countryName ? `<span>${escapeHtml(countryName)}</span>` : ""}
+              ${countryCode ? renderCountryFlagMarkup(countryCode, "source-report-inline-flag country-flag") : ""}
+            </p>
+            ${establishedLabel ? `<strong class="source-report-established-line">${escapeHtml(establishedLabel)}</strong>` : ""}
+            <div class="source-report-hero-actions">
+              ${cstpState.status !== "not-tested" ? `<span class="source-report-cstp-chip">CSTP Tested</span>` : ""}
+              <button type="button" class="button button-secondary source-report-follow-button" data-source-follow-preview="${escapeHtml(sourceProfile.id)}">${renderAppIconSvgMarkup("check", { className: "source-report-follow-icon" })} Follow</button>
             </div>
           </div>
-          <div class="source-profile-identity-actions">
-            <button type="button" class="button button-secondary" data-source-follow-preview="${escapeHtml(sourceProfile.id)}">Follow</button>
-          </div>
+        </div>
+
+        <div class="source-report-hero-metrics" aria-label="Primary source evidence metrics">
+          ${renderSourceReportHeroMetricMarkup({ icon: "leaderboard", value: percentileLabel, label: "of Community Sources", tone: "gold" })}
+          ${renderSourceReportHeroMetricMarkup({ icon: "mySessionsSprout", value: averageGermRate, label: "Average Germination", tone: "green" })}
+          ${renderSourceReportHeroMetricMarkup({ icon: "adminShield", value: sourceTrust.confidenceLabel.replace(" Confidence", ""), label: "Confidence Level", tone: "shield" })}
+          ${renderSourceReportHeroMetricMarkup({ icon: "communityGroup", value: communitySessionCount, label: "Community Sessions", tone: "green" })}
+          ${renderSourceReportHeroMetricMarkup({ icon: "seedVault", value: seedsTrackedLabel, label: "Seeds Tracked", tone: "green" })}
+        </div>
+        <div class="source-report-hero-note-row">
+          <p>Performance and confidence are based on community session data, not sponsorship or paid ranking.</p>
+          <span>Last Updated: ${escapeHtml(activity.lastUpdated)} <i aria-hidden="true"></i></span>
         </div>
       </article>
 
-      <article class="card source-profile-community-card">
-        <div class="source-profile-section-head">
-          <div class="source-profile-section-copy">
-            <h3 class="source-profile-section-title">2. Performance Report</h3>
+      ${renderSourceReportActivityStripMarkup(activity)}
+
+      <article class="card source-report-section-card source-report-performance-card">
+        <div class="source-report-section-head">
+          <div>
+            ${renderSourceReportSectionTitle(1, "Performance Over Sessions")}
+            <p>Based on community session data</p>
           </div>
+          <span class="source-report-session-filter">All Sessions</span>
         </div>
-        <div class="summary-grid source-profile-community-grid">
-          ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
-        </div>
-        <p class="source-profile-trust-note">Performance and confidence are based on community session data, not sponsorship or paid ranking.</p>
+        ${renderSourceReportPerformanceChartMarkup(averageGermRateNumber, parseSourceDirectoryMetricNumber(sourceProfile.community?.sessions))}
       </article>
 
-      <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
-        <div class="source-profile-section-head">
-          <div class="source-profile-section-copy">
-            <h3 class="source-profile-section-title">${escapeHtml(cstpState.heading)}</h3>
-            <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
+      <div class="source-report-two-column-grid">
+        <article class="card source-report-section-card source-report-varieties-card">
+          <div class="source-report-section-head">
+            <div>
+              ${renderSourceReportSectionTitle(2, "Top Performing Varieties")}
+            </div>
+            <span>Avg Germination</span>
           </div>
-        </div>
-        <div class="source-profile-verification-layout">
+          ${renderSourceReportTopVarietiesMarkup(topVarieties)}
+        </article>
+
+        <article class="card source-report-section-card source-report-distribution-card">
+          ${renderSourceReportSectionTitle(3, "Germination Distribution")}
+          ${renderSourceReportDistributionMarkup(sourceProfile.community?.seedsTracked, averageGermRateNumber)}
+        </article>
+      </div>
+
+      <article class="card source-report-section-card source-report-region-card">
+        ${renderSourceReportSectionTitle(4, "Community Growth by Region")}
+        ${renderSourceReportRegionMarkup(regions)}
+      </article>
+
+      <article class="card source-report-section-card source-report-recent-card">
+        ${renderSourceReportSectionTitle(5, "Recent Community Activity")}
+        ${renderSourceReportRecentActivityMarkup(activity, topVarieties)}
+      </article>
+
+      <article class="card source-report-section-card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
+        ${renderSourceReportSectionTitle(6, "CSTP Verification")}
+        <div class="source-profile-verification-layout source-report-cstp-layout">
           <div class="source-profile-verification-visual-column">
             ${renderSourceProfileCstpVisualMarkup(cstpState)}
           </div>
           <div class="source-profile-verification-main">
             <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
-            ${cstpState.pills.length ? `
-              <div class="source-profile-cstp-state-shell">
-                ${cstpState.pills.map((pill) => `
-                  <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass)}"${getCstpTooltipCopy(pill.label) ? ` title="${escapeHtml(getCstpTooltipCopy(pill.label))}"` : ""}>${escapeHtml(pill.label)}</span>
-                `).join("")}
-              </div>
-            ` : ""}
+            <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
             <div class="source-profile-detail-grid source-profile-detail-grid--verification">
               ${cstpState.rows.map((row) => `
                 <article class="meta-card source-profile-detail-card">
@@ -51059,20 +51301,16 @@ function renderSourceProfilePage(sourceId = "") {
         <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
       </article>
 
-      <article class="card source-profile-track-record-card">
-        <div class="source-profile-section-head">
-          <div class="source-profile-section-copy">
-            <h3 class="source-profile-section-title">5. Community Confidence</h3>
-          </div>
-        </div>
-        <div class="summary-grid source-profile-track-grid">
+      <article class="card source-report-section-card source-profile-track-record-card">
+        ${renderSourceReportSectionTitle(7, "Community Confidence")}
+        <div class="summary-grid source-profile-track-grid source-report-confidence-grid">
           ${trackRecordStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
       </article>
 
-      <article class="card source-profile-request-card">
-        <div class="source-profile-request-copy">
-          <p class="eyebrow">Company Information</p>
+      <article class="card source-report-actions-card">
+        <div>
+          <p class="eyebrow">Source Actions</p>
           <h3>Visit or update this source report</h3>
           <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
         </div>
@@ -51081,7 +51319,6 @@ function renderSourceProfilePage(sourceId = "") {
           <a class="button button-secondary" href="#contact" data-source-request-cstp="${escapeHtml(sourceProfile.id)}">Request CSTP Testing</a>
           <a class="button button-secondary" href="#contact" data-source-request-correction="${escapeHtml(sourceProfile.id)}">Claim or Correct This Source</a>
         </div>
-        ${sourceProfile.partnerSource || sourceProfile.isPartner || sourceProfile.partner ? `<p class="source-profile-partner-note">Partner links help support Grow.</p>` : ""}
       </article>
     </section>
   `;
@@ -51105,7 +51342,6 @@ function renderSourceProfilePage(sourceId = "") {
     });
   });
 }
-
 function getSourceCstpReportDetail(sourceProfile = {}) {
   const publishedCertification = getPublishedAdminCstpCertificationForSource(sourceProfile);
   const cstp = sourceProfile?.cstp && typeof sourceProfile.cstp === "object" ? sourceProfile.cstp : {};
