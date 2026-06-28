@@ -7845,6 +7845,93 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.45;
 }
 
+
+.community-global-section {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(20px, 2.4vw, 28px);
+  margin-top: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.11);
+  background:
+    radial-gradient(circle at 82% 16%, rgba(155, 234, 56, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(15, 25, 18, 0.86), rgba(7, 13, 10, 0.9));
+  box-shadow:
+    0 18px 36px rgba(3, 7, 5, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.community-global-header {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.community-global-header h3,
+.community-global-header p {
+  margin: 0;
+}
+
+.community-global-header .app-section-header-main > div {
+  display: grid;
+  gap: 5px;
+}
+
+.community-global-header .app-section-header-main > div > p:not(.eyebrow) {
+  max-width: 56ch;
+  color: rgba(231, 238, 226, 0.68);
+  line-height: 1.55;
+}
+
+.community-global-icon.section-title-icon {
+  color: #b8ef84;
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at 35% 24%, rgba(218, 255, 177, 0.13), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+}
+
+.community-global-summary {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  color: rgba(231, 238, 226, 0.62);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.community-global-summary strong {
+  color: #f7faf4;
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+  line-height: 1;
+}
+
+.community-global-world-map {
+  min-height: 280px;
+}
+
+.community-global-map-markers {
+  filter: url(#community-global-map-glow);
+}
+
+.community-global-region-row {
+  min-height: 42px;
+}
+
+@media (max-width: 720px) {
+  .community-global-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .community-global-summary {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .community-global-section {
+    padding: 20px;
+  }
+}
 .gallery-leaderboard-section {
   position: relative;
   overflow: hidden;
@@ -42336,7 +42423,7 @@ body.theme-dark .gallery-feed-section {
   backdrop-filter: blur(20px) saturate(82%) brightness(0.88);
 }
 
-body.theme-dark .gallery-leaderboard-section {
+.gallery-leaderboard-section {
   border-color: rgba(148, 209, 89, 0.12);
   background:
     radial-gradient(circle at top right, rgba(148, 209, 89, 0.1), transparent 24%),

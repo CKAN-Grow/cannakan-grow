@@ -68674,6 +68674,79 @@ function setMockDataEnabledAndRefresh(enabled) {
   return true;
 }
 
+
+function getCommunityGlobalRegionRows() {
+  return [
+    { flag: "🇺🇸", region: "United States", sessions: 96, share: 38 },
+    { flag: "🇨🇴", region: "Colombia", sessions: 37, share: 15 },
+    { flag: "🇩🇪", region: "Germany", sessions: 54, share: 21 },
+    { flag: "🇨🇦", region: "Canada", sessions: 24, share: 9 },
+    { flag: "➕", region: "Other", sessions: 43, share: 17 },
+  ];
+}
+
+function renderCommunityGlobalMapSection() {
+  const rows = getCommunityGlobalRegionRows();
+  return `
+    <section class="card gallery-section community-global-section" aria-labelledby="community-global-title">
+      <div class="section-heading app-section-header community-global-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("gallery", { className: "community-global-icon" })}
+          <div>
+            <p class="eyebrow">Global Community</p>
+            <h3 id="community-global-title">Community Growth</h3>
+            <p>Where Grow app members and public community sessions are active around the world.</p>
+          </div>
+        </div>
+        <p class="community-global-summary"><strong>${escapeHtml(rows.reduce((sum, row) => sum + row.sessions, 0).toLocaleString())}</strong> demo community sessions</p>
+      </div>
+      <div class="source-report-region-layout community-global-layout">
+        <div class="source-report-region-list community-global-region-list">
+          ${rows.map((row) => `
+            <article class="source-report-region-row community-global-region-row">
+              <span class="source-report-region-flag-emoji" aria-hidden="true">${escapeHtml(row.flag)}</span>
+              <strong>${escapeHtml(row.region)}</strong>
+              <span>${escapeHtml(row.sessions.toLocaleString())} sessions</span>
+              <em>${escapeHtml(String(row.share))}%</em>
+            </article>
+          `).join("")}
+        </div>
+        <div class="source-report-world-map community-global-world-map" aria-hidden="true">
+          <img
+            class="source-report-world-map-image"
+            src="/assets/app/source-report/world-map.svg"
+            alt=""
+            loading="lazy"
+            decoding="async"
+          >
+          <svg class="source-report-map-marker-overlay" viewBox="0 0 1000 500" focusable="false" aria-hidden="true">
+            <defs>
+              <filter id="community-global-map-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="9" result="blur"></feGaussianBlur>
+                <feMerge>
+                  <feMergeNode in="blur"></feMergeNode>
+                  <feMergeNode in="SourceGraphic"></feMergeNode>
+                </feMerge>
+              </filter>
+            </defs>
+            <g class="source-report-map-markers community-global-map-markers">
+              <circle class="source-report-map-pulse" cx="228" cy="142" r="38"></circle>
+              <circle class="source-report-map-marker is-us" cx="228" cy="142" r="9"></circle>
+              <circle class="source-report-map-pulse" cx="294" cy="237" r="25"></circle>
+              <circle class="source-report-map-marker is-colombia" cx="294" cy="237" r="7"></circle>
+              <circle class="source-report-map-pulse" cx="529" cy="108" r="27"></circle>
+              <circle class="source-report-map-marker is-germany" cx="529" cy="108" r="8"></circle>
+              <circle class="source-report-map-pulse" cx="206" cy="94" r="24"></circle>
+              <circle class="source-report-map-marker is-canada" cx="206" cy="94" r="7"></circle>
+              <circle class="source-report-map-pulse" cx="780" cy="290" r="24"></circle>
+              <circle class="source-report-map-marker is-other" cx="780" cy="290" r="6"></circle>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+  `;
+}
 function renderGallery(targetSnapshotId = "") {
   markLearnGettingStartedActionCompleted("explore-community-grow");
   app.replaceChildren(cloneTemplate(templates.gallery));
@@ -68721,10 +68794,17 @@ function renderGallery(targetSnapshotId = "") {
     });
   }
 
+  let communityGlobalSection = null;
   if (galleryFeedSection) {
     const leaderboardSection = renderGalleryLeaderboardSection();
     const seedAgeOverviewSection = renderCommunitySeedAgeOverviewSection();
-    galleryFeedSection.before(leaderboardSection);
+    galleryFeedSection.insertAdjacentHTML("beforebegin", renderCommunityGlobalMapSection());
+    communityGlobalSection = galleryFeedSection.previousElementSibling;
+    if (communityGlobalSection instanceof HTMLElement) {
+      communityGlobalSection.after(leaderboardSection);
+    } else {
+      galleryFeedSection.before(leaderboardSection);
+    }
     leaderboardSection.after(seedAgeOverviewSection);
   }
 
@@ -68756,7 +68836,7 @@ function renderGallery(targetSnapshotId = "") {
   if (isCommunityGrowLocked) {
     const lockedBannerMarkup = renderCommunityGrowLockedBannerMarkup();
     leaderboardSection?.insertAdjacentHTML("beforebegin", lockedBannerMarkup);
-    [leaderboardSection, seedAgeOverviewSection, galleryFeedSection].forEach((section) => {
+    [communityGlobalSection, leaderboardSection, seedAgeOverviewSection, galleryFeedSection].forEach((section) => {
       if (!(section instanceof HTMLElement)) {
         return;
       }
