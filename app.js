@@ -50937,7 +50937,7 @@ function getSourceReportRegionRows(sourceProfile = {}) {
   const primaryCountry = getCountryName(countryCode) || "United States";
   const rows = [
     { code: "US", country: "United States", share: 41 },
-    { code: countryCode, country: primaryCountry, share: 18 },
+    { code: "CO", country: "Colombia", share: 18 },
     { code: "DE", country: "Germany", share: 14 },
     { code: "CA", country: "Canada", share: 8 },
     { code: "", country: "Other", share: 19 },
@@ -51110,7 +51110,37 @@ function renderSourceReportRegionMarkup(regions = []) {
         `).join("")}
       </div>
       <div class="source-report-world-map" aria-hidden="true">
-        ${Array.from({ length: 34 }, (_, index) => `<span style="--x:${8 + ((index * 17) % 84)}%;--y:${16 + ((index * 29) % 66)}%;--s:${0.55 + ((index % 5) * 0.16)}"></span>`).join("")}
+        <svg class="source-report-world-map-svg" viewBox="0 0 720 360" focusable="false" role="img" aria-label="Community growth by region world map">
+          <defs>
+            <filter id="source-report-map-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="7" result="blur"></feGaussianBlur>
+              <feMerge>
+                <feMergeNode in="blur"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+              </feMerge>
+            </filter>
+          </defs>
+          <g class="source-report-map-land">
+            <path d="M87 110c20-24 59-31 95-22 24 6 43 20 50 39 7 20-2 41-19 58-16 16-41 23-66 20-30-4-58-20-70-45-9-19-5-36 10-50Z"></path>
+            <path d="M205 189c23 6 44 22 53 43 10 23 4 49-15 73-12 15-25 30-31 48-2 6-11 7-15 1-12-18-25-36-39-53-15-20-23-44-17-67 7-28 32-51 64-45Z"></path>
+            <path d="M332 96c39-22 92-25 137-13 26 7 51 21 62 43 9 19 6 42-10 57-22 21-58 21-88 15-33-7-64-13-97-2-25 8-55 11-74-6-16-15-17-39-6-58 15-24 48-24 76-36Z"></path>
+            <path d="M430 200c24-9 54-4 73 12 22 19 28 51 17 78-9 22-28 38-50 44-19 5-42 2-55-13-13-14-14-36-8-55 7-22 7-50 23-66Z"></path>
+            <path d="M548 135c29-10 69-4 88 17 15 17 12 40-5 54-18 15-46 14-68 8-22-7-45-12-68-7-12 3-25-4-29-15-5-13 4-27 17-33 22-9 43-17 65-24Z"></path>
+            <path d="M553 251c25-14 62-10 85 8 19 15 24 40 12 59-15 24-54 28-81 17-25-10-44-32-42-55 1-12 11-22 26-29Z"></path>
+          </g>
+          <g class="source-report-map-markers">
+            <circle class="source-report-map-pulse" cx="156" cy="144" r="28"></circle>
+            <circle class="source-report-map-marker is-us" cx="156" cy="144" r="8"></circle>
+            <circle class="source-report-map-pulse" cx="211" cy="244" r="20"></circle>
+            <circle class="source-report-map-marker is-colombia" cx="211" cy="244" r="6"></circle>
+            <circle class="source-report-map-pulse" cx="386" cy="143" r="18"></circle>
+            <circle class="source-report-map-marker is-germany" cx="386" cy="143" r="6"></circle>
+            <circle class="source-report-map-pulse" cx="143" cy="104" r="18"></circle>
+            <circle class="source-report-map-marker is-canada" cx="143" cy="104" r="6"></circle>
+            <circle class="source-report-map-pulse" cx="579" cy="252" r="16"></circle>
+            <circle class="source-report-map-marker is-other" cx="579" cy="252" r="5"></circle>
+          </g>
+        </svg>
       </div>
     </div>
   `;

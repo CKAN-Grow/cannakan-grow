@@ -56583,35 +56583,71 @@ body.theme-dark option[selected] {
 
 .source-report-world-map {
   position: relative;
-  min-height: 230px;
+  min-height: 250px;
   border-radius: 16px;
   overflow: hidden;
+  border: 1px solid rgba(148, 209, 89, 0.1);
   background:
-    radial-gradient(ellipse at 28% 48%, rgba(155, 234, 56, 0.34), transparent 16%),
-    radial-gradient(ellipse at 53% 40%, rgba(155, 234, 56, 0.28), transparent 15%),
-    radial-gradient(ellipse at 73% 58%, rgba(155, 234, 56, 0.2), transparent 15%),
-    linear-gradient(180deg, rgba(148, 209, 89, 0.06), rgba(148, 209, 89, 0.01));
+    radial-gradient(circle at 25% 42%, rgba(155, 234, 56, 0.11), transparent 24%),
+    radial-gradient(circle at 58% 42%, rgba(155, 234, 56, 0.09), transparent 25%),
+    radial-gradient(circle at 78% 62%, rgba(155, 234, 56, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(9, 18, 15, 0.92), rgba(5, 10, 8, 0.94));
 }
 
-.source-report-world-map::before {
+.source-report-world-map::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.36;
-  background-image: radial-gradient(rgba(210, 232, 190, 0.55) 1px, transparent 1.5px);
-  background-size: 8px 8px;
-  mask-image: radial-gradient(ellipse at center, #000 20%, transparent 78%);
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 72px 72px;
+  opacity: 0.28;
+  mask-image: radial-gradient(ellipse at center, #000 28%, transparent 86%);
 }
 
-.source-report-world-map span {
-  position: absolute;
-  left: var(--x);
-  top: var(--y);
-  width: calc(8px * var(--s));
-  height: calc(8px * var(--s));
-  border-radius: 999px;
-  background: #9bea38;
-  box-shadow: 0 0 16px rgba(155, 234, 56, 0.7);
+.source-report-world-map-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+}
+
+.source-report-map-land path {
+  fill: rgba(155, 188, 145, 0.18);
+  stroke: rgba(178, 216, 165, 0.2);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.source-report-map-markers {
+  filter: url(#source-report-map-glow);
+}
+
+.source-report-map-pulse {
+  fill: rgba(155, 234, 56, 0.14);
+  stroke: rgba(155, 234, 56, 0.22);
+  stroke-width: 1;
+}
+
+.source-report-map-marker {
+  fill: #9bea38;
+  stroke: rgba(244, 255, 224, 0.92);
+  stroke-width: 1.6;
+}
+
+.source-report-map-marker.is-colombia,
+.source-report-map-marker.is-germany {
+  fill: #b7e443;
+}
+
+.source-report-map-marker.is-canada,
+.source-report-map-marker.is-other {
+  fill: #7ed957;
+  opacity: 0.9;
 }
 
 .source-report-activity-timeline {
