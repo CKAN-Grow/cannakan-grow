@@ -51121,49 +51121,34 @@ function renderSourceReportRegionMarkup(regions = []) {
         `).join("")}
       </div>
       <div class="source-report-world-map" aria-hidden="true">
-        <svg class="source-report-world-map-svg" viewBox="0 0 720 360" focusable="false" role="img" aria-label="Community growth by region world map">
+        <img
+          class="source-report-world-map-image"
+          src="/assets/app/source-report/world-map.svg"
+          alt=""
+          loading="lazy"
+          decoding="async"
+        >
+        <svg class="source-report-map-marker-overlay" viewBox="0 0 1000 500" focusable="false" aria-hidden="true">
           <defs>
             <filter id="source-report-map-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="7" result="blur"></feGaussianBlur>
+              <feGaussianBlur stdDeviation="9" result="blur"></feGaussianBlur>
               <feMerge>
                 <feMergeNode in="blur"></feMergeNode>
                 <feMergeNode in="SourceGraphic"></feMergeNode>
               </feMerge>
             </filter>
           </defs>
-          <g class="source-report-map-graticule">
-            <path d="M48 180H672"></path>
-            <path d="M360 34V326"></path>
-            <ellipse cx="360" cy="180" rx="292" ry="112"></ellipse>
-            <ellipse cx="360" cy="180" rx="292" ry="64"></ellipse>
-          </g>
-          <g class="source-report-map-land">
-            <path class="is-north-america" d="M69 106 88 88 119 73 151 63 187 69 215 83 250 86 272 108 262 132 239 141 224 158 207 168 190 185 163 172 147 153 128 168 101 160 82 145 55 137 48 119Z"></path>
-            <path class="is-canada-archipelago" d="M96 64 121 51 151 54 138 69 111 75Z M166 47 194 43 223 53 213 67 178 64Z M235 61 263 54 292 63 277 79 245 76Z"></path>
-            <path class="is-greenland" d="M250 43 287 27 325 35 345 57 331 80 296 89 258 75 236 58Z"></path>
-            <path class="is-central-america" d="M183 181 207 184 231 196 247 207 236 220 210 210 184 196Z"></path>
-            <path class="is-south-america" d="M225 207 251 222 264 250 254 281 239 311 214 346 199 319 187 287 169 259 178 229Z"></path>
-            <path class="is-europe" d="M342 96 363 82 394 84 421 103 426 122 404 137 375 130 351 118Z"></path>
-            <path class="is-africa" d="M374 137 407 145 437 174 449 209 438 248 415 294 381 284 359 244 346 201 353 165Z"></path>
-            <path class="is-asia" d="M412 91 459 76 515 79 568 94 622 121 659 154 646 184 609 194 571 181 543 160 514 174 477 156 442 158 407 134Z"></path>
-            <path class="is-middle-east" d="M429 139 460 149 484 170 463 190 431 174Z"></path>
-            <path class="is-india" d="M489 172 509 194 501 224 478 197Z"></path>
-            <path class="is-southeast-asia" d="M528 184 553 194 583 203 607 219 592 237 558 226 535 208Z"></path>
-            <path class="is-japan" d="M620 138 634 149 628 167 616 159Z"></path>
-            <path class="is-australia" d="M557 255 603 245 642 264 631 296 585 304 548 282Z"></path>
-            <path class="is-new-zealand" d="M650 314 666 323 656 337 638 327Z"></path>
-          </g>
           <g class="source-report-map-markers">
-            <circle class="source-report-map-pulse" cx="156" cy="144" r="28"></circle>
-            <circle class="source-report-map-marker is-us" cx="156" cy="144" r="8"></circle>
-            <circle class="source-report-map-pulse" cx="211" cy="244" r="20"></circle>
-            <circle class="source-report-map-marker is-colombia" cx="211" cy="244" r="6"></circle>
-            <circle class="source-report-map-pulse" cx="386" cy="143" r="18"></circle>
-            <circle class="source-report-map-marker is-germany" cx="386" cy="143" r="6"></circle>
-            <circle class="source-report-map-pulse" cx="143" cy="104" r="18"></circle>
-            <circle class="source-report-map-marker is-canada" cx="143" cy="104" r="6"></circle>
-            <circle class="source-report-map-pulse" cx="579" cy="252" r="16"></circle>
-            <circle class="source-report-map-marker is-other" cx="579" cy="252" r="5"></circle>
+            <circle class="source-report-map-pulse" cx="228" cy="142" r="36"></circle>
+            <circle class="source-report-map-marker is-us" cx="228" cy="142" r="9"></circle>
+            <circle class="source-report-map-pulse" cx="294" cy="237" r="25"></circle>
+            <circle class="source-report-map-marker is-colombia" cx="294" cy="237" r="7"></circle>
+            <circle class="source-report-map-pulse" cx="529" cy="108" r="23"></circle>
+            <circle class="source-report-map-marker is-germany" cx="529" cy="108" r="7"></circle>
+            <circle class="source-report-map-pulse" cx="206" cy="94" r="25"></circle>
+            <circle class="source-report-map-marker is-canada" cx="206" cy="94" r="7"></circle>
+            <circle class="source-report-map-pulse" cx="780" cy="290" r="22"></circle>
+            <circle class="source-report-map-marker is-other" cx="780" cy="290" r="6"></circle>
           </g>
         </svg>
       </div>
