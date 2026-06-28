@@ -694,18 +694,18 @@ const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
 const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
   id: SOURCE_PROFILE_DEFAULT_MOCK_ID,
   name: "Seedsman",
-  type: "Breeder / Seed Source",
-  sourceTypeLabel: "Breeder / Seed Source",
+  type: "Seed Marketplace",
+  sourceTypeLabel: "Seed Marketplace",
   countryCode: "ES",
   country_code: "ES",
   logoUrl: SEEDSMAN_DEMO_LOGO_URL,
   websiteUrl: "https://www.seedsman.com",
   establishedLabel: "Established 2002",
   community: Object.freeze({
-    avgRate: 98,
-    sessions: 164,
+    avgRate: 92,
+    sessions: 203,
     rank: 1,
-    seedsTracked: 3896,
+    seedsTracked: 2375,
   }),
   cstp: Object.freeze({
     status: "tested",
@@ -713,7 +713,7 @@ const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
     validUntil: "",
     sampleSize: 30,
     avgTime: "38 hrs",
-    resultPercent: 98,
+    resultPercent: 92,
     expiringSoon: false,
   }),
   trackRecord: Object.freeze({
@@ -724,8 +724,8 @@ const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
     lastTest: "May 2026",
   }),
   directoryStats: Object.freeze({
-    sessionsLogged: 164,
-    varietiesLogged: 18,
+    sessionsLogged: 203,
+    varietiesLogged: 57,
     lastLoggedAt: "2026-05-18T14:20:00.000Z",
   }),
 });
@@ -1162,7 +1162,7 @@ const testedSourcesMock = Object.freeze([
     websiteUrl: "",
     establishedLabel: "Demo source",
     community: Object.freeze({
-      avgRate: 83,
+      avgRate: 84,
       sessions: 5,
       rank: 7,
       seedsTracked: 72,
@@ -1343,8 +1343,8 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     seedTypeName: "Photoperiod",
     sexLabel: "Feminized",
     totalSeeds: 24,
-    totalPlanted: 20,
-    successPercent: 83,
+    totalPlanted: 21,
+    successPercent: 88,
     timeline: {
       startedAt: "2026-04-18T09:00:00.000Z",
       germinationStartedAt: "2026-04-19T09:00:00.000Z",
@@ -10612,9 +10612,9 @@ function buildMaryJaneDemoFillerSourceMockRecords() {
     Object.freeze({ avgRate: 87, sessions: 56, seedsTracked: 1180 }),
     Object.freeze({ avgRate: 85, sessions: 38, seedsTracked: 760 }),
     Object.freeze({ avgRate: 84, sessions: 12, seedsTracked: 188 }),
-    Object.freeze({ avgRate: 82, sessions: 5, seedsTracked: 72 }),
-    Object.freeze({ avgRate: 81, sessions: 2, seedsTracked: 28 }),
-    Object.freeze({ avgRate: 81, sessions: 5, seedsTracked: 64, limited: true }),
+    Object.freeze({ avgRate: 84, sessions: 5, seedsTracked: 72 }),
+    Object.freeze({ avgRate: 84, sessions: 2, seedsTracked: 28 }),
+    Object.freeze({ avgRate: 84, sessions: 5, seedsTracked: 64, limited: true }),
   ]);
   const varietyPresets = Object.freeze([
     Object.freeze(["North Valley Diesel", "Aurora Cake", "Pine Ridge"]),
@@ -11783,7 +11783,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       note: "Older limited filler archive lot with a natural viability decline.",
       partitionSpecs: [
         { repeat: 5, seedVariety: "Atlas Apex archive", source: "Atlas Breeding Labs", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
-        { repeat: 3, seedVariety: "Atlas Apex archive", source: "Atlas Breeding Labs", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 7 },
+        { repeat: 3, seedVariety: "Atlas Apex archive", source: "Atlas Breeding Labs", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 7 },
       ],
     },
     {
@@ -11847,7 +11847,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       note: "Older Seedsman lot shows modest decline without dragging down fresh-lot performance.",
       partitionSpecs: [
         { repeat: 4, seedVariety: "Seedsman L.A. Peyote Kush archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 5 },
-        { repeat: 4, seedVariety: "Seedsman L.A. Peyote Kush archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 5 },
+        { repeat: 4, seedVariety: "Seedsman L.A. Peyote Kush archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 5 },
       ],
     },
     {
@@ -11941,8 +11941,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       hour: 11,
       note: "Average limited filler-source outcome for realistic distribution.",
       partitionSpecs: [
-        { repeat: 10, seedVariety: "Evergreen Pineapple", source: "Evergreen Genetics", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 3 },
-        { repeat: 6, seedVariety: "Evergreen Pineapple", source: "Evergreen Genetics", seedType: "auto", seedCount: 2, germinatedCount: 1, seedAgeYears: 3 },
+        { repeat: 14, seedVariety: "Evergreen Pineapple", source: "Evergreen Genetics", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 3 },
+        { repeat: 2, seedVariety: "Evergreen Pineapple", source: "Evergreen Genetics", seedType: "auto", seedCount: 2, germinatedCount: 1, seedAgeYears: 3 },
       ],
     },
     {
@@ -11957,8 +11957,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       hour: 9,
       note: "Older archive rescue keeps the seed-age story grounded.",
       partitionSpecs: [
-        { repeat: 4, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
-        { repeat: 4, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 3, seedAgeYears: 7 },
+        { repeat: 4, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 5, seedAgeYears: 7 },
+        { repeat: 4, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 5, seedAgeYears: 7 },
       ],
     },
     {
@@ -11989,8 +11989,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       hour: 15,
       note: "Seven-year archive lot took longer but still produced enough tails for a useful demo comparison.",
       partitionSpecs: [
-        { repeat: 4, seedVariety: "Alaskan Purple archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
-        { repeat: 4, seedVariety: "L.A. Peyote Kush archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 5 },
+        { repeat: 4, seedVariety: "Alaskan Purple archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 7 },
+        { repeat: 4, seedVariety: "L.A. Peyote Kush archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 5 },
       ],
     },
     {
@@ -12053,8 +12053,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       hour: 14,
       note: "Five-year Poppin Fire archive lot germinated more slowly but stayed within a believable range.",
       partitionSpecs: [
+        { repeat: 4, seedVariety: "Blue Frost archive", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 5 },
         { repeat: 4, seedVariety: "Blue Frost archive", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 5 },
-        { repeat: 4, seedVariety: "Blue Frost archive", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 5 },
       ],
     },
     {
@@ -12117,8 +12117,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       hour: 10,
       note: "A small second filler-source run keeps Summit visible but appropriately limited.",
       partitionSpecs: [
-        { repeat: 4, seedVariety: "Summit Snowcap", source: "Summit Seed Co.", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 2 },
-        { repeat: 4, seedVariety: "Summit Snowcap", source: "Summit Seed Co.", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 3 },
+        { repeat: 4, seedVariety: "Summit Snowcap", source: "Summit Seed Co.", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 2 },
+        { repeat: 4, seedVariety: "Summit Snowcap", source: "Summit Seed Co.", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 3 },
       ],
     },
   ];
@@ -21246,7 +21246,7 @@ function buildMockGrowNetworkActivityEntries() {
         sessionRoute: activity.sessionRoute || "#gallery",
         sessionDateLabel: "",
         sourceLabel: activity.sourceLabel || "",
-        germinationRateLabel: activity.germinationRateLabel || "0%",
+        germinationRateLabel: activity.germinationRateLabel || "—",
         systemLabel: "KAN",
         seedAgeLabel: String(activity.seedAgeLabel || "").trim(),
       };
@@ -32397,19 +32397,19 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
   };
   const heatmapConfig = {
     Photoperiod: {
-      rates: [94, 88, 77, 0, 0, 0],
+      rates: [94, 88, 84, 84, 84, 84],
       shares: [0.42, 0.42, 0.43, 0.44, 0.44, 0.45],
     },
     Auto: {
-      rates: [95, 90, 76, 0, 0, 0],
+      rates: [95, 90, 84, 84, 84, 84],
       shares: [0.3, 0.31, 0.29, 0.28, 0.27, 0.26],
     },
     Feminized: {
-      rates: [94, 89, 76, 0, 0, 0],
+      rates: [94, 89, 84, 84, 84, 84],
       shares: [0.58, 0.58, 0.59, 0.6, 0.6, 0.6],
     },
     Overall: {
-      rates: [94, 89, 76, 0, 0, 0],
+      rates: [94, 89, 84, 84, 84, 84],
       shares: [1, 1, 1, 1, 1, 1],
     },
   };
@@ -32434,7 +32434,7 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
     optimalAgeRange: "0-1 year",
     overallAverage: `${overallAverage.toFixed(1)}%`,
     totalSessions,
-    ageRange: "1-7 years",
+    ageRange: "1-20+ years",
     bestPerformance: "94.2%",
     bestPerformanceBucket: "1-2",
     bestPerformanceHelper: "Highest rate in the youngest tracked bucket",
@@ -33567,7 +33567,7 @@ function renderSeedAgeAnalyticsConfidenceMarkup(confidence = {}) {
       <div class="seed-age-analytics-confidence-copy">
         <div class="seed-age-analytics-confidence-title-row">
           <p class="seed-age-analytics-confidence-label">${escapeHtml(confidence?.title || "Data Confidence")}</p>
-          <span class="seed-age-analytics-confidence-score">${escapeHtml(confidence?.scoreLabel || "0%")}</span>
+          <span class="seed-age-analytics-confidence-score">${escapeHtml(confidence?.scoreLabel || "—")}</span>
         </div>
         <strong class="seed-age-analytics-confidence-level">${escapeHtml(confidence?.level || "Low Confidence")}</strong>
         <p class="seed-age-analytics-confidence-helper">${escapeHtml(confidence?.helper || "")}</p>
@@ -33581,7 +33581,7 @@ function renderSeedAgeAnalyticsConfidenceMarkup(confidence = {}) {
           <circle class="seed-age-analytics-confidence-ring-progress" cx="48" cy="48" r="34" pathLength="100"></circle>
         </svg>
         <div class="seed-age-analytics-confidence-center">
-          <strong>${escapeHtml(confidence?.scoreLabel || "0%")}</strong>
+          <strong>${escapeHtml(confidence?.scoreLabel || "—")}</strong>
         </div>
       </div>
     </article>
@@ -47971,8 +47971,8 @@ function formatTestedSourceMockNumber(value) {
   return Number.isFinite(value) ? value.toLocaleString() : "0";
 }
 
-function formatTestedSourceMockPercent(value) {
-  return Number.isFinite(value) ? `${value}%` : "0%";
+function formatTestedSourceMockPercent(value, fallback = "—") {
+  return Number.isFinite(value) ? `${value}%` : fallback;
 }
 
 function formatTestedSourceMockRank(value) {
@@ -48016,7 +48016,7 @@ function normalizeTestedSourceMockRecord(source = {}) {
       totalCerts: formatTestedSourceMockNumber(Number(trackRecord?.totalCerts)),
       gold: formatTestedSourceMockNumber(Number(trackRecord?.gold)),
       silver: formatTestedSourceMockNumber(Number(trackRecord?.silver)),
-      qualificationRate: formatTestedSourceMockPercent(Number(trackRecord?.qualificationRate)),
+      qualificationRate: Number(trackRecord?.qualificationRate) > 0 ? formatTestedSourceMockPercent(Number(trackRecord?.qualificationRate)) : "—",
     },
     directoryStats: {
       ...directoryStats,
@@ -50893,7 +50893,7 @@ function renderSourceProfilePage(sourceId = "") {
   }
 
   const communitySessionCount = sourceProfile.community.sessions || "0";
-  const averageGermRate = sourceProfile.community.avgRate || "0%";
+  const averageGermRate = getSourceDirectoryReportedRateLabel(sourceProfile);
   const averageGermRateNumber = parseSourceDirectoryMetricNumber(averageGermRate);
   const showDemoDataBadge = isMockDataEnabled();
   const communityStats = [

@@ -71,7 +71,7 @@ for (const needle of [
   "saveSeedVaultEntries([...buildDevModeSeedVaultEntries(userId), ...realVaultEntries]",
   "persistAppNotifications([...buildDevModeAppNotifications(), ...existingNotifications]",
   "getSourceDirectoryMockRecords()",
-  "isMockDataEnabled() ? testedSourcesMock : []",
+  "(mockDataEnabled ? testedSourcesMock : [])",
   ".filter((session) => isGrowSessionAnalyticsEligible(session, { includeMock: isMockDataEnabled() }))",
   "return linkedSession ? isGrowSessionAnalyticsEligible(linkedSession, { includeMock: isMockDataEnabled() }) : true;",
   "function buildMockGalleryPartitionRecords(partitionSpecs = [])",
