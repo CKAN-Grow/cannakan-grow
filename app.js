@@ -51376,32 +51376,60 @@ function renderSourceReportCstpSectionMarkup(sourceProfile = {}, cstpState = {})
     `;
   }
 
+  const reportStatusMarkup = cstpState.hasReport
+    ? `
+      <a class="button button-secondary source-report-cstp-report-button" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">
+        View Public Report
+      </a>
+    `
+    : `<span class="source-report-cstp-status-note">No public Gold/Silver report available</span>`;
+  const reportStatusTitle = cstpState.hasReport
+    ? "Public report available"
+    : "Public report not available";
+  const reportStatusCopy = cstpState.hasReport
+    ? "An active public CSTP report is available for review."
+    : "This source may have CSTP test data without an active public Gold or Silver report.";
+
   return `
-    <article class="card source-report-section-card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
+    <article class="card source-report-section-card source-profile-verification-card source-report-cstp-panel ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
       ${renderSourceReportSectionTitle(6, "CSTP Verification")}
-      <div class="source-profile-verification-layout source-report-cstp-layout">
-        <div class="source-profile-verification-visual-column">
-          ${renderSourceProfileCstpVisualMarkup(cstpState)}
-        </div>
-        <div class="source-profile-verification-main">
-          <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
-          <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
-          <div class="source-profile-detail-grid source-profile-detail-grid--verification">
-            ${cstpState.rows.map((row) => `
-              <article class="meta-card source-profile-detail-card">
-                <span class="stat-label">${escapeHtml(row.label)}</span>
-                <strong>${escapeHtml(row.value)}</strong>
-              </article>
-            `).join("")}
+      <div class="source-report-cstp-panel-body">
+        <div class="source-report-cstp-status-card">
+          <div class="source-report-cstp-badge-shell">
+            ${renderSourceProfileCstpVisualMarkup(cstpState)}
           </div>
-          <div class="source-profile-verification-actions">
-            ${cstpState.hasReport
-              ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Report</a>`
-              : `<span class="source-report-cstp-status-note">Public report not available yet</span>`}
+          <div class="source-report-cstp-status-copy">
+            <p class="eyebrow">Controlled Source Testing Protocol</p>
+            <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
+            <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
+            <div class="source-profile-cstp-state-shell source-report-cstp-state-shell" aria-label="CSTP status">
+              ${(cstpState.pills || []).map((pill) => `
+                <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass || "")}">${escapeHtml(pill.label)}</span>
+              `).join("")}
+            </div>
           </div>
         </div>
+
+        <aside class="source-report-cstp-report-status ${cstpState.hasReport ? "is-available" : "is-neutral"}">
+          <span>Public Report Status</span>
+          <strong>${escapeHtml(reportStatusTitle)}</strong>
+          <p>${escapeHtml(reportStatusCopy)}</p>
+          <div class="source-profile-verification-actions source-report-cstp-actions">
+            ${reportStatusMarkup}
+          </div>
+        </aside>
+
+        <div class="source-profile-detail-grid source-profile-detail-grid--verification source-report-cstp-detail-grid">
+          ${cstpState.rows.map((row) => `
+            <article class="meta-card source-profile-detail-card source-report-cstp-detail-card">
+              <span class="stat-label">${escapeHtml(row.label)}</span>
+              <strong>${escapeHtml(row.value)}</strong>
+            </article>
+          `).join("")}
+        </div>
+
+        <p class="source-profile-cstp-trust-note source-report-cstp-trust-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
       </div>
-      <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
     </article>
   `;
 }
