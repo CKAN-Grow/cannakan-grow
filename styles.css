@@ -57276,8 +57276,16 @@ body.theme-dark option[selected] {
   align-items: center;
 }
 
+.source-report-confidence-grid {
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+}
+
 .source-report-confidence-grid .source-profile-stat-card {
-  min-height: 112px;
+  height: 100%;
+  min-height: 148px;
 }
 
 .source-report-actions-card {
@@ -57297,6 +57305,10 @@ body.theme-dark option[selected] {
 @media (max-width: 1080px) {
   .source-report-region-card .source-report-region-layout {
     --source-report-region-map-height: 320px;
+  }
+
+  .source-report-confidence-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .source-report-hero-metrics,
@@ -57377,6 +57389,10 @@ body.theme-dark option[selected] {
 
   .source-report-hero-metric {
     min-height: 112px;
+  }
+
+  .source-report-confidence-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .source-report-distribution-donut {
