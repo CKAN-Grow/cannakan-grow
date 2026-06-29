@@ -56091,11 +56091,12 @@ body.theme-dark option[selected] {
 }
 
 .source-directory-community-confidence-card .grow-kpi-watermark {
-  top: 10px;
-  right: 10px;
-  width: 48px;
-  height: 48px;
-  opacity: 0.045;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  opacity: 0.035;
+  transform: none;
 }
 
 .source-report-empty-card {
