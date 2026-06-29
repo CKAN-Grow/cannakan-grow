@@ -790,6 +790,22 @@ const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
+const SOURCE_VARIETY_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ key: "all", label: "All Varieties" }),
+  Object.freeze({ key: "verified", label: "Verified" }),
+  Object.freeze({ key: "community", label: "Community" }),
+  Object.freeze({ key: "autoflower", label: "Auto" }),
+  Object.freeze({ key: "photoperiod", label: "Photo/Fem" }),
+]);
+const SOURCE_VARIETY_SORT_OPTIONS = Object.freeze([
+  Object.freeze({ key: "highest-germination", label: "Highest Germination" }),
+  Object.freeze({ key: "most-tested", label: "Most Tested" }),
+  Object.freeze({ key: "most-popular", label: "Most Popular" }),
+  Object.freeze({ key: "recently-active", label: "Recently Active" }),
+  Object.freeze({ key: "alphabetical", label: "Alphabetical" }),
+]);
+const SOURCE_VARIETY_DEFAULT_FILTER = "all";
+const SOURCE_VARIETY_DEFAULT_SORT = "highest-germination";
 const SOURCE_DIRECTORY_DEMO_SHOWCASE_ORDER = Object.freeze([
   "seedsman",
   "good genetix",
@@ -14070,12 +14086,13 @@ function getCurrentSiteAnalyticsPageContext() {
     });
   }
   if (route === "sources") {
+    const [, sourceId = "", sourceSubroute = ""] = rawRoute.split("/");
     return id
       ? buildSiteAnalyticsPageContext({
         pageGroup: "sources",
-        pageKey: "source-profile",
-        pageLabel: "Source Report",
-        pagePath: `#sources/${id}`,
+        pageKey: sourceSubroute === "varieties" ? "source-varieties" : "source-profile",
+        pageLabel: sourceSubroute === "varieties" ? "Source Varieties" : "Source Report",
+        pagePath: sourceSubroute === "varieties" ? `#sources/${sourceId}/varieties` : `#sources/${id}`,
       })
       : buildSiteAnalyticsPageContext({
         pageGroup: "sources",
@@ -38705,6 +38722,16 @@ function render() {
       }));
       return;
     }
+    if (subroute === "varieties") {
+      renderSourceVarietiesPage(sourceProfileId);
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "source-varieties",
+        pageLabel: "Source Varieties",
+        pagePath: `#sources/${encodeURIComponent(sourceProfileId)}/varieties`,
+      }));
+      return;
+    }
     renderSourceProfilePage(sourceProfileId);
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "sources",
@@ -51067,11 +51094,11 @@ function renderSourceReportSectionTitle(index = 1, title = "") {
   `;
 }
 
-function renderSourceReportHeroMetricMarkup({ icon = "sourceDirectoryBars", value = "", label = "", detail = "", tone = "green" } = {}) {
+function renderSourceReportHeroMetricMarkup({ icon = "sourceDirectoryBars", value = "", valueHtml = "", label = "", detail = "", tone = "green" } = {}) {
   return `
     <article class="source-report-hero-metric is-${escapeHtml(tone)}">
       <span class="source-report-hero-metric-icon" aria-hidden="true">${renderAppIconSvgMarkup(icon, { className: "source-report-icon-svg" })}</span>
-      <strong>${escapeHtml(value)}</strong>
+      <strong>${valueHtml || escapeHtml(value)}</strong>
       <span>${escapeHtml(label)}</span>
       ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
     </article>
@@ -51156,7 +51183,10 @@ function renderSourceReportPerformanceChartMarkup(averageRate = 0, sessions = 0)
   `;
 }
 
-function renderSourceReportTopVarietiesMarkup(varieties = []) {
+function renderSourceReportTopVarietiesMarkup(varieties = [], sourceProfile = {}) {
+  const sourceReportHref = sourceProfile?.id
+    ? `#sources/${encodeURIComponent(sourceProfile.id)}/varieties`
+    : "#sources";
   return `
     <div class="source-report-variety-list">
       ${varieties.map((variety) => `
@@ -51167,7 +51197,7 @@ function renderSourceReportTopVarietiesMarkup(varieties = []) {
         </article>
       `).join("")}
     </div>
-    <a class="button button-secondary source-report-subtle-button" href="#sources">View All Varieties</a>
+    <a class="button button-secondary source-report-subtle-button" href="${escapeHtml(sourceReportHref)}">View All Varieties</a>
   `;
 }
 
@@ -51326,6 +51356,491 @@ function renderSourceReportCstpSectionMarkup(sourceProfile = {}, cstpState = {})
     </article>
   `;
 }
+
+function getSourceReportRouteHref(sourceProfile = {}) {
+  const sourceId = String(sourceProfile?.id || "").trim();
+  return sourceId ? `#sources/${encodeURIComponent(sourceId)}` : "#sources";
+}
+
+function findPublicSourceDetailForSourceProfile(sourceProfile = {}) {
+  const candidates = [
+    sourceProfile?.id,
+    sourceProfile?.key,
+    sourceProfile?.name,
+    sourceProfile?.label,
+    normalizeSourceNameForMatching(sourceProfile?.name || ""),
+    normalizeSourceNameForMatching(sourceProfile?.label || ""),
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  const uniqueCandidates = [...new Set(candidates)];
+  for (const candidate of uniqueCandidates) {
+    const detail = buildSourceDirectoryPublicSourceDetail(candidate);
+    if (detail) {
+      return detail;
+    }
+  }
+  return null;
+}
+
+function isVarietyDirectoryEntryForSource(entry = {}, sourceProfile = {}) {
+  const sourceId = String(sourceProfile?.id || sourceProfile?.sourceId || "").trim();
+  const entrySourceId = String(entry?.sourceId || "").trim();
+  if (sourceId && entrySourceId && entrySourceId === sourceId) {
+    return true;
+  }
+
+  const sourceKeys = [sourceProfile?.name, sourceProfile?.label, sourceProfile?.id, sourceProfile?.key]
+    .map((value) => normalizeSourceNameForMatching(value || ""))
+    .filter(Boolean);
+  const entrySourceKey = normalizeSourceNameForMatching(entry?.sourceName || "");
+  return Boolean(entrySourceKey && sourceKeys.includes(entrySourceKey));
+}
+
+function getSourceVarietyDirectoryRows(sourceProfile = {}) {
+  const rowsByKey = new Map();
+  const sourceName = String(sourceProfile?.name || sourceProfile?.label || "").trim();
+  const publicDetail = findPublicSourceDetailForSourceProfile(sourceProfile);
+  const sourceDirectoryEntries = getVarietyDirectoryAutocompleteEntries()
+    .filter((entry) => entry && entry.active !== false && isVarietyDirectoryEntryForSource(entry, sourceProfile));
+  const allDirectoryEntries = getVarietyDirectoryAutocompleteEntries()
+    .filter((entry) => entry && entry.active !== false);
+
+  const findDirectoryEntryForLabel = (label = "") => {
+    const normalizedLabel = normalizeVarietyDirectoryText(label);
+    if (!normalizedLabel) {
+      return null;
+    }
+    return sourceDirectoryEntries.find((entry) => getVarietyDirectoryEntrySearchValues(entry).includes(normalizedLabel))
+      || allDirectoryEntries.find((entry) => getVarietyDirectoryEntrySearchValues(entry).includes(normalizedLabel))
+      || null;
+  };
+
+  const upsertRow = (partial = {}) => {
+    const label = String(partial.label || partial.name || partial.variety || "").trim();
+    const key = normalizeVarietyDirectoryText(label);
+    if (!key) {
+      return;
+    }
+    const directoryEntry = partial.directoryEntry || findDirectoryEntryForLabel(label);
+    const existing = rowsByKey.get(key) || {};
+    const totalSeeds = Math.max(
+      0,
+      Number(existing.totalSeeds) || 0,
+      Number(partial.totalSeeds) || 0,
+    );
+    const totalGerminated = Math.max(0, Number(existing.totalGerminated) || 0, Number(partial.totalGerminated) || 0);
+    const averageRate = Number.isFinite(Number(partial.averageRate))
+      ? Number(partial.averageRate)
+      : (Number.isFinite(Number(existing.averageRate)) ? Number(existing.averageRate) : null);
+    const latestAt = [existing.latestAt, partial.latestAt, partial.lastUsedAt, directoryEntry?.lastUsedAt]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .sort((left, right) => (Date.parse(right) || 0) - (Date.parse(left) || 0))[0] || "";
+
+    rowsByKey.set(key, {
+      ...existing,
+      ...partial,
+      key,
+      label,
+      aliases: [
+        ...new Set([
+          ...(Array.isArray(existing.aliases) ? existing.aliases : []),
+          ...(Array.isArray(partial.aliases) ? partial.aliases : []),
+          ...(Array.isArray(directoryEntry?.aliases) ? directoryEntry.aliases : []),
+        ].map((alias) => String(alias || "").trim()).filter(Boolean)),
+      ],
+      directoryEntry: directoryEntry || existing.directoryEntry || null,
+      sourceName: String(partial.sourceName || directoryEntry?.sourceName || existing.sourceName || sourceName).trim(),
+      varietyType: String(partial.varietyType || directoryEntry?.varietyType || existing.varietyType || "unknown").trim() || "unknown",
+      verified: existing.verified === true || partial.verified === true || directoryEntry?.verified === true,
+      totalSeeds,
+      totalGerminated,
+      averageRate,
+      snapshotCount: Math.max(0, Number(existing.snapshotCount) || 0, Number(partial.snapshotCount) || 0),
+      sessionCount: Math.max(0, Number(existing.sessionCount) || 0, Number(partial.sessionCount) || 0),
+      usageCount: Math.max(0, Number(existing.usageCount) || 0, Number(partial.usageCount) || 0, Number(directoryEntry?.usageCount) || 0),
+      distinctUserCount: Math.max(0, Number(existing.distinctUserCount) || 0, Number(partial.distinctUserCount) || 0, Number(directoryEntry?.distinctUserCount) || 0),
+      latestAt,
+      imageUrl: String(partial.imageUrl || directoryEntry?.varietyImageUrl || existing.imageUrl || "").trim(),
+    });
+  };
+
+  [...(publicDetail?.topVarieties || []), ...(publicDetail?.mostTestedVarieties || [])].forEach((row) => {
+    upsertRow({
+      label: row.label,
+      averageRate: row.averageRate,
+      totalSeeds: row.totalSeeds,
+      totalGerminated: row.totalGerminated,
+      snapshotCount: row.snapshotCount,
+      sessionCount: row.sessionCount,
+      latestAt: row.latestAt,
+    });
+  });
+
+  getSourceDirectoryCardTopVarieties(sourceProfile, buildSourceDirectoryTopVarietyLookup()).forEach((row) => {
+    upsertRow({
+      label: String(row?.label || row?.name || row || "").trim(),
+      averageRate: row?.averageRate,
+      totalSeeds: row?.totalSeeds,
+      totalGerminated: row?.totalGerminated,
+      snapshotCount: row?.snapshotCount,
+      sessionCount: row?.sessionCount,
+    });
+  });
+
+  sourceDirectoryEntries.forEach((entry) => {
+    upsertRow({
+      label: entry.name,
+      aliases: entry.aliases,
+      directoryEntry: entry,
+      sourceName: entry.sourceName || sourceName,
+      varietyType: entry.varietyType,
+      verified: entry.verified,
+      usageCount: entry.usageCount,
+      distinctUserCount: entry.distinctUserCount,
+      lastUsedAt: entry.lastUsedAt,
+      imageUrl: entry.varietyImageUrl,
+    });
+  });
+
+  return [...rowsByKey.values()].sort(sortSourceVarietyRows);
+}
+
+function normalizeSourceVarietyType(value = "", label = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  const normalizedLabel = String(label || "").trim().toLowerCase();
+  if (normalizedValue.includes("auto") || /\bauto\b|autoflower/i.test(normalizedLabel)) {
+    return "autoflower";
+  }
+  if (["photoperiod", "photo", "feminized", "feminised", "cannabis"].some((term) => normalizedValue.includes(term))) {
+    return "photoperiod";
+  }
+  return normalizedValue || "unknown";
+}
+
+function getSourceVarietyTypeLabel(row = {}) {
+  const normalizedType = normalizeSourceVarietyType(row.varietyType, row.label);
+  if (normalizedType === "autoflower") {
+    return "Autoflower";
+  }
+  if (normalizedType === "photoperiod") {
+    return "Photo/Fem";
+  }
+  return "Variety";
+}
+
+function getSourceVarietyRowSearchValues(row = {}) {
+  return [
+    row.label,
+    row.sourceName,
+    row.varietyType,
+    ...(Array.isArray(row.aliases) ? row.aliases : []),
+  ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+}
+
+function sortSourceVarietyRows(left = {}, right = {}, sortKey = SOURCE_VARIETY_DEFAULT_SORT) {
+  const normalizedSortKey = String(sortKey || SOURCE_VARIETY_DEFAULT_SORT).trim().toLowerCase();
+  if (normalizedSortKey === "alphabetical") {
+    return String(left.label || "").localeCompare(String(right.label || ""), "en", { sensitivity: "base" });
+  }
+  if (normalizedSortKey === "most-tested") {
+    return (Number(right.totalSeeds) || 0) - (Number(left.totalSeeds) || 0)
+      || (Number(right.sessionCount) || 0) - (Number(left.sessionCount) || 0)
+      || String(left.label || "").localeCompare(String(right.label || ""), "en", { sensitivity: "base" });
+  }
+  if (normalizedSortKey === "most-popular") {
+    return (Number(right.usageCount) || 0) - (Number(left.usageCount) || 0)
+      || (Number(right.distinctUserCount) || 0) - (Number(left.distinctUserCount) || 0)
+      || (Number(right.totalSeeds) || 0) - (Number(left.totalSeeds) || 0)
+      || String(left.label || "").localeCompare(String(right.label || ""), "en", { sensitivity: "base" });
+  }
+  if (normalizedSortKey === "recently-active") {
+    return (Date.parse(right.latestAt || "") || 0) - (Date.parse(left.latestAt || "") || 0)
+      || String(left.label || "").localeCompare(String(right.label || ""), "en", { sensitivity: "base" });
+  }
+  const leftRate = Number.isFinite(Number(left.averageRate)) ? Number(left.averageRate) : -1;
+  const rightRate = Number.isFinite(Number(right.averageRate)) ? Number(right.averageRate) : -1;
+  return rightRate - leftRate
+    || (Number(right.totalSeeds) || 0) - (Number(left.totalSeeds) || 0)
+    || String(left.label || "").localeCompare(String(right.label || ""), "en", { sensitivity: "base" });
+}
+
+function filterSourceVarietyRows(rows = [], options = {}) {
+  const query = String(options.query || "").trim().toLowerCase();
+  const filterKey = String(options.filterKey || SOURCE_VARIETY_DEFAULT_FILTER).trim().toLowerCase();
+  const sortKey = String(options.sortKey || SOURCE_VARIETY_DEFAULT_SORT).trim().toLowerCase();
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => {
+      const normalizedType = normalizeSourceVarietyType(row.varietyType, row.label);
+      if (filterKey === "verified" && row.verified !== true) {
+        return false;
+      }
+      if (filterKey === "community" && row.verified === true) {
+        return false;
+      }
+      if (filterKey === "autoflower" && normalizedType !== "autoflower") {
+        return false;
+      }
+      if (filterKey === "photoperiod" && normalizedType !== "photoperiod") {
+        return false;
+      }
+      return !query || getSourceVarietyRowSearchValues(row).some((value) => value.includes(query));
+    })
+    .sort((left, right) => sortSourceVarietyRows(left, right, sortKey));
+}
+
+function renderSourceVarietyFilterPills(activeFilterKey = SOURCE_VARIETY_DEFAULT_FILTER) {
+  return SOURCE_VARIETY_FILTER_OPTIONS.map((option) => `
+    <button
+      type="button"
+      class="source-directory-filter-pill ${option.key === activeFilterKey ? "is-active" : ""}"
+      data-source-variety-filter="${escapeHtml(option.key)}"
+      aria-pressed="${option.key === activeFilterKey ? "true" : "false"}"
+    >
+      ${escapeHtml(option.label)}
+    </button>
+  `).join("");
+}
+
+function renderSourceVarietyCardMarkup(row = {}, index = 0) {
+  const rateLabel = formatPrivateAnalyticsPercent(row.averageRate, row.verified ? "Verified" : "Community");
+  const seedsLabel = Number(row.totalSeeds) > 0
+    ? formatPrivateAnalyticsNumber(row.totalSeeds)
+    : (Number(row.usageCount) > 0 ? formatPrivateAnalyticsNumber(row.usageCount) : "—");
+  const sessionsLabel = Number(row.sessionCount || row.snapshotCount) > 0
+    ? formatPrivateAnalyticsNumber(row.sessionCount || row.snapshotCount)
+    : (Number(row.distinctUserCount) > 0 ? formatPrivateAnalyticsNumber(row.distinctUserCount) : "—");
+  const typeLabel = getSourceVarietyTypeLabel(row);
+  const imageUrl = String(row.imageUrl || "").trim();
+  const fallbackInitial = String(row.label || "V").trim().slice(0, 1).toUpperCase() || "V";
+  const evidenceTone = row.verified ? "cstp" : "growing";
+  return `
+    <article class="card source-directory-card source-directory-report-card source-variety-card is-${escapeHtml(row.verified ? "high" : "growing")}">
+      <div class="source-directory-report-top source-variety-card-top">
+        <div class="source-variety-card-image" aria-hidden="true">
+          ${imageUrl
+            ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="${index < 3 ? "eager" : "lazy"}" decoding="async">`
+            : `<span>${escapeHtml(fallbackInitial)}</span>`}
+        </div>
+        <div class="source-directory-report-identity">
+          <h3>${escapeHtml(row.label || "Variety")}</h3>
+          <p class="source-directory-card-type">${escapeHtml(typeLabel)}</p>
+          ${row.sourceName ? `<p class="source-variety-card-source">${escapeHtml(row.sourceName)}</p>` : ""}
+        </div>
+        <div class="source-directory-evidence-badges" aria-label="Variety evidence badges">
+          <span class="source-directory-evidence-badge is-${escapeHtml(evidenceTone)}">${escapeHtml(row.verified ? "Verified" : "Community")}</span>
+        </div>
+      </div>
+      <div class="source-directory-performance-zone">
+        <div class="source-directory-average-germination-block">
+          <strong class="source-directory-average-germination-value">${escapeHtml(rateLabel)}</strong>
+          <span>Avg. Germination</span>
+        </div>
+        <div class="source-directory-confidence-meter" aria-label="Variety evidence">
+          <span>Evidence</span>
+          <small>${escapeHtml(Number(row.totalSeeds) > 0 ? `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds tracked` : getVarietyDirectorySuggestionReason(row.directoryEntry || row))}</small>
+          <i><b style="width:${escapeHtml(String(row.verified ? 78 : 48))}%"></b></i>
+        </div>
+      </div>
+      <div class="source-directory-report-kpis" aria-label="Variety summary">
+        <article>
+          <strong>${escapeHtml(seedsLabel)}</strong>
+          <span>${Number(row.totalSeeds) > 0 ? "Seeds" : "Uses"}</span>
+        </article>
+        <article>
+          <strong>${escapeHtml(sessionsLabel)}</strong>
+          <span>${Number(row.sessionCount || row.snapshotCount) > 0 ? "Sessions" : "Growers"}</span>
+        </article>
+      </div>
+    </article>
+  `;
+}
+
+function renderSourceVarietyResultsMarkup(rows = [], options = {}) {
+  if (!rows.length) {
+    return `
+      <article class="card source-directory-empty-state source-varieties-empty-state">
+        <h3>${escapeHtml(options.loading ? "Loading source varieties..." : "No varieties match your filters yet.")}</h3>
+        <p class="muted">${escapeHtml(options.loading ? "The Variety Directory is refreshing for this source." : "Try a different search or filter within this source.")}</p>
+      </article>
+    `;
+  }
+  return rows.map((row, index) => renderSourceVarietyCardMarkup(row, index)).join("");
+}
+
+function bindSourceVarietiesPage(sourceProfile = {}) {
+  const searchInput = app.querySelector("#source-varieties-search");
+  const sortSelect = app.querySelector("#source-varieties-sort");
+  const results = app.querySelector("#source-varieties-results");
+  const summary = app.querySelector("#source-varieties-results-summary");
+  const totalCount = app.querySelector("[data-source-varieties-total-count]");
+  const filterButtons = Array.from(app.querySelectorAll("[data-source-variety-filter]"));
+  if (!results || !summary) {
+    return;
+  }
+
+  let rows = getSourceVarietyDirectoryRows(sourceProfile);
+  let loading = Boolean(appState.supabase && !appState.varietyDirectoryLoaded && !appState.varietyDirectoryUnavailable);
+
+  const applyVarietyView = () => {
+    const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceVarietyFilter || SOURCE_VARIETY_DEFAULT_FILTER;
+    const visibleRows = filterSourceVarietyRows(rows, {
+      query: searchInput?.value || "",
+      filterKey: activeFilter,
+      sortKey: sortSelect?.value || SOURCE_VARIETY_DEFAULT_SORT,
+    });
+    results.innerHTML = renderSourceVarietyResultsMarkup(visibleRows, { loading: loading && !rows.length });
+    const total = rows.length;
+    summary.textContent = `Showing ${visibleRows.length} of ${total} variet${total === 1 ? "y" : "ies"} for this source`;
+    if (totalCount) {
+      totalCount.textContent = formatPrivateAnalyticsNumber(total);
+    }
+  };
+
+  searchInput?.addEventListener("input", applyVarietyView);
+  sortSelect?.addEventListener("change", applyVarietyView);
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      filterButtons.forEach((entry) => {
+        const isActive = entry === button;
+        entry.classList.toggle("is-active", isActive);
+        entry.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+      applyVarietyView();
+    });
+  });
+
+  applyVarietyView();
+
+  if (loading) {
+    const refreshPromise = appState.varietyDirectoryRefreshPromise
+      || refreshVarietyDirectoryEntries({ reason: "source-varieties-page" });
+    void refreshPromise.then(() => {
+      const currentHash = normalizeNavigationHash(window.location.hash || "#home");
+      if (currentHash !== `${getSourceReportRouteHref(sourceProfile)}/varieties`) {
+        return;
+      }
+      loading = false;
+      rows = getSourceVarietyDirectoryRows(sourceProfile);
+      applyVarietyView();
+    }).catch((error) => {
+      loading = false;
+      logRuntimeIssueOnce("warn", "source-varieties-directory-refresh-failed", "Could not refresh source varieties.", error);
+      applyVarietyView();
+    });
+  }
+}
+
+function renderSourceVarietiesPage(sourceId = "") {
+  const requestedId = String(sourceId || "").trim().toLowerCase();
+  const sourceProfile = getSourceProfileRecord(requestedId);
+  if (!sourceProfile) {
+    app.innerHTML = `
+      <section class="card source-profile-page">
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("sources")}
+            <div>
+              <p class="eyebrow">Source Varieties</p>
+              <h2>Varieties unavailable</h2>
+              <p class="muted">This source report could not be loaded.</p>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <a class="button button-secondary" href="#sources">&larr; Back to Source Explorer</a>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const reportHref = getSourceReportRouteHref(sourceProfile);
+  const sourceTypeLabel = getSourceDirectoryCardTypeLabel(sourceProfile);
+  const countryCode = getSourceCountryCode(sourceProfile);
+  const countryName = getCountryName(countryCode);
+  const rows = getSourceVarietyDirectoryRows(sourceProfile);
+  const averageGermRate = getSourceDirectoryReportedRateLabel(sourceProfile);
+  const seedsTrackedLabel = formatSourceReportNumber(sourceProfile.community?.seedsTracked);
+  const showDemoDataBadge = isMockDataEnabled();
+
+  app.innerHTML = `
+    <section class="source-profile-page source-report-page source-varieties-page">
+      <a class="source-profile-back-link source-report-back-link" href="${escapeHtml(reportHref)}">&larr; Back to Source Report</a>
+      <div class="source-profile-title-block source-report-title-block">
+        <h1>Source Varieties</h1>
+        ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Demo Data</span>` : ""}
+      </div>
+
+      <article class="card source-report-hero-card source-varieties-hero-card">
+        <div class="source-report-hero-bg" aria-hidden="true"></div>
+        <div class="source-report-hero-main">
+          ${renderSourceLogoMarkup(sourceProfile, {
+            className: "source-profile-logo source-report-hero-logo",
+            imageClassName: "source-profile-logo-image",
+            placeholderClassName: "source-profile-logo-placeholder",
+            alt: `${sourceProfile.name} logo`,
+          })}
+          <div class="source-report-hero-copy">
+            <p class="eyebrow">Filtered Variety List</p>
+            <h2>${escapeHtml(sourceProfile.name || "Source")}</h2>
+            <p>
+              <span>${escapeHtml(sourceTypeLabel)}</span>
+              ${countryName ? `<span>${escapeHtml(countryName)}</span>` : ""}
+              ${countryCode ? renderCountryFlagMarkup(countryCode, "source-report-inline-flag country-flag") : ""}
+            </p>
+          </div>
+        </div>
+        <div class="source-report-hero-metrics" aria-label="Source variety summary">
+          ${renderSourceReportHeroMetricMarkup({ icon: "sourceDirectoryBars", valueHtml: `<span data-source-varieties-total-count>${escapeHtml(formatPrivateAnalyticsNumber(rows.length))}</span>`, label: "Available Varieties", tone: "green" })}
+          ${renderSourceReportHeroMetricMarkup({ icon: "mySessionsSprout", value: averageGermRate, label: "Source Avg.", tone: "green" })}
+          ${renderSourceReportHeroMetricMarkup({ icon: "seedVault", value: seedsTrackedLabel, label: "Seeds Tracked", tone: "green" })}
+        </div>
+      </article>
+
+      <section class="card source-directory-controls-card source-varieties-controls-card">
+        <div class="source-directory-controls-head">
+          <div>
+            <p class="eyebrow">Variety Filters</p>
+            <h3>${escapeHtml(sourceProfile.name || "Source")} Varieties</h3>
+          </div>
+          <a class="button button-secondary source-varieties-back-button" href="${escapeHtml(reportHref)}">&larr; Back to Source Report</a>
+        </div>
+        <div class="source-directory-controls-grid">
+          <label class="source-directory-search-field">
+            <span>Search varieties</span>
+            <input id="source-varieties-search" type="search" placeholder="Search varieties from this source..." autocomplete="off">
+          </label>
+          <label class="source-directory-sort-field">
+            <span>Sort</span>
+            <select id="source-varieties-sort">
+              ${SOURCE_VARIETY_SORT_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_VARIETY_DEFAULT_SORT ? " selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
+        </div>
+        <div class="source-directory-filter-row" role="group" aria-label="Source variety filters">
+          ${renderSourceVarietyFilterPills(SOURCE_VARIETY_DEFAULT_FILTER)}
+        </div>
+      </section>
+
+      <div class="source-directory-results-head source-directory-results-head--cards source-varieties-results-head">
+        <div>
+          <p class="eyebrow">Variety Directory</p>
+          <h3>Available from ${escapeHtml(sourceProfile.name || "this source")}</h3>
+        </div>
+        <p id="source-varieties-results-summary" class="muted">Showing 0 of ${rows.length} varieties for this source</p>
+      </div>
+      <section id="source-varieties-results" class="source-directory-grid source-varieties-grid" aria-label="Source varieties"></section>
+      <p class="source-directory-grid-footnote">Search and filters apply only to varieties tied to this Source Report.</p>
+    </section>
+  `;
+
+  bindSourceVarietiesPage(sourceProfile);
+}
+
 function renderSourceProfilePage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
   const sourceProfile = getSourceProfileRecord(requestedId);
@@ -51467,7 +51982,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
             <span>Avg Germination</span>
           </div>
-          ${renderSourceReportTopVarietiesMarkup(topVarieties)}
+          ${renderSourceReportTopVarietiesMarkup(topVarieties, sourceProfile)}
         </article>
 
         <article class="card source-report-section-card source-report-distribution-card">

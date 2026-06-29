@@ -56543,6 +56543,91 @@ body.theme-dark option[selected] {
   color: #9bea38;
 }
 
+.source-varieties-page {
+  gap: 18px;
+}
+
+.source-varieties-hero-card .source-report-hero-copy .eyebrow {
+  margin-bottom: 4px;
+}
+
+.source-varieties-controls-card {
+  margin-top: 0;
+}
+
+.source-varieties-back-button.button {
+  white-space: nowrap;
+}
+
+.source-varieties-results-head {
+  margin-top: 2px;
+}
+
+.source-variety-card.source-directory-report-card {
+  grid-template-rows: auto auto auto;
+}
+
+.source-variety-card-top {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.source-variety-card-image {
+  grid-area: logo;
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.15), rgba(52, 158, 255, 0.08)),
+    rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.source-variety-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.source-variety-card-image span {
+  color: #d8ff9e;
+  font-size: 2rem;
+  font-weight: 950;
+}
+
+.source-variety-card-source {
+  margin: 0;
+  color: rgba(226, 236, 225, 0.62);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.source-variety-card .source-directory-average-germination-block strong {
+  font-size: clamp(1.85rem, 3.3vw, 2.75rem);
+  white-space: normal;
+}
+
+.source-varieties-empty-state {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .source-variety-card-top {
+    grid-template-columns: 74px minmax(0, 1fr);
+  }
+
+  .source-variety-card-image {
+    width: 74px;
+    height: 74px;
+  }
+
+  .source-varieties-back-button.button {
+    width: 100%;
+  }
+}
+
 .source-report-distribution-layout {
   display: grid;
   grid-template-columns: 210px minmax(0, 1fr);
