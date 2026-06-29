@@ -51262,14 +51262,28 @@ function renderSourceReportRegionMarkup(regions = []) {
   return `
     <div class="source-report-region-layout">
       <div class="source-report-region-list">
-        ${regions.map((row) => `
-          <article class="source-report-region-row">
+        ${regions.map((row) => {
+          const share = Math.max(0, Math.min(100, Number(row.share) || 0));
+          const regionKey = String(row.code || row.country || "other")
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "other";
+          return `
+          <article class="source-report-region-row is-${escapeHtml(regionKey)}" style="--source-report-region-share:${escapeHtml(String(share))}%;">
             <span class="source-report-region-flag-emoji" aria-hidden="true">${escapeHtml(getSourceReportRegionFlagLabel(row))}</span>
-            <strong>${escapeHtml(row.country)}</strong>
-            <span>${escapeHtml(row.sessions.toLocaleString())} sessions</span>
-            <em>${escapeHtml(String(row.share))}%</em>
+            <span class="source-report-region-copy">
+              <strong>${escapeHtml(row.country)}</strong>
+              <span>${escapeHtml(row.sessions.toLocaleString())} community sessions</span>
+            </span>
+            <span class="source-report-region-share">
+              <em>${escapeHtml(String(row.share))}%</em>
+              <span>of reports</span>
+            </span>
+            <span class="source-report-region-progress" aria-hidden="true"><i></i></span>
           </article>
-        `).join("")}
+        `;
+        }).join("")}
       </div>
       <div class="source-report-world-map" aria-hidden="true">
         <img
@@ -51290,15 +51304,15 @@ function renderSourceReportRegionMarkup(regions = []) {
             </filter>
           </defs>
           <g class="source-report-map-markers">
-            <circle class="source-report-map-pulse" cx="228" cy="142" r="36"></circle>
+            <circle class="source-report-map-pulse is-us" cx="228" cy="142" r="36"></circle>
             <circle class="source-report-map-marker is-us" cx="228" cy="142" r="9"></circle>
-            <circle class="source-report-map-pulse" cx="294" cy="237" r="25"></circle>
+            <circle class="source-report-map-pulse is-colombia" cx="294" cy="237" r="25"></circle>
             <circle class="source-report-map-marker is-colombia" cx="294" cy="237" r="7"></circle>
-            <circle class="source-report-map-pulse" cx="529" cy="108" r="23"></circle>
+            <circle class="source-report-map-pulse is-germany" cx="529" cy="108" r="23"></circle>
             <circle class="source-report-map-marker is-germany" cx="529" cy="108" r="7"></circle>
-            <circle class="source-report-map-pulse" cx="206" cy="94" r="25"></circle>
+            <circle class="source-report-map-pulse is-canada" cx="206" cy="94" r="25"></circle>
             <circle class="source-report-map-marker is-canada" cx="206" cy="94" r="7"></circle>
-            <circle class="source-report-map-pulse" cx="780" cy="290" r="22"></circle>
+            <circle class="source-report-map-pulse is-other" cx="780" cy="290" r="22"></circle>
             <circle class="source-report-map-marker is-other" cx="780" cy="290" r="6"></circle>
           </g>
         </svg>
@@ -69331,11 +69345,11 @@ function setMockDataEnabledAndRefresh(enabled) {
 
 function getCommunityGlobalRegionRows() {
   return [
-    { flag: "🇺🇸", region: "United States", sessions: 96, share: 38 },
-    { flag: "🇨🇴", region: "Colombia", sessions: 37, share: 15 },
-    { flag: "🇩🇪", region: "Germany", sessions: 54, share: 21 },
-    { flag: "🇨🇦", region: "Canada", sessions: 24, share: 9 },
-    { flag: "➕", region: "Other", sessions: 43, share: 17 },
+    { code: "us", flag: "🇺🇸", region: "United States", sessions: 96, share: 38 },
+    { code: "co", flag: "🇨🇴", region: "Colombia", sessions: 37, share: 15 },
+    { code: "de", flag: "🇩🇪", region: "Germany", sessions: 54, share: 21 },
+    { code: "ca", flag: "🇨🇦", region: "Canada", sessions: 24, share: 9 },
+    { code: "other", flag: "➕", region: "Other", sessions: 43, share: 17 },
   ];
 }
 
@@ -69357,11 +69371,17 @@ function renderCommunityGlobalMapSection() {
       <div class="source-report-region-layout community-global-layout">
         <div class="source-report-region-list community-global-region-list">
           ${rows.map((row) => `
-            <article class="source-report-region-row community-global-region-row">
+            <article class="source-report-region-row community-global-region-row is-${escapeHtml(row.code)}" style="--source-report-region-share:${escapeHtml(String(row.share))}%;">
               <span class="source-report-region-flag-emoji" aria-hidden="true">${escapeHtml(row.flag)}</span>
-              <strong>${escapeHtml(row.region)}</strong>
-              <span>${escapeHtml(row.sessions.toLocaleString())} sessions</span>
-              <em>${escapeHtml(String(row.share))}%</em>
+              <span class="source-report-region-copy">
+                <strong>${escapeHtml(row.region)}</strong>
+                <span>${escapeHtml(row.sessions.toLocaleString())} community sessions</span>
+              </span>
+              <span class="source-report-region-share">
+                <em>${escapeHtml(String(row.share))}%</em>
+                <span>of reports</span>
+              </span>
+              <span class="source-report-region-progress" aria-hidden="true"><i></i></span>
             </article>
           `).join("")}
         </div>
@@ -69384,15 +69404,15 @@ function renderCommunityGlobalMapSection() {
               </filter>
             </defs>
             <g class="source-report-map-markers community-global-map-markers">
-              <circle class="source-report-map-pulse" cx="228" cy="142" r="38"></circle>
+              <circle class="source-report-map-pulse is-us" cx="228" cy="142" r="38"></circle>
               <circle class="source-report-map-marker is-us" cx="228" cy="142" r="9"></circle>
-              <circle class="source-report-map-pulse" cx="294" cy="237" r="25"></circle>
+              <circle class="source-report-map-pulse is-colombia" cx="294" cy="237" r="25"></circle>
               <circle class="source-report-map-marker is-colombia" cx="294" cy="237" r="7"></circle>
-              <circle class="source-report-map-pulse" cx="529" cy="108" r="27"></circle>
+              <circle class="source-report-map-pulse is-germany" cx="529" cy="108" r="27"></circle>
               <circle class="source-report-map-marker is-germany" cx="529" cy="108" r="8"></circle>
-              <circle class="source-report-map-pulse" cx="206" cy="94" r="24"></circle>
+              <circle class="source-report-map-pulse is-canada" cx="206" cy="94" r="24"></circle>
               <circle class="source-report-map-marker is-canada" cx="206" cy="94" r="7"></circle>
-              <circle class="source-report-map-pulse" cx="780" cy="290" r="24"></circle>
+              <circle class="source-report-map-pulse is-other" cx="780" cy="290" r="24"></circle>
               <circle class="source-report-map-marker is-other" cx="780" cy="290" r="6"></circle>
             </g>
           </svg>
