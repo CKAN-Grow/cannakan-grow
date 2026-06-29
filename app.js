@@ -50972,6 +50972,25 @@ function renderSourcesLandingPage() {
         eyebrow: "Sources",
         title: "Source Explorer",
         description: "Discover trusted seed sources through real community performance.",
+        beforeActionsMarkup: `
+          <p class="source-directory-hero-proof">Rankings are based on real community germination sessions, not advertising or sponsorship.</p>
+          <div class="source-directory-hero-trust-list" aria-label="Source Explorer trust signals">
+            <span>Community Verified</span>
+            <span>Real Grow Sessions</span>
+            <span>Evidence Driven</span>
+            <span>Continuously Updated</span>
+          </div>
+        `,
+        primaryAction: {
+          href: "#source-directory-card-results",
+          label: "Explore Top Sources",
+          className: "button button-primary source-directory-hero-primary-action",
+        },
+        secondaryAction: {
+          href: "#source-directory-ranking-note",
+          label: "How Rankings Work",
+          className: "button button-secondary source-directory-hero-secondary-action",
+        },
       })}
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
@@ -51016,7 +51035,7 @@ function renderSourcesLandingPage() {
 
       <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Reports">
       </section>
-      <p class="source-directory-grid-footnote">Confidence reflects sample size, consistency, data freshness, and available verification.</p>
+      <p id="source-directory-ranking-note" class="source-directory-grid-footnote">Confidence reflects sample size, consistency, data freshness, and available verification.</p>
 
     </section>
   `;
