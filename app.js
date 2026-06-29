@@ -48077,9 +48077,14 @@ function renderSourceLogoMarkup(source = {}, options = {}) {
   const logoUrl = String(source?.logoUrl || "").trim();
 
   if (logoUrl) {
+    const fallbackMarkup = `
+      <span class="${escapeHtml(`${className} ${placeholderClassName}`)}" aria-hidden="true">
+        ${renderSourceLogoPlaceholderMarkup()}
+      </span>
+    `;
     return `
       <span class="${escapeHtml(className)}">
-        <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(alt)}" class="${escapeHtml(imageClassName)}">
+        <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(alt)}" class="${escapeHtml(imageClassName)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.closest('span').outerHTML=this.dataset.fallbackHtml;">
       </span>
     `;
   }
@@ -48466,7 +48471,9 @@ function getSourceProfileRecord(sourceId = "") {
   if (mockDataEnabled) {
     return getSourceDirectoryPreviewMockRecord(normalizedId)
       || getSampleSourceProfileRecord(normalizedId)
-      || getSourceProfileMockRecord(normalizedId);
+      || (normalizedId === String(SOURCE_PROFILE_DEFAULT_MOCK_ID || "").trim().toLowerCase()
+        ? getSourceProfileMockRecord(normalizedId)
+        : null);
   }
   return buildRealSourceProfileRecord(normalizedId)
     || getSourceDirectoryPreviewMockRecord(normalizedId)
@@ -50959,7 +50966,7 @@ function renderSourcesLandingPage() {
             <p class="eyebrow">Explorer Controls</p>
             <h3>Explore Source Reports</h3>
           </div>
-          <span class="source-directory-mock-note">Mock data preview</span>
+          ${isMockDataEnabled() ? `<span class="source-directory-mock-note">Demo Data</span>` : ""}
         </div>
         <div class="source-directory-controls-grid">
           <label class="source-directory-search-field">
@@ -51028,6 +51035,18 @@ function getSourceReportActivityMetrics(sourceProfile = {}) {
     newVarietiesTracked: Math.max(1, Math.round(Math.max(varieties, 8) * 0.1)),
     lastUpdated: isMockDataEnabled() ? "2 hrs ago" : (lastLoggedAt ? formatSourceDirectoryLastLoggedDate(lastLoggedAt) : "Not logged yet"),
   };
+}
+
+function hasMeaningfulSourceReportStatValue(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return Boolean(
+    normalizedValue
+    && normalizedValue !== "—"
+    && normalizedValue !== "-"
+    && normalizedValue !== "0"
+    && normalizedValue !== "not logged yet"
+    && normalizedValue !== "not enough data"
+  );
 }
 
 function getSourceReportTopVarieties(sourceProfile = {}, averageRate = 0) {
@@ -51348,7 +51367,7 @@ function renderSourceReportCstpSectionMarkup(sourceProfile = {}, cstpState = {})
           <div class="source-profile-verification-actions">
             ${cstpState.hasReport
               ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Report</a>`
-              : `<button type="button" class="button button-secondary" disabled>Report Unavailable</button>`}
+              : `<span class="source-report-cstp-status-note">Public report not available yet</span>`}
           </div>
         </div>
       </div>
@@ -51737,7 +51756,7 @@ function renderSourceVarietiesPage(sourceId = "") {
   const sourceProfile = getSourceProfileRecord(requestedId);
   if (!sourceProfile) {
     app.innerHTML = `
-      <section class="card source-profile-page">
+      <section class="card source-profile-page source-report-empty-card">
         <div class="section-heading app-section-header">
           <div class="section-title-with-icon app-section-header-main">
             ${renderAppSectionHeaderIcon("sources")}
@@ -51805,7 +51824,6 @@ function renderSourceVarietiesPage(sourceId = "") {
             <p class="eyebrow">Variety Filters</p>
             <h3>${escapeHtml(sourceProfile.name || "Source")} Varieties</h3>
           </div>
-          <a class="button button-secondary source-varieties-back-button" href="${escapeHtml(reportHref)}">&larr; Back to Source Report</a>
         </div>
         <div class="source-directory-controls-grid">
           <label class="source-directory-search-field">
@@ -51850,7 +51868,7 @@ function renderSourceProfilePage(sourceId = "") {
       ? "This mock source report could not be loaded."
       : "This source report could not be loaded.";
     app.innerHTML = `
-      <section class="card source-profile-page">
+      <section class="card source-profile-page source-report-empty-card">
         <div class="section-heading app-section-header">
           <div class="section-title-with-icon app-section-header-main">
             ${renderAppSectionHeaderIcon("sources")}
@@ -51914,11 +51932,11 @@ function renderSourceProfilePage(sourceId = "") {
       value: activity.lastUpdated,
       detail: "Latest community signal",
     },
-  ];
+  ].filter((stat) => hasMeaningfulSourceReportStatValue(stat.value));
 
   app.innerHTML = `
     <section class="source-profile-page source-report-page">
-      <a class="source-profile-back-link source-report-back-link" href="#sources">&larr; Back to Sources</a>
+      <a class="source-profile-back-link source-report-back-link" href="#sources">&larr; Back to Source Explorer</a>
       <div class="source-profile-title-block source-report-title-block">
         <h1>Source Report</h1>
         ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Demo Data</span>` : ""}
@@ -51941,10 +51959,11 @@ function renderSourceProfilePage(sourceId = "") {
               ${countryCode ? renderCountryFlagMarkup(countryCode, "source-report-inline-flag country-flag") : ""}
             </p>
             ${establishedLabel ? `<strong class="source-report-established-line">${escapeHtml(establishedLabel)}</strong>` : ""}
-            <div class="source-report-hero-actions">
-              ${cstpState.status !== "not-tested" ? `<span class="source-report-cstp-chip">CSTP Tested</span>` : ""}
-              <button type="button" class="button button-secondary source-report-follow-button" data-source-follow-preview="${escapeHtml(sourceProfile.id)}">${renderAppIconSvgMarkup("check", { className: "source-report-follow-icon" })} Follow</button>
-            </div>
+            ${cstpState.status !== "not-tested" ? `
+              <div class="source-report-hero-actions">
+                <span class="source-report-cstp-chip">CSTP Tested</span>
+              </div>
+            ` : ""}
           </div>
         </div>
 
@@ -52025,9 +52044,6 @@ function renderSourceProfilePage(sourceId = "") {
     </section>
   `;
 
-  app.querySelector("[data-source-follow-preview]")?.addEventListener("click", () => {
-    window.alert("Source follow preview coming soon.");
-  });
   app.querySelector("[data-source-request-cstp]")?.addEventListener("click", (event) => {
     event.preventDefault();
     openContactPageWithPrefill("cstp-request", {
@@ -52221,7 +52237,7 @@ function renderSourceCstpReportUnavailablePage(sourceProfile = null) {
     ? `#sources/${encodeURIComponent(sourceProfile.id)}`
     : "";
   app.innerHTML = `
-    <section class="card source-profile-page">
+    <section class="card source-profile-page source-report-empty-card">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
           ${renderAppSectionHeaderIcon("sources")}
