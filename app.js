@@ -1764,6 +1764,16 @@ const appState = {
   seedVaultActiveView: "mine",
   seedVaultActiveSharedOwnerId: "",
   seedVaultActiveSharedPayload: null,
+  seedVaultSharedExpandedEntryIds: new Set(),
+  seedVaultSharedSearchQuery: "",
+  seedVaultSharedFavoriteFilter: "all",
+  seedVaultSharedStatusFilter: "in-vault",
+  seedVaultSharedSort: "newest",
+  seedVaultSharedQuickView: "all",
+  seedVaultSharedLayout: "list",
+  seedVaultSharedSourceFilter: "all",
+  seedVaultSharedTypeFilter: "all",
+  seedVaultSharedSexFilter: "all",
   sourceDirectoryEntries: [],
   sourceDirectoryLoaded: false,
   sourceDirectoryLoadedFromFallback: false,
@@ -2448,6 +2458,16 @@ function resetSessionScopedAppState() {
   appState.seedVaultActiveView = "mine";
   appState.seedVaultActiveSharedOwnerId = "";
   appState.seedVaultActiveSharedPayload = null;
+  appState.seedVaultSharedExpandedEntryIds = new Set();
+  appState.seedVaultSharedSearchQuery = "";
+  appState.seedVaultSharedFavoriteFilter = "all";
+  appState.seedVaultSharedStatusFilter = "in-vault";
+  appState.seedVaultSharedSort = "newest";
+  appState.seedVaultSharedQuickView = "all";
+  appState.seedVaultSharedLayout = "list";
+  appState.seedVaultSharedSourceFilter = "all";
+  appState.seedVaultSharedTypeFilter = "all";
+  appState.seedVaultSharedSexFilter = "all";
   appState.sourceDirectoryEntries = [];
   appState.sourceDirectoryLoaded = false;
   appState.sourceDirectoryLoadedFromFallback = false;
@@ -70292,11 +70312,30 @@ function getSeedVaultFilterOptions(entries = [], selector = () => "") {
     .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
 }
 
-function getSeedVaultExpandedEntryIds() {
-  if (!(appState.seedVaultExpandedEntryIds instanceof Set)) {
-    appState.seedVaultExpandedEntryIds = new Set();
+function normalizeSeedVaultCollectionMode(value = "owner") {
+  return String(value || "owner").trim().toLowerCase() === "shared" ? "shared" : "owner";
+}
+
+function getSeedVaultExpandedEntryIds(mode = "owner") {
+  const stateKey = normalizeSeedVaultCollectionMode(mode) === "shared" ? "seedVaultSharedExpandedEntryIds" : "seedVaultExpandedEntryIds";
+  if (!(appState[stateKey] instanceof Set)) {
+    appState[stateKey] = new Set();
   }
-  return appState.seedVaultExpandedEntryIds;
+  return appState[stateKey];
+}
+
+function getSeedVaultPanelModeFromElement(element = null) {
+  if (!(element instanceof Element)) {
+    return "owner";
+  }
+  return normalizeSeedVaultCollectionMode(element.closest("[data-seed-vault-mode]")?.getAttribute("data-seed-vault-mode") || "owner");
+}
+
+function setSeedVaultCollectionStateValue(mode = "owner", key = "", value = "") {
+  const stateKey = `seedVault${normalizeSeedVaultCollectionMode(mode) === "shared" ? "Shared" : ""}${key}`;
+  if (Object.prototype.hasOwnProperty.call(appState, stateKey)) {
+    appState[stateKey] = value;
+  }
 }
 
 function getSeedVaultSearchText(entry = {}) {
@@ -70437,14 +70476,27 @@ function filterSeedVaultEntriesForCollection(entries = [], options = {}) {
   });
 }
 
-function getSeedVaultCollectionState() {
+function getSeedVaultCollectionState(mode = "owner") {
+  if (normalizeSeedVaultCollectionMode(mode) === "shared") {
+    return {
+      searchQuery: String(appState.seedVaultSharedSearchQuery || ""),
+      favoriteFilter: normalizeSeedVaultFavoriteFilter(appState.seedVaultSharedFavoriteFilter),
+      statusFilter: normalizeSeedVaultStatusFilter(appState.seedVaultSharedStatusFilter),
+      sort: normalizeSeedVaultSort(appState.seedVaultSharedSort),
+      quickView: normalizeSeedVaultQuickView(appState.seedVaultSharedQuickView),
+      layout: getSeedVaultLayoutPreference("shared"),
+      sourceFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSharedSourceFilter),
+      typeFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSharedTypeFilter),
+      sexFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSharedSexFilter),
+    };
+  }
   return {
     searchQuery: String(appState.seedVaultSearchQuery || ""),
     favoriteFilter: normalizeSeedVaultFavoriteFilter(appState.seedVaultFavoriteFilter),
     statusFilter: normalizeSeedVaultStatusFilter(appState.seedVaultStatusFilter),
     sort: normalizeSeedVaultSort(appState.seedVaultSort),
     quickView: normalizeSeedVaultQuickView(appState.seedVaultQuickView),
-    layout: getSeedVaultLayoutPreference(),
+    layout: getSeedVaultLayoutPreference("owner"),
     sourceFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSourceFilter),
     typeFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultTypeFilter),
     sexFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSexFilter),
@@ -70499,7 +70551,11 @@ function normalizeSeedVaultLayout(value = "") {
   return normalizedValue === "gallery" ? "gallery" : "list";
 }
 
-function getSeedVaultLayoutPreference() {
+function getSeedVaultLayoutPreference(mode = "owner") {
+  if (normalizeSeedVaultCollectionMode(mode) === "shared") {
+    appState.seedVaultSharedLayout = normalizeSeedVaultLayout(appState.seedVaultSharedLayout || "list");
+    return appState.seedVaultSharedLayout;
+  }
   const inMemoryLayout = normalizeSeedVaultLayout(appState.seedVaultLayout || "");
   if (appState.seedVaultLayout) {
     return inMemoryLayout;
@@ -70513,8 +70569,12 @@ function getSeedVaultLayoutPreference() {
   }
 }
 
-function setSeedVaultLayoutPreference(value = "list") {
+function setSeedVaultLayoutPreference(value = "list", mode = "owner") {
   const normalizedLayout = normalizeSeedVaultLayout(value);
+  if (normalizeSeedVaultCollectionMode(mode) === "shared") {
+    appState.seedVaultSharedLayout = normalizedLayout;
+    return normalizedLayout;
+  }
   appState.seedVaultLayout = normalizedLayout;
   try {
     localStorage.setItem("cannakan-grow-seed-vault-layout", normalizedLayout);
@@ -71144,10 +71204,22 @@ function renderSeedVaultStorageSummaryMarkup(entry = {}) {
   `;
 }
 
-function renderSeedVaultDetailActionsMarkup(entry = {}) {
+function renderSeedVaultDetailActionsMarkup(entry = {}, options = {}) {
   const normalizedEntry = normalizeSeedVaultEntry(entry);
   if (!normalizedEntry) {
     return "";
+  }
+  if (options.readOnly) {
+    const contextLabel = String(options.sharedContextLabel || "Shared with you").trim() || "Shared with you";
+    return `
+    <section class="seed-vault-detail-section seed-vault-detail-section--readonly" aria-label="Read-only shared Vault entry">
+      <div class="seed-vault-detail-section-heading">
+        <span><i aria-hidden="true">🔒</i> Read Only</span>
+      </div>
+      <p>This entry is part of a Vault shared with you. Owner-only actions are hidden.</p>
+      <small>${escapeHtml(contextLabel)}</small>
+    </section>
+  `;
   }
 
   return `
@@ -71287,6 +71359,8 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
     return "";
   }
   const isExpanded = Boolean(options.isExpanded);
+  const isReadOnly = Boolean(options.readOnly);
+  const sharedContextLabel = String(options.sharedContextLabel || "Shared with you").trim() || "Shared with you";
   const entryAnalytics = options.entryAnalytics || {};
   const archiveLabel = normalizedEntry.isArchived ? "Restore Vault Entry" : "Archive Vault Entry";
   const favoriteStateLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
@@ -71303,7 +71377,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   const titleMetaItems = [sourceLabel, seedTypeLabel, seedSexLabel].filter(Boolean);
 
   return `
-    <article class="seed-vault-entry-card${normalizedEntry.isFavorite ? " is-favorite" : ""}${normalizedEntry.isArchived ? " is-archived" : ""}${isExpanded ? " is-expanded" : ""}" data-seed-vault-entry-id="${escapeHtml(normalizedEntry.id)}">
+    <article class="seed-vault-entry-card${normalizedEntry.isFavorite && !isReadOnly ? " is-favorite" : ""}${normalizedEntry.isArchived ? " is-archived" : ""}${isExpanded ? " is-expanded" : ""}${isReadOnly ? " is-read-only" : ""}" data-seed-vault-entry-id="${escapeHtml(normalizedEntry.id)}">
       <div class="seed-vault-entry-collapsed-row seed-vault-summary-row">
         ${renderSeedVaultSeedThumbnailMarkup(normalizedEntry)}
         <div class="seed-vault-entry-title">
@@ -71311,7 +71385,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           <div>
             <h4>
               <span>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</span>
-              ${normalizedEntry.isFavorite ? `<button type="button" class="seed-vault-favorite-badge" data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}" data-action-label="${escapeHtml(favoriteActionLabel)}" aria-pressed="true" title="${escapeHtml(favoriteActionLabel)}" aria-label="${escapeHtml(favoriteActionLabel)}">⭐ Favorite</button>` : ""}
+              ${normalizedEntry.isFavorite && !isReadOnly ? `<button type="button" class="seed-vault-favorite-badge" data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}" data-action-label="${escapeHtml(favoriteActionLabel)}" aria-pressed="true" title="${escapeHtml(favoriteActionLabel)}" aria-label="${escapeHtml(favoriteActionLabel)}">⭐ Favorite</button>` : ""}
             </h4>
             <p>${titleMetaItems.map((item, index) => `${index > 0 ? "<span>•</span>" : ""}<strong>${escapeHtml(item)}</strong>`).join("")}</p>
           </div>
@@ -71331,32 +71405,39 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           <strong>${escapeHtml(visualStatus.label)}</strong>
           <span>${escapeHtml(statusLabel)}</span>
         </div>
-        <button
-          type="button"
-          class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
-          data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
-          data-action-label="${escapeHtml(favoriteActionLabel)}"
-          aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
-          aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"
-          title="${escapeHtml(favoriteActionLabel)}"
-        >
-          ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
-        </button>
-        <details class="seed-vault-action-menu">
-          <summary
-            class="seed-vault-icon-button seed-vault-more-button"
-            data-action-label="Actions"
-            aria-label="Vault Entry actions"
-            title="Actions"
-          ><span aria-hidden="true">•••</span></summary>
-          <div class="seed-vault-action-menu-popover">
-            <button type="button" data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}" aria-expanded="${isExpanded ? "true" : "false"}" aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}">${isExpanded ? "Hide Details" : "View Details"}</button>
-            <button type="button" data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}" ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}>Start Session</button>
-            <button type="button" data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}">Edit</button>
-            <button type="button" data-seed-vault-archive="${escapeHtml(normalizedEntry.id)}" aria-pressed="${normalizedEntry.isArchived ? "true" : "false"}" aria-label="${escapeHtml(archiveLabel)}">${escapeHtml(archiveActionLabel)}</button>
-            <button type="button" class="is-danger" data-seed-vault-delete="${escapeHtml(normalizedEntry.id)}">Delete</button>
-          </div>
-        </details>
+        ${isReadOnly ? `
+          <span class="seed-vault-readonly-pill">Read Only</span>
+          <button type="button" class="seed-vault-icon-button seed-vault-readonly-details-button" data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}" data-action-label="${isExpanded ? "Hide Details" : "View Details"}" aria-expanded="${isExpanded ? "true" : "false"}" aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" aria-label="${isExpanded ? "Hide shared Vault Entry details" : "View shared Vault Entry details"}" title="${isExpanded ? "Hide Details" : "View Details"}">
+            ${renderMySessionsInlineIconMarkup("eye", "seed-vault-action-icon")}
+          </button>
+        ` : `
+          <button
+            type="button"
+            class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
+            data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
+            data-action-label="${escapeHtml(favoriteActionLabel)}"
+            aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
+            aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"
+            title="${escapeHtml(favoriteActionLabel)}"
+          >
+            ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
+          </button>
+          <details class="seed-vault-action-menu">
+            <summary
+              class="seed-vault-icon-button seed-vault-more-button"
+              data-action-label="Actions"
+              aria-label="Vault Entry actions"
+              title="Actions"
+            ><span aria-hidden="true">•••</span></summary>
+            <div class="seed-vault-action-menu-popover">
+              <button type="button" data-seed-vault-toggle="${escapeHtml(normalizedEntry.id)}" aria-expanded="${isExpanded ? "true" : "false"}" aria-controls="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}">${isExpanded ? "Hide Details" : "View Details"}</button>
+              <button type="button" data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}" ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}>Start Session</button>
+              <button type="button" data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}">Edit</button>
+              <button type="button" data-seed-vault-archive="${escapeHtml(normalizedEntry.id)}" aria-pressed="${normalizedEntry.isArchived ? "true" : "false"}" aria-label="${escapeHtml(archiveLabel)}">${escapeHtml(archiveActionLabel)}</button>
+              <button type="button" class="is-danger" data-seed-vault-delete="${escapeHtml(normalizedEntry.id)}">Delete</button>
+            </div>
+          </details>
+        `}
       </div>
       <div id="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" class="seed-vault-entry-details"${isExpanded ? "" : " hidden"}>
         <div class="seed-vault-expanded-details-head">
@@ -71374,7 +71455,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
         <div class="seed-vault-expanded-summary">
           ${renderSeedVaultStorageSummaryMarkup(normalizedEntry)}
           ${renderSeedVaultUsageMarkup(normalizedEntry, entryAnalytics)}
-          ${renderSeedVaultDetailActionsMarkup(normalizedEntry)}
+          ${renderSeedVaultDetailActionsMarkup(normalizedEntry, { readOnly: isReadOnly, sharedContextLabel })}
         </div>
       </div>
     </article>
@@ -71472,52 +71553,62 @@ function renderSeedVaultShareStatusMarkup(settings = appState.seedVaultShareSett
   `;
 }
 function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
-  const analytics = buildSeedVaultAnalytics(entries, getSessions());
+  const isSharedMode = options.mode === "shared";
+  const ownerName = String(options.ownerName || "CannaKAN Grower").trim() || "CannaKAN Grower";
+  const sharedUpdatedLabel = String(options.lastUpdatedLabel || "Last updated unavailable").trim() || "Last updated unavailable";
+  const analytics = buildSeedVaultAnalytics(entries, isSharedMode ? [] : getSessions());
   const allEntries = analytics.entries || [];
   const collectionState = {
-    ...getSeedVaultCollectionState(),
+    ...getSeedVaultCollectionState(isSharedMode ? "shared" : "owner"),
     ...(options.collectionState || {}),
   };
+  if (isSharedMode) collectionState.favoriteFilter = "all";
   const filteredEntries = filterSeedVaultEntriesForCollection(allEntries, collectionState);
   const quickViewEntries = filterSeedVaultEntriesForQuickView(filteredEntries, collectionState.quickView, analytics, allEntries);
   const sortedEntries = sortSeedVaultEntriesForCollection(quickViewEntries, collectionState.sort, analytics);
   const hasEntries = allEntries.length > 0;
   const hasVisibleEntries = sortedEntries.length > 0;
-  const expandedEntryIds = getSeedVaultExpandedEntryIds();
+  const expandedEntryIds = getSeedVaultExpandedEntryIds(isSharedMode ? "shared" : "owner");
   const sourceOptions = getSeedVaultFilterOptions(allEntries, (entry) => entry.source);
   const typeOptions = getSeedVaultFilterOptions(allEntries, (entry) => normalizeSeedTypeId(entry.seedType));
   const sexOptions = getSeedVaultFilterOptions(allEntries, (entry) => normalizeSeedSexValue(entry.seedSex));
   const visibleSummary = hasEntries
     ? `${sortedEntries.length} of ${allEntries.length} Vault Entr${allEntries.length === 1 ? "y" : "ies"}`
     : "No Vault Entries yet";
+  const panelId = isSharedMode ? "shared-seed-vault-open" : "my-seed-vault";
+  const titleId = isSharedMode ? "shared-seed-vault-open-title" : "my-seed-vault-title";
+  const panelTitle = isSharedMode ? `${ownerName}'s Seed Vault` : "My Seed Vault";
+  const panelEyebrow = isSharedMode ? "Shared with you" : "Seed Collection";
+  const panelDescription = isSharedMode ? "Read-only Vault view. You can only see the fields this Grow user granted." : "Your inventory, source, age, and session history.";
+  const headerActionsMarkup = isSharedMode
+    ? `<div class="seed-vault-shared-context" aria-label="Shared Vault context"><span>Shared with you</span><strong>Read Only</strong><small>${escapeHtml(sharedUpdatedLabel)}</small></div>`
+    : `<div class="seed-vault-header-actions"><button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">${renderMySessionsInlineIconMarkup("plus", "seed-vault-button-icon")}<span>Add Seeds</span></button><button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">${renderMySessionsInlineIconMarkup("share", "seed-vault-button-icon")}<span>Share Vault</span></button></div>`;
 
   return `
-    <section id="my-seed-vault" class="sessions-glass-panel seed-vault-panel" aria-labelledby="my-seed-vault-title">
+    <section id="${escapeHtml(panelId)}" class="sessions-glass-panel seed-vault-panel${isSharedMode ? " is-shared-vault" : ""}" data-seed-vault-mode="${isSharedMode ? "shared" : "owner"}" aria-labelledby="${escapeHtml(titleId)}">
       <div class="seed-vault-header">
         <div class="section-title-with-icon app-section-header-main seed-vault-header-main">
           <span class="section-title-icon seed-vault-header-icon" data-app-icon="seedVault" data-icon-variant="plate" aria-hidden="true"></span>
           <div class="seed-vault-header-copy">
-            <p class="eyebrow">Seed Collection</p>
-            <h3 id="my-seed-vault-title">My Seed Vault</h3>
-            <p>Your inventory, source, age, and session history.</p>
+            <p class="eyebrow">${escapeHtml(panelEyebrow)}</p>
+            <h3 id="${escapeHtml(titleId)}">${escapeHtml(panelTitle)}</h3>
+            <p>${escapeHtml(panelDescription)}</p>
           </div>
         </div>
-        <div class="seed-vault-header-actions">
-          <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">${renderMySessionsInlineIconMarkup("plus", "seed-vault-button-icon")}<span>Add Seeds</span></button>
-          <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">${renderMySessionsInlineIconMarkup("share", "seed-vault-button-icon")}<span>Share Vault</span></button>
-        </div>
+        ${headerActionsMarkup}
       </div>
       ${renderSeedVaultInlineSummaryMarkup(analytics)}
-      ${renderSeedVaultShareStatusMarkup()}
+      ${isSharedMode ? "" : renderSeedVaultShareStatusMarkup()}
       ${hasEntries ? `
         <div class="seed-vault-collection-layout">
           <div class="seed-vault-inventory-column">
             <div class="seed-vault-controls" aria-label="My Seed Vault controls">
               <label class="seed-vault-search-field">
-                <span>Search My Seed Vault</span>
+                <span>${escapeHtml(isSharedMode ? "Search Shared Vault" : "Search My Seed Vault")}</span>
                 <input type="search" data-seed-vault-search="true" value="${escapeHtml(collectionState.searchQuery)}" placeholder="Search variety, source, type, sex, or notes" autocomplete="off">
               </label>
               <div class="seed-vault-filter-row">
+${isSharedMode ? "" : `
                 <label>
                   <span>Favorites</span>
                   <select data-seed-vault-favorite-filter="true" aria-label="Filter My Seed Vault favorites">
@@ -71525,6 +71616,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
                     <option value="favorites"${collectionState.favoriteFilter === "favorites" ? " selected" : ""}>Favorites</option>
                   </select>
                 </label>
+                `}
                 <label>
                   <span>Status</span>
                   <select data-seed-vault-status-filter="true" aria-label="Filter My Seed Vault status">
@@ -71573,17 +71665,19 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
             ${renderSeedVaultQuickViewTabsMarkup(collectionState.quickView, allEntries, analytics)}
             ${renderSeedVaultInsightsMarkup(analytics)}
             ${hasVisibleEntries ? `
-              <div class="seed-vault-entry-grid seed-vault-entry-grid--${escapeHtml(collectionState.layout)}" aria-label="My Seed Vault entries">
+              <div class="seed-vault-entry-grid seed-vault-entry-grid--${escapeHtml(collectionState.layout)}" aria-label="${escapeHtml(isSharedMode ? "Shared Seed Vault entries" : "My Seed Vault entries")}">
                 ${sortedEntries.map((entry) => renderSeedVaultEntryCardMarkup(entry, {
                   isExpanded: expandedEntryIds.has(entry.id),
                   entryAnalytics: analytics.entryAnalyticsById?.[entry.id],
+                  readOnly: isSharedMode,
+                  sharedContextLabel: `${ownerName}'s Seed Vault`,
                 })).join("")}
               </div>
             ` : `
               <div class="seed-vault-filter-empty">
-                <span>My Seed Vault</span>
-                <h4>No Vault Entries match these controls</h4>
-                <p>Adjust search, collections, favorites, status, or sort to bring more of your collection back into view.</p>
+                <span>${escapeHtml(isSharedMode ? "Shared Seed Vault" : "My Seed Vault")}</span>
+                <h4>${escapeHtml(isSharedMode ? "No shared Vault Entries match these controls" : "No Vault Entries match these controls")}</h4>
+                <p>${escapeHtml(isSharedMode ? "Adjust search, filters, collections, or sort to bring more shared entries back into view." : "Adjust search, collections, favorites, status, or sort to bring more of your collection back into view.")}</p>
               </div>
             `}
           </div>
@@ -71593,9 +71687,9 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         <div class="seed-vault-empty-state">
           ${renderMySessionsInlineIconMarkup("vault", "seed-vault-empty-icon")}
           <div>
-            <span>Vault Entry</span>
-            <h4>Your first Vault Entry starts here</h4>
-            <p>Add seeds you own, then connect entries to grow sessions in a later pass.</p>
+            <span>${isSharedMode ? "Shared Vault" : "Vault Entry"}</span>
+            <h4>${isSharedMode ? "No visible Vault entries" : "Your first Vault Entry starts here"}</h4>
+            <p>${isSharedMode ? "This Vault is shared with you, but there are no visible entries right now." : "Add seeds you own, then connect entries to grow sessions in a later pass."}</p>
           </div>
         </div>
       `}
@@ -71665,14 +71759,14 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
     const layoutButton = target.closest("[data-seed-vault-layout]");
     if (layoutButton) {
       event.preventDefault();
-      setSeedVaultLayoutPreference(layoutButton.getAttribute("data-seed-vault-layout") || "list");
+      setSeedVaultLayoutPreference(layoutButton.getAttribute("data-seed-vault-layout") || "list", getSeedVaultPanelModeFromElement(layoutButton));
       renderSeedVaultSection();
       return;
     }
     const quickViewButton = target.closest("[data-seed-vault-quick-view]");
     if (quickViewButton) {
       event.preventDefault();
-      appState.seedVaultQuickView = normalizeSeedVaultQuickView(quickViewButton.getAttribute("data-seed-vault-quick-view") || "all");
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(quickViewButton), "QuickView", normalizeSeedVaultQuickView(quickViewButton.getAttribute("data-seed-vault-quick-view") || "all"));
       renderSeedVaultSection();
       return;
     }
@@ -71691,7 +71785,7 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
     if (toggleButton) {
       event.preventDefault();
       const entryId = String(toggleButton.getAttribute("data-seed-vault-toggle") || "").trim();
-      const expandedEntryIds = getSeedVaultExpandedEntryIds();
+      const expandedEntryIds = getSeedVaultExpandedEntryIds(getSeedVaultPanelModeFromElement(toggleButton));
       if (expandedEntryIds.has(entryId)) {
         expandedEntryIds.delete(entryId);
       } else if (entryId) {
@@ -71756,7 +71850,7 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
       return;
     }
 
-    appState.seedVaultSearchQuery = target.value || "";
+    setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "SearchQuery", target.value || "");
     renderSeedVaultSection();
     const nextSearch = seedVaultSection.querySelector("[data-seed-vault-search='true']");
     if (nextSearch instanceof HTMLInputElement) {
@@ -71773,37 +71867,37 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
     }
 
     if (target.getAttribute("data-seed-vault-favorite-filter") === "true") {
-      appState.seedVaultFavoriteFilter = normalizeSeedVaultFavoriteFilter(target.value);
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "FavoriteFilter", normalizeSeedVaultFavoriteFilter(target.value));
       renderSeedVaultSection();
       return;
     }
 
     if (target.getAttribute("data-seed-vault-status-filter") === "true") {
-      appState.seedVaultStatusFilter = normalizeSeedVaultStatusFilter(target.value);
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "StatusFilter", normalizeSeedVaultStatusFilter(target.value));
       renderSeedVaultSection();
       return;
     }
 
     if (target.getAttribute("data-seed-vault-source-filter") === "true") {
-      appState.seedVaultSourceFilter = normalizeSeedVaultDropdownFilter(target.value);
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "SourceFilter", normalizeSeedVaultDropdownFilter(target.value));
       renderSeedVaultSection();
       return;
     }
 
     if (target.getAttribute("data-seed-vault-type-filter") === "true") {
-      appState.seedVaultTypeFilter = normalizeSeedVaultDropdownFilter(target.value);
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "TypeFilter", normalizeSeedVaultDropdownFilter(target.value));
       renderSeedVaultSection();
       return;
     }
 
     if (target.getAttribute("data-seed-vault-sex-filter") === "true") {
-      appState.seedVaultSexFilter = normalizeSeedVaultDropdownFilter(target.value);
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "SexFilter", normalizeSeedVaultDropdownFilter(target.value));
       renderSeedVaultSection();
       return;
     }
 
     if (target.getAttribute("data-seed-vault-sort") === "true") {
-      appState.seedVaultSort = normalizeSeedVaultSort(target.value);
+      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "Sort", normalizeSeedVaultSort(target.value));
       renderSeedVaultSection();
     }
   });
@@ -73346,10 +73440,39 @@ function renderSeedVaultSharedWithMeListMarkup(shares = []) {
   `;
 }
 
+function getSeedVaultSharedPayloadSettings(payload = {}) {
+  return payload?.settings && typeof payload.settings === "object" ? payload.settings : {};
+}
+function mapSharedSeedVaultEntriesForCollection(entries = [], settings = {}, ownerUserId = "") {
+  const canViewQuantity = Boolean(settings.show_quantity ?? settings.showQuantity);
+  const canViewStorageLocation = Boolean(settings.show_storage_location ?? settings.showStorageLocation);
+  const canViewStorageNotes = Boolean(settings.show_storage_notes ?? settings.showStorageNotes);
+  const canViewNotes = Boolean(settings.show_private_notes ?? settings.showPrivateNotes ?? settings.show_notes ?? settings.showNotes);
+  return (Array.isArray(entries) ? entries : []).map((entry, index) => normalizeSeedVaultEntry({
+    id: ["shared", ownerUserId || "owner", entry.id || entry.seed_vault_entry_id || index, entry.variety || entry.seed_variety || "entry"].map((part) => String(part || "").trim().replace(/[^a-z0-9_-]+/gi, "-")).filter(Boolean).join("-"),
+    userId: ownerUserId,
+    seedName: entry.variety || entry.seed_variety || entry.seedName || entry.seed_name || "Unknown Variety",
+    seedVariety: entry.variety || entry.seed_variety || entry.seedVariety || entry.seed_name || "Unknown Variety",
+    seedType: entry.seed_type || entry.seedType || entry.type || "",
+    seedSex: entry.seed_sex || entry.seedSex || entry.sex || "",
+    source: entry.source || "Unknown Source",
+    quantity: canViewQuantity ? entry.quantity_remaining : null,
+    seedCount: canViewQuantity ? entry.quantity_remaining : null,
+    remainingCount: canViewQuantity ? entry.quantity_remaining : null,
+    yearAcquired: entry.year_acquired || entry.yearAcquired || null,
+    storageLocation: canViewStorageLocation ? entry.storage_location || entry.storageLocation || "" : "",
+    storageNotes: canViewStorageNotes ? entry.storage_notes || entry.storageNotes || "" : "",
+    notes: canViewNotes ? entry.notes || "" : "",
+    createdAt: entry.created_at || entry.createdAt || entry.updated_at || entry.updatedAt || "",
+    updatedAt: entry.updated_at || entry.updatedAt || entry.created_at || entry.createdAt || "",
+  })).filter(Boolean);
+}
+function getSeedVaultActiveSharedShare() {
+  const activeOwnerId = String(appState.seedVaultActiveSharedOwnerId || "").trim();
+  return (appState.seedVaultSharedWithMe || []).map(normalizeSeedVaultUserShare).find((share) => share.ownerUserId === activeOwnerId) || null;
+}
 function renderSeedVaultSharedWithMePayloadMarkup(payload = null) {
-  if (!payload) {
-    return "";
-  }
+  if (!payload) return "";
   if (!payload.found) {
     return `
       <section class="shared-seed-vault-empty">
@@ -73358,31 +73481,14 @@ function renderSeedVaultSharedWithMePayloadMarkup(payload = null) {
       </section>
     `;
   }
-
   const entries = Array.isArray(payload.entries) ? payload.entries : [];
-  const settings = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
+  const settings = getSeedVaultSharedPayloadSettings(payload);
   const ownerName = String(payload.owner_display_name || "CannaKAN Grower").trim() || "CannaKAN Grower";
-  const totalVisibleEntries = Math.max(0, Number(payload.total_visible_entries ?? entries.length) || 0);
-  return `
-    <section class="seed-vault-shared-with-me-open-vault">
-      <header class="shared-seed-vault-hero">
-        <p class="eyebrow">READ-ONLY SHARED VAULT</p>
-        <h1>${escapeHtml(ownerName)}'s Seed Vault</h1>
-        <p>Direct private share. You can only see the fields this Grow user granted.</p>
-        <strong>${escapeHtml(String(totalVisibleEntries))} visible entr${totalVisibleEntries === 1 ? "y" : "ies"}</strong>
-      </header>
-      ${entries.length ? `
-        <section class="shared-seed-vault-grid" aria-label="Direct shared Seed Vault entries">
-          ${entries.map((entry) => renderSharedSeedVaultEntryMarkup(entry, settings)).join("")}
-        </section>
-      ` : `
-        <section class="shared-seed-vault-empty">
-          <h2>No visible Vault entries</h2>
-          <p>This Vault is shared with you, but there are no visible entries right now.</p>
-        </section>
-      `}
-    </section>
-  `;
+  const activeShare = getSeedVaultActiveSharedShare();
+  const ownerUserId = String(payload.owner_user_id || payload.ownerUserId || activeShare?.ownerUserId || appState.seedVaultActiveSharedOwnerId || "").trim();
+  const lastUpdatedLabel = formatSeedVaultSharedWithMeUpdatedLabel(payload.last_updated_at || payload.lastUpdatedAt || activeShare?.lastUpdatedAt || activeShare?.updatedAt || "");
+  const collectionEntries = mapSharedSeedVaultEntriesForCollection(entries, settings, ownerUserId);
+  return renderMySeedVaultPanelMarkup(collectionEntries, { mode: "shared", ownerName, lastUpdatedLabel });
 }
 
 function renderSeedVaultSharedWithMePanelIntoSection(seedVaultSection) {
@@ -73391,6 +73497,10 @@ function renderSeedVaultSharedWithMePanelIntoSection(seedVaultSection) {
   }
   const shares = appState.seedVaultSharedWithMe || [];
   const isLoaded = Boolean(appState.seedVaultSharedWithMeLoaded);
+  const hasActiveSharedOwner = Boolean(String(appState.seedVaultActiveSharedOwnerId || "").trim());
+  const activeSharedContent = hasActiveSharedOwner
+    ? `<div class="seed-vault-shared-with-me-toolbar"><button type="button" class="button button-secondary" data-seed-vault-close-shared-owner="true">Back to Shared With Me</button></div>${appState.seedVaultActiveSharedPayload ? renderSeedVaultSharedWithMePayloadMarkup(appState.seedVaultActiveSharedPayload) : `<section class="shared-seed-vault-empty seed-vault-shared-with-me-empty"><p class="eyebrow">SHARED WITH ME</p><h2>Loading shared Vault</h2><p>Opening the read-only Seed Vault view...</p></section>`}`
+    : "";
   seedVaultSection.innerHTML = `
     <section class="sessions-glass-panel seed-vault-panel seed-vault-shared-with-me-panel" aria-labelledby="seed-vault-shared-with-me-title">
       <div class="seed-vault-header">
@@ -73403,14 +73513,13 @@ function renderSeedVaultSharedWithMePanelIntoSection(seedVaultSection) {
           </div>
         </div>
       </div>
-      ${isLoaded ? renderSeedVaultSharedWithMeListMarkup(shares) : `
+      ${hasActiveSharedOwner ? activeSharedContent : (isLoaded ? renderSeedVaultSharedWithMeListMarkup(shares) : `
         <section class="shared-seed-vault-empty seed-vault-shared-with-me-empty">
           <p class="eyebrow">SHARED WITH ME</p>
           <h2>Loading shared Vaults</h2>
           <p>Checking for direct Seed Vault shares...</p>
         </section>
-      `}
-      ${renderSeedVaultSharedWithMePayloadMarkup(appState.seedVaultActiveSharedPayload)}
+      `)}
     </section>
   `;
   hydrateAppIconSlots(seedVaultSection);
@@ -73477,6 +73586,15 @@ function renderSeedVaultPage() {
     if (!(target instanceof Element)) {
       return;
     }
+    const closeSharedButton = target.closest("[data-seed-vault-close-shared-owner='true']");
+    if (closeSharedButton) {
+      event.preventDefault();
+      appState.seedVaultActiveSharedOwnerId = "";
+      appState.seedVaultActiveSharedPayload = null;
+      renderSeedVaultSection();
+      return;
+    }
+
     const pageViewButton = target.closest("[data-seed-vault-page-view]");
     if (pageViewButton) {
       event.preventDefault();
