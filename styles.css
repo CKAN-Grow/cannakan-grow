@@ -29970,14 +29970,41 @@ textarea::placeholder {
   margin-bottom: 1.25rem;
 }
 
+.source-directory-community-confidence-card {
+  overflow: hidden;
+}
+
 .source-directory-community-confidence-card .stat-card-content {
-  gap: 7px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
+  padding-right: 18px;
+}
+
+.source-directory-community-confidence-card .stat-label {
+  max-width: 14rem;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.source-directory-community-confidence-card .stat-value {
+  max-width: 11rem;
+  color: #f7faf4;
+  font-size: clamp(1.42rem, 2vw, 1.72rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.source-directory-community-confidence-card .summary-subtext {
+  line-height: 1.38;
+  white-space: normal;
 }
 
 .source-directory-kpi-confidence-meter {
   display: block;
-  width: min(100%, 170px);
-  margin-top: 2px;
+  width: min(100%, 190px);
+  margin-top: 3px;
 }
 
 .source-directory-kpi-confidence-meter i {
@@ -30288,7 +30315,7 @@ textarea::placeholder {
 }
 
 .source-directory-metric-card {
-  min-height: 100%;
+  min-height: 130px;
 }
 
 .source-directory-metric-card--cstp {
@@ -56061,6 +56088,14 @@ body.theme-dark option[selected] {
   margin: 0 auto;
   gap: 18px;
   padding-bottom: 32px;
+}
+
+.source-directory-community-confidence-card .grow-kpi-watermark {
+  top: 10px;
+  right: 10px;
+  width: 48px;
+  height: 48px;
+  opacity: 0.045;
 }
 
 .source-report-empty-card {
