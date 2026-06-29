@@ -51988,7 +51988,6 @@ function renderSourceProfilePage(sourceId = "") {
             ${renderSourceReportSectionTitle(1, "Performance Over Sessions")}
             <p>Based on community session data</p>
           </div>
-          <span class="source-report-session-filter">All Sessions</span>
         </div>
         ${renderSourceReportPerformanceChartMarkup(averageGermRateNumber, parseSourceDirectoryMetricNumber(sourceProfile.community?.sessions))}
       </article>
