@@ -51371,12 +51371,34 @@ function renderSourceProfilePage(sourceId = "") {
   const topVarieties = getSourceReportTopVarieties(sourceProfile, averageGermRateNumber);
   const regions = getSourceReportRegionRows(sourceProfile);
   const showDemoDataBadge = isMockDataEnabled();
-  const trackRecordStats = [
-    { label: "Certifications Earned", value: sourceProfile.trackRecord.totalCerts, detail: "All time" },
-    { label: "Gold", value: sourceProfile.trackRecord.gold, detail: "Gold certifications" },
-    { label: "Silver", value: sourceProfile.trackRecord.silver, detail: "Silver certifications" },
-    { label: "Qualification Rate", value: sourceProfile.trackRecord.qualificationRate, detail: "Qualified / tested" },
-    { label: "Last CSTP Test", value: sourceProfile.trackRecord.lastTest, detail: "Most recent test" },
+  const communityConfidenceStats = [
+    {
+      label: "Confidence Level",
+      value: sourceTrust.confidenceLabel.replace(" Confidence", ""),
+      detail: sourceTrust.explanation,
+      progressValue: sourceTrust.score,
+    },
+    {
+      label: "Community Sessions",
+      value: communitySessionCount,
+      detail: "Total sessions reported",
+    },
+    {
+      label: "Germination Success",
+      value: averageGermRate,
+      detail: "Community average",
+      progressValue: averageGermRateNumber,
+    },
+    {
+      label: "Growers Reporting",
+      value: formatSourceReportNumber(sourceProfile.directoryStats?.uniqueGrowers || sourceProfile.community?.growers || sourceProfile.community?.growerCount),
+      detail: "Community contributors",
+    },
+    {
+      label: "Recent Activity",
+      value: activity.lastUpdated,
+      detail: "Latest community signal",
+    },
   ];
 
   app.innerHTML = `
@@ -51469,7 +51491,7 @@ function renderSourceProfilePage(sourceId = "") {
       <article class="card source-report-section-card source-profile-track-record-card">
         ${renderSourceReportSectionTitle(7, "Community Confidence")}
         <div class="summary-grid source-profile-track-grid source-report-confidence-grid">
-          ${trackRecordStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+          ${communityConfidenceStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
       </article>
 
