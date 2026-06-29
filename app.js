@@ -50257,7 +50257,15 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
       </div>
       ${renderSourceDirectoryTopVarietiesMarkup(topVarieties)}
       <div class="inline-actions source-directory-card-actions">
-        <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(source.id)}">View Report</a>
+        <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(source.id)}">
+          <span class="source-directory-view-report-label">View Report</span>
+          <span class="source-directory-view-report-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M7 17 17 7"></path>
+              <path d="M10 7h7v7"></path>
+            </svg>
+          </span>
+        </a>
       </div>
     </article>
   `;
@@ -50320,7 +50328,15 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
           ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust) || `<span class="source-directory-evidence-badge is-limited">Community Data</span>`}
         </div>
         <div class="source-directory-compare-cell source-directory-compare-action" role="cell">
-          <a class="button button-secondary source-directory-view-report-button source-directory-compare-report-button" href="#sources/${escapeHtml(source.id)}">View Report</a>
+          <a class="button button-secondary source-directory-view-report-button source-directory-compare-report-button" href="#sources/${escapeHtml(source.id)}">
+            <span class="source-directory-view-report-label">View Report</span>
+            <span class="source-directory-view-report-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M7 17 17 7"></path>
+                <path d="M10 7h7v7"></path>
+              </svg>
+            </span>
+          </a>
         </div>
       </div>
     `;

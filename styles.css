@@ -55306,28 +55306,34 @@ body.theme-dark option[selected] {
   width: 100%;
   min-height: 44px;
   justify-content: center;
-  border-color: rgba(205, 255, 134, 0.58);
+  gap: 10px;
+  border-color: rgba(181, 232, 111, 0.42);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, rgba(218, 255, 145, 0.84), rgba(130, 203, 61, 0.86)),
-    rgba(148, 209, 89, 0.9);
-  color: #071007;
+    radial-gradient(circle at 50% 0%, rgba(181, 232, 111, 0.18), transparent 48%),
+    linear-gradient(180deg, rgba(31, 68, 24, 0.82), rgba(8, 18, 11, 0.92)),
+    rgba(10, 22, 13, 0.92);
+  color: #f4ffe7;
   font-size: 0.95rem;
   font-weight: 950;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    0 14px 28px rgba(83, 152, 38, 0.26),
-    0 0 22px rgba(148, 209, 89, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 12px 24px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(148, 209, 89, 0.11);
 }
 
 .source-directory-card .source-directory-view-report-button.button:hover,
 .source-directory-card .source-directory-view-report-button.button:focus-visible {
   transform: translateY(-1px);
-  border-color: rgba(218, 255, 145, 0.72);
+  border-color: rgba(205, 255, 134, 0.62);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(205, 255, 134, 0.24), transparent 50%),
+    linear-gradient(180deg, rgba(45, 92, 30, 0.88), rgba(13, 33, 16, 0.94)),
+    rgba(14, 35, 17, 0.94);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    0 18px 34px rgba(83, 152, 38, 0.32),
-    0 0 28px rgba(148, 209, 89, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 16px 30px rgba(0, 0, 0, 0.24),
+    0 0 26px rgba(148, 209, 89, 0.16);
 }
 
 .source-directory-grid-footnote {
@@ -55798,22 +55804,62 @@ body.theme-dark option[selected] {
 
 .source-directory-card .source-directory-view-report-button.button,
 .source-directory-view-report-button.button {
+  position: relative;
+  overflow: hidden;
   width: 100%;
   min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  border-color: rgba(181, 232, 111, 0.28);
+  gap: 10px;
+  border-color: rgba(181, 232, 111, 0.42);
   border-radius: 10px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
-    rgba(7, 14, 10, 0.72);
-  color: #f7fff1;
+    radial-gradient(circle at 50% 0%, rgba(181, 232, 111, 0.18), transparent 48%),
+    linear-gradient(180deg, rgba(31, 68, 24, 0.82), rgba(8, 18, 11, 0.92)),
+    rgba(10, 22, 13, 0.92);
+  color: #f4ffe7;
   font-size: 0.95rem;
   font-weight: 950;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 12px 22px rgba(0, 0, 0, 0.18),
-    0 0 16px rgba(148, 209, 89, 0.055);
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 12px 24px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(148, 209, 89, 0.11);
   transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.source-directory-view-report-label {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.source-directory-view-report-icon {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 1px solid rgba(205, 255, 134, 0.42);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 25%, rgba(236, 255, 198, 0.32), transparent 52%),
+    rgba(148, 209, 89, 0.13);
+  color: #dfff9f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.source-directory-view-report-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .source-directory-card .source-directory-view-report-button.button:hover,
@@ -55823,13 +55869,26 @@ body.theme-dark option[selected] {
   transform: translateY(-1px);
   border-color: rgba(218, 255, 145, 0.62);
   background:
-    linear-gradient(180deg, rgba(218, 255, 145, 0.84), rgba(130, 203, 61, 0.86)),
-    rgba(148, 209, 89, 0.9);
-  color: #071007;
+    radial-gradient(circle at 50% 0%, rgba(205, 255, 134, 0.24), transparent 50%),
+    linear-gradient(180deg, rgba(45, 92, 30, 0.88), rgba(13, 33, 16, 0.94)),
+    rgba(14, 35, 17, 0.94);
+  color: #fbfff5;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    0 16px 30px rgba(83, 152, 38, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 16px 30px rgba(0, 0, 0, 0.24),
     0 0 26px rgba(148, 209, 89, 0.16);
+}
+
+.source-directory-card .source-directory-view-report-button.button:hover .source-directory-view-report-icon,
+.source-directory-card .source-directory-view-report-button.button:focus-visible .source-directory-view-report-icon,
+.source-directory-view-report-button.button:hover .source-directory-view-report-icon,
+.source-directory-view-report-button.button:focus-visible .source-directory-view-report-icon {
+  transform: translateX(2px);
+  border-color: rgba(226, 255, 171, 0.62);
+  background:
+    radial-gradient(circle at 35% 25%, rgba(246, 255, 220, 0.42), transparent 52%),
+    rgba(148, 209, 89, 0.2);
+  color: #eeffc7;
 }
 
 .source-directory-compare-list {
@@ -56050,10 +56109,24 @@ body.theme-dark option[selected] {
 
 .source-directory-compare-report-button.button {
   width: 100%;
+  height: 34px;
   min-height: 34px;
+  padding-block: 0;
   padding-inline: 10px;
+  gap: 7px;
   font-size: 0.78rem;
   white-space: nowrap;
+}
+
+.source-directory-compare-report-button .source-directory-view-report-icon {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+
+.source-directory-compare-report-button .source-directory-view-report-icon svg {
+  width: 12px;
+  height: 12px;
 }
 
 @media (max-width: 1180px) {
@@ -56787,10 +56860,60 @@ body.theme-dark option[selected] {
   margin-top: -2px;
 }
 
+.source-report-region-card .source-report-region-layout {
+  --source-report-region-map-height: 384px;
+}
+
 .source-report-region-list {
   display: grid;
   gap: 10px;
   align-content: start;
+}
+
+.source-report-region-card .source-report-region-list {
+  box-sizing: border-box;
+  height: var(--source-report-region-map-height);
+  max-height: var(--source-report-region-map-height);
+  margin-right: -6px;
+  padding: 2px 6px 2px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.source-report-region-card .source-report-region-list:hover,
+.source-report-region-card .source-report-region-list:focus-within {
+  scrollbar-color: rgba(181, 232, 111, 0.34) rgba(255, 255, 255, 0.04);
+}
+
+.source-report-region-card .source-report-region-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.source-report-region-card .source-report-region-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.source-report-region-card .source-report-region-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  background-clip: padding-box;
+}
+
+.source-report-region-card .source-report-region-list:hover::-webkit-scrollbar-thumb,
+.source-report-region-card .source-report-region-list:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(181, 232, 111, 0.3);
+  background-clip: padding-box;
+}
+
+.source-report-region-card .source-report-region-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(205, 255, 134, 0.42);
+  background-clip: padding-box;
 }
 
 .source-report-region-row {
@@ -56960,6 +57083,10 @@ body.theme-dark option[selected] {
     linear-gradient(180deg, rgba(9, 18, 15, 0.94), rgba(5, 10, 8, 0.97));
 }
 
+.source-report-region-card .source-report-world-map {
+  height: var(--source-report-region-map-height);
+}
+
 .source-report-world-map::after {
   content: "";
   position: absolute;
@@ -56977,7 +57104,7 @@ body.theme-dark option[selected] {
   grid-area: 1 / 1;
   width: 100%;
   height: 100%;
-  min-height: 250px;
+  min-height: 0;
 }
 
 .source-report-world-map-image {
@@ -57168,6 +57295,10 @@ body.theme-dark option[selected] {
 }
 
 @media (max-width: 1080px) {
+  .source-report-region-card .source-report-region-layout {
+    --source-report-region-map-height: 320px;
+  }
+
   .source-report-hero-metrics,
   .source-report-activity-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -57204,6 +57335,10 @@ body.theme-dark option[selected] {
 }
 
 @media (max-width: 720px) {
+  .source-report-region-card .source-report-region-layout {
+    --source-report-region-map-height: 252px;
+  }
+
   .source-report-page {
     gap: 14px;
   }
