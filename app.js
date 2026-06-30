@@ -160,11 +160,20 @@ const SEED_VAULT_SHARE_USERS_TABLE = "seed_vault_share_users";
 const SEED_VAULT_SHARE_VISIBILITIES = Object.freeze(["private", "public", "link"]);
 const SEED_VAULT_THEME_PRESETS = Object.freeze({
   green: { id: "green", label: "CannaKAN Green", accent: "#6dd8a6", accent2: "#2fae78", text: "#e4fff0", soft: "rgba(109, 216, 166, 0.16)", softer: "rgba(109, 216, 166, 0.075)", border: "rgba(109, 216, 166, 0.34)", glow: "rgba(109, 216, 166, 0.26)" },
+  emerald: { id: "emerald", label: "Emerald", accent: "#50d987", accent2: "#168f5f", text: "#e4ffef", soft: "rgba(80, 217, 135, 0.16)", softer: "rgba(80, 217, 135, 0.075)", border: "rgba(80, 217, 135, 0.34)", glow: "rgba(80, 217, 135, 0.24)" },
+  mint: { id: "mint", label: "Mint", accent: "#8cf3c6", accent2: "#43b98b", text: "#e8fff6", soft: "rgba(140, 243, 198, 0.15)", softer: "rgba(140, 243, 198, 0.07)", border: "rgba(140, 243, 198, 0.32)", glow: "rgba(140, 243, 198, 0.22)" },
+  cyan: { id: "cyan", label: "Cyan", accent: "#61d9f2", accent2: "#238db4", text: "#e7fbff", soft: "rgba(97, 217, 242, 0.15)", softer: "rgba(97, 217, 242, 0.07)", border: "rgba(97, 217, 242, 0.32)", glow: "rgba(97, 217, 242, 0.22)" },
   pink: { id: "pink", label: "Pink", accent: "#f58ab8", accent2: "#d94d8c", text: "#ffe4f0", soft: "rgba(245, 138, 184, 0.16)", softer: "rgba(245, 138, 184, 0.075)", border: "rgba(245, 138, 184, 0.34)", glow: "rgba(245, 138, 184, 0.24)" },
   blue: { id: "blue", label: "Blue", accent: "#83b8ff", accent2: "#3f82df", text: "#e4f0ff", soft: "rgba(131, 184, 255, 0.16)", softer: "rgba(131, 184, 255, 0.075)", border: "rgba(131, 184, 255, 0.34)", glow: "rgba(131, 184, 255, 0.24)" },
   purple: { id: "purple", label: "Purple", accent: "#b99cff", accent2: "#7f5be8", text: "#eee7ff", soft: "rgba(185, 156, 255, 0.16)", softer: "rgba(185, 156, 255, 0.075)", border: "rgba(185, 156, 255, 0.34)", glow: "rgba(185, 156, 255, 0.24)" },
   amber: { id: "amber", label: "Amber", accent: "#f0c05e", accent2: "#d3922a", text: "#fff1cd", soft: "rgba(240, 192, 94, 0.17)", softer: "rgba(240, 192, 94, 0.08)", border: "rgba(240, 192, 94, 0.34)", glow: "rgba(240, 192, 94, 0.22)" },
+  red: { id: "red", label: "Red", accent: "#ff6b68", accent2: "#c23b3c", text: "#ffe6e6", soft: "rgba(255, 107, 104, 0.16)", softer: "rgba(255, 107, 104, 0.075)", border: "rgba(255, 107, 104, 0.34)", glow: "rgba(255, 107, 104, 0.22)" },
+  orange: { id: "orange", label: "Orange", accent: "#ff9b4a", accent2: "#c96122", text: "#ffefe1", soft: "rgba(255, 155, 74, 0.16)", softer: "rgba(255, 155, 74, 0.075)", border: "rgba(255, 155, 74, 0.34)", glow: "rgba(255, 155, 74, 0.22)" },
+  gold: { id: "gold", label: "Gold", accent: "#f3d36a", accent2: "#b88422", text: "#fff6d7", soft: "rgba(243, 211, 106, 0.17)", softer: "rgba(243, 211, 106, 0.08)", border: "rgba(243, 211, 106, 0.34)", glow: "rgba(243, 211, 106, 0.22)" },
+  violet: { id: "violet", label: "Violet", accent: "#c89cff", accent2: "#8655d9", text: "#f1e8ff", soft: "rgba(200, 156, 255, 0.16)", softer: "rgba(200, 156, 255, 0.075)", border: "rgba(200, 156, 255, 0.34)", glow: "rgba(200, 156, 255, 0.22)" },
+  slate: { id: "slate", label: "Slate", accent: "#a9bac7", accent2: "#607381", text: "#eef5f7", soft: "rgba(169, 186, 199, 0.15)", softer: "rgba(169, 186, 199, 0.07)", border: "rgba(169, 186, 199, 0.3)", glow: "rgba(169, 186, 199, 0.18)" },
 });
+const SEED_VAULT_QUICK_THEME_IDS = Object.freeze(["green", "emerald", "mint", "cyan", "gold"]);
 const ISO_COUNTRY_CODES = Object.freeze([
   "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ",
   "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR",
@@ -19912,17 +19921,43 @@ function renderSeedVaultThemeStyleAttribute(value = "") {
   ].map(([name, color]) => name + ": " + color + ";").join(" ");
 }
 
-function renderSeedVaultThemeOptionsMarkup(selectedTheme = "green") {
+function renderSeedVaultThemeOptionButtonMarkup(theme = SEED_VAULT_THEME_PRESETS.green, selectedTheme = "green") {
   const normalizedSelectedTheme = normalizeSeedVaultTheme(selectedTheme);
-  return Object.values(SEED_VAULT_THEME_PRESETS).map((theme) => {
-    const isActive = theme.id === normalizedSelectedTheme;
-    return [
-      '<button type="button" class="seed-vault-theme-option' + (isActive ? ' is-active' : '') + '" data-seed-vault-theme-option="' + escapeHtml(theme.id) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" style="' + escapeHtml(renderSeedVaultThemeStyleAttribute(theme.id)) + '">',
-      '<span class="seed-vault-theme-swatch" aria-hidden="true"></span>',
-      '<span>' + escapeHtml(theme.label) + '</span>',
-      '</button>',
-    ].join("");
-  }).join("");
+  const isActive = theme.id === normalizedSelectedTheme;
+  return [
+    '<button type="button" class="seed-vault-theme-option' + (isActive ? ' is-active' : '') + '" data-seed-vault-theme-option="' + escapeHtml(theme.id) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '" style="' + escapeHtml(renderSeedVaultThemeStyleAttribute(theme.id)) + '">',
+    '<span class="seed-vault-theme-swatch" aria-hidden="true"></span>',
+    '<span>' + escapeHtml(theme.label) + '</span>',
+    '</button>',
+  ].join("");
+}
+
+function renderSeedVaultThemeOptionsMarkup(selectedTheme = "green") {
+  const themes = Object.values(SEED_VAULT_THEME_PRESETS);
+  const quickThemeIds = new Set(SEED_VAULT_QUICK_THEME_IDS);
+  return themes
+    .filter((theme) => quickThemeIds.has(theme.id))
+    .map((theme) => renderSeedVaultThemeOptionButtonMarkup(theme, selectedTheme))
+    .join("");
+}
+
+function renderSeedVaultMoreThemeOptionsMarkup(selectedTheme = "green") {
+  const quickThemeIds = new Set(SEED_VAULT_QUICK_THEME_IDS);
+  const moreThemes = Object.values(SEED_VAULT_THEME_PRESETS).filter((theme) => !quickThemeIds.has(theme.id));
+  if (!moreThemes.length) {
+    return "";
+  }
+  return [
+    '<details class="seed-vault-theme-more">',
+    '<summary class="seed-vault-theme-more-summary">',
+    '<span class="seed-vault-theme-more-dot" aria-hidden="true"></span>',
+    '<span>More Themes</span>',
+    '</summary>',
+    '<div class="seed-vault-theme-more-menu">',
+    moreThemes.map((theme) => renderSeedVaultThemeOptionButtonMarkup(theme, selectedTheme)).join(""),
+    '</div>',
+    '</details>',
+  ].join("");
 }
 
 function getProfilePageSettingsBooleanValue(settings = {}, keys = [], fallbackValue = false) {
@@ -72446,14 +72481,18 @@ function renderSeedVaultShareCardMarkup(settings = appState.seedVaultShareSettin
   `;
 }
 function renderSeedVaultThemeControlMarkup(selectedTheme = "green") {
+  const normalizedTheme = normalizeSeedVaultTheme(selectedTheme);
+  const theme = getSeedVaultThemePreset(normalizedTheme);
   return [
-    '<section class="seed-vault-theme-control" aria-label="Customize Seed Vault theme">',
-    '<div>',
+    '<section class="seed-vault-theme-control" aria-label="Customize Seed Vault theme" style="' + escapeHtml(renderSeedVaultThemeStyleAttribute(normalizedTheme)) + '">',
+    '<div class="seed-vault-theme-current">',
     '<span>Vault Theme</span>',
-    '<strong>Customize Vault</strong>',
+    '<strong><i class="seed-vault-theme-swatch" aria-hidden="true"></i>' + escapeHtml(theme.label) + '</strong>',
+    '<small>Customize Vault</small>',
     '</div>',
     '<div class="seed-vault-theme-options" role="group" aria-label="Vault Theme options">',
-    renderSeedVaultThemeOptionsMarkup(selectedTheme),
+    renderSeedVaultThemeOptionsMarkup(normalizedTheme),
+    renderSeedVaultMoreThemeOptionsMarkup(normalizedTheme),
     '</div>',
     '</section>',
   ].join("");
