@@ -51129,7 +51129,7 @@ function renderSourcesLandingPage() {
         title: "Source Explorer",
         descriptionMarkup: `Discover trusted seed sources through <span>real community performance</span>.`,
         beforeActionsMarkup: `
-          <p class="source-directory-hero-proof">Rankings are based on real community germination sessions — not ads, not sponsorships, just evidence.</p>
+          <p class="source-directory-hero-proof">Rankings are based solely on real community germination sessions—not advertising or sponsorships.</p>
           <div class="source-directory-hero-trust-list" aria-label="Source Explorer trust signals">
             <span>Community Verified</span>
             <span>Real Grow Sessions</span>
