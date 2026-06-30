@@ -789,6 +789,7 @@ const SOURCE_DIRECTORY_DEFAULT_DISPLAY_MODE = "cards";
 const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
+const SOURCE_DIRECTORY_CARD_BATCH_SIZE = 12;
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
 const SOURCE_VARIETY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Varieties" }),
@@ -50451,7 +50452,7 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
     </div>
   `;
 }
-function renderSourceDirectoryResultsMarkup(records = []) {
+function renderSourceDirectoryResultsMarkup(records = [], options = {}) {
   if (!records.length) {
     return `
       <article class="card source-directory-empty-state">
@@ -50462,13 +50463,45 @@ function renderSourceDirectoryResultsMarkup(records = []) {
   }
 
   const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
-  return records.map((source) => renderSourceDirectoryCardMarkup(source, { topVarietyLookup, totalSources: getSourceDirectoryMockRecords().length })).join("");
+  const visibleLimit = Math.max(1, Math.floor(Number(options.visibleLimit) || SOURCE_DIRECTORY_CARD_BATCH_SIZE));
+  const visibleRecords = records.slice(0, visibleLimit);
+  return visibleRecords.map((source) => renderSourceDirectoryCardMarkup(source, { topVarietyLookup, totalSources: getSourceDirectoryMockRecords().length })).join("");
+}
+
+function renderSourceDirectoryCardRevealControlsMarkup(totalRecords = 0, visibleLimit = SOURCE_DIRECTORY_CARD_BATCH_SIZE) {
+  const safeTotal = Math.max(0, Math.floor(Number(totalRecords) || 0));
+  const safeVisibleLimit = Math.max(1, Math.floor(Number(visibleLimit) || SOURCE_DIRECTORY_CARD_BATCH_SIZE));
+  if (safeTotal <= SOURCE_DIRECTORY_CARD_BATCH_SIZE) {
+    return "";
+  }
+
+  const visibleCount = Math.min(safeVisibleLimit, safeTotal);
+  const hasMore = visibleCount < safeTotal;
+  const nextCount = Math.min(SOURCE_DIRECTORY_CARD_BATCH_SIZE, Math.max(0, safeTotal - visibleCount));
+  return `
+    <div class="source-directory-card-reveal" aria-live="polite">
+      <p class="source-directory-card-reveal-summary">Showing ${escapeHtml(String(visibleCount))} of ${escapeHtml(String(safeTotal))} matching source reports</p>
+      <div class="source-directory-card-reveal-actions">
+        ${hasMore ? `
+          <button type="button" class="button button-secondary source-directory-card-reveal-button" data-source-directory-show-more="true">
+            Show More Sources${nextCount ? ` <span>+${escapeHtml(String(nextCount))}</span>` : ""}
+          </button>
+        ` : ""}
+        ${visibleCount > SOURCE_DIRECTORY_CARD_BATCH_SIZE ? `
+          <button type="button" class="button button-secondary source-directory-card-reveal-button source-directory-card-reveal-button--less" data-source-directory-show-less="true">
+            Show Less
+          </button>
+        ` : ""}
+      </div>
+    </div>
+  `;
 }
 
 function bindSourcesLandingPage() {
   const searchInput = app.querySelector("#source-directory-search");
   const sortSelect = app.querySelector("#source-directory-sort");
   const cardResults = app.querySelector("#source-directory-card-results");
+  const cardReveal = app.querySelector("#source-directory-card-reveal");
   const listResults = app.querySelector("#source-directory-list-results");
   const pagination = app.querySelector("#source-directory-pagination");
   const summary = app.querySelector("#source-directory-results-summary");
@@ -50486,8 +50519,26 @@ function bindSourcesLandingPage() {
   const totalSources = getSourceDirectoryMockRecords().length;
   let activeDisplayMode = getSourceDirectoryDisplayModePreference();
   let currentListPage = 1;
+  let currentCardLimit = SOURCE_DIRECTORY_CARD_BATCH_SIZE;
 
-  const applyDirectoryView = () => {
+  const bindCardRevealControls = () => {
+    if (!cardReveal) {
+      return;
+    }
+    cardReveal.querySelector("[data-source-directory-show-more='true']")?.addEventListener("click", () => {
+      currentCardLimit += SOURCE_DIRECTORY_CARD_BATCH_SIZE;
+      applyDirectoryView({ preserveCardLimit: true, focusReveal: true });
+    });
+    cardReveal.querySelector("[data-source-directory-show-less='true']")?.addEventListener("click", () => {
+      currentCardLimit = SOURCE_DIRECTORY_CARD_BATCH_SIZE;
+      applyDirectoryView({ preserveCardLimit: true, focusReveal: true });
+    });
+  };
+
+  const applyDirectoryView = ({ preserveCardLimit = false, focusReveal = false } = {}) => {
+    if (!preserveCardLimit) {
+      currentCardLimit = SOURCE_DIRECTORY_CARD_BATCH_SIZE;
+    }
     const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceDirectoryFilter || SOURCE_DIRECTORY_DEFAULT_FILTER;
     const records = getFilteredAndSortedSourceDirectoryRecords({
       query: searchInput?.value || "",
@@ -50495,16 +50546,28 @@ function bindSourcesLandingPage() {
       sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
     });
     const isCompareMode = activeDisplayMode === "compare";
+    currentCardLimit = Math.min(Math.max(SOURCE_DIRECTORY_CARD_BATCH_SIZE, currentCardLimit), Math.max(SOURCE_DIRECTORY_CARD_BATCH_SIZE, records.length));
     cardResults.className = isCompareMode ? "source-directory-compare-list" : "source-directory-grid";
     cardResults.setAttribute("aria-label", isCompareMode ? "Compare Source Reports" : "Source Reports");
-    cardResults.innerHTML = isCompareMode ? renderSourceDirectoryCompareRowsMarkup(records) : renderSourceDirectoryResultsMarkup(records);
-    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in ${isCompareMode ? "Compare" : "Cards"}`;
+    cardResults.innerHTML = isCompareMode ? renderSourceDirectoryCompareRowsMarkup(records) : renderSourceDirectoryResultsMarkup(records, { visibleLimit: currentCardLimit });
+    if (cardReveal) {
+      cardReveal.hidden = isCompareMode;
+      cardReveal.innerHTML = isCompareMode ? "" : renderSourceDirectoryCardRevealControlsMarkup(records.length, currentCardLimit);
+      bindCardRevealControls();
+    }
+    const visibleCardCount = isCompareMode ? records.length : Math.min(records.length, currentCardLimit);
+    summary.textContent = isCompareMode
+      ? `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in Compare`
+      : `Showing ${visibleCardCount} of ${records.length} matching source${records.length === 1 ? "" : "s"}`;
     viewButtons.forEach((button) => {
       const buttonMode = normalizeSourceDirectoryDisplayMode(button.getAttribute("data-source-directory-view") || "cards");
       const isActive = buttonMode === activeDisplayMode;
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
+    if (focusReveal && cardReveal && !isCompareMode) {
+      cardReveal.querySelector("[data-source-directory-show-more='true'], [data-source-directory-show-less='true']")?.focus();
+    }
   };
 
   const bindListPagination = (filteredRecords = []) => {
@@ -51168,6 +51231,7 @@ function renderSourcesLandingPage() {
 
       <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Reports">
       </section>
+      <div id="source-directory-card-reveal" class="source-directory-card-reveal-shell"></div>
       <p id="source-directory-ranking-note" class="source-directory-grid-footnote">Confidence reflects sample size, consistency, data freshness, and available verification.</p>
 
     </section>
