@@ -50602,6 +50602,153 @@ function renderSourceDirectoryCardRevealControlsMarkup(totalRecords = 0, visible
   `;
 }
 
+function highlightSourceDirectoryExplorerSection() {
+  const controls = app.querySelector("#source-directory-controls");
+  const reportsHeading = app.querySelector("#source-directory-reports-heading");
+  const target = controls || reportsHeading || app.querySelector("#source-directory-card-results");
+  if (!target) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+  target.scrollIntoView({
+    behavior: prefersReducedMotion ? "auto" : "smooth",
+    block: "start",
+  });
+
+  [controls, reportsHeading].filter(Boolean).forEach((element) => {
+    element.classList.remove("is-source-directory-hero-target");
+    window.requestAnimationFrame(() => element.classList.add("is-source-directory-hero-target"));
+  });
+
+  const previousTabIndex = target.getAttribute("tabindex");
+  target.setAttribute("tabindex", "-1");
+  window.setTimeout(() => {
+    target.focus({ preventScroll: true });
+  }, prefersReducedMotion ? 0 : 420);
+
+  window.setTimeout(() => {
+    [controls, reportsHeading].filter(Boolean).forEach((element) => {
+      element.classList.remove("is-source-directory-hero-target");
+    });
+    if (previousTabIndex == null) {
+      target.removeAttribute("tabindex");
+    } else {
+      target.setAttribute("tabindex", previousTabIndex);
+    }
+  }, 2200);
+}
+
+function closeSourceDirectoryRankingsModal({ restoreFocus = true } = {}) {
+  const overlay = document.querySelector("#source-directory-rankings-modal-overlay");
+  if (!overlay || overlay.dataset.closing === "true") {
+    return;
+  }
+
+  overlay.dataset.closing = "true";
+  overlay.classList.add("closing");
+  overlay.querySelector(".source-directory-rankings-modal")?.classList.add("closing");
+  document.body.classList.remove("modal-open");
+  if (overlay.__sourceDirectoryEscapeHandler) {
+    document.removeEventListener("keydown", overlay.__sourceDirectoryEscapeHandler);
+  }
+
+  const returnFocusTarget = overlay.__sourceDirectoryReturnFocus;
+  window.setTimeout(() => {
+    overlay.remove();
+    if (restoreFocus && returnFocusTarget instanceof HTMLElement && document.contains(returnFocusTarget)) {
+      returnFocusTarget.focus({ preventScroll: true });
+    }
+  }, 180);
+}
+
+function openSourceDirectoryRankingsModal(trigger = null) {
+  const existingOverlay = document.querySelector("#source-directory-rankings-modal-overlay");
+  if (existingOverlay) {
+    existingOverlay.querySelector("[data-source-directory-rankings-close]")?.focus();
+    return existingOverlay;
+  }
+
+  const overlay = document.createElement("div");
+  overlay.id = "source-directory-rankings-modal-overlay";
+  overlay.className = "source-directory-rankings-modal-overlay";
+  overlay.dataset.closing = "false";
+  overlay.__sourceDirectoryReturnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
+  overlay.innerHTML = `
+    <section class="source-directory-rankings-modal" role="dialog" aria-modal="true" aria-labelledby="source-directory-rankings-modal-title" aria-describedby="source-directory-rankings-modal-summary">
+      <button type="button" class="modal-close" data-source-directory-rankings-close aria-label="Close rankings explainer">×</button>
+      <div class="source-directory-rankings-modal-scroll">
+        <div class="source-directory-rankings-modal-hero">
+          <p class="eyebrow">Source Explorer Methodology</p>
+          <h2 id="source-directory-rankings-modal-title">How Rankings Work</h2>
+          <p id="source-directory-rankings-modal-summary">Source Reports rank seed sources by community evidence: real germination sessions, observed outcomes, data quality, and freshness. Advertising and sponsorship do not influence placement.</p>
+        </div>
+        <div class="source-directory-rankings-grid">
+          <article>
+            <span>01</span>
+            <h3>Community Confidence</h3>
+            <p>Confidence summarizes the strength of available evidence. Larger sample sizes, repeated sessions, consistent outcomes, and recent activity raise confidence; thin or stale data keeps it cautious.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Germination Success</h3>
+            <p>Success rates are calculated from community germination results, including seeds started and seeds germinated. Strong rates matter most when backed by enough sessions to be meaningful.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Community Sessions</h3>
+            <p>Each logged session adds context across varieties, seed age, source, and timing. Rankings favor patterns confirmed across multiple growers rather than a single isolated result.</p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Ranking Methodology</h3>
+            <p>The system balances germination performance, source activity, sample size, consistency, freshness, and available verification. The goal is practical trust, not paid placement.</p>
+          </article>
+        </div>
+        <div class="source-directory-rankings-evidence-panel">
+          <div>
+            <h3>Evidence before promotion</h3>
+            <p>Source Explorer is built around community performance. Rankings are based solely on real community germination sessions, not ads, sponsorships, affiliate placement, or brand claims.</p>
+          </div>
+          <div>
+            <h3>CSTP and Source Reports</h3>
+            <p>CSTP Verification is shown as a separate trust signal when available. It can strengthen a Source Report, but CSTP data is not merged into Community Confidence and it does not replace community session evidence.</p>
+          </div>
+        </div>
+        <div class="source-directory-rankings-modal-actions">
+          <button type="button" class="button button-primary" data-source-directory-rankings-explore>Explore Top Sources</button>
+          <button type="button" class="button button-secondary" data-source-directory-rankings-close>Close</button>
+        </div>
+      </div>
+    </section>
+  `;
+
+  const closeButtons = overlay.querySelectorAll("[data-source-directory-rankings-close]");
+  closeButtons.forEach((button) => {
+    button.addEventListener("click", () => closeSourceDirectoryRankingsModal());
+  });
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeSourceDirectoryRankingsModal();
+    }
+  });
+  overlay.querySelector("[data-source-directory-rankings-explore]")?.addEventListener("click", () => {
+    closeSourceDirectoryRankingsModal({ restoreFocus: false });
+    window.setTimeout(highlightSourceDirectoryExplorerSection, 200);
+  });
+  overlay.__sourceDirectoryEscapeHandler = (event) => {
+    if (event.key === "Escape") {
+      closeSourceDirectoryRankingsModal();
+    }
+  };
+  document.addEventListener("keydown", overlay.__sourceDirectoryEscapeHandler);
+
+  document.body.appendChild(overlay);
+  document.body.classList.add("modal-open");
+  overlay.querySelector("[data-source-directory-rankings-close]")?.focus({ preventScroll: true });
+  return overlay;
+}
+
 function bindSourcesLandingPage() {
   const searchInput = app.querySelector("#source-directory-search");
   const sortSelect = app.querySelector("#source-directory-sort");
@@ -50617,6 +50764,8 @@ function bindSourcesLandingPage() {
   const listSummary = app.querySelector("#source-directory-list-summary");
   const filterButtons = Array.from(app.querySelectorAll("[data-source-directory-filter]"));
   const viewButtons = Array.from(app.querySelectorAll("[data-source-directory-view]"));
+  const heroExploreButton = app.querySelector("[data-source-directory-hero-action='explore']");
+  const heroRankingsButton = app.querySelector("[data-source-directory-hero-action='rankings']");
   if (!cardResults || !summary) {
     return;
   }
@@ -50757,6 +50906,16 @@ function bindSourcesLandingPage() {
       listOrderSelect.value = getDefaultSourceDirectoryListOrder(listSortSelect.value);
     }
     applyDirectoryListView();
+  });
+
+  heroExploreButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    highlightSourceDirectoryExplorerSection();
+  });
+
+  heroRankingsButton?.addEventListener("click", (event) => {
+    event.preventDefault();
+    openSourceDirectoryRankingsModal(heroRankingsButton);
   });
 
   app.querySelector("[data-source-directory-contact-link='cstp']")?.addEventListener("click", (event) => {
@@ -51246,11 +51405,13 @@ function renderSourcesLandingPage() {
           href: "#source-directory-card-results",
           label: "Explore Top Sources",
           className: "button button-primary source-directory-hero-primary-action",
+          attributes: { "data-source-directory-hero-action": "explore" },
         },
         secondaryAction: {
           href: "#source-directory-ranking-note",
           label: "How Rankings Work",
           className: "button button-secondary source-directory-hero-secondary-action",
+          attributes: { "data-source-directory-hero-action": "rankings" },
         },
         artOverlayMarkup: `
           <div class="source-directory-hero-art-layer" aria-label="Source Explorer evidence signals">
@@ -51296,7 +51457,7 @@ function renderSourcesLandingPage() {
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
 
-      <section class="card source-directory-controls-card">
+      <section id="source-directory-controls" class="card source-directory-controls-card">
         <div class="source-directory-controls-head">
           <div>
             <p class="eyebrow">Explorer Controls</p>
@@ -51323,7 +51484,7 @@ function renderSourcesLandingPage() {
         </div>
       </section>
 
-      <div class="source-directory-results-head source-directory-results-head--cards">
+      <div id="source-directory-reports-heading" class="source-directory-results-head source-directory-results-head--cards">
         <div>
           <h3>Trusted Source Reports</h3>
           <p class="muted">Evidence-first reports from community germination data.</p>
