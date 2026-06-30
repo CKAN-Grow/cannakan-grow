@@ -30318,10 +30318,12 @@ function renderAppHeroMarkup(options = {}) {
     eyebrow = "",
     title = "",
     description = "",
+    descriptionMarkup = "",
     primaryAction = null,
     secondaryAction = null,
     beforeActionsMarkup = "",
     afterActionsMarkup = "",
+    artOverlayMarkup = "",
   } = options;
 
   const sectionAttributes = [
@@ -30342,16 +30344,17 @@ function renderAppHeroMarkup(options = {}) {
       <div class="app-hero-background" aria-hidden="true"></div>
       <div class="app-hero-overlay" aria-hidden="true"></div>
       <div class="app-hero-content section-title-with-icon app-section-header-main">
-        ${iconMarkup}
+          ${iconMarkup}
         <div class="app-hero-copy">
           <p class="app-hero-eyebrow eyebrow">${escapeHtml(eyebrow)}</p>
           <h2 class="app-hero-title">${escapeHtml(title)}</h2>
-          <p class="app-hero-subtitle muted">${escapeHtml(description)}</p>
+          <p class="app-hero-subtitle muted">${descriptionMarkup || escapeHtml(description)}</p>
           ${beforeActionsMarkup}
           ${actionsMarkup ? `<div class="app-hero-actions hero-actions">${actionsMarkup}</div>` : ""}
           ${afterActionsMarkup}
         </div>
       </div>
+      ${artOverlayMarkup ? `<div class="app-hero-art-overlay">${artOverlayMarkup}</div>` : ""}
     </section>
   `;
 }
@@ -50964,6 +50967,7 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
 
 function renderSourcesLandingPage() {
   const directoryRecords = getSourceDirectoryMockRecords();
+  const heroMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
       ${renderAppHeroMarkup({
@@ -50971,9 +50975,9 @@ function renderSourcesLandingPage() {
         iconMarkup: renderAppSectionHeaderIcon("sources"),
         eyebrow: "Sources",
         title: "Source Explorer",
-        description: "Discover trusted seed sources through real community performance.",
+        descriptionMarkup: `Discover trusted seed sources through <span>real community performance</span>.`,
         beforeActionsMarkup: `
-          <p class="source-directory-hero-proof">Rankings are based on real community germination sessions, not advertising or sponsorship.</p>
+          <p class="source-directory-hero-proof">Rankings are based on real community germination sessions — not ads, not sponsorships, just evidence.</p>
           <div class="source-directory-hero-trust-list" aria-label="Source Explorer trust signals">
             <span>Community Verified</span>
             <span>Real Grow Sessions</span>
@@ -50991,6 +50995,46 @@ function renderSourcesLandingPage() {
           label: "How Rankings Work",
           className: "button button-secondary source-directory-hero-secondary-action",
         },
+        artOverlayMarkup: `
+          <div class="source-directory-hero-art-layer" aria-label="Source Explorer evidence signals">
+            <svg class="source-directory-hero-connection-lines" viewBox="0 0 620 320" aria-hidden="true" focusable="false">
+              <path d="M136 48 C230 50 286 130 398 142"></path>
+              <path d="M136 120 C248 122 288 156 408 164"></path>
+              <path d="M136 194 C260 190 306 170 424 172"></path>
+              <path d="M136 266 C250 254 304 198 430 184"></path>
+              <circle cx="136" cy="48" r="4"></circle>
+              <circle cx="136" cy="120" r="4"></circle>
+              <circle cx="136" cy="194" r="4"></circle>
+              <circle cx="136" cy="266" r="4"></circle>
+              <circle cx="405" cy="142" r="4.5"></circle>
+              <circle cx="414" cy="164" r="4.5"></circle>
+              <circle cx="430" cy="172" r="4.5"></circle>
+              <circle cx="438" cy="184" r="4.5"></circle>
+            </svg>
+            <div class="source-directory-hero-insight-stack">
+              <article class="source-directory-hero-insight">
+                <span class="source-directory-hero-insight-dot" aria-hidden="true"></span>
+                <strong>Community Sessions</strong>
+                <small>${escapeHtml(heroMetrics.communitySessions.toLocaleString())} sessions</small>
+              </article>
+              <article class="source-directory-hero-insight">
+                <span class="source-directory-hero-insight-dot" aria-hidden="true"></span>
+                <strong>Germination Data</strong>
+                <small>${escapeHtml(heroMetrics.seedsTracked.toLocaleString())} seeds</small>
+              </article>
+              <article class="source-directory-hero-insight">
+                <span class="source-directory-hero-insight-dot" aria-hidden="true"></span>
+                <strong>Source Reports</strong>
+                <small>${escapeHtml(heroMetrics.totalSourcesLogged.toLocaleString())} sources</small>
+              </article>
+              <article class="source-directory-hero-insight">
+                <span class="source-directory-hero-insight-dot" aria-hidden="true"></span>
+                <strong>Performance Trends</strong>
+                <small>Updated daily</small>
+              </article>
+            </div>
+          </div>
+        `,
       })}
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}

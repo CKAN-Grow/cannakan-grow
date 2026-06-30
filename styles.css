@@ -29967,6 +29967,7 @@ textarea::placeholder {
 }
 
 .source-directory-metrics-grid {
+  gap: 18px;
   margin-bottom: 1.25rem;
 }
 
@@ -30315,7 +30316,43 @@ textarea::placeholder {
 }
 
 .source-directory-metric-card {
-  min-height: 130px;
+  position: relative;
+  min-height: 142px;
+  overflow: hidden;
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0) 25%),
+    radial-gradient(circle at 16% 8%, rgba(181, 232, 111, 0.13), transparent 34%),
+    linear-gradient(145deg, rgba(13, 24, 17, 0.96), rgba(7, 12, 10, 0.98));
+  box-shadow:
+    var(--glass-shadow),
+    var(--glass-inset),
+    0 0 28px rgba(148, 209, 89, 0.075);
+}
+
+.source-directory-metric-card::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  left: 18px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(181, 232, 111, 0.34), transparent);
+  opacity: 0.68;
+}
+
+.source-directory-metric-card .stat-label {
+  color: rgba(233, 243, 225, 0.78);
+}
+
+.source-directory-metric-card .stat-value {
+  color: #f8fff0;
+  text-shadow: 0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.source-directory-metric-card .summary-subtext {
+  color: rgba(232, 241, 227, 0.7);
 }
 
 .source-directory-metric-card--cstp {
@@ -54503,12 +54540,34 @@ body.theme-dark option[selected] {
     linear-gradient(180deg, transparent, rgba(148, 209, 89, 0.055) 62%, rgba(148, 209, 89, 0.018));
 }
 
+.source-directory-hero.app-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 42%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.46;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(181, 232, 111, 0.045) 32px),
+    repeating-linear-gradient(90deg, transparent 0 35px, rgba(181, 232, 111, 0.035) 36px),
+    radial-gradient(ellipse at 68% 54%, rgba(181, 232, 111, 0.16), transparent 52%);
+  mask-image: linear-gradient(90deg, transparent, #000 24%, #000 82%, transparent);
+}
+
 .source-directory-hero .app-hero-background {
   filter: saturate(1.06) contrast(1.04);
 }
 
+.source-directory-hero .app-hero-art-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .source-directory-hero .app-hero-content {
-  max-width: min(46rem, 58%);
+  z-index: 2;
+  max-width: min(46rem, 56%);
   align-items: start;
 }
 
@@ -54536,6 +54595,11 @@ body.theme-dark option[selected] {
   line-height: 1.42;
 }
 
+.source-directory-hero .app-hero-subtitle span {
+  color: #b8ef60;
+  text-shadow: 0 0 18px rgba(148, 209, 89, 0.18);
+}
+
 .source-directory-hero-proof {
   margin: 7px 0 0;
   max-width: 34rem;
@@ -54555,6 +54619,7 @@ body.theme-dark option[selected] {
 .source-directory-hero-trust-list span {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   min-height: 26px;
   padding: 0 11px;
   border: 1px solid rgba(181, 232, 111, 0.2);
@@ -54568,6 +54633,16 @@ body.theme-dark option[selected] {
   letter-spacing: 0.02em;
   white-space: nowrap;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.source-directory-hero-trust-list span::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 999px;
+  background: #bdf279;
+  box-shadow: 0 0 10px rgba(181, 232, 111, 0.58);
 }
 
 .source-directory-hero .app-hero-actions {
@@ -54617,9 +54692,154 @@ body.theme-dark option[selected] {
   color: #f6ffe6;
 }
 
+.source-directory-hero-art-layer {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  bottom: 18px;
+  width: min(50%, 660px);
+}
+
+.source-directory-hero-art-layer::before,
+.source-directory-hero-art-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.source-directory-hero-art-layer::before {
+  opacity: 0.74;
+  background:
+    repeating-radial-gradient(circle at 69% 58%, rgba(181, 232, 111, 0.18) 0 1px, transparent 1px 34px),
+    radial-gradient(ellipse at 70% 60%, rgba(148, 209, 89, 0.22), transparent 42%);
+  mask-image: radial-gradient(ellipse at 66% 58%, #000 0 58%, transparent 76%);
+}
+
+.source-directory-hero-art-layer::after {
+  opacity: 0.34;
+  background:
+    linear-gradient(90deg, transparent 18%, rgba(181, 232, 111, 0.09) 18% 18.4%, transparent 18.4% 28%, rgba(181, 232, 111, 0.12) 28% 28.4%, transparent 28.4%),
+    radial-gradient(circle at 86% 20%, rgba(181, 232, 111, 0.4) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 24%, rgba(181, 232, 111, 0.26) 0 1px, transparent 2px),
+    radial-gradient(circle at 90% 28%, rgba(181, 232, 111, 0.28) 0 1px, transparent 2px),
+    radial-gradient(circle at 83% 30%, rgba(181, 232, 111, 0.2) 0 1px, transparent 2px);
+  background-size: auto, 90px 50px, 90px 50px, 90px 50px, 90px 50px;
+}
+
+.source-directory-hero-connection-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 7px rgba(181, 232, 111, 0.28));
+}
+
+.source-directory-hero-connection-lines path {
+  fill: none;
+  stroke: rgba(181, 232, 111, 0.58);
+  stroke-linecap: round;
+  stroke-width: 1.35;
+}
+
+.source-directory-hero-connection-lines circle {
+  fill: #d8ff78;
+  filter: drop-shadow(0 0 7px rgba(181, 232, 111, 0.72));
+}
+
+.source-directory-hero-insight-stack {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  display: grid;
+  gap: 10px;
+  width: min(218px, 39%);
+}
+
+.source-directory-hero-insight {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1px 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 9px 12px;
+  border: 1px solid rgba(181, 232, 111, 0.24);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, rgba(181, 232, 111, 0.1), rgba(7, 14, 10, 0.48)),
+    rgba(5, 12, 9, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 26px rgba(0, 0, 0, 0.22),
+    0 0 18px rgba(148, 209, 89, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.source-directory-hero-insight-dot {
+  grid-row: span 2;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(181, 232, 111, 0.3);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(181, 232, 111, 0.95) 0 3px, transparent 4px),
+    rgba(181, 232, 111, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 15px rgba(181, 232, 111, 0.18);
+}
+
+.source-directory-hero-insight strong,
+.source-directory-hero-insight small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-directory-hero-insight strong {
+  color: #f6ffe9;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1.14;
+}
+
+.source-directory-hero-insight small {
+  color: rgba(232, 241, 225, 0.74);
+  font-size: 0.68rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
 #source-directory-card-results,
 #source-directory-ranking-note {
   scroll-margin-top: 96px;
+}
+
+@media (max-width: 1120px) {
+  .source-directory-hero-art-layer {
+    right: 14px;
+    width: 46%;
+  }
+
+  .source-directory-hero-insight-stack {
+    top: 24px;
+    width: 190px;
+  }
+
+  .source-directory-hero-insight {
+    min-height: 50px;
+    padding: 8px 10px;
+  }
+
+  .source-directory-hero-insight strong {
+    font-size: 0.73rem;
+  }
+
+  .source-directory-hero-insight small {
+    font-size: 0.64rem;
+  }
 }
 
 @media (max-width: 900px) {
@@ -54634,6 +54854,19 @@ body.theme-dark option[selected] {
   .source-directory-hero .app-hero-content {
     max-width: min(42rem, 72%);
   }
+
+  .source-directory-hero-art-layer {
+    opacity: 0.72;
+    width: 42%;
+  }
+
+  .source-directory-hero-insight-stack {
+    display: none;
+  }
+
+  .source-directory-hero-connection-lines {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
@@ -54647,6 +54880,10 @@ body.theme-dark option[selected] {
 
   .source-directory-hero .app-hero-content {
     max-width: none;
+  }
+
+  .source-directory-hero .app-hero-art-overlay {
+    display: none;
   }
 
   .source-directory-hero .app-hero-title {
