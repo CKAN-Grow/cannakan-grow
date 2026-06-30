@@ -58630,7 +58630,7 @@ body.theme-dark option[selected] {
   height: 14px;
   border-radius: 999px;
   background:
-    conic-gradient(from 20deg, #50d987, #61d9f2, #f3d36a, #c89cff, #ff6b68, #50d987);
+    conic-gradient(from 20deg, #b9575d, #c77c94, #cdb85e, #69b8c6, #7e89c6, #c77442, #87965a, #b9575d);
   box-shadow: 0 0 12px var(--seed-vault-theme-glow);
 }
 

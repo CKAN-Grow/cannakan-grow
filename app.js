@@ -171,22 +171,38 @@ const SEED_VAULT_CANNAKAN_GREEN_THEME = Object.freeze({
   border: `rgba(${CANNAKAN_BRAND_GREEN_RGB}, 0.34)`,
   glow: `rgba(${CANNAKAN_BRAND_GREEN_RGB}, 0.24)`,
 });
+function createSeedVaultThemePreset(id, label, accent, accent2, rgb, text = "#F5F8F1") {
+  return {
+    id,
+    label,
+    accent,
+    accent2,
+    text,
+    soft: `rgba(${rgb}, 0.16)`,
+    softer: `rgba(${rgb}, 0.075)`,
+    border: `rgba(${rgb}, 0.34)`,
+    glow: `rgba(${rgb}, 0.22)`,
+  };
+}
 const SEED_VAULT_THEME_PRESETS = Object.freeze({
   green: SEED_VAULT_CANNAKAN_GREEN_THEME,
-  emerald: { id: "emerald", label: "Emerald", accent: "#50d987", accent2: "#168f5f", text: "#e4ffef", soft: "rgba(80, 217, 135, 0.16)", softer: "rgba(80, 217, 135, 0.075)", border: "rgba(80, 217, 135, 0.34)", glow: "rgba(80, 217, 135, 0.24)" },
-  mint: { id: "mint", label: "Mint", accent: "#8cf3c6", accent2: "#43b98b", text: "#e8fff6", soft: "rgba(140, 243, 198, 0.15)", softer: "rgba(140, 243, 198, 0.07)", border: "rgba(140, 243, 198, 0.32)", glow: "rgba(140, 243, 198, 0.22)" },
-  cyan: { id: "cyan", label: "Cyan", accent: "#61d9f2", accent2: "#238db4", text: "#e7fbff", soft: "rgba(97, 217, 242, 0.15)", softer: "rgba(97, 217, 242, 0.07)", border: "rgba(97, 217, 242, 0.32)", glow: "rgba(97, 217, 242, 0.22)" },
-  pink: { id: "pink", label: "Pink", accent: "#f58ab8", accent2: "#d94d8c", text: "#ffe4f0", soft: "rgba(245, 138, 184, 0.16)", softer: "rgba(245, 138, 184, 0.075)", border: "rgba(245, 138, 184, 0.34)", glow: "rgba(245, 138, 184, 0.24)" },
-  blue: { id: "blue", label: "Blue", accent: "#83b8ff", accent2: "#3f82df", text: "#e4f0ff", soft: "rgba(131, 184, 255, 0.16)", softer: "rgba(131, 184, 255, 0.075)", border: "rgba(131, 184, 255, 0.34)", glow: "rgba(131, 184, 255, 0.24)" },
-  purple: { id: "purple", label: "Purple", accent: "#b99cff", accent2: "#7f5be8", text: "#eee7ff", soft: "rgba(185, 156, 255, 0.16)", softer: "rgba(185, 156, 255, 0.075)", border: "rgba(185, 156, 255, 0.34)", glow: "rgba(185, 156, 255, 0.24)" },
-  amber: { id: "amber", label: "Amber", accent: "#f0c05e", accent2: "#d3922a", text: "#fff1cd", soft: "rgba(240, 192, 94, 0.17)", softer: "rgba(240, 192, 94, 0.08)", border: "rgba(240, 192, 94, 0.34)", glow: "rgba(240, 192, 94, 0.22)" },
-  red: { id: "red", label: "Red", accent: "#ff6b68", accent2: "#c23b3c", text: "#ffe6e6", soft: "rgba(255, 107, 104, 0.16)", softer: "rgba(255, 107, 104, 0.075)", border: "rgba(255, 107, 104, 0.34)", glow: "rgba(255, 107, 104, 0.22)" },
-  orange: { id: "orange", label: "Orange", accent: "#ff9b4a", accent2: "#c96122", text: "#ffefe1", soft: "rgba(255, 155, 74, 0.16)", softer: "rgba(255, 155, 74, 0.075)", border: "rgba(255, 155, 74, 0.34)", glow: "rgba(255, 155, 74, 0.22)" },
-  gold: { id: "gold", label: "Gold", accent: "#f3d36a", accent2: "#b88422", text: "#fff6d7", soft: "rgba(243, 211, 106, 0.17)", softer: "rgba(243, 211, 106, 0.08)", border: "rgba(243, 211, 106, 0.34)", glow: "rgba(243, 211, 106, 0.22)" },
-  violet: { id: "violet", label: "Violet", accent: "#c89cff", accent2: "#8655d9", text: "#f1e8ff", soft: "rgba(200, 156, 255, 0.16)", softer: "rgba(200, 156, 255, 0.075)", border: "rgba(200, 156, 255, 0.34)", glow: "rgba(200, 156, 255, 0.22)" },
-  slate: { id: "slate", label: "Slate", accent: "#a9bac7", accent2: "#607381", text: "#eef5f7", soft: "rgba(169, 186, 199, 0.15)", softer: "rgba(169, 186, 199, 0.07)", border: "rgba(169, 186, 199, 0.3)", glow: "rgba(169, 186, 199, 0.18)" },
+  forest: createSeedVaultThemePreset("forest", "Forest", "#5F8F4A", "#3F6334", "95, 143, 74", "#EFF8E9"),
+  ocean: createSeedVaultThemePreset("ocean", "Ocean", "#4F9EB2", "#2F6678", "79, 158, 178", "#E8F8FB"),
+  amethyst: createSeedVaultThemePreset("amethyst", "Amethyst", "#A184C8", "#67518F", "161, 132, 200", "#F2EAFF"),
+  amber: createSeedVaultThemePreset("amber", "Amber", "#D3A24B", "#8E6428", "211, 162, 75", "#FFF2D6"),
+  walnut: createSeedVaultThemePreset("walnut", "Walnut", "#A5764C", "#68472D", "165, 118, 76", "#F7EBDD"),
+  crimson: createSeedVaultThemePreset("crimson", "Crimson", "#B9575D", "#7D343A", "185, 87, 93", "#FFE8EA"),
+  rose: createSeedVaultThemePreset("rose", "Rose", "#C77C94", "#88485F", "199, 124, 148", "#FFEAF1"),
+  gold: createSeedVaultThemePreset("gold", "Gold", "#CDB85E", "#8C772D", "205, 184, 94", "#FFF7D4"),
+  cyan: createSeedVaultThemePreset("cyan", "Cyan", "#69B8C6", "#3A7884", "105, 184, 198", "#E7FBFF"),
+  slate: createSeedVaultThemePreset("slate", "Slate", "#9BA7B2", "#5D6973", "155, 167, 178", "#EEF4F7"),
+  lime: createSeedVaultThemePreset("lime", "Lime", "#B8CF5A", "#7B8E35", "184, 207, 90", "#F5FFD8"),
+  indigo: createSeedVaultThemePreset("indigo", "Indigo", "#7E89C6", "#4E568F", "126, 137, 198", "#EAEDFF"),
+  bronze: createSeedVaultThemePreset("bronze", "Bronze", "#B1844D", "#73532F", "177, 132, 77", "#F8EBD8"),
+  "burnt-orange": createSeedVaultThemePreset("burnt-orange", "Burnt Orange", "#C77442", "#864728", "199, 116, 66", "#FFECDD"),
+  olive: createSeedVaultThemePreset("olive", "Olive", "#87965A", "#59643A", "135, 150, 90", "#F0F7DF"),
 });
-const SEED_VAULT_QUICK_THEME_IDS = Object.freeze(["green", "emerald", "mint", "cyan", "gold"]);
+const SEED_VAULT_QUICK_THEME_IDS = Object.freeze(["green", "forest", "ocean", "amethyst", "amber", "walnut"]);
 const ISO_COUNTRY_CODES = Object.freeze([
   "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ",
   "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR",
