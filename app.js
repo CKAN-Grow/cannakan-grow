@@ -4250,7 +4250,7 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#seed-vault" data-mobile-nav-link="true">Vault</a>
       <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community</a>
-      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Sources</a>
+      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Explore</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Network${growNetworkBadge}</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
@@ -50750,6 +50750,7 @@ function openSourceDirectoryRankingsModal(trigger = null) {
 }
 
 function bindSourcesLandingPage() {
+  bindExploreFoundationTabs(app);
   const searchInput = app.querySelector("#source-directory-search");
   const sortSelect = app.querySelector("#source-directory-sort");
   const cardResults = app.querySelector("#source-directory-card-results");
@@ -51381,11 +51382,120 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
   `;
 }
 
+function renderExploreSegmentedNavItemMarkup({
+  key = "",
+  icon = "",
+  label = "",
+  active = false,
+  disabled = false,
+} = {}) {
+  return `
+    <button
+      type="button"
+      class="explore-segmented-tab${active ? " is-active" : ""}"
+      data-explore-tab="${escapeHtml(key)}"
+      id="explore-tab-${escapeHtml(key)}"
+      role="tab"
+      aria-controls="explore-panel-${escapeHtml(key)}"
+      aria-selected="${active ? "true" : "false"}"
+      ${disabled ? 'aria-disabled="true"' : ""}
+    >
+      <span class="explore-segmented-tab-icon" aria-hidden="true">${escapeHtml(icon)}</span>
+      <span>${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
+function renderExploreSegmentedNavigationMarkup(activeTab = "sources") {
+  const tabs = [
+    { key: "sources", icon: "🏪", label: "Sources" },
+    { key: "seeds", icon: "🌱", label: "Seeds" },
+  ];
+  return `
+    <section class="explore-foundation-shell" aria-labelledby="explore-foundation-title">
+      <div class="explore-foundation-heading">
+        <p class="eyebrow">Explore</p>
+        <h2 id="explore-foundation-title">Where growers go to know</h2>
+      </div>
+      <nav class="explore-segmented-nav" aria-label="Explore sections" role="tablist">
+        ${tabs.map((tab) => renderExploreSegmentedNavItemMarkup({
+          ...tab,
+          active: tab.key === activeTab,
+        })).join("")}
+      </nav>
+    </section>
+  `;
+}
+
+function renderExploreSeedsComingSoonMarkup() {
+  return `
+    <section id="explore-panel-seeds" class="explore-seeds-coming-soon" data-explore-panel="seeds" role="tabpanel" aria-labelledby="explore-tab-seeds" hidden>
+      <div class="explore-seeds-copy">
+        <span class="explore-coming-soon-badge">Coming Soon</span>
+        <p class="eyebrow">Seeds</p>
+        <h2>Seed Explorer</h2>
+        <p>Discover seed performance, community insights, trusted sources, community photos, and grow intelligence.</p>
+      </div>
+      <div class="explore-seeds-preview" aria-hidden="true">
+        <div class="explore-seeds-preview-card explore-seeds-preview-card--primary">
+          <span>Community Signal</span>
+          <strong>Performance intelligence</strong>
+          <i></i>
+        </div>
+        <div class="explore-seeds-preview-grid">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="explore-seeds-preview-card explore-seeds-preview-card--secondary">
+          <span>Trusted Sources</span>
+          <strong>Coming into focus</strong>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function bindExploreFoundationTabs(scope = app) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+  const tabs = Array.from(scope.querySelectorAll("[data-explore-tab]"));
+  const panels = Array.from(scope.querySelectorAll("[data-explore-panel]"));
+  if (!tabs.length || !panels.length) {
+    return;
+  }
+
+  const activateTab = (nextTab = "sources") => {
+    const normalizedTab = nextTab === "seeds" ? "seeds" : "sources";
+    tabs.forEach((tab) => {
+      const isActive = tab.dataset.exploreTab === normalizedTab;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.explorePanel !== normalizedTab;
+    });
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activateTab(tab.dataset.exploreTab || "sources");
+    });
+  });
+}
+
 function renderSourcesLandingPage() {
   const directoryRecords = getSourceDirectoryMockRecords();
   const heroMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
-    <section class="source-directory-page">
+    <section class="explore-page" aria-labelledby="explore-foundation-title">
+      ${renderExploreSegmentedNavigationMarkup("sources")}
+      <div id="explore-panel-sources" data-explore-panel="sources" role="tabpanel" aria-labelledby="explore-tab-sources">
+        <section class="source-directory-page">
       ${renderAppHeroMarkup({
         className: "source-directory-hero app-hero--sources app-hero--contained-right",
         iconMarkup: renderAppSectionHeaderIcon("sources"),
@@ -51500,6 +51610,9 @@ function renderSourcesLandingPage() {
       <div id="source-directory-card-reveal" class="source-directory-card-reveal-shell"></div>
       <p id="source-directory-ranking-note" class="source-directory-grid-footnote">Confidence reflects sample size, consistency, data freshness, and available verification.</p>
 
+        </section>
+      </div>
+      ${renderExploreSeedsComingSoonMarkup()}
     </section>
   `;
 
