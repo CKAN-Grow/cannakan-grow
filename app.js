@@ -158,8 +158,21 @@ const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bi
 const SEED_VAULT_SHARE_SETTINGS_TABLE = "seed_vault_share_settings";
 const SEED_VAULT_SHARE_USERS_TABLE = "seed_vault_share_users";
 const SEED_VAULT_SHARE_VISIBILITIES = Object.freeze(["private", "public", "link"]);
+const CANNAKAN_BRAND_GREEN = "#94D159";
+const CANNAKAN_BRAND_GREEN_RGB = "148, 209, 89";
+const SEED_VAULT_CANNAKAN_GREEN_THEME = Object.freeze({
+  id: "green",
+  label: "CannaKAN Green",
+  accent: CANNAKAN_BRAND_GREEN,
+  accent2: "#6EA83F",
+  text: "#F3FFE8",
+  soft: `rgba(${CANNAKAN_BRAND_GREEN_RGB}, 0.16)`,
+  softer: `rgba(${CANNAKAN_BRAND_GREEN_RGB}, 0.075)`,
+  border: `rgba(${CANNAKAN_BRAND_GREEN_RGB}, 0.34)`,
+  glow: `rgba(${CANNAKAN_BRAND_GREEN_RGB}, 0.24)`,
+});
 const SEED_VAULT_THEME_PRESETS = Object.freeze({
-  green: { id: "green", label: "CannaKAN Green", accent: "#6dd8a6", accent2: "#2fae78", text: "#e4fff0", soft: "rgba(109, 216, 166, 0.16)", softer: "rgba(109, 216, 166, 0.075)", border: "rgba(109, 216, 166, 0.34)", glow: "rgba(109, 216, 166, 0.26)" },
+  green: SEED_VAULT_CANNAKAN_GREEN_THEME,
   emerald: { id: "emerald", label: "Emerald", accent: "#50d987", accent2: "#168f5f", text: "#e4ffef", soft: "rgba(80, 217, 135, 0.16)", softer: "rgba(80, 217, 135, 0.075)", border: "rgba(80, 217, 135, 0.34)", glow: "rgba(80, 217, 135, 0.24)" },
   mint: { id: "mint", label: "Mint", accent: "#8cf3c6", accent2: "#43b98b", text: "#e8fff6", soft: "rgba(140, 243, 198, 0.15)", softer: "rgba(140, 243, 198, 0.07)", border: "rgba(140, 243, 198, 0.32)", glow: "rgba(140, 243, 198, 0.22)" },
   cyan: { id: "cyan", label: "Cyan", accent: "#61d9f2", accent2: "#238db4", text: "#e7fbff", soft: "rgba(97, 217, 242, 0.15)", softer: "rgba(97, 217, 242, 0.07)", border: "rgba(97, 217, 242, 0.32)", glow: "rgba(97, 217, 242, 0.22)" },

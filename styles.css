@@ -3,6 +3,8 @@ html {
 }
 
 :root {
+  --cannakan-brand-green: #94d159;
+  --cannakan-brand-green-rgb: 148, 209, 89;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -58333,7 +58335,7 @@ body.theme-dark option[selected] {
 }
 
 
-.seed-vault-panel.is-shared-vault { border-color: rgba(109, 216, 166, 0.26); }
+.seed-vault-panel.is-shared-vault { border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(var(--cannakan-brand-green-rgb), 0.34)) 76%, transparent); }
 .seed-vault-shared-context {
   display: grid;
   gap: 0.25rem;
@@ -58341,33 +58343,33 @@ body.theme-dark option[selected] {
   align-content: center;
   min-width: min(100%, 13rem);
   padding: 0.72rem 0.85rem;
-  border: 1px solid rgba(109, 216, 166, 0.24);
+  border: 1px solid color-mix(in srgb, var(--seed-vault-theme-border, rgba(var(--cannakan-brand-green-rgb), 0.34)) 70%, transparent);
   border-radius: 0.85rem;
-  background: linear-gradient(135deg, rgba(109, 216, 166, 0.12), rgba(14, 19, 18, 0.72));
-  color: rgba(237, 255, 246, 0.94);
+  background: linear-gradient(135deg, var(--seed-vault-theme-accent-soft, rgba(var(--cannakan-brand-green-rgb), 0.16)), rgba(14, 19, 18, 0.72));
+  color: var(--seed-vault-theme-text, #f3ffe8);
   text-align: right;
 }
 .seed-vault-shared-context span,
 .seed-vault-shared-context small { color: rgba(212, 241, 226, 0.72); font-size: 0.76rem; line-height: 1.2; }
-.seed-vault-shared-context strong { color: #dfffee; font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.seed-vault-shared-context strong { color: var(--seed-vault-theme-text, #f3ffe8); font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; }
 .seed-vault-readonly-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 2.1rem;
   padding: 0 0.7rem;
-  border: 1px solid rgba(109, 216, 166, 0.24);
+  border: 1px solid color-mix(in srgb, var(--seed-vault-theme-border, rgba(var(--cannakan-brand-green-rgb), 0.34)) 70%, transparent);
   border-radius: 999px;
-  background: rgba(109, 216, 166, 0.1);
-  color: rgba(222, 255, 239, 0.9);
+  background: var(--seed-vault-theme-accent-softer, rgba(var(--cannakan-brand-green-rgb), 0.075));
+  color: var(--seed-vault-theme-text, #f3ffe8);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
 }
-.seed-vault-readonly-details-button { border-color: rgba(109, 216, 166, 0.28); color: rgba(223, 255, 238, 0.92); }
-.seed-vault-detail-section--readonly { border-color: rgba(109, 216, 166, 0.18); background: rgba(109, 216, 166, 0.08); }
+.seed-vault-readonly-details-button { border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(var(--cannakan-brand-green-rgb), 0.34)) 82%, transparent); color: var(--seed-vault-theme-text, #f3ffe8); }
+.seed-vault-detail-section--readonly { border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(var(--cannakan-brand-green-rgb), 0.34)) 54%, transparent); background: var(--seed-vault-theme-accent-softer, rgba(var(--cannakan-brand-green-rgb), 0.075)); }
 .seed-vault-detail-section--readonly p,
 .seed-vault-detail-section--readonly small { margin: 0; color: rgba(218, 238, 227, 0.76); }
 .seed-vault-shared-with-me-toolbar { display: flex; justify-content: flex-start; margin-bottom: 1rem; }
@@ -58378,13 +58380,13 @@ body.theme-dark option[selected] {
 .seed-vault-panel,
 .shared-seed-vault-page,
 .seed-vault-shared-with-me-card {
-  --seed-vault-theme-accent: #6dd8a6;
-  --seed-vault-theme-accent-2: #2fae78;
-  --seed-vault-theme-accent-soft: rgba(109, 216, 166, 0.16);
-  --seed-vault-theme-accent-softer: rgba(109, 216, 166, 0.075);
-  --seed-vault-theme-border: rgba(109, 216, 166, 0.34);
-  --seed-vault-theme-glow: rgba(109, 216, 166, 0.26);
-  --seed-vault-theme-text: #e4fff0;
+  --seed-vault-theme-accent: var(--cannakan-brand-green);
+  --seed-vault-theme-accent-2: #6ea83f;
+  --seed-vault-theme-accent-soft: rgba(var(--cannakan-brand-green-rgb), 0.16);
+  --seed-vault-theme-accent-softer: rgba(var(--cannakan-brand-green-rgb), 0.075);
+  --seed-vault-theme-border: rgba(var(--cannakan-brand-green-rgb), 0.34);
+  --seed-vault-theme-glow: rgba(var(--cannakan-brand-green-rgb), 0.24);
+  --seed-vault-theme-text: #f3ffe8;
 }
 
 .seed-vault-page[data-seed-vault-theme] .seed-vault-page-tabs,
