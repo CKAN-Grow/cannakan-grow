@@ -58419,8 +58419,6 @@ body.theme-dark option[selected] {
   outline-color: var(--seed-vault-theme-accent);
 }
 
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-share-button.button,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-add-button.button,
 .seed-vault-shared-with-me-card[data-seed-vault-theme] .button,
 .shared-seed-vault-page[data-seed-vault-theme] .button {
   border-color: var(--seed-vault-theme-border);
@@ -58431,8 +58429,6 @@ body.theme-dark option[selected] {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 10px 22px rgba(0, 0, 0, 0.18);
 }
 
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-share-button.button:hover,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-add-button.button:hover,
 .seed-vault-shared-with-me-card[data-seed-vault-theme] .button:hover,
 .shared-seed-vault-page[data-seed-vault-theme] .button:hover {
   border-color: var(--seed-vault-theme-accent);
@@ -58675,4 +58671,60 @@ body.theme-dark option[selected] {
     min-width: 0;
     margin-top: 8px;
   }
+}
+
+.seed-vault-panel .seed-vault-header-actions .seed-vault-add-button.button {
+  border-color: color-mix(in srgb, var(--cannakan-brand-green, #94d159) 76%, rgba(255, 255, 255, 0.16));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #a8e66f 0%, var(--cannakan-brand-green, #94d159) 52%, #6ea83f 100%);
+  color: #10190d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 14px 30px rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.22),
+    0 10px 20px rgba(0, 0, 0, 0.24);
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, filter 180ms ease, background 180ms ease;
+}
+
+.seed-vault-panel .seed-vault-header-actions .seed-vault-add-button.button:hover,
+.seed-vault-panel .seed-vault-header-actions .seed-vault-add-button.button:focus-visible {
+  border-color: color-mix(in srgb, var(--cannakan-brand-green, #94d159) 88%, white 12%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #b7ef7b 0%, #9be05e 50%, #78b546 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 18px 38px rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.32),
+    0 12px 24px rgba(0, 0, 0, 0.28);
+  color: #081006;
+  filter: saturate(1.06);
+  transform: translateY(-1px);
+}
+
+.seed-vault-panel .seed-vault-header-actions .seed-vault-share-button.button {
+  border-color: rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(8, 13, 11, 0.66);
+  color: color-mix(in srgb, var(--seed-vault-theme-text, #f3ffe8) 82%, white 18%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 10px 22px rgba(0, 0, 0, 0.18);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.seed-vault-panel .seed-vault-header-actions .seed-vault-share-button.button:hover,
+.seed-vault-panel .seed-vault-header-actions .seed-vault-share-button.button:focus-visible {
+  border-color: rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.58);
+  background:
+    linear-gradient(180deg, rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.12), rgba(255, 255, 255, 0.012)),
+    rgba(8, 13, 11, 0.74);
+  color: #f4ffe9;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 12px 26px rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.14),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
 }
