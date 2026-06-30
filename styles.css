@@ -29566,99 +29566,190 @@ textarea::placeholder {
   line-height: 1;
 }
 
-.explore-seeds-coming-soon {
+.seed-explorer-page,
+.seed-profile-page {
+  display: grid;
+  gap: 22px;
+}
+
+.seed-explorer-metrics-grid {
+  align-items: stretch;
+}
+
+.seed-explorer-stat-card {
+  min-height: 128px;
+}
+
+.seed-explorer-controls-card {
+  scroll-margin-top: 96px;
+}
+
+.seed-explorer-results-summary {
+  margin: 4px 0 0;
+}
+
+.seed-explorer-card {
+  align-content: start;
+}
+
+.seed-explorer-card-top {
+  align-items: center;
+}
+
+.seed-explorer-card-thumb,
+.seed-profile-hero-thumb {
   position: relative;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
-  align-items: center;
-  gap: clamp(18px, 4vw, 42px);
-  min-height: clamp(360px, 44vw, 520px);
-  padding: clamp(22px, 4vw, 42px);
-  border: 1px solid rgba(148, 209, 89, 0.16);
-  border-radius: 22px;
+  flex: 0 0 auto;
+  width: 86px;
+  height: 86px;
+  border: 1px solid rgba(181, 232, 111, 0.16);
+  border-radius: 18px;
   background:
-    linear-gradient(110deg, rgba(8, 14, 11, 0.96), rgba(15, 25, 19, 0.92) 56%, rgba(10, 15, 14, 0.96)),
-    rgba(7, 12, 10, 0.96);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 22px 48px rgba(0, 0, 0, 0.22);
+    linear-gradient(160deg, rgba(181, 232, 111, 0.11), rgba(144, 196, 255, 0.05)),
+    rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.explore-seeds-coming-soon::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.36;
-  background:
-    linear-gradient(90deg, rgba(181, 232, 111, 0.08), transparent 22%, transparent 78%, rgba(144, 196, 255, 0.06)),
-    repeating-linear-gradient(90deg, transparent 0 58px, rgba(255, 255, 255, 0.026) 59px),
-    repeating-linear-gradient(0deg, transparent 0 42px, rgba(255, 255, 255, 0.018) 43px);
+.seed-profile-hero-thumb {
+  width: 112px;
+  height: 112px;
+  border-radius: 24px;
 }
 
-.explore-seeds-copy,
-.explore-seeds-preview {
-  position: relative;
-  z-index: 1;
+.seed-explorer-card-thumb img,
+.seed-profile-hero-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-.explore-seeds-copy {
+.seed-explorer-card-thumb--placeholder {
   display: grid;
-  justify-items: start;
-  gap: 12px;
-  max-width: 660px;
+  place-items: center;
 }
 
-.explore-coming-soon-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border: 1px solid rgba(248, 211, 116, 0.38);
-  border-radius: 999px;
-  background: rgba(248, 211, 116, 0.1);
-  color: #ffe9a8;
-  font-size: 0.72rem;
+.seed-explorer-card-thumb--placeholder span {
+  color: #eaffce;
   font-weight: 950;
   letter-spacing: 0.02em;
 }
 
-.explore-seeds-copy h2 {
-  margin: 0;
-  color: #f8fff0;
-  font-size: 4.2rem;
-  line-height: 0.96;
-  letter-spacing: 0;
+.seed-explorer-card-badges,
+.seed-profile-hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.explore-seeds-copy p:not(.eyebrow) {
+.seed-explorer-badge {
+  width: fit-content;
+}
+
+.seed-explorer-card-summary,
+.seed-profile-relationship-copy {
   margin: 0;
+  color: rgba(222, 232, 220, 0.74);
+  line-height: 1.5;
+}
+
+.seed-explorer-card-confidence-track,
+.seed-profile-confidence-meter {
+  display: block;
+  width: 100%;
+}
+
+.seed-explorer-card-actions {
+  margin-top: auto;
+}
+
+.seed-profile-hero {
+  display: grid;
+  gap: 18px;
+}
+
+.seed-profile-hero .source-profile-back-link {
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+}
+
+.seed-profile-hero .source-report-hero-main,
+.seed-profile-hero .source-report-hero-metrics {
+  position: relative;
+  z-index: 1;
+}
+
+.seed-profile-hero .source-report-hero-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.seed-profile-hero .source-report-hero-identity h2 {
+  margin: 0;
+  color: #f7faf4;
+  font-size: 2.35rem;
+  line-height: 1.02;
+}
+
+.seed-profile-hero .source-report-hero-identity p:not(.eyebrow) {
+  margin: 8px 0 0;
   max-width: 48rem;
-  color: rgba(226, 236, 224, 0.78);
-  font-size: 1.1rem;
-  line-height: 1.55;
+  color: rgba(224, 234, 222, 0.76);
+  line-height: 1.5;
 }
 
-.explore-seeds-preview {
+.seed-profile-section {
   display: grid;
   gap: 14px;
-  justify-self: stretch;
 }
 
-.explore-seeds-preview-card {
+.seed-profile-performance-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.seed-profile-confidence-card,
+.seed-profile-relationship-card,
+.seed-profile-related-card,
+.seed-profile-gallery-card {
+  border-color: rgba(148, 209, 89, 0.14);
+}
+
+.seed-profile-confidence-card {
   display: grid;
-  gap: 8px;
-  padding: 16px;
-  border: 1px solid rgba(181, 232, 111, 0.16);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
-    rgba(6, 12, 9, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  gap: 14px;
+  padding: 18px;
 }
 
-.explore-seeds-preview-card span {
+.seed-profile-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.seed-profile-gallery-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.seed-profile-gallery-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.seed-profile-gallery-card div {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.seed-profile-gallery-card span {
   color: rgba(202, 218, 199, 0.68);
   font-size: 0.73rem;
   font-weight: 900;
@@ -29666,40 +29757,13 @@ textarea::placeholder {
   text-transform: uppercase;
 }
 
-.explore-seeds-preview-card strong {
-  color: #f7ffe7;
-  font-size: 1.24rem;
-  line-height: 1.15;
+.seed-profile-gallery-card strong,
+.seed-profile-related-card h3 {
+  color: #f7faf4;
 }
 
-.explore-seeds-preview-card i {
-  display: block;
-  width: 72%;
-  height: 8px;
-  border-radius: 999px;
-  background:
-    linear-gradient(90deg, #b8ef60 0 46%, rgba(255, 255, 255, 0.12) 46% 100%);
-}
-
-.explore-seeds-preview-card--secondary {
-  justify-self: end;
-  width: min(100%, 320px);
-  border-color: rgba(144, 196, 255, 0.18);
-}
-
-.explore-seeds-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.explore-seeds-preview-grid span {
-  aspect-ratio: 1;
-  border: 1px solid rgba(181, 232, 111, 0.12);
-  border-radius: 16px;
-  background:
-    linear-gradient(160deg, rgba(181, 232, 111, 0.12), rgba(144, 196, 255, 0.06)),
-    rgba(255, 255, 255, 0.025);
+.seed-profile-grow-insight {
+  max-width: none;
 }
 
 @media (max-width: 760px) {
@@ -29718,23 +29782,18 @@ textarea::placeholder {
     padding-inline: 10px;
   }
 
-  .explore-seeds-coming-soon {
+  .seed-profile-hero .source-report-hero-identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .seed-profile-hero .source-report-hero-identity h2 {
+    font-size: 2rem;
+  }
+
+  .seed-profile-performance-grid,
+  .seed-profile-gallery-grid {
     grid-template-columns: 1fr;
-    min-height: auto;
-    padding: 22px;
-  }
-
-  .explore-seeds-copy h2 {
-    font-size: 2.55rem;
-  }
-
-  .explore-seeds-copy p:not(.eyebrow) {
-    font-size: 1rem;
-  }
-
-  .explore-seeds-preview-card--secondary {
-    justify-self: stretch;
-    width: 100%;
   }
 }
 

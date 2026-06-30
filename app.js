@@ -8120,6 +8120,8 @@ function getNavigationLockStateForHash(hash = "#home") {
   if (!isAdminContext && !growNetworkUnlocked && (
     normalizedHash === "#sources"
     || normalizedHash.startsWith("#sources/")
+    || normalizedHash === "#seeds"
+    || normalizedHash.startsWith("#seeds/")
     || normalizedHash === "#network"
     || normalizedHash.startsWith("#network/")
   )) {
@@ -8181,6 +8183,7 @@ function isFirstSessionLockedRouteHash(hash = "#home") {
     || route === "community-insights-seed-age"
     || route === "source-directory"
     || route === "sources"
+    || route === "seeds"
     || route === "seed-age-analytics"
     || route === "seed-vault"
     || route === "analytics"
@@ -12671,6 +12674,7 @@ function getCurrentAppPathRoute() {
     cstp: "cstp",
     "source-directory": "source-directory",
     sources: "sources",
+    seeds: "seeds",
     sessions: "sessions",
     "seed-vault": "seed-vault",
     "community-grow": "gallery",
@@ -13752,7 +13756,7 @@ function updateNavState() {
   const sessionRoutes = new Set(["sessions", "new", "active-sessions", "analytics"]);
   const vaultRoutes = new Set(["seed-vault"]);
   const communityRoutes = new Set(["gallery", "community-insights", "seed-age-analytics", "public-session", "members"]);
-  const sourceRoutes = new Set(["sources", "source-directory", "tested-sources"]);
+  const sourceRoutes = new Set(["sources", "source-directory", "tested-sources", "seeds"]);
   const networkRoutes = new Set(["network"]);
   const learnRoutes = new Set(["learn"]);
   let activeNav = "";
@@ -14179,6 +14183,21 @@ function getCurrentSiteAnalyticsPageContext() {
         pageKey: "source-explorer",
         pageLabel: "Source Explorer",
         pagePath: "#sources",
+      });
+  }
+  if (route === "seeds") {
+    return id
+      ? buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "seed-profile",
+        pageLabel: "Seed Profile",
+        pagePath: `#seeds/${id}`,
+      })
+      : buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "seed-explorer",
+        pageLabel: "Seed Explorer",
+        pagePath: "#seeds",
       });
   }
   if (route === "source-directory") {
@@ -39014,6 +39033,28 @@ function render() {
     return;
   }
 
+  if (route === "seeds") {
+    if (!id) {
+      renderSourcesLandingPage("seeds");
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "seed-explorer",
+        pageLabel: "Seed Explorer",
+        pagePath: "#seeds",
+      }));
+      return;
+    }
+    const seedProfileId = decodeURIComponent(id || "");
+    renderSeedProfilePage(seedProfileId);
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sources",
+      pageKey: "seed-profile",
+      pageLabel: "Seed Profile",
+      pagePath: `#seeds/${encodeURIComponent(seedProfileId)}`,
+    }));
+    return;
+  }
+
   if (route === "disclaimer") {
     renderDataTestingDisclaimerPage();
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -50907,6 +50948,7 @@ function openSourceDirectoryRankingsModal(trigger = null) {
 
 function bindSourcesLandingPage() {
   bindExploreFoundationTabs(app);
+  bindSeedExplorerControls(app);
   const searchInput = app.querySelector("#source-directory-search");
   const sortSelect = app.querySelector("#source-directory-sort");
   const cardResults = app.querySelector("#source-directory-card-results");
@@ -51538,6 +51580,628 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
   `;
 }
 
+const SEED_EXPLORER_DEFAULT_FILTER = "all";
+const SEED_EXPLORER_DEFAULT_SORT = "confidence";
+
+const SEED_EXPLORER_FILTERS = Object.freeze([
+  Object.freeze({ key: "all", label: "All Seeds" }),
+  Object.freeze({ key: "photoperiod", label: "Photoperiod" }),
+  Object.freeze({ key: "auto", label: "Auto" }),
+  Object.freeze({ key: "high-confidence", label: "High Confidence" }),
+  Object.freeze({ key: "fresh-lot", label: "Fresh Lots" }),
+]);
+
+const SEED_EXPLORER_SORT_OPTIONS = Object.freeze([
+  Object.freeze({ key: "confidence", label: "Community Confidence" }),
+  Object.freeze({ key: "germination", label: "Germination Success" }),
+  Object.freeze({ key: "sessions", label: "Community Sessions" }),
+  Object.freeze({ key: "name", label: "Variety Name" }),
+]);
+
+const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
+  Object.freeze({
+    id: "banana-jealousy",
+    varietyName: "Banana Jealousy",
+    source: "Seedsman",
+    sourceId: "seedsman",
+    seedType: "Photoperiod",
+    batchAge: "Fresh lot",
+    communityConfidence: "High Confidence",
+    confidencePercent: 94,
+    germinationSuccess: 98,
+    communitySessions: 184,
+    seedsTracked: 1420,
+    thumbnail: "/assets/demo/snapshots/IMG_5254.jpg",
+    summary: "A high-signal Seedsman variety with repeated fresh-lot KAN outcomes and strong community consistency.",
+    sourceRelationship: "Seedsman is currently the strongest source signal for this variety in demo community data.",
+    growInsight: "Fresh one-year inventory is driving the strongest outcomes. Older-lot comparisons should stay separated until more sessions land.",
+    tags: ["high-confidence", "fresh-lot", "photoperiod"],
+    gallery: ["/assets/demo/snapshots/IMG_5254.jpg", "/assets/demo/snapshots/IMG_0327.jpg", "/assets/demo/snapshots/IMG_0086.jpg"],
+    related: ["Wedding Cake", "Gorilla Runtz", "Gorilla Jealousy F1"],
+  }),
+  Object.freeze({
+    id: "wedding-cake",
+    varietyName: "Wedding Cake",
+    source: "Seedsman",
+    sourceId: "seedsman",
+    seedType: "Photoperiod",
+    batchAge: "Fresh lot",
+    communityConfidence: "High Confidence",
+    confidencePercent: 91,
+    germinationSuccess: 96,
+    communitySessions: 138,
+    seedsTracked: 1016,
+    thumbnail: "/assets/demo/snapshots/7890.jpg",
+    summary: "A reliable fresh-lot benchmark variety with polished public session examples and repeat source evidence.",
+    sourceRelationship: "Performance is strongest when tied to Seedsman fresh-pack sessions.",
+    growInsight: "The community signal is mature enough for comparison, but phenotype notes remain a future insight layer.",
+    tags: ["high-confidence", "fresh-lot", "photoperiod"],
+    gallery: ["/assets/demo/snapshots/7890.jpg", "/assets/demo/snapshots/5678.jpg", "/assets/demo/snapshots/IMG_5587.jpg"],
+    related: ["Banana Jealousy", "Blueberry Muffin", "Gelato OG"],
+  }),
+  Object.freeze({
+    id: "gorilla-runtz",
+    varietyName: "Gorilla Runtz",
+    source: "Seedsman",
+    sourceId: "seedsman",
+    seedType: "Photoperiod",
+    batchAge: "Fresh lot",
+    communityConfidence: "High Confidence",
+    confidencePercent: 88,
+    germinationSuccess: 95,
+    communitySessions: 112,
+    seedsTracked: 824,
+    thumbnail: "/assets/demo/snapshots/IMG_5590.jpg",
+    summary: "Strong repeat testing with stable performance across demo community sessions.",
+    sourceRelationship: "Most tracked sessions currently originate from Seedsman inventory.",
+    growInsight: "Results are consistent enough to group with top Seedsman performers in future Seed Explorer comparisons.",
+    tags: ["high-confidence", "fresh-lot", "photoperiod"],
+    gallery: ["/assets/demo/snapshots/IMG_5590.jpg", "/assets/demo/snapshots/IMG_E5598.JPG", "/assets/demo/snapshots/KAN%20A.jpg"],
+    related: ["Gorilla Jealousy F1", "Banana Jealousy", "Bruce Banger"],
+  }),
+  Object.freeze({
+    id: "lemon-auto",
+    varietyName: "Lemon Auto",
+    source: "Seedsman",
+    sourceId: "seedsman",
+    seedType: "Auto",
+    batchAge: "Fresh lot",
+    communityConfidence: "Growing Confidence",
+    confidencePercent: 76,
+    germinationSuccess: 93,
+    communitySessions: 64,
+    seedsTracked: 392,
+    thumbnail: "/assets/demo/snapshots/KAN%20B.jpg",
+    summary: "A promising auto variety with fast starts and a growing community evidence base.",
+    sourceRelationship: "Source signal is concentrated in Seedsman auto-focused TRA sessions.",
+    growInsight: "Auto performance looks promising, but more community sessions are needed before it should rank beside high-confidence photoperiod entries.",
+    tags: ["auto", "fresh-lot"],
+    gallery: ["/assets/demo/snapshots/KAN%20B.jpg", "/assets/demo/snapshots/KAN%20C.jpg", "/assets/demo/snapshots/pic1.jpg"],
+    related: ["Badazz OG Cheese", "Bruce Banger", "White OG"],
+  }),
+  Object.freeze({
+    id: "double-blueberry-muffin",
+    varietyName: "Double Blueberry Muffin",
+    source: "Poppin Fire",
+    sourceId: "poppin-fire",
+    seedType: "Photoperiod",
+    batchAge: "Two-year lot",
+    communityConfidence: "Growing Confidence",
+    confidencePercent: 72,
+    germinationSuccess: 91,
+    communitySessions: 58,
+    seedsTracked: 336,
+    thumbnail: "/assets/demo/snapshots/pic2.jpg",
+    summary: "A steady performer with useful two-year seed-age comparisons in demo community data.",
+    sourceRelationship: "Early evidence connects this variety to Poppin Fire source records.",
+    growInsight: "Seed-age context matters here. Future profiles should separate fresh and stored inventory views.",
+    tags: ["photoperiod"],
+    gallery: ["/assets/demo/snapshots/pic2.jpg", "/assets/demo/snapshots/pic3.jpg", "/assets/demo/snapshots/pic4.jpg"],
+    related: ["Wedding Cake", "Gelato OG", "Banana Jealousy"],
+  }),
+  Object.freeze({
+    id: "white-og",
+    varietyName: "White OG",
+    source: "Seedsman",
+    sourceId: "seedsman",
+    seedType: "Photoperiod",
+    batchAge: "Archive lot",
+    communityConfidence: "Early Signal",
+    confidencePercent: 48,
+    germinationSuccess: 84,
+    communitySessions: 26,
+    seedsTracked: 154,
+    thumbnail: "/assets/demo/snapshots/pic5.jpg",
+    summary: "An archive-lot comparison variety useful for understanding seed age and storage effects.",
+    sourceRelationship: "Current evidence is tied to older Seedsman inventory and should not be blended with fresh-lot performance.",
+    growInsight: "A future insight layer should flag this as an age-sensitive result before making recommendations.",
+    tags: ["photoperiod"],
+    gallery: ["/assets/demo/snapshots/pic5.jpg", "/assets/demo/snapshots/IMG_E6131.JPG", "/assets/demo/snapshots/IMG_5587.jpg"],
+    related: ["L.A. Peyote Kush", "Alaskan Purple", "Bruce Banger"],
+  }),
+]);
+
+function getSeedExplorerDemoSeeds() {
+  return [...SEED_EXPLORER_DEMO_SEEDS];
+}
+
+function getSeedExplorerSeedById(seedId = "") {
+  const normalizedSeedId = String(seedId || "").trim().toLowerCase();
+  return getSeedExplorerDemoSeeds().find((seed) => String(seed.id || "").toLowerCase() === normalizedSeedId) || null;
+}
+
+function getSeedExplorerMetrics(records = getSeedExplorerDemoSeeds()) {
+  const safeRecords = Array.isArray(records) ? records : [];
+  const totalSessions = safeRecords.reduce((sum, seed) => sum + Math.max(0, Number(seed.communitySessions) || 0), 0);
+  const totalSeedsTracked = safeRecords.reduce((sum, seed) => sum + Math.max(0, Number(seed.seedsTracked) || 0), 0);
+  const averageGermination = safeRecords.length
+    ? Math.round(safeRecords.reduce((sum, seed) => sum + (Number(seed.germinationSuccess) || 0), 0) / safeRecords.length)
+    : 0;
+  const highConfidenceCount = safeRecords.filter((seed) => Number(seed.confidencePercent) >= 85).length;
+  return {
+    totalVarieties: safeRecords.length,
+    totalSessions,
+    totalSeedsTracked,
+    averageGermination,
+    highConfidenceCount,
+  };
+}
+
+function getSeedExplorerConfidenceTone(seed = {}) {
+  const confidencePercent = Number(seed.confidencePercent) || 0;
+  if (confidencePercent >= 85) {
+    return "high";
+  }
+  if (confidencePercent >= 68) {
+    return "growing";
+  }
+  return "early";
+}
+
+function filterAndSortSeedExplorerRecords(records = getSeedExplorerDemoSeeds(), {
+  query = "",
+  filterKey = SEED_EXPLORER_DEFAULT_FILTER,
+  sortKey = SEED_EXPLORER_DEFAULT_SORT,
+} = {}) {
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const normalizedFilterKey = String(filterKey || SEED_EXPLORER_DEFAULT_FILTER).trim();
+  const normalizedSortKey = String(sortKey || SEED_EXPLORER_DEFAULT_SORT).trim();
+  const filteredRecords = (Array.isArray(records) ? records : []).filter((seed) => {
+    const searchableText = [
+      seed.varietyName,
+      seed.source,
+      seed.seedType,
+      seed.communityConfidence,
+      seed.batchAge,
+      ...(Array.isArray(seed.related) ? seed.related : []),
+    ].join(" ").toLowerCase();
+    if (normalizedQuery && !searchableText.includes(normalizedQuery)) {
+      return false;
+    }
+    if (normalizedFilterKey === "all") {
+      return true;
+    }
+    if (normalizedFilterKey === "high-confidence") {
+      return Number(seed.confidencePercent) >= 85;
+    }
+    if (normalizedFilterKey === "fresh-lot") {
+      return String(seed.batchAge || "").toLowerCase().includes("fresh");
+    }
+    return String(seed.seedType || "").trim().toLowerCase() === normalizedFilterKey;
+  });
+
+  return filteredRecords.sort((left, right) => {
+    if (normalizedSortKey === "germination") {
+      return (Number(right.germinationSuccess) || 0) - (Number(left.germinationSuccess) || 0);
+    }
+    if (normalizedSortKey === "sessions") {
+      return (Number(right.communitySessions) || 0) - (Number(left.communitySessions) || 0);
+    }
+    if (normalizedSortKey === "name") {
+      return String(left.varietyName || "").localeCompare(String(right.varietyName || ""));
+    }
+    return (Number(right.confidencePercent) || 0) - (Number(left.confidencePercent) || 0);
+  });
+}
+
+function renderSeedExplorerMetricCardsMarkup(records = getSeedExplorerDemoSeeds()) {
+  const metrics = getSeedExplorerMetrics(records);
+  return `
+    <div class="summary-grid seed-explorer-metrics-grid">
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Varieties", value: metrics.totalVarieties.toLocaleString(), detail: "demo seed profiles", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Avg. Germination", value: `${metrics.averageGermination}%`, detail: "across demo seeds", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), detail: "mock community signal", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "High Confidence", value: metrics.highConfidenceCount.toLocaleString(), detail: "ready for comparison", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+    </div>
+  `;
+}
+
+function renderSeedExplorerFilterPills(activeFilterKey = SEED_EXPLORER_DEFAULT_FILTER) {
+  return SEED_EXPLORER_FILTERS.map((filter) => `
+    <button
+      type="button"
+      class="source-directory-filter-pill seed-explorer-filter-pill ${filter.key === activeFilterKey ? "is-active" : ""}"
+      data-seed-explorer-filter="${escapeHtml(filter.key)}"
+      aria-pressed="${filter.key === activeFilterKey ? "true" : "false"}"
+    >${escapeHtml(filter.label)}</button>
+  `).join("");
+}
+
+function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) {
+  return `
+    <section id="seed-explorer-controls" class="card source-directory-controls-card seed-explorer-controls-card">
+      <div class="source-directory-controls-head">
+        <div>
+          <p class="eyebrow">Seed Controls</p>
+          <h3>Explore Seed Performance</h3>
+        </div>
+        <span class="source-directory-mock-note">Demo Data</span>
+      </div>
+      <div class="source-directory-controls-grid">
+        <label class="source-directory-search-field">
+          <span class="stat-label">Search</span>
+          <input id="seed-explorer-search" type="search" placeholder="Search varieties, sources, or seed types..." autocomplete="off">
+        </label>
+        <label class="source-directory-sort-field">
+          <span class="stat-label">Sort By</span>
+          <select id="seed-explorer-sort">
+            ${SEED_EXPLORER_SORT_OPTIONS.map((option) => `
+              <option value="${escapeHtml(option.key)}"${option.key === SEED_EXPLORER_DEFAULT_SORT ? " selected" : ""}>${escapeHtml(option.label)}</option>
+            `).join("")}
+          </select>
+        </label>
+      </div>
+      <div class="source-directory-filter-row seed-explorer-filter-row" role="group" aria-label="Seed Explorer filters">
+        ${renderSeedExplorerFilterPills(SEED_EXPLORER_DEFAULT_FILTER)}
+      </div>
+      <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} demo seeds</p>
+    </section>
+  `;
+}
+
+function renderSeedExplorerThumbnailMarkup(seed = {}, className = "seed-explorer-card-thumb") {
+  const thumbnail = String(seed.thumbnail || "").trim();
+  if (thumbnail) {
+    return `
+      <div class="${escapeHtml(className)}">
+        <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(seed.varietyName || "Seed variety")}" loading="lazy" decoding="async">
+      </div>
+    `;
+  }
+  return `
+    <div class="${escapeHtml(`${className} seed-explorer-card-thumb--placeholder`)}" aria-hidden="true">
+      <span>${escapeHtml(String(seed.varietyName || "Seed").slice(0, 2).toUpperCase())}</span>
+    </div>
+  `;
+}
+
+function renderSeedExplorerCardMarkup(seed = {}) {
+  const confidenceTone = getSeedExplorerConfidenceTone(seed);
+  return `
+    <article class="card source-directory-card source-directory-report-card seed-explorer-card is-${escapeHtml(confidenceTone)}">
+      <div class="source-directory-report-top seed-explorer-card-top">
+        ${renderSeedExplorerThumbnailMarkup(seed)}
+        <div class="source-directory-report-identity seed-explorer-card-identity">
+          <h3>${escapeHtml(seed.varietyName || "Seed Variety")}</h3>
+          <p class="source-directory-card-type">${escapeHtml(seed.source || "Unknown Source")}</p>
+          <div class="seed-explorer-card-badges">
+            ${renderMetricBadgeMarkup(seed.seedType || "Seed", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.seedType || "").toLowerCase() === "auto" ? "growing" : "high" })}
+            ${renderMetricBadgeMarkup(seed.batchAge || "Demo lot", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.batchAge || "").toLowerCase().includes("fresh") ? "high" : "growing" })}
+          </div>
+        </div>
+      </div>
+      <div class="source-directory-performance-zone seed-explorer-performance-zone">
+        <div class="source-directory-average-germination-block">
+          <strong class="source-directory-average-germination-value">${escapeHtml(`${seed.germinationSuccess}%`)}</strong>
+          <span>Germination Success</span>
+          <small class="source-directory-performance-context">${escapeHtml(`${Number(seed.seedsTracked || 0).toLocaleString()} seeds tracked`)}</small>
+        </div>
+        <div class="source-directory-confidence-meter seed-explorer-confidence-meter" aria-label="${escapeHtml(seed.communityConfidence || "Community confidence")}">
+          <span>Community Confidence</span>
+          <small>${escapeHtml(seed.communityConfidence || "Early Signal")}</small>
+          ${renderConfidenceIndicatorMarkup({
+            className: "seed-explorer-card-confidence-track",
+            label: `${seed.communityConfidence || "Community confidence"} for ${seed.varietyName || "seed variety"}`,
+            percent: seed.confidencePercent,
+          })}
+        </div>
+      </div>
+      <div class="source-directory-report-kpis seed-explorer-card-kpis" aria-label="Seed community evidence summary">
+        ${renderPerformanceCardMarkup({ className: "source-directory-report-kpi--sessions seed-explorer-kpi", label: "Sessions", value: Number(seed.communitySessions || 0).toLocaleString() })}
+        ${renderPerformanceCardMarkup({ className: "source-directory-report-kpi--seeds seed-explorer-kpi", label: "Seed Type", value: seed.seedType || "Seed" })}
+      </div>
+      <p class="seed-explorer-card-summary">${escapeHtml(seed.summary || "")}</p>
+      <div class="inline-actions source-directory-card-actions seed-explorer-card-actions">
+        <a class="button button-secondary source-directory-view-report-button seed-explorer-profile-link" href="#seeds/${escapeHtml(seed.id)}">
+          <span class="source-directory-view-report-label">View Seed Profile</span>
+          <span class="source-directory-view-report-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M7 17 17 7"></path>
+              <path d="M10 7h7v7"></path>
+            </svg>
+          </span>
+        </a>
+      </div>
+    </article>
+  `;
+}
+
+function renderSeedExplorerResultsMarkup(records = []) {
+  if (!records.length) {
+    return `
+      <article class="card source-directory-empty-state seed-explorer-empty-state">
+        <h3>No seed varieties match your filters yet.</h3>
+        <p class="muted">Try a different search, filter, or sort option.</p>
+      </article>
+    `;
+  }
+  return records.map((seed) => renderSeedExplorerCardMarkup(seed)).join("");
+}
+
+function renderSeedExplorerPanelMarkup({ active = false } = {}) {
+  const records = getSeedExplorerDemoSeeds();
+  return `
+    <section id="explore-panel-seeds" class="seed-explorer-page" data-explore-panel="seeds" role="tabpanel" aria-labelledby="explore-tab-seeds"${active ? "" : " hidden"}>
+      ${renderExplorerHeroMarkup({
+        className: "source-directory-hero seed-explorer-hero app-hero--sources app-hero--contained-right",
+        iconMarkup: renderAppSectionHeaderIcon("plant"),
+        eyebrow: "Seeds",
+        title: "Seed Explorer",
+        descriptionMarkup: `Discover seed performance, community confidence, trusted sources, and grow intelligence through <span>demo community data</span>.`,
+        beforeActionsMarkup: `
+          <p class="source-directory-hero-proof">Seed Explorer uses mock data in this sprint while the product structure, controls, and profiles are established.</p>
+          <div class="source-directory-hero-trust-list" aria-label="Seed Explorer trust signals">
+            <span>Community Confidence</span>
+            <span>Germination Success</span>
+            <span>Source Relationships</span>
+            <span>Grow Insights</span>
+          </div>
+        `,
+        primaryAction: {
+          href: "#seed-explorer-results",
+          label: "Explore Seeds",
+          className: "button button-primary source-directory-hero-primary-action",
+        },
+        secondaryAction: {
+          href: "#seed-explorer-controls",
+          label: "Filter Seeds",
+          className: "button button-secondary source-directory-hero-secondary-action",
+        },
+      })}
+      ${renderSeedExplorerMetricCardsMarkup(records)}
+      ${renderSeedExplorerControlsMarkup(records)}
+      <div class="source-directory-results-head source-directory-results-head--cards seed-explorer-results-head">
+        <div>
+          <h3>Seed Performance Profiles</h3>
+          <p class="muted">Demo variety profiles shaped for future community-powered recommendations.</p>
+        </div>
+      </div>
+      <section id="seed-explorer-results" class="source-directory-grid seed-explorer-grid" aria-label="Seed Explorer results">
+        ${renderSeedExplorerResultsMarkup(records)}
+      </section>
+    </section>
+  `;
+}
+
+function bindSeedExplorerControls(scope = app) {
+  const panel = scope.querySelector("#explore-panel-seeds");
+  if (!panel) {
+    return;
+  }
+  const searchInput = panel.querySelector("#seed-explorer-search");
+  const sortSelect = panel.querySelector("#seed-explorer-sort");
+  const results = panel.querySelector("#seed-explorer-results");
+  const summary = panel.querySelector("#seed-explorer-results-summary");
+  const filterButtons = Array.from(panel.querySelectorAll("[data-seed-explorer-filter]"));
+  if (!results || !summary) {
+    return;
+  }
+
+  const applySeedExplorerView = () => {
+    const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.seedExplorerFilter || SEED_EXPLORER_DEFAULT_FILTER;
+    const visibleSeeds = filterAndSortSeedExplorerRecords(getSeedExplorerDemoSeeds(), {
+      query: searchInput?.value || "",
+      filterKey: activeFilter,
+      sortKey: sortSelect?.value || SEED_EXPLORER_DEFAULT_SORT,
+    });
+    results.innerHTML = renderSeedExplorerResultsMarkup(visibleSeeds);
+    summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} demo seeds`;
+  };
+
+  searchInput?.addEventListener("input", applySeedExplorerView);
+  sortSelect?.addEventListener("change", applySeedExplorerView);
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      filterButtons.forEach((nextButton) => {
+        const isActive = nextButton === button;
+        nextButton.classList.toggle("is-active", isActive);
+        nextButton.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+      applySeedExplorerView();
+    });
+  });
+  applySeedExplorerView();
+}
+
+function renderSeedProfileUnavailablePage(seedId = "") {
+  app.innerHTML = `
+    <section class="source-profile-page seed-profile-page">
+      <article class="card source-directory-empty-state seed-profile-empty-state">
+        <h3>Seed profile unavailable</h3>
+        <p class="muted">The demo Seed Explorer profile for ${escapeHtml(seedId || "this variety")} is not available yet.</p>
+        <a class="button button-secondary" href="#seeds">&larr; Back to Seed Explorer</a>
+      </article>
+    </section>
+  `;
+}
+
+function renderSeedProfileHeroMarkup(seed = {}) {
+  return `
+    <article class="card source-report-hero-card seed-profile-hero">
+      <div class="source-report-hero-bg" aria-hidden="true"></div>
+      <a class="source-profile-back-link source-report-back-link" href="#seeds">&larr; Back to Seed Explorer</a>
+      <div class="source-report-hero-main">
+        <div class="source-report-hero-identity">
+          ${renderSeedExplorerThumbnailMarkup(seed, "seed-profile-hero-thumb")}
+          <div>
+            <p class="eyebrow">Seed Profile</p>
+            <h2>${escapeHtml(seed.varietyName || "Seed Variety")}</h2>
+            <p>${escapeHtml(seed.summary || "")}</p>
+            <div class="seed-explorer-card-badges seed-profile-hero-badges">
+              ${renderMetricBadgeMarkup(seed.seedType || "Seed", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.seedType || "").toLowerCase() === "auto" ? "growing" : "high" })}
+              ${renderMetricBadgeMarkup(seed.batchAge || "Demo lot", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.batchAge || "").toLowerCase().includes("fresh") ? "high" : "growing" })}
+            </div>
+          </div>
+        </div>
+        <div class="source-report-hero-metrics seed-profile-hero-metrics">
+          ${renderReportHeroMetricMarkup({ className: "source-report-hero-metric", tone: "green", icon: "sourceHeroSprout", iconClassName: "source-report-hero-metric-icon", value: `${seed.germinationSuccess}%`, label: "Germination Success" })}
+          ${renderReportHeroMetricMarkup({ className: "source-report-hero-metric", tone: "shield", icon: "adminShield", iconClassName: "source-report-hero-metric-icon", value: seed.communityConfidence || "Early Signal", label: "Community Confidence" })}
+          ${renderReportHeroMetricMarkup({ className: "source-report-hero-metric", tone: "green", icon: "communityGroup", iconClassName: "source-report-hero-metric-icon", value: Number(seed.communitySessions || 0).toLocaleString(), label: "Community Sessions" })}
+          ${renderReportHeroMetricMarkup({ className: "source-report-hero-metric", tone: "gold", icon: "seedVault", iconClassName: "source-report-hero-metric-icon", value: Number(seed.seedsTracked || 0).toLocaleString(), label: "Seeds Tracked" })}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSeedProfilePerformanceMarkup(seed = {}) {
+  return `
+    <section class="source-report-section source-report-confidence-section seed-profile-section">
+      ${renderSourceReportSectionTitle(1, "Performance Summary")}
+      <div class="source-report-confidence-grid seed-profile-performance-grid">
+        ${renderSourceProfileMetricCard({ label: "Germination Success", value: `${seed.germinationSuccess}%`, detail: "demo community success rate", progressValue: seed.germinationSuccess })}
+        ${renderSourceProfileMetricCard({ label: "Community Sessions", value: Number(seed.communitySessions || 0).toLocaleString(), detail: "mock sessions represented" })}
+        ${renderSourceProfileMetricCard({ label: "Seeds Tracked", value: Number(seed.seedsTracked || 0).toLocaleString(), detail: "demo seed observations" })}
+        ${renderSourceProfileMetricCard({ label: "Seed Type", value: seed.seedType || "Seed", detail: seed.batchAge || "Demo lot" })}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeedProfileConfidenceMarkup(seed = {}) {
+  return `
+    <section class="source-report-section seed-profile-section">
+      ${renderSourceReportSectionTitle(2, "Community Confidence")}
+      <article class="card source-directory-community-confidence-card seed-profile-confidence-card">
+        <div class="stat-card-content">
+          <span class="stat-label">Confidence Level</span>
+          <strong class="stat-value">${escapeHtml(seed.communityConfidence || "Early Signal")}</strong>
+          <p class="summary-subtext">${escapeHtml(`${Number(seed.communitySessions || 0).toLocaleString()} demo sessions and ${Number(seed.seedsTracked || 0).toLocaleString()} seeds inform this signal.`)}</p>
+        </div>
+        ${renderConfidenceIndicatorMarkup({
+          className: "source-directory-kpi-confidence-meter seed-profile-confidence-meter",
+          label: `${seed.communityConfidence || "Community confidence"} for ${seed.varietyName || "seed variety"}`,
+          percent: seed.confidencePercent,
+        })}
+      </article>
+    </section>
+  `;
+}
+
+function renderSeedProfileSourceRelationshipMarkup(seed = {}) {
+  return `
+    <section class="source-report-section seed-profile-section">
+      ${renderSourceReportSectionTitle(3, "Source Relationship")}
+      <article class="card source-directory-card seed-profile-relationship-card">
+        <div class="source-directory-report-top">
+          ${renderSourceLogoMarkup({ name: seed.source, id: seed.sourceId }, {
+            className: "source-directory-logo",
+            imageClassName: "source-profile-logo-image",
+            placeholderClassName: "source-profile-logo-placeholder",
+            alt: `${seed.source || "Source"} logo`,
+          })}
+          <div class="source-directory-report-identity">
+            <h3>${escapeHtml(seed.source || "Unknown Source")}</h3>
+            <p class="source-directory-card-type">Trusted source relationship</p>
+          </div>
+        </div>
+        <p class="seed-profile-relationship-copy">${escapeHtml(seed.sourceRelationship || "")}</p>
+        <div class="inline-actions source-directory-card-actions">
+          <a class="button button-secondary source-directory-view-report-button" href="#sources/${escapeHtml(seed.sourceId || "")}">
+            <span class="source-directory-view-report-label">View Source Report</span>
+          </a>
+        </div>
+      </article>
+    </section>
+  `;
+}
+
+function renderSeedProfileGalleryMarkup(seed = {}) {
+  const galleryItems = (Array.isArray(seed.gallery) ? seed.gallery : []).slice(0, 3);
+  return `
+    <section class="source-report-section seed-profile-section">
+      ${renderSourceReportSectionTitle(4, "Community Gallery")}
+      <div class="seed-profile-gallery-grid">
+        ${galleryItems.map((imagePath, index) => `
+          <article class="card seed-profile-gallery-card">
+            <img src="${escapeHtml(imagePath)}" alt="${escapeHtml(`${seed.varietyName || "Seed"} demo community snapshot ${index + 1}`)}" loading="lazy" decoding="async">
+            <div>
+              <span>${escapeHtml(seed.seedType || "Seed")}</span>
+              <strong>${escapeHtml(index === 0 ? "Community snapshot" : "Demo grow evidence")}</strong>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeedProfileRelatedVarietiesMarkup(seed = {}) {
+  const related = (Array.isArray(seed.related) ? seed.related : []).slice(0, 3);
+  return `
+    <section class="source-report-section seed-profile-section">
+      ${renderSourceReportSectionTitle(5, "Related Varieties")}
+      <div class="source-directory-grid seed-profile-related-grid">
+        ${related.map((label) => `
+          <article class="card source-directory-card seed-profile-related-card">
+            <div class="source-directory-report-identity">
+              <h3>${escapeHtml(label)}</h3>
+              <p class="source-directory-card-type">Demo related variety</p>
+            </div>
+            <p class="seed-explorer-card-summary">Related through source, seed type, or community performance pattern.</p>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeedProfileInsightsPlaceholderMarkup(seed = {}) {
+  return `
+    <section class="source-report-section seed-profile-section">
+      ${renderSourceReportSectionTitle(6, "Grow Insights")}
+      ${renderInsightCardMarkup({
+        className: "seed-vault-performance-insight seed-profile-grow-insight",
+        ariaLabel: "Seed grow insight placeholder",
+        iconMarkup: '<span aria-hidden="true">🌱</span>',
+        label: "Placeholder Insight",
+        value: "Grow intelligence layer",
+        detail: seed.growInsight || "Future grow insights will connect seed performance, source evidence, and community outcomes.",
+      })}
+    </section>
+  `;
+}
+
+function renderSeedProfilePage(seedId = "") {
+  const seed = getSeedExplorerSeedById(seedId);
+  if (!seed) {
+    renderSeedProfileUnavailablePage(seedId);
+    return;
+  }
+
+  app.innerHTML = `
+    <section class="source-profile-page seed-profile-page">
+      ${renderSeedProfileHeroMarkup(seed)}
+      ${renderSeedProfilePerformanceMarkup(seed)}
+      ${renderSeedProfileConfidenceMarkup(seed)}
+      ${renderSeedProfileSourceRelationshipMarkup(seed)}
+      ${renderSeedProfileGalleryMarkup(seed)}
+      ${renderSeedProfileRelatedVarietiesMarkup(seed)}
+      ${renderSeedProfileInsightsPlaceholderMarkup(seed)}
+    </section>
+  `;
+}
+
 function renderExploreSegmentedNavItemMarkup({
   key = "",
   icon = "",
@@ -51583,38 +52247,6 @@ function renderExploreSegmentedNavigationMarkup(activeTab = "sources") {
   `;
 }
 
-function renderExploreSeedsComingSoonMarkup() {
-  return `
-    <section id="explore-panel-seeds" class="explore-seeds-coming-soon" data-explore-panel="seeds" role="tabpanel" aria-labelledby="explore-tab-seeds" hidden>
-      <div class="explore-seeds-copy">
-        <span class="explore-coming-soon-badge">Coming Soon</span>
-        <p class="eyebrow">Seeds</p>
-        <h2>Seed Explorer</h2>
-        <p>Discover seed performance, community insights, trusted sources, community photos, and grow intelligence.</p>
-      </div>
-      <div class="explore-seeds-preview" aria-hidden="true">
-        <div class="explore-seeds-preview-card explore-seeds-preview-card--primary">
-          <span>Community Signal</span>
-          <strong>Performance intelligence</strong>
-          <i></i>
-        </div>
-        <div class="explore-seeds-preview-grid">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <div class="explore-seeds-preview-card explore-seeds-preview-card--secondary">
-          <span>Trusted Sources</span>
-          <strong>Coming into focus</strong>
-        </div>
-      </div>
-    </section>
-  `;
-}
-
 function bindExploreFoundationTabs(scope = app) {
   if (!scope?.querySelectorAll) {
     return;
@@ -51644,13 +52276,14 @@ function bindExploreFoundationTabs(scope = app) {
   });
 }
 
-function renderSourcesLandingPage() {
+function renderSourcesLandingPage(activeTab = "sources") {
+  const normalizedActiveTab = activeTab === "seeds" ? "seeds" : "sources";
   const directoryRecords = getSourceDirectoryMockRecords();
   const heroMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="explore-page" aria-labelledby="explore-foundation-title">
-      ${renderExploreSegmentedNavigationMarkup("sources")}
-      <div id="explore-panel-sources" data-explore-panel="sources" role="tabpanel" aria-labelledby="explore-tab-sources">
+      ${renderExploreSegmentedNavigationMarkup(normalizedActiveTab)}
+      <div id="explore-panel-sources" data-explore-panel="sources" role="tabpanel" aria-labelledby="explore-tab-sources"${normalizedActiveTab === "sources" ? "" : " hidden"}>
         <section class="source-directory-page">
       ${renderExplorerHeroMarkup({
         className: "source-directory-hero app-hero--sources app-hero--contained-right",
@@ -51768,7 +52401,7 @@ function renderSourcesLandingPage() {
 
         </section>
       </div>
-      ${renderExploreSeedsComingSoonMarkup()}
+      ${renderSeedExplorerPanelMarkup({ active: normalizedActiveTab === "seeds" })}
     </section>
   `;
 
