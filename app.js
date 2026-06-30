@@ -1788,6 +1788,7 @@ const appState = {
   seedVaultShareSettingsUnavailable: false,
   seedVaultShareSettingsRefreshPromise: null,
   seedVaultThemeFeedback: "",
+  seedVaultThemeSaveRequestId: 0,
   seedVaultUserShares: [],
   seedVaultUserSharesLoaded: false,
   seedVaultUserSharesError: "",
@@ -2483,6 +2484,7 @@ function resetSessionScopedAppState() {
   appState.seedVaultShareSettingsUnavailable = false;
   appState.seedVaultShareSettingsRefreshPromise = null;
   appState.seedVaultThemeFeedback = "";
+  appState.seedVaultThemeSaveRequestId = 0;
   appState.seedVaultUserShares = [];
   appState.seedVaultUserSharesLoaded = false;
   appState.seedVaultUserSharesError = "";
@@ -6436,8 +6438,23 @@ async function saveSeedVaultThemePreference(nextTheme = "green", options = {}) {
 
   const normalizedTheme = normalizeSeedVaultTheme(nextTheme);
   const nextSettings = { ...getCurrentProfilePageSettings(), vaultTheme: normalizedTheme };
+  const saveRequestId = appState.seedVaultThemeSaveRequestId + 1;
+  appState.seedVaultThemeSaveRequestId = saveRequestId;
   appState.seedVaultThemeFeedback = "";
   syncProfilePageSettingsCache(userId, nextSettings);
+  const localThemeProfile = buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, nextSettings);
+  const existingPublicProfile = appState.publicMemberProfiles[userId] || null;
+  const nextPublicProfile = mergePublicMemberProfileRecord(
+    {
+      ...(existingPublicProfile || {}),
+      vaultTheme: normalizedTheme,
+      vault_theme: normalizedTheme,
+    },
+    localThemeProfile,
+  ) || localThemeProfile;
+  if (nextPublicProfile) {
+    appState.publicMemberProfiles[userId] = nextPublicProfile;
+  }
   if (typeof options.onSaved === "function") options.onSaved();
 
   try {
@@ -6445,13 +6462,37 @@ async function saveSeedVaultThemePreference(nextTheme = "green", options = {}) {
       requirePersistence: Boolean(appState.supabase),
       debugContext: "seed-vault-theme",
     });
-    appState.profilePageSettings = savedSettings;
-    appState.profilePageSettingsUserId = userId;
+    if (saveRequestId !== appState.seedVaultThemeSaveRequestId) {
+      return normalizeSeedVaultTheme(getCurrentProfilePageSettings().vaultTheme);
+    }
+    const resolvedSettings = syncProfilePageSettingsCache(userId, {
+      ...savedSettings,
+      vaultTheme: normalizedTheme,
+    });
+    const savedProfile = mergePublicMemberProfileRecord(
+      {
+        ...(appState.publicMemberProfiles[userId] || {}),
+        ...savedSettings,
+        vaultTheme: normalizedTheme,
+        vault_theme: normalizedTheme,
+      },
+      nextPublicProfile,
+    );
+    if (savedProfile) {
+      appState.publicMemberProfiles[userId] = savedProfile;
+    }
     appState.seedVaultThemeFeedback = "";
     if (typeof options.onSaved === "function") options.onSaved();
-    return normalizeSeedVaultTheme(savedSettings?.vaultTheme);
+    return normalizeSeedVaultTheme(resolvedSettings.vaultTheme);
   } catch (error) {
     logRuntimeIssueOnce("warn", "seed-vault-theme-save-failed", "Seed Vault theme could not be saved to Supabase.", error);
+    if (saveRequestId !== appState.seedVaultThemeSaveRequestId) {
+      return normalizeSeedVaultTheme(getCurrentProfilePageSettings().vaultTheme);
+    }
+    syncProfilePageSettingsCache(userId, nextSettings);
+    if (nextPublicProfile) {
+      appState.publicMemberProfiles[userId] = nextPublicProfile;
+    }
     appState.seedVaultThemeFeedback = "Theme saved on this device.";
     if (typeof options.onSaved === "function") options.onSaved();
     return normalizedTheme;
