@@ -51185,14 +51185,14 @@ function renderSourcesLandingPage() {
         artOverlayMarkup: `
           <div class="source-directory-hero-art-layer" aria-label="Source Explorer evidence signals">
             <svg class="source-directory-hero-connection-lines" viewBox="0 0 620 320" aria-hidden="true" focusable="false">
-              <path d="M136 48 C230 50 286 130 398 142"></path>
-              <path d="M136 120 C248 122 288 156 408 164"></path>
-              <path d="M136 194 C260 190 306 170 424 172"></path>
-              <path d="M136 266 C250 254 304 198 430 184"></path>
-              <circle cx="136" cy="48" r="4"></circle>
-              <circle cx="136" cy="120" r="4"></circle>
-              <circle cx="136" cy="194" r="4"></circle>
-              <circle cx="136" cy="266" r="4"></circle>
+              <path d="M230 60 C300 62 334 122 410 142"></path>
+              <path d="M230 128 C316 128 346 156 418 164"></path>
+              <path d="M230 196 C320 190 354 174 430 172"></path>
+              <path d="M230 264 C312 250 354 202 438 184"></path>
+              <circle cx="230" cy="60" r="3.5"></circle>
+              <circle cx="230" cy="128" r="3.5"></circle>
+              <circle cx="230" cy="196" r="3.5"></circle>
+              <circle cx="230" cy="264" r="3.5"></circle>
               <circle cx="405" cy="142" r="4.5"></circle>
               <circle cx="414" cy="164" r="4.5"></circle>
               <circle cx="430" cy="172" r="4.5"></circle>
