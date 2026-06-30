@@ -49636,16 +49636,69 @@ function renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics = {}) {
   `;
 }
 
-function renderSourceDirectoryHeroStatSparklineMarkup(label = "") {
+function renderSourceDirectoryHeroStatVisualizationMarkup(variant = "sessions") {
+  const normalizedVariant = String(variant || "sessions").trim();
+  if (normalizedVariant === "seeds") {
+    return `
+      <svg class="source-directory-hero-stat-viz source-directory-hero-stat-viz--bars" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+        <path class="source-directory-hero-stat-viz-grid" d="M4 14H216M4 30H216M4 46H216"></path>
+        <g class="source-directory-hero-stat-viz-bars">
+          <rect x="7" y="30" width="7" height="20" rx="2"></rect>
+          <rect x="19" y="23" width="7" height="27" rx="2"></rect>
+          <rect x="31" y="34" width="7" height="16" rx="2"></rect>
+          <rect x="43" y="27" width="7" height="23" rx="2"></rect>
+          <rect x="55" y="18" width="7" height="32" rx="2"></rect>
+          <rect x="67" y="25" width="7" height="25" rx="2"></rect>
+          <rect x="79" y="14" width="7" height="36" rx="2"></rect>
+          <rect x="91" y="29" width="7" height="21" rx="2"></rect>
+          <rect x="103" y="22" width="7" height="28" rx="2"></rect>
+          <rect x="115" y="34" width="7" height="16" rx="2"></rect>
+          <rect x="127" y="20" width="7" height="30" rx="2"></rect>
+          <rect x="139" y="11" width="7" height="39" rx="2"></rect>
+          <rect x="151" y="32" width="7" height="18" rx="2"></rect>
+          <rect x="163" y="26" width="7" height="24" rx="2"></rect>
+          <rect x="175" y="17" width="7" height="33" rx="2"></rect>
+          <rect x="187" y="24" width="7" height="26" rx="2"></rect>
+          <rect x="199" y="29" width="7" height="21" rx="2"></rect>
+          <rect x="211" y="10" width="7" height="40" rx="2"></rect>
+        </g>
+      </svg>
+    `;
+  }
+
+  if (normalizedVariant === "trusted") {
+    return `
+      <svg class="source-directory-hero-stat-viz source-directory-hero-stat-viz--trusted" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+        <path class="source-directory-hero-stat-viz-grid" d="M4 14H216M4 30H216M4 46H216"></path>
+        <path class="source-directory-hero-stat-viz-trusted-fill" d="M6 45 L24 36 L42 42 L60 28 L80 35 L100 21 L121 32 L141 24 L162 30 L181 18 L199 16 L216 7 L216 54 L6 54 Z"></path>
+        <path class="source-directory-hero-stat-viz-trusted-line" d="M6 45 L24 36 L42 42 L60 28 L80 35 L100 21 L121 32 L141 24 L162 30 L181 18 L199 16 L216 7"></path>
+        <g class="source-directory-hero-stat-viz-markers">
+          <circle cx="24" cy="36" r="3.2"></circle>
+          <circle cx="60" cy="28" r="3.2"></circle>
+          <circle cx="100" cy="21" r="3.2"></circle>
+          <circle cx="162" cy="30" r="3.2"></circle>
+          <circle cx="216" cy="7" r="3.6"></circle>
+        </g>
+      </svg>
+    `;
+  }
+
   return `
-    <svg class="source-directory-hero-stat-sparkline" viewBox="0 0 220 48" aria-hidden="true" focusable="false">
-      <path class="source-directory-hero-stat-sparkline-fill" d="M4 39 C19 38 29 41 42 36 C53 44 66 39 78 40 C94 41 104 36 119 33 C132 31 141 37 153 25 C164 38 176 31 188 29 C201 27 207 20 216 13 L216 48 L4 48 Z"></path>
-      <path class="source-directory-hero-stat-sparkline-line" d="M4 39 C19 38 29 41 42 36 C53 44 66 39 78 40 C94 41 104 36 119 33 C132 31 141 37 153 25 C164 38 176 31 188 29 C201 27 207 20 216 13"></path>
+    <svg class="source-directory-hero-stat-viz source-directory-hero-stat-viz--sessions" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+      <path class="source-directory-hero-stat-viz-grid" d="M4 14H216M4 30H216M4 46H216"></path>
+      <path class="source-directory-hero-stat-viz-area" d="M5 44 C16 39 22 41 31 31 C39 47 48 29 58 34 C70 40 78 26 89 26 C99 26 106 21 116 19 C128 16 134 33 144 20 C153 30 163 22 173 18 C184 13 193 17 202 10 C208 6 213 8 216 5 L216 54 L5 54 Z"></path>
+      <path class="source-directory-hero-stat-viz-line" d="M5 44 C16 39 22 41 31 31 C39 47 48 29 58 34 C70 40 78 26 89 26 C99 26 106 21 116 19 C128 16 134 33 144 20 C153 30 163 22 173 18 C184 13 193 17 202 10 C208 6 213 8 216 5"></path>
+      <g class="source-directory-hero-stat-viz-markers">
+        <circle cx="31" cy="31" r="3"></circle>
+        <circle cx="116" cy="19" r="3"></circle>
+        <circle cx="144" cy="20" r="3"></circle>
+        <circle cx="216" cy="5" r="3.5"></circle>
+      </g>
     </svg>
   `;
 }
 
-function renderSourceDirectoryHeroStatCardMarkup({ label = "", value = "", subtext = "", icon = "info", modifier = "" } = {}) {
+function renderSourceDirectoryHeroStatCardMarkup({ label = "", value = "", subtext = "", icon = "info", modifier = "", visualization = "sessions" } = {}) {
   return `
     <article class="card stat-card admin-overview-card grow-kpi-card source-directory-metric-card source-directory-hero-stat-card ${escapeHtml(modifier)}">
       <span class="source-directory-hero-stat-icon" aria-hidden="true">${renderAppIconSvgMarkup(icon, { className: "source-directory-hero-stat-icon-svg" })}</span>
@@ -49654,7 +49707,7 @@ function renderSourceDirectoryHeroStatCardMarkup({ label = "", value = "", subte
         <strong class="stat-value">${escapeHtml(value)}</strong>
         <p class="summary-subtext">${escapeHtml(subtext)}</p>
       </div>
-      ${renderSourceDirectoryHeroStatSparklineMarkup(modifier || label)}
+      ${renderSourceDirectoryHeroStatVisualizationMarkup(visualization)}
     </article>
   `;
 }
@@ -49663,10 +49716,10 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
   const metrics = getSourceDirectoryMetrics(records);
   return `
     <div class="summary-grid source-directory-metrics-grid">
-      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", icon: "communityGroup", modifier: "source-directory-hero-stat-card--sessions" })}
-      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", icon: "sourceHeroSprout", modifier: "source-directory-hero-stat-card--seeds" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", icon: "communityGroup", modifier: "source-directory-hero-stat-card--sessions", visualization: "sessions" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", icon: "sourceHeroSprout", modifier: "source-directory-hero-stat-card--seeds", visualization: "seeds" })}
       ${renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics)}
-      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "actively tracked", icon: "sourceTrustStar", modifier: "source-directory-hero-stat-card--trusted source-directory-metric-card--cstp" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "actively tracked", icon: "sourceTrustStar", modifier: "source-directory-hero-stat-card--trusted source-directory-metric-card--cstp", visualization: "trusted" })}
     </div>
   `;
 }

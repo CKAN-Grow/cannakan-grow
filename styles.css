@@ -30420,27 +30420,67 @@ textarea::placeholder {
   fill: currentColor;
 }
 
-.source-directory-hero-stat-sparkline {
+.source-directory-hero-stat-viz {
   grid-column: 1 / -1;
   align-self: end;
   width: 100%;
-  height: 42px;
+  height: 46px;
   margin-top: -2px;
   overflow: visible;
-  opacity: 0.88;
+  opacity: 0.92;
 }
 
-.source-directory-hero-stat-sparkline-fill {
-  fill: rgba(148, 209, 89, 0.085);
-}
-
-.source-directory-hero-stat-sparkline-line {
+.source-directory-hero-stat-viz-grid {
   fill: none;
-  stroke: #a7dd3c;
+  stroke: rgba(181, 232, 111, 0.09);
+  stroke-width: 1;
+}
+
+.source-directory-hero-stat-viz-area {
+  fill: rgba(148, 209, 89, 0.12);
+}
+
+.source-directory-hero-stat-viz-line {
+  fill: none;
+  stroke: #b8ef45;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.3;
+  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.28));
+}
+
+.source-directory-hero-stat-viz-markers circle {
+  fill: #cfff64;
+  stroke: rgba(7, 13, 10, 0.92);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.44));
+}
+
+.source-directory-hero-stat-viz-bars rect {
+  fill: rgba(164, 222, 76, 0.7);
+  filter: drop-shadow(0 0 5px rgba(181, 232, 111, 0.18));
+}
+
+.source-directory-hero-stat-viz-bars rect:nth-child(3n) {
+  fill: rgba(181, 232, 111, 0.46);
+}
+
+.source-directory-hero-stat-viz-bars rect:nth-child(5n) {
+  fill: rgba(207, 255, 100, 0.82);
+}
+
+.source-directory-hero-stat-viz-trusted-fill {
+  fill: rgba(148, 209, 89, 0.11);
+}
+
+.source-directory-hero-stat-viz-trusted-line {
+  fill: none;
+  stroke: rgba(181, 232, 111, 0.88);
+  stroke-dasharray: 5 7;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
-  filter: drop-shadow(0 0 5px rgba(181, 232, 111, 0.22));
+  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.24));
 }
 
 .source-directory-community-confidence-card {
@@ -54617,11 +54657,12 @@ body.theme-dark option[selected] {
 /* Source Explorer evidence-first report polish */
 .source-directory-hero.app-hero {
   --app-hero-min-height: clamp(238px, 23vw, 306px);
-  --app-hero-art-size: min(58%, 680px) auto;
+  --app-hero-art-size: min(74%, 940px) auto;
   --app-hero-art-position: right center;
   --app-hero-overlay:
-    linear-gradient(90deg, rgba(6, 12, 9, 0.98) 0%, rgba(6, 12, 9, 0.92) 31%, rgba(6, 12, 9, 0.42) 58%, rgba(6, 12, 9, 0.1) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.12) 0%, transparent 34%, rgba(0, 0, 0, 0.12) 100%),
+    linear-gradient(90deg, rgba(6, 12, 9, 0.98) 0%, rgba(6, 12, 9, 0.92) 30%, rgba(6, 12, 9, 0.46) 52%, rgba(6, 12, 9, 0.08) 100%),
+    radial-gradient(ellipse at 78% 58%, rgba(181, 232, 111, 0.18), transparent 45%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.14) 0%, transparent 34%, rgba(0, 0, 0, 0.12) 100%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.01) 100%);
   border-color: rgba(148, 209, 89, 0.22);
   padding: clamp(20px, 2vw, 24px);
@@ -54636,30 +54677,32 @@ body.theme-dark option[selected] {
 .source-directory-hero.app-hero::after {
   content: "";
   position: absolute;
-  inset: auto 0 0;
-  height: 42%;
+  inset: 0 0 0 38%;
+  height: auto;
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, transparent, rgba(148, 209, 89, 0.055) 62%, rgba(148, 209, 89, 0.018));
+    radial-gradient(ellipse at 74% 64%, rgba(181, 232, 111, 0.18), transparent 46%),
+    radial-gradient(ellipse at 94% 28%, rgba(181, 232, 111, 0.09), transparent 36%),
+    linear-gradient(180deg, transparent, rgba(148, 209, 89, 0.065) 72%, rgba(148, 209, 89, 0.02));
 }
 
 .source-directory-hero.app-hero::before {
   content: "";
   position: absolute;
-  inset: 0 0 0 42%;
+  inset: 0 0 0 36%;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.46;
+  opacity: 0.56;
   background:
     repeating-linear-gradient(0deg, transparent 0 31px, rgba(181, 232, 111, 0.045) 32px),
     repeating-linear-gradient(90deg, transparent 0 35px, rgba(181, 232, 111, 0.035) 36px),
-    radial-gradient(ellipse at 68% 54%, rgba(181, 232, 111, 0.16), transparent 52%);
+    radial-gradient(ellipse at 68% 54%, rgba(181, 232, 111, 0.18), transparent 55%);
   mask-image: linear-gradient(90deg, transparent, #000 24%, #000 82%, transparent);
 }
 
 .source-directory-hero .app-hero-background {
-  filter: saturate(1.06) contrast(1.04);
+  filter: saturate(1.14) contrast(1.08) brightness(1.03);
 }
 
 .source-directory-hero .app-hero-art-overlay {
@@ -54798,10 +54841,10 @@ body.theme-dark option[selected] {
 
 .source-directory-hero-art-layer {
   position: absolute;
-  top: 18px;
-  right: 22px;
-  bottom: 18px;
-  width: min(50%, 660px);
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(58%, 760px);
 }
 
 .source-directory-hero-art-layer::before,
@@ -54813,22 +54856,24 @@ body.theme-dark option[selected] {
 }
 
 .source-directory-hero-art-layer::before {
-  opacity: 0.74;
+  opacity: 0.86;
   background:
-    repeating-radial-gradient(circle at 69% 58%, rgba(181, 232, 111, 0.18) 0 1px, transparent 1px 34px),
-    radial-gradient(ellipse at 70% 60%, rgba(148, 209, 89, 0.22), transparent 42%);
-  mask-image: radial-gradient(ellipse at 66% 58%, #000 0 58%, transparent 76%);
+    repeating-radial-gradient(circle at 70% 58%, rgba(181, 232, 111, 0.18) 0 1px, transparent 1px 32px),
+    radial-gradient(ellipse at 72% 60%, rgba(181, 232, 111, 0.24), transparent 46%),
+    radial-gradient(ellipse at 94% 42%, rgba(181, 232, 111, 0.1), transparent 36%);
+  mask-image: radial-gradient(ellipse at 70% 58%, #000 0 62%, transparent 82%);
 }
 
 .source-directory-hero-art-layer::after {
-  opacity: 0.34;
+  opacity: 0.42;
   background:
-    linear-gradient(90deg, transparent 18%, rgba(181, 232, 111, 0.09) 18% 18.4%, transparent 18.4% 28%, rgba(181, 232, 111, 0.12) 28% 28.4%, transparent 28.4%),
+    linear-gradient(90deg, transparent 18%, rgba(181, 232, 111, 0.08) 18% 18.35%, transparent 18.35% 28%, rgba(181, 232, 111, 0.12) 28% 28.35%, transparent 28.35%),
     radial-gradient(circle at 86% 20%, rgba(181, 232, 111, 0.4) 0 1px, transparent 2px),
     radial-gradient(circle at 78% 24%, rgba(181, 232, 111, 0.26) 0 1px, transparent 2px),
     radial-gradient(circle at 90% 28%, rgba(181, 232, 111, 0.28) 0 1px, transparent 2px),
-    radial-gradient(circle at 83% 30%, rgba(181, 232, 111, 0.2) 0 1px, transparent 2px);
-  background-size: auto, 90px 50px, 90px 50px, 90px 50px, 90px 50px;
+    radial-gradient(circle at 83% 30%, rgba(181, 232, 111, 0.2) 0 1px, transparent 2px),
+    repeating-linear-gradient(112deg, transparent 0 28px, rgba(181, 232, 111, 0.035) 29px, transparent 30px);
+  background-size: auto, 90px 50px, 90px 50px, 90px 50px, 90px 50px, auto;
 }
 
 .source-directory-hero-connection-lines {
