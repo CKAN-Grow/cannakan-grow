@@ -58490,6 +58490,21 @@ body.theme-dark option[selected] {
   font-weight: 720;
 }
 
+.seed-vault-theme-feedback {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 4px 0 0;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--seed-vault-theme-border) 54%, rgba(255, 255, 255, 0.08));
+  border-radius: 999px;
+  background: var(--seed-vault-theme-accent-softer);
+  color: color-mix(in srgb, var(--seed-vault-theme-text) 88%, white 12%);
+  font-size: 0.76rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
 .seed-vault-theme-options {
   display: flex;
   align-items: center;

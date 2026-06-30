@@ -1787,6 +1787,7 @@ const appState = {
   seedVaultShareSettingsError: "",
   seedVaultShareSettingsUnavailable: false,
   seedVaultShareSettingsRefreshPromise: null,
+  seedVaultThemeFeedback: "",
   seedVaultUserShares: [],
   seedVaultUserSharesLoaded: false,
   seedVaultUserSharesError: "",
@@ -2481,6 +2482,7 @@ function resetSessionScopedAppState() {
   appState.seedVaultShareSettingsError = "";
   appState.seedVaultShareSettingsUnavailable = false;
   appState.seedVaultShareSettingsRefreshPromise = null;
+  appState.seedVaultThemeFeedback = "";
   appState.seedVaultUserShares = [];
   appState.seedVaultUserSharesLoaded = false;
   appState.seedVaultUserSharesError = "";
@@ -6434,6 +6436,7 @@ async function saveSeedVaultThemePreference(nextTheme = "green", options = {}) {
 
   const normalizedTheme = normalizeSeedVaultTheme(nextTheme);
   const nextSettings = { ...getCurrentProfilePageSettings(), vaultTheme: normalizedTheme };
+  appState.seedVaultThemeFeedback = "";
   syncProfilePageSettingsCache(userId, nextSettings);
   if (typeof options.onSaved === "function") options.onSaved();
 
@@ -6444,16 +6447,13 @@ async function saveSeedVaultThemePreference(nextTheme = "green", options = {}) {
     });
     appState.profilePageSettings = savedSettings;
     appState.profilePageSettingsUserId = userId;
+    appState.seedVaultThemeFeedback = "";
     if (typeof options.onSaved === "function") options.onSaved();
-    if (typeof showNavigationLockToast === "function") {
-      showNavigationLockToast({ title: "Vault Theme", message: "Seed Vault theme saved." });
-    }
     return normalizeSeedVaultTheme(savedSettings?.vaultTheme);
   } catch (error) {
     logRuntimeIssueOnce("warn", "seed-vault-theme-save-failed", "Seed Vault theme could not be saved to Supabase.", error);
-    if (typeof showNavigationLockToast === "function") {
-      showNavigationLockToast({ title: "Vault Theme", message: "Theme updated here, but cloud sync could not save it yet." });
-    }
+    appState.seedVaultThemeFeedback = "Theme saved on this device.";
+    if (typeof options.onSaved === "function") options.onSaved();
     return normalizedTheme;
   }
 }
@@ -72489,6 +72489,7 @@ function renderSeedVaultThemeControlMarkup(selectedTheme = "green") {
     '<span>Vault Theme</span>',
     '<strong><i class="seed-vault-theme-swatch" aria-hidden="true"></i>' + escapeHtml(theme.label) + '</strong>',
     '<small>Customize Vault</small>',
+    appState.seedVaultThemeFeedback ? '<p class="seed-vault-theme-feedback" aria-live="polite">' + escapeHtml(appState.seedVaultThemeFeedback) + '</p>' : '',
     '</div>',
     '<div class="seed-vault-theme-options" role="group" aria-label="Vault Theme options">',
     renderSeedVaultThemeOptionsMarkup(normalizedTheme),
