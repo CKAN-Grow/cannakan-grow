@@ -29193,6 +29193,19 @@ const APP_ICON_LIBRARY = Object.freeze({
     <rect x="10.6" y="6.2" width="2.8" height="12" rx="1.2"></rect>
     <rect x="15.1" y="8.8" width="2.8" height="9.4" rx="1.2"></rect>
   `,
+  sourceTrustStar: `
+    <path d="m12 3.8 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9l5-.7Z"></path>
+  `,
+  sourceHeroSprout: `
+    <path data-solid="true" d="M11.1 19.2c0 .6.4 1 1 1s1-.4 1-1v-6.4h-2Z"></path>
+    <path d="M11.2 12.6C7.7 12.2 5.6 10 5 6.2c3.9.2 6.2 2.2 6.8 5.9"></path>
+    <path d="M12.8 12.6c3.5-.4 5.6-2.6 6.2-6.4-3.9.2-6.2 2.2-6.8 5.9"></path>
+    <path d="M7.5 20.1h9"></path>
+  `,
+  sourceHeroShieldCheck: `
+    <path d="M12 3.8 5.7 6.4v4.9c0 4.1 2.4 7.5 6.3 8.8 3.9-1.3 6.3-4.7 6.3-8.8V6.4Z"></path>
+    <path d="m8.8 12.2 2.1 2.1 4.5-4.7"></path>
+  `,
   seedVault: `
     <rect x="4.4" y="8" width="15.2" height="10.8" rx="2.4"></rect>
     <path data-solid="true" d="M7.2 8V6.7c0-1.2 1-2.2 2.2-2.2h5.2c1.2 0 2.2 1 2.2 2.2V8Z"></path>
@@ -49609,16 +49622,39 @@ function renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics = {}) {
   const confidenceLabel = getSourceDirectoryCommunityConfidenceLabel(metrics);
   const confidencePercent = getSourceDirectoryCommunityConfidencePercent(confidenceLabel);
   return `
-    <article class="card stat-card admin-overview-card grow-kpi-card source-directory-metric-card source-directory-community-confidence-card">
+    <article class="card stat-card admin-overview-card grow-kpi-card source-directory-metric-card source-directory-hero-stat-card source-directory-community-confidence-card">
+      <span class="source-directory-hero-stat-icon" aria-hidden="true">${renderAppIconSvgMarkup("sourceHeroShieldCheck", { className: "source-directory-hero-stat-icon-svg" })}</span>
       <div class="stat-card-content">
         <span class="stat-label">Community Confidence</span>
         <strong class="stat-value">${escapeHtml(confidenceLabel)}</strong>
         <p class="summary-subtext">${escapeHtml(Number(metrics.communitySessions || 0).toLocaleString())} sessions tracked</p>
-        <div class="source-directory-kpi-confidence-meter" aria-label="${escapeHtml(confidenceLabel)} community confidence">
-          <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
-        </div>
       </div>
-      ${renderGrowKpiWatermarkMarkup({ label: "Community Confidence" })}
+      <div class="source-directory-kpi-confidence-meter" aria-label="${escapeHtml(confidenceLabel)} community confidence">
+        <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
+      </div>
+    </article>
+  `;
+}
+
+function renderSourceDirectoryHeroStatSparklineMarkup(label = "") {
+  return `
+    <svg class="source-directory-hero-stat-sparkline" viewBox="0 0 220 48" aria-hidden="true" focusable="false">
+      <path class="source-directory-hero-stat-sparkline-fill" d="M4 39 C19 38 29 41 42 36 C53 44 66 39 78 40 C94 41 104 36 119 33 C132 31 141 37 153 25 C164 38 176 31 188 29 C201 27 207 20 216 13 L216 48 L4 48 Z"></path>
+      <path class="source-directory-hero-stat-sparkline-line" d="M4 39 C19 38 29 41 42 36 C53 44 66 39 78 40 C94 41 104 36 119 33 C132 31 141 37 153 25 C164 38 176 31 188 29 C201 27 207 20 216 13"></path>
+    </svg>
+  `;
+}
+
+function renderSourceDirectoryHeroStatCardMarkup({ label = "", value = "", subtext = "", icon = "info", modifier = "" } = {}) {
+  return `
+    <article class="card stat-card admin-overview-card grow-kpi-card source-directory-metric-card source-directory-hero-stat-card ${escapeHtml(modifier)}">
+      <span class="source-directory-hero-stat-icon" aria-hidden="true">${renderAppIconSvgMarkup(icon, { className: "source-directory-hero-stat-icon-svg" })}</span>
+      <div class="stat-card-content">
+        <span class="stat-label">${escapeHtml(label)}</span>
+        <strong class="stat-value">${escapeHtml(value)}</strong>
+        <p class="summary-subtext">${escapeHtml(subtext)}</p>
+      </div>
+      ${renderSourceDirectoryHeroStatSparklineMarkup(modifier || label)}
     </article>
   `;
 }
@@ -49627,10 +49663,10 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
   const metrics = getSourceDirectoryMetrics(records);
   return `
     <div class="summary-grid source-directory-metrics-grid">
-      ${renderAdminOverviewCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", className: "source-directory-metric-card" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Community Sessions", value: metrics.communitySessions.toLocaleString(), subtext: "logged source sessions", icon: "communityGroup", modifier: "source-directory-hero-stat-card--sessions" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Seeds Tracked", value: metrics.seedsTracked.toLocaleString(), subtext: "seeds represented in reports", icon: "sourceHeroSprout", modifier: "source-directory-hero-stat-card--seeds" })}
       ${renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics)}
-      ${renderAdminOverviewCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "actively tracked", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Trusted Sources", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "actively tracked", icon: "sourceTrustStar", modifier: "source-directory-hero-stat-card--trusted source-directory-metric-card--cstp" })}
     </div>
   `;
 }
