@@ -29049,7 +29049,10 @@ function formatPublicAnalyticsSampleSummary(entry = {}, options = {}) {
 
 function renderPublicAnalyticsSignalBadge(totalSeeds = 0, className = "public-analytics-signal-badge") {
   const signal = getPublicAnalyticsSignalStrength(totalSeeds);
-  return `<span class="${escapeHtml(className)} is-${escapeHtml(signal.tone)}">${escapeHtml(signal.label)}</span>`;
+  return renderMetricBadgeMarkup(signal.label, {
+    className,
+    tone: signal.tone,
+  });
 }
 
 function renderGalleryLeaderboardIcon(type, entry = {}) {
@@ -30475,6 +30478,153 @@ function renderAppHeroMarkup(options = {}) {
       </div>
       ${artOverlayMarkup ? `<div class="app-hero-art-overlay">${artOverlayMarkup}</div>` : ""}
     </section>
+  `;
+}
+
+function renderExplorerHeroMarkup(options = {}) {
+  return renderAppHeroMarkup(options);
+}
+
+function renderSharedUiAttributes(attributes = {}) {
+  return Object.entries(attributes || {}).map(([key, value]) => {
+    if (value === false || value == null) {
+      return "";
+    }
+    if (value === true) {
+      return ` ${escapeHtml(key)}`;
+    }
+    return ` ${escapeHtml(key)}="${escapeHtml(String(value))}"`;
+  }).join("");
+}
+
+function renderSectionHeaderMarkup({
+  className = "",
+  number = "",
+  numberClassName = "",
+  title = "",
+  titleTag = "h3",
+  infoClassName = "",
+  infoIconClassName = "",
+} = {}) {
+  const safeTitleTag = /^h[1-6]$/i.test(String(titleTag || "")) ? String(titleTag).toLowerCase() : "h3";
+  return `
+    <div class="${escapeHtml(className)}">
+      ${number ? `<span class="${escapeHtml(numberClassName)}">${escapeHtml(String(number))}</span>` : ""}
+      <${safeTitleTag}>${escapeHtml(title)}</${safeTitleTag}>
+      ${infoClassName ? `<span class="${escapeHtml(infoClassName)}" aria-hidden="true">${renderAppIconSvgMarkup("info", { className: infoIconClassName })}</span>` : ""}
+    </div>
+  `;
+}
+
+function renderMetricBadgeMarkup(label = "", {
+  className = "",
+  tone = "",
+  attributes = {},
+} = {}) {
+  return `<span class="${escapeHtml([className, tone ? `is-${tone}` : ""].filter(Boolean).join(" "))}"${renderSharedUiAttributes(attributes)}>${escapeHtml(label)}</span>`;
+}
+
+function renderStatCardMarkup({
+  className = "",
+  label = "",
+  value = "",
+  valueHtml = "",
+  detail = "",
+  labelTag = "span",
+  valueTag = "strong",
+  detailTag = "",
+  labelClassName = "",
+  valueClassName = "",
+  detailClassName = "",
+  renderEmptyDetail = false,
+  beforeContentMarkup = "",
+  afterValueMarkup = "",
+  afterContentMarkup = "",
+  attributes = {},
+} = {}) {
+  const safeLabelTag = ["span", "small", "p"].includes(String(labelTag || "").toLowerCase()) ? String(labelTag).toLowerCase() : "span";
+  const safeValueTag = ["strong", "span", "p"].includes(String(valueTag || "").toLowerCase()) ? String(valueTag).toLowerCase() : "strong";
+  const safeDetailTag = ["", "small", "p", "span", "em"].includes(String(detailTag || "").toLowerCase()) ? String(detailTag || "").toLowerCase() : "";
+  return `
+    <article class="${escapeHtml(className)}"${renderSharedUiAttributes(attributes)}>
+      ${beforeContentMarkup}
+      <${safeLabelTag}${labelClassName ? ` class="${escapeHtml(labelClassName)}"` : ""}>${escapeHtml(label)}</${safeLabelTag}>
+      <${safeValueTag}${valueClassName ? ` class="${escapeHtml(valueClassName)}"` : ""}>${valueHtml || escapeHtml(value)}</${safeValueTag}>
+      ${afterValueMarkup}
+      ${(detail || renderEmptyDetail) && safeDetailTag ? `<${safeDetailTag}${detailClassName ? ` class="${escapeHtml(detailClassName)}"` : ""}>${escapeHtml(detail)}</${safeDetailTag}>` : ""}
+      ${afterContentMarkup}
+    </article>
+  `;
+}
+
+function renderReportHeroMetricMarkup({
+  className = "",
+  tone = "",
+  icon = "",
+  iconClassName = "",
+  value = "",
+  valueHtml = "",
+  label = "",
+  detail = "",
+} = {}) {
+  return `
+    <article class="${escapeHtml([className, tone ? `is-${tone}` : ""].filter(Boolean).join(" "))}">
+      ${icon ? `<span class="${escapeHtml(iconClassName)}" aria-hidden="true">${renderAppIconSvgMarkup(icon, { className: "source-report-icon-svg" })}</span>` : ""}
+      <strong>${valueHtml || escapeHtml(value)}</strong>
+      <span>${escapeHtml(label)}</span>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+    </article>
+  `;
+}
+
+function renderPerformanceCardMarkup({
+  className = "",
+  label = "",
+  value = "",
+  tone = "",
+} = {}) {
+  return `
+    <article class="${escapeHtml([className, tone ? `is-${tone}` : ""].filter(Boolean).join(" "))}">
+      <strong>${escapeHtml(String(value))}</strong>
+      <span>${escapeHtml(label)}</span>
+    </article>
+  `;
+}
+
+function renderInsightCardMarkup({
+  className = "",
+  ariaLabel = "",
+  iconMarkup = "",
+  label = "",
+  value = "",
+  detail = "",
+  labelTag = "small",
+  detailTag = "em",
+} = {}) {
+  const safeLabelTag = ["small", "span", "p"].includes(String(labelTag || "").toLowerCase()) ? String(labelTag).toLowerCase() : "small";
+  const safeDetailTag = ["em", "small", "span", "p"].includes(String(detailTag || "").toLowerCase()) ? String(detailTag).toLowerCase() : "em";
+  return `
+    <aside class="${escapeHtml(className)}"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ""}>
+      ${iconMarkup}
+      <div>
+        <${safeLabelTag}>${escapeHtml(label)}</${safeLabelTag}>
+        <strong>${escapeHtml(String(value))}</strong>
+        <${safeDetailTag}>${escapeHtml(detail)}</${safeDetailTag}>
+      </div>
+    </aside>
+  `;
+}
+
+function renderConfidenceIndicatorMarkup({
+  className = "",
+  label = "",
+  percent = 0,
+} = {}) {
+  const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+  return `
+    <div class="${escapeHtml(className)}" aria-label="${escapeHtml(label)}">
+      <i><b style="width:${escapeHtml(String(safePercent))}%"></b></i>
+    </div>
   `;
 }
 
@@ -48653,18 +48803,22 @@ function renderSourceProfileMetricCard({
   const numericProgressValue = Number(progressValue);
   const hasProgress = Number.isFinite(numericProgressValue);
   const clampedProgressValue = Math.max(0, Math.min(100, numericProgressValue));
-  return `
-    <article class="card stat-card card-accent card-accent-green source-profile-stat-card">
-      <span class="stat-label">${escapeHtml(label)}</span>
-      <strong class="stat-value">${escapeHtml(value)}</strong>
-      ${hasProgress ? `
+  return renderStatCardMarkup({
+    className: "card stat-card card-accent card-accent-green source-profile-stat-card",
+    label,
+    value,
+    detail,
+    labelClassName: "stat-label",
+    valueClassName: "stat-value",
+    detailTag: "p",
+    detailClassName: "summary-subtext",
+    renderEmptyDetail: true,
+    afterValueMarkup: hasProgress ? `
         <div class="source-profile-stat-progress" aria-hidden="true">
           <span style="width: ${escapeHtml(String(clampedProgressValue))}%;"></span>
         </div>
-      ` : ""}
-      <p class="summary-subtext">${escapeHtml(detail)}</p>
-    </article>
-  `;
+      ` : "",
+  });
 }
 
 function getSourceProfileCstpState(sourceProfile = {}) {
@@ -49735,9 +49889,11 @@ function renderSourceDirectoryCommunityConfidenceMetricMarkup(metrics = {}) {
         <strong class="stat-value">${escapeHtml(confidenceLabel)}</strong>
         <p class="summary-subtext">${escapeHtml(Number(metrics.communitySessions || 0).toLocaleString())} sessions tracked</p>
       </div>
-      <div class="source-directory-kpi-confidence-meter" aria-label="${escapeHtml(confidenceLabel)} community confidence">
-        <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
-      </div>
+      ${renderConfidenceIndicatorMarkup({
+        className: "source-directory-kpi-confidence-meter",
+        label: `${confidenceLabel} community confidence`,
+        percent: confidencePercent,
+      })}
     </article>
   `;
 }
@@ -51496,7 +51652,7 @@ function renderSourcesLandingPage() {
       ${renderExploreSegmentedNavigationMarkup("sources")}
       <div id="explore-panel-sources" data-explore-panel="sources" role="tabpanel" aria-labelledby="explore-tab-sources">
         <section class="source-directory-page">
-      ${renderAppHeroMarkup({
+      ${renderExplorerHeroMarkup({
         className: "source-directory-hero app-hero--sources app-hero--contained-right",
         iconMarkup: renderAppSectionHeaderIcon("sources"),
         eyebrow: "Sources",
@@ -51715,24 +51871,27 @@ function getSourceReportRegionRows(sourceProfile = {}) {
 }
 
 function renderSourceReportSectionTitle(index = 1, title = "") {
-  return `
-    <div class="source-report-section-title-row">
-      <span class="source-report-section-number">${escapeHtml(String(index))}.</span>
-      <h3>${escapeHtml(title)}</h3>
-      <span class="source-report-section-info" aria-hidden="true">${renderAppIconSvgMarkup("info", { className: "source-report-section-info-icon" })}</span>
-    </div>
-  `;
+  return renderSectionHeaderMarkup({
+    className: "source-report-section-title-row",
+    number: `${index}.`,
+    numberClassName: "source-report-section-number",
+    title,
+    infoClassName: "source-report-section-info",
+    infoIconClassName: "source-report-section-info-icon",
+  });
 }
 
 function renderSourceReportHeroMetricMarkup({ icon = "sourceDirectoryBars", value = "", valueHtml = "", label = "", detail = "", tone = "green" } = {}) {
-  return `
-    <article class="source-report-hero-metric is-${escapeHtml(tone)}">
-      <span class="source-report-hero-metric-icon" aria-hidden="true">${renderAppIconSvgMarkup(icon, { className: "source-report-icon-svg" })}</span>
-      <strong>${valueHtml || escapeHtml(value)}</strong>
-      <span>${escapeHtml(label)}</span>
-      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
-    </article>
-  `;
+  return renderReportHeroMetricMarkup({
+    className: "source-report-hero-metric",
+    tone,
+    icon,
+    iconClassName: "source-report-hero-metric-icon",
+    value,
+    valueHtml,
+    label,
+    detail,
+  });
 }
 
 function renderSourceReportActivityStripMarkup(activity = {}) {
@@ -52826,13 +52985,13 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
 }
 
 function renderCstpCertificationMetricMarkup(label = "", value = "", detail = "") {
-  return `
-    <article class="cstp-cert-hero-metric">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-      ${detail ? `<p>${escapeHtml(detail)}</p>` : ""}
-    </article>
-  `;
+  return renderStatCardMarkup({
+    className: "cstp-cert-hero-metric",
+    label,
+    value,
+    detail,
+    detailTag: "p",
+  });
 }
 
 function renderCstpCertificationBarMarkup({
@@ -72380,12 +72539,12 @@ function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
 
 function renderSeedVaultPerformanceMetricMarkup(label = "", value = "", tone = "") {
   const normalizedValue = value === 0 ? "0" : (String(value || "").trim() || "Not set");
-  return `
-    <article class="seed-vault-performance-metric${tone ? ` is-${escapeHtml(tone)}` : ""}">
-      <strong>${escapeHtml(normalizedValue)}</strong>
-      <span>${escapeHtml(label)}</span>
-    </article>
-  `;
+  return renderPerformanceCardMarkup({
+    className: "seed-vault-performance-metric",
+    label,
+    value: normalizedValue,
+    tone,
+  });
 }
 
 function renderSeedVaultPerformanceInsightMarkup(entryAnalytics = {}) {
@@ -72447,16 +72606,14 @@ function renderSeedVaultPerformanceInsightMarkup(entryAnalytics = {}) {
 }
 
 function renderSeedVaultPerformanceInsightCardMarkup(label = "", value = "", detail = "") {
-  return `
-    <aside class="seed-vault-performance-insight" aria-label="Performance insight">
-      <span aria-hidden="true">🏆</span>
-      <div>
-        <small>${escapeHtml(label)}</small>
-        <strong>${escapeHtml(String(value))}</strong>
-        <em>${escapeHtml(detail)}</em>
-      </div>
-    </aside>
-  `;
+  return renderInsightCardMarkup({
+    className: "seed-vault-performance-insight",
+    ariaLabel: "Performance insight",
+    iconMarkup: '<span aria-hidden="true">🏆</span>',
+    label,
+    value,
+    detail,
+  });
 }
 
 function renderSeedVaultStorageSummaryMarkup(entry = {}) {
