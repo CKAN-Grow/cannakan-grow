@@ -29766,6 +29766,57 @@ textarea::placeholder {
   max-width: none;
 }
 
+.seed-report-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: 18px;
+}
+
+.seed-report-hero-image {
+  background:
+    linear-gradient(160deg, rgba(181, 232, 111, 0.11), rgba(144, 196, 255, 0.05)),
+    rgba(255, 255, 255, 0.04);
+  border-color: rgba(181, 232, 111, 0.18);
+}
+
+.seed-report-hero-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.seed-report-relationship-row {
+  color: inherit;
+  text-decoration: none;
+}
+
+.seed-report-relationship-row:hover,
+.seed-report-relationship-row:focus-visible {
+  outline: none;
+}
+
+.seed-report-gallery-card {
+  gap: 16px;
+}
+
+.seed-report-gallery-grid {
+  gap: 14px;
+}
+
+.seed-report-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.seed-report-insight-grid .seed-profile-grow-insight {
+  min-height: 100%;
+}
+
+.seed-report-evidence-grid {
+  margin-top: 0;
+}
+
 @media (max-width: 760px) {
   .explore-foundation-shell {
     align-items: stretch;
@@ -29793,6 +29844,14 @@ textarea::placeholder {
 
   .seed-profile-performance-grid,
   .seed-profile-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-report-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-report-evidence-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -58913,6 +58972,12 @@ body.theme-dark option[selected] {
 
 @media (max-width: 360px) {
   .source-report-cstp-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .seed-report-page .seed-report-evidence-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
