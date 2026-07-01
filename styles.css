@@ -29594,13 +29594,18 @@ textarea::placeholder {
 
 .seed-explorer-card {
   align-content: start;
+  grid-template-rows: auto auto auto minmax(72px, 1fr) auto;
 }
 
 .seed-explorer-card-top {
+  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-areas: "seed-thumb seed-identity";
   align-items: start;
+  gap: 0 14px;
 }
 
 .seed-explorer-card-identity {
+  grid-area: seed-identity;
   align-content: start;
   align-self: start;
   gap: 4px;
@@ -29620,6 +29625,10 @@ textarea::placeholder {
     linear-gradient(160deg, rgba(181, 232, 111, 0.11), rgba(144, 196, 255, 0.05)),
     rgba(255, 255, 255, 0.035);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.seed-explorer-card-thumb {
+  grid-area: seed-thumb;
 }
 
 .seed-profile-hero-thumb {
@@ -29657,6 +29666,7 @@ textarea::placeholder {
 
 .seed-explorer-card-badges {
   margin-top: 5px;
+  min-height: 24px;
 }
 
 .seed-explorer-badge {
@@ -29681,6 +29691,14 @@ textarea::placeholder {
   margin: 0;
   color: rgba(222, 232, 220, 0.74);
   line-height: 1.5;
+}
+
+.seed-explorer-card-summary {
+  display: -webkit-box;
+  min-height: 4.5em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .seed-explorer-card-confidence-track,
@@ -29879,6 +29897,75 @@ textarea::placeholder {
   font-size: 1.02rem;
   font-weight: 920;
   line-height: 1;
+}
+
+@media (max-width: 760px) {
+  .seed-explorer-results-head {
+    align-items: flex-start;
+  }
+
+  .seed-explorer-results-tools {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .seed-explorer-list-shell {
+    overflow-x: visible;
+  }
+
+  .seed-explorer-list-table {
+    min-width: 0;
+  }
+
+  .seed-explorer-list-head {
+    display: none;
+  }
+
+  .seed-explorer-list-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "variety rate"
+      "source type"
+      "confidence sessions";
+    align-items: center;
+    gap: 8px 12px;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .seed-explorer-list-variety {
+    grid-area: variety;
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .seed-explorer-list-thumb {
+    width: 48px;
+    height: 48px;
+  }
+
+  .seed-explorer-list-source {
+    grid-area: source;
+    padding-left: 58px;
+  }
+
+  .seed-explorer-list-rate {
+    grid-area: rate;
+    justify-items: end;
+  }
+
+  .seed-explorer-list-confidence {
+    grid-area: confidence;
+  }
+
+  .seed-explorer-list-kpi {
+    grid-area: sessions;
+    justify-items: end;
+  }
+
+  .seed-explorer-list-type {
+    grid-area: type;
+    justify-self: end;
+  }
 }
 
 .seed-profile-hero {

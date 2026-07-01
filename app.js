@@ -52680,6 +52680,7 @@ function renderSeedProfilePage(seedId = "") {
         </div>
         <div class="source-profile-request-actions">
           <a class="button button-secondary" href="#seeds">Back to Seed Explorer</a>
+          <a class="button button-secondary" href="#sources">Explore Sources</a>
           ${seed.sourceId ? `<a class="button button-secondary" href="#sources/${escapeHtml(seed.sourceId)}">View Source Report</a>` : ""}
         </div>
       </article>
@@ -53964,6 +53965,7 @@ function renderSourceProfilePage(sourceId = "") {
           <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
         </div>
         <div class="source-profile-request-actions">
+          <a class="button button-secondary" href="#seeds">Explore Seeds</a>
           ${sourceProfile.websiteUrl || sourceProfile.website ? `<a class="button button-secondary source-profile-visit-source-button" href="${escapeHtml(sourceProfile.websiteUrl || sourceProfile.website)}" target="_blank" rel="noopener noreferrer">Visit Source</a>` : ""}
           <a class="button button-secondary" href="#contact" data-source-request-cstp="${escapeHtml(sourceProfile.id)}">Request CSTP Testing</a>
           <a class="button button-secondary" href="#contact" data-source-request-correction="${escapeHtml(sourceProfile.id)}">Claim or Correct This Source</a>
