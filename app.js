@@ -52996,58 +52996,68 @@ function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedRep
   const seedsTracked = Number(seed.seedsTracked || 0).toLocaleString();
   const reports = Number(activity.recentGrowReports || 0).toLocaleString();
   const sources = Number(activity.sourcesCarrying || 0).toLocaleString();
+  const confidencePercent = Math.max(0, Math.min(100, Number(seed.confidencePercent) || 0));
   return `
     <div class="seed-report-evidence-snapshot-layout">
       <div class="seed-report-evidence-summary-main">
-        <article class="seed-report-evidence-summary-card seed-report-evidence-summary-card--primary">
-          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderAppIconSvgMarkup("adminShield", { className: "source-report-activity-icon" })}</span>
-          <div>
-            <span class="stat-label">Evidence</span>
+        <article class="seed-report-evidence-strength-panel">
+          <span class="seed-report-evidence-summary-icon seed-report-evidence-strength-panel-icon" aria-hidden="true">${renderAppIconSvgMarkup("adminShield", { className: "source-report-activity-icon" })}</span>
+          <div class="seed-report-evidence-strength-panel-copy">
+            <span class="stat-label">Evidence Strength</span>
             <strong>${escapeHtml(seed.communityConfidence || "Early Signal")}</strong>
+            <div class="seed-report-evidence-strength-panel-meter" aria-hidden="true">
+              <span style="width: ${escapeHtml(String(confidencePercent))}%;"></span>
+              <em>${escapeHtml(String(confidencePercent))}%</em>
+            </div>
             <p>Confidence is calculated using tracked seeds, community sessions, grow reports, source diversity, consistency, and adoption history.</p>
           </div>
         </article>
 
-        <article class="seed-report-evidence-summary-card">
-          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderAppIconSvgMarkup("communityGroup", { className: "source-report-activity-icon" })}</span>
-          <div>
-            <span class="stat-label">Community Adoption</span>
-            <strong>${escapeHtml(sessions)} sessions</strong>
-            <p>${escapeHtml(seedsTracked)} tracked seeds, ${escapeHtml(reports)} grow reports, and ${escapeHtml(sources)} sources carrying this variety.</p>
-          </div>
-        </article>
-
-        <article class="seed-report-evidence-summary-card">
-          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderAppIconSvgMarkup("clock", { className: "source-report-activity-icon" })}</span>
-          <div>
-            <span class="stat-label">Community History</span>
-            <strong>First report: Mar 2025</strong>
-            <p>Last updated ${escapeHtml(activity.lastUpdated)} with new community activity and source evidence.</p>
-          </div>
-        </article>
-
-        <article class="seed-report-evidence-summary-card">
-          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderSeedReportHeroMetricIconMarkup("rank")}</span>
-          <div>
-            <span class="stat-label">Popularity</span>
-            <strong>${escapeHtml(getSeedReportAdoptionRankLabel(seed))}</strong>
-            <p>Adoption signal among preview seeds without implying seed quality or genetic superiority.</p>
-          </div>
-        </article>
-      </div>
-      <div class="seed-report-germination-support" aria-label="Seed report consistency support">
-        <div class="seed-report-consistency-header">
-          <div>
-            <span class="stat-label">Consistency</span>
-            <strong>${escapeHtml(`${seed.germinationSuccess}%`)}</strong>
-          </div>
-          <div>
-            <span class="stat-label">Range</span>
-            <strong>84-100%</strong>
+        <div class="seed-report-evidence-based-on">
+          <span class="stat-label">Evidence Based On</span>
+          <div class="seed-report-evidence-pillar-grid">
+            ${[
+              { icon: "sourceHeroSprout", value: seedsTracked, label: "Seeds Tracked", detail: "seed observations" },
+              { icon: "communityGroup", value: sessions, label: "Community Sessions", detail: "growers participated" },
+              { icon: "reports", value: reports, label: "Grow Reports", detail: "community reports" },
+              { icon: "sources", value: sources, label: "Sources Carrying", detail: "source diversity" },
+            ].map((item) => `
+              <article class="seed-report-evidence-pillar">
+                <span class="seed-report-evidence-summary-icon" aria-hidden="true">${item.icon === "reports" || item.icon === "sources" ? renderSeedReportHeroMetricIconMarkup(item.icon) : renderAppIconSvgMarkup(item.icon, { className: "source-report-activity-icon" })}</span>
+                <strong>${escapeHtml(item.value)}</strong>
+                <span>${escapeHtml(item.label)}</span>
+                <small>${escapeHtml(item.detail)}</small>
+              </article>
+            `).join("")}
           </div>
         </div>
+
+        <div class="seed-report-evidence-summary-row">
+          ${[
+            { icon: "rank", label: "Popularity Rank", value: getSeedReportAdoptionRankLabel(seed), detail: "among preview seeds", tone: "gold" },
+            { icon: "calendar", label: "First Report", value: "Mar 2025", detail: "community activity began", tone: "green" },
+            { icon: "clock", label: "Last Updated", value: activity.lastUpdated, detail: "new activity detected", tone: "green" },
+          ].map((item) => `
+            <article class="seed-report-evidence-summary-row-item is-${escapeHtml(item.tone)}">
+              <span class="seed-report-evidence-summary-icon" aria-hidden="true">${item.icon === "rank" ? renderSeedReportHeroMetricIconMarkup("rank") : renderAppIconSvgMarkup(item.icon, { className: "source-report-activity-icon" })}</span>
+              <div>
+                <span class="stat-label">${escapeHtml(item.label)}</span>
+                <strong>${escapeHtml(String(item.value))}</strong>
+                <small>${escapeHtml(item.detail)}</small>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </div>
+      <div class="seed-report-germination-support" aria-label="Seed report consistency support">
+        <span class="stat-label">Consistency</span>
+        <strong class="seed-report-consistency-score">${escapeHtml(`${seed.germinationSuccess}%`)}</strong>
+        <span class="seed-report-consistency-score-label">Consistency Score</span>
         ${renderSourceReportDistributionMarkup(seed.seedsTracked, seed.germinationSuccess)}
-        <p>Germination is supporting evidence. Trust comes from repeated community activity, source diversity, adoption, and consistency over time.</p>
+        <div class="seed-report-consistency-range-block">
+          <span class="stat-label">Consistency Range</span>
+          <strong>84% - 100%</strong>
+        </div>
       </div>
     </div>
   `;
