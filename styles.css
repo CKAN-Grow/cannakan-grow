@@ -8174,8 +8174,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance {
-  gap: clamp(22px, 2.4vw, 30px);
-  padding: clamp(22px, 2.8vw, 36px);
+  gap: clamp(16px, 1.8vw, 22px);
+  padding: clamp(18px, 2.2vw, 28px);
 }
 
 .community-at-a-glance-grid {
@@ -8188,12 +8188,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: clamp(78px, 7vw, 96px) minmax(0, 1fr);
-  grid-template-rows: minmax(128px, 1fr) auto;
+  grid-template-columns: clamp(62px, 5.4vw, 74px) minmax(0, 1fr);
+  grid-template-rows: minmax(98px, 1fr) auto;
   align-items: start;
-  gap: 18px clamp(20px, 2.4vw, 30px);
-  min-height: clamp(246px, 22vw, 284px);
-  padding: clamp(22px, 2.4vw, 30px);
+  gap: 12px clamp(16px, 1.8vw, 22px);
+  min-height: clamp(170px, 16vw, 198px);
+  padding: clamp(16px, 1.8vw, 22px);
   border: 1px solid rgba(148, 209, 89, 0.18);
   border-radius: 20px;
   background:
@@ -8221,8 +8221,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 1;
   display: grid;
   place-items: center;
-  width: clamp(76px, 6.2vw, 88px);
-  height: clamp(76px, 6.2vw, 88px);
+  width: clamp(60px, 5vw, 70px);
+  height: clamp(60px, 5vw, 70px);
   border: 1px solid rgba(148, 209, 89, 0.24);
   border-radius: 999px;
   background:
@@ -8236,8 +8236,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance-icon {
-  width: clamp(38px, 3.4vw, 48px);
-  height: clamp(38px, 3.4vw, 48px);
+  width: clamp(30px, 2.7vw, 38px);
+  height: clamp(30px, 2.7vw, 38px);
   color: inherit;
   filter: drop-shadow(0 0 14px rgba(148, 209, 89, 0.38));
 }
@@ -8247,13 +8247,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 1;
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 7px;
   min-width: 0;
 }
 
 .community-at-a-glance-copy strong {
   color: #ffffff;
-  font-size: clamp(2.25rem, 4vw, 3.35rem);
+  font-size: clamp(1.8rem, 3.05vw, 2.55rem);
   font-weight: 950;
   line-height: 0.95;
   letter-spacing: 0;
@@ -8268,7 +8268,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-at-a-glance-copy small {
   color: rgba(248, 255, 243, 0.95);
-  font-size: clamp(1rem, 1.4vw, 1.18rem);
+  font-size: clamp(0.9rem, 1.08vw, 1.02rem);
   font-weight: 900;
   line-height: 1.16;
 }
@@ -8276,7 +8276,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-at-a-glance-copy em {
   max-width: 22ch;
   color: rgba(226, 236, 225, 0.72);
-  font-size: clamp(0.92rem, 1.2vw, 1.04rem);
+  font-size: clamp(0.78rem, 0.94vw, 0.9rem);
   font-style: normal;
   font-weight: 520;
   line-height: 1.38;
@@ -8288,8 +8288,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   grid-column: 1 / -1;
   align-self: end;
   min-width: 0;
-  height: 72px;
-  margin-top: 2px;
+  height: 46px;
+  margin-top: 0;
 }
 
 .community-at-a-glance-trend::after {
@@ -8310,7 +8310,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-at-a-glance-trend-line {
   fill: none;
   stroke: #a8f51f;
-  stroke-width: 3;
+  stroke-width: 2.35;
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.42));
@@ -8318,20 +8318,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-at-a-glance-trend-dot {
   fill: #a8f51f;
-  filter: drop-shadow(0 0 10px rgba(148, 209, 89, 0.62));
+  filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.52));
 }
 
 .community-at-a-glance-trend--bars {
   display: flex;
   align-items: end;
-  gap: clamp(5px, 0.7vw, 9px);
-  padding: 8px 2px 2px;
+  gap: clamp(4px, 0.55vw, 7px);
+  padding: 5px 2px 2px;
 }
 
 .community-at-a-glance-trend--bars i {
   flex: 1 1 0;
   min-width: 4px;
-  max-width: 14px;
+  max-width: 11px;
   height: var(--community-glance-bar-height);
   border-radius: 4px 4px 2px 2px;
   background:
@@ -9379,19 +9379,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-at-a-glance-card {
-    grid-template-columns: 68px minmax(0, 1fr);
-    min-height: 220px;
-    padding: 20px;
+    grid-template-columns: 58px minmax(0, 1fr);
+    min-height: 178px;
+    padding: 16px;
   }
 
   .community-at-a-glance-icon-shell {
-    width: 62px;
-    height: 62px;
+    width: 54px;
+    height: 54px;
   }
 
   .community-at-a-glance-icon {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
   }
 
   .community-at-a-glance-copy {
@@ -9403,7 +9403,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-at-a-glance-trend {
-    height: 58px;
+    height: 44px;
   }
 
   .community-intelligence-map-legend {
