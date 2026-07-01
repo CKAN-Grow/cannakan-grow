@@ -71710,16 +71710,41 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
     `;
   }
 
-  if (normalizedType === "progress") {
+  if (normalizedType === "step") {
     return `
-      <svg class="community-at-a-glance-trend community-at-a-glance-trend--progress" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+      <svg class="community-at-a-glance-trend community-at-a-glance-trend--step" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
         <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
-        <path class="community-glance-chart-progress-track" d="M7 36H213"></path>
-        <path class="community-glance-chart-progress-line" d="M7 36H164"></path>
+        <path class="community-glance-chart-area" d="M7 45 H38 V39 H70 V33 H102 V27 H134 V20 H166 V13 H213 V54 H7 Z"></path>
+        <path class="community-glance-chart-line" d="M7 45 H38 V39 H70 V33 H102 V27 H134 V20 H166 V13 H213"></path>
         <g class="community-glance-chart-markers">
-          <circle cx="56" cy="36" r="3"></circle>
-          <circle cx="112" cy="36" r="3"></circle>
-          <circle cx="164" cy="36" r="3.4"></circle>
+          <circle cx="38" cy="39" r="3"></circle>
+          <circle cx="102" cy="27" r="3"></circle>
+          <circle cx="166" cy="13" r="3"></circle>
+          <circle cx="213" cy="13" r="3.5"></circle>
+        </g>
+      </svg>
+    `;
+  }
+
+  if (normalizedType === "dots") {
+    return `
+      <svg class="community-at-a-glance-trend community-at-a-glance-trend--dots" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+        <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
+        <path class="community-glance-chart-line" d="M8 42 L30 38 L52 43 L74 30 L96 34 L118 24 L140 28 L162 18 L184 22 L212 10"></path>
+        <g class="community-glance-chart-markers">
+          ${[[8, 42], [30, 38], [52, 43], [74, 30], [96, 34], [118, 24], [140, 28], [162, 18], [184, 22], [212, 10]].map(([cx, cy], markerIndex, source) => `<circle cx="${escapeHtml(String(cx))}" cy="${escapeHtml(String(cy))}" r="${markerIndex === source.length - 1 ? "3.5" : "3"}"></circle>`).join("")}
+        </g>
+      </svg>
+    `;
+  }
+
+  if (normalizedType === "regions") {
+    return `
+      <svg class="community-at-a-glance-trend community-at-a-glance-trend--regions" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+        <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
+        <path class="community-glance-region-link" d="M30 32 C56 18 84 22 108 30 S158 42 190 18"></path>
+        <g class="community-glance-region-dots">
+          ${[[30, 32, 3], [58, 22, 2.5], [86, 25, 2.2], [112, 30, 3.2], [142, 38, 2.4], [166, 33, 2.6], [190, 18, 3.5]].map(([cx, cy, r]) => `<circle cx="${escapeHtml(String(cx))}" cy="${escapeHtml(String(cy))}" r="${escapeHtml(String(r))}"></circle>`).join("")}
         </g>
       </svg>
     `;
@@ -71750,11 +71775,11 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
 function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboardData()) {
   const stats = [
     { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence", visual: "sessions" },
-    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal", visual: "trusted" },
+    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal", visual: "step" },
     { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence", visual: "bars" },
-    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped", visual: "trusted" },
+    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped", visual: "dots" },
     { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports", visual: "distribution" },
-    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals", visual: "progress" },
+    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals", visual: "regions" },
   ];
 
   return `

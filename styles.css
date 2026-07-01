@@ -8351,6 +8351,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   fill: rgba(148, 209, 89, 0.1);
 }
 
+.community-at-a-glance-trend--step .community-glance-chart-line {
+  stroke-linejoin: miter;
+}
+
+.community-at-a-glance-trend--dots .community-glance-chart-line {
+  stroke-width: 2;
+}
+
 .community-glance-chart-markers circle {
   fill: #cfff64;
   stroke: rgba(7, 13, 10, 0.92);
@@ -8379,20 +8387,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   fill: rgba(207, 255, 100, 0.78);
 }
 
-.community-glance-chart-progress-track,
-.community-glance-chart-progress-line {
+.community-glance-region-link {
   fill: none;
+  stroke: rgba(181, 232, 111, 0.36);
   stroke-linecap: round;
-  stroke-width: 7;
+  stroke-width: 1.6;
+  stroke-dasharray: 4 7;
 }
 
-.community-glance-chart-progress-track {
-  stroke: rgba(181, 232, 111, 0.13);
-}
-
-.community-glance-chart-progress-line {
-  stroke: rgba(181, 232, 111, 0.82);
-  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.24));
+.community-glance-region-dots circle {
+  fill: #cfff64;
+  stroke: rgba(7, 13, 10, 0.92);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 7px rgba(181, 232, 111, 0.42));
 }
 
 .community-intelligence-live-layout {
