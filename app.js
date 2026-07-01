@@ -51590,6 +51590,9 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
 
 const SEED_EXPLORER_DEFAULT_FILTER = "all";
 const SEED_EXPLORER_DEFAULT_SORT = "confidence";
+const SEED_EXPLORER_DISPLAY_MODE_STORAGE_KEY = "cannakan-grow-seed-explorer-display-mode";
+const SEED_EXPLORER_DEFAULT_DISPLAY_MODE = "list";
+let seedExplorerDisplayModePreference = SEED_EXPLORER_DEFAULT_DISPLAY_MODE;
 
 const SEED_EXPLORER_FILTERS = Object.freeze([
   Object.freeze({ key: "all", label: "All Seeds" }),
@@ -51854,6 +51857,31 @@ function getSeedExplorerConfidenceTone(seed = {}) {
   return "early";
 }
 
+function normalizeSeedExplorerDisplayMode(value = SEED_EXPLORER_DEFAULT_DISPLAY_MODE) {
+  const normalizedValue = String(value || SEED_EXPLORER_DEFAULT_DISPLAY_MODE).trim().toLowerCase();
+  return normalizedValue === "cards" ? "cards" : "list";
+}
+
+function getSeedExplorerDisplayModePreference() {
+  try {
+    seedExplorerDisplayModePreference = normalizeSeedExplorerDisplayMode(sessionStorage.getItem(SEED_EXPLORER_DISPLAY_MODE_STORAGE_KEY) || seedExplorerDisplayModePreference);
+  } catch (error) {
+    console.warn("Could not read Seed Explorer display mode preference.", error);
+  }
+  return seedExplorerDisplayModePreference;
+}
+
+function setSeedExplorerDisplayModePreference(mode = SEED_EXPLORER_DEFAULT_DISPLAY_MODE) {
+  const normalizedMode = normalizeSeedExplorerDisplayMode(mode);
+  seedExplorerDisplayModePreference = normalizedMode;
+  try {
+    sessionStorage.setItem(SEED_EXPLORER_DISPLAY_MODE_STORAGE_KEY, normalizedMode);
+  } catch (error) {
+    console.warn("Could not save Seed Explorer display mode preference.", error);
+  }
+  return normalizedMode;
+}
+
 function filterAndSortSeedExplorerRecords(records = getSeedExplorerDemoSeeds(), {
   query = "",
   filterKey = SEED_EXPLORER_DEFAULT_FILTER,
@@ -51923,6 +51951,16 @@ function renderSeedExplorerFilterPills(activeFilterKey = SEED_EXPLORER_DEFAULT_F
   `).join("");
 }
 
+function renderSeedExplorerViewToggleMarkup(activeMode = SEED_EXPLORER_DEFAULT_DISPLAY_MODE) {
+  const normalizedMode = normalizeSeedExplorerDisplayMode(activeMode);
+  return `
+    <div class="source-directory-view-toggle seed-explorer-view-toggle" role="group" aria-label="Seed Explorer display mode">
+      <button type="button" class="source-directory-view-toggle-button seed-explorer-view-toggle-button${normalizedMode === "list" ? " is-active" : ""}" data-seed-explorer-view="list" aria-pressed="${normalizedMode === "list" ? "true" : "false"}">List</button>
+      <button type="button" class="source-directory-view-toggle-button seed-explorer-view-toggle-button${normalizedMode === "cards" ? " is-active" : ""}" data-seed-explorer-view="cards" aria-pressed="${normalizedMode === "cards" ? "true" : "false"}">Cards</button>
+    </div>
+  `;
+}
+
 function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) {
   return `
     <section id="seed-explorer-controls" class="card source-directory-controls-card seed-explorer-controls-card">
@@ -51950,7 +51988,6 @@ function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) 
       <div class="source-directory-filter-row seed-explorer-filter-row" role="group" aria-label="Seed Explorer filters">
         ${renderSeedExplorerFilterPills(SEED_EXPLORER_DEFAULT_FILTER)}
       </div>
-      <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} demo seeds</p>
     </section>
   `;
 }
@@ -52024,7 +52061,64 @@ function renderSeedExplorerCardMarkup(seed = {}) {
   `;
 }
 
-function renderSeedExplorerResultsMarkup(records = []) {
+function renderSeedExplorerListRowsMarkup(records = []) {
+  if (!records.length) {
+    return `
+      <article class="card source-directory-empty-state seed-explorer-empty-state">
+        <h3>No seed varieties match your filters yet.</h3>
+        <p class="muted">Try a different search, filter, or sort option.</p>
+      </article>
+    `;
+  }
+  const rowsMarkup = records.map((seed) => {
+    const confidenceTone = getSeedExplorerConfidenceTone(seed);
+    const confidencePercent = Math.max(0, Math.min(100, Number(seed.confidencePercent) || 0));
+    return `
+      <a class="seed-explorer-list-row is-${escapeHtml(confidenceTone)}" href="#seeds/${escapeHtml(seed.id)}" role="row" aria-label="Open ${escapeHtml(seed.varietyName || "seed")} Seed Report">
+        <div class="seed-explorer-list-cell seed-explorer-list-variety" role="cell">
+          ${renderSeedExplorerThumbnailMarkup(seed, "seed-explorer-list-thumb")}
+          <span class="seed-explorer-list-identity">
+            <strong>${escapeHtml(seed.varietyName || "Seed Variety")}</strong>
+            <em>${escapeHtml(seed.batchAge || "Demo lot")}</em>
+          </span>
+        </div>
+        <div class="seed-explorer-list-cell seed-explorer-list-source" role="cell">${escapeHtml(seed.source || "Unknown Source")}</div>
+        <div class="seed-explorer-list-cell seed-explorer-list-rate" role="cell">
+          <strong>${escapeHtml(`${seed.germinationSuccess}%`)}</strong>
+        </div>
+        <div class="seed-explorer-list-cell seed-explorer-list-confidence" role="cell" aria-label="${escapeHtml(seed.communityConfidence || "Community confidence")}">
+          <span>${escapeHtml(seed.communityConfidence || "Early Signal")}</span>
+          ${renderConfidenceIndicatorMarkup({
+            className: "seed-explorer-list-confidence-track",
+            label: `${seed.communityConfidence || "Community confidence"} for ${seed.varietyName || "seed variety"}`,
+            percent: confidencePercent,
+          })}
+        </div>
+        <div class="seed-explorer-list-cell seed-explorer-list-kpi" role="cell">
+          <strong>${Number(seed.communitySessions || 0).toLocaleString()}</strong>
+        </div>
+        <div class="seed-explorer-list-cell seed-explorer-list-type" role="cell">${escapeHtml(seed.seedType || "Seed")}</div>
+      </a>
+    `;
+  }).join("");
+  return `
+    <div class="seed-explorer-list-shell">
+      <div class="seed-explorer-list-table" role="table" aria-label="Seed performance comparison">
+        <div class="seed-explorer-list-head" role="row">
+          <span role="columnheader">Variety</span>
+          <span role="columnheader">Source</span>
+          <span role="columnheader">Germination</span>
+          <span role="columnheader">Confidence</span>
+          <span role="columnheader">Sessions</span>
+          <span role="columnheader">Seed Type</span>
+        </div>
+        ${rowsMarkup}
+      </div>
+    </div>
+  `;
+}
+
+function renderSeedExplorerCardResultsMarkup(records = []) {
   if (!records.length) {
     return `
       <article class="card source-directory-empty-state seed-explorer-empty-state">
@@ -52036,8 +52130,15 @@ function renderSeedExplorerResultsMarkup(records = []) {
   return records.map((seed) => renderSeedExplorerCardMarkup(seed)).join("");
 }
 
+function renderSeedExplorerResultsMarkup(records = [], displayMode = getSeedExplorerDisplayModePreference()) {
+  return normalizeSeedExplorerDisplayMode(displayMode) === "cards"
+    ? renderSeedExplorerCardResultsMarkup(records)
+    : renderSeedExplorerListRowsMarkup(records);
+}
+
 function renderSeedExplorerPanelMarkup({ active = false } = {}) {
   const records = getSeedExplorerDemoSeeds();
+  const displayMode = getSeedExplorerDisplayModePreference();
   return `
     <section id="explore-panel-seeds" class="seed-explorer-page" data-explore-panel="seeds" role="tabpanel" aria-labelledby="explore-tab-seeds"${active ? "" : " hidden"}>
       ${renderExplorerHeroMarkup({
@@ -52073,9 +52174,13 @@ function renderSeedExplorerPanelMarkup({ active = false } = {}) {
           <h3>Seed Performance Profiles</h3>
           <p class="muted">Demo variety profiles shaped for future community-powered recommendations.</p>
         </div>
+        <div class="source-directory-results-tools seed-explorer-results-tools">
+          <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} demo seeds</p>
+          ${renderSeedExplorerViewToggleMarkup(displayMode)}
+        </div>
       </div>
-      <section id="seed-explorer-results" class="source-directory-grid seed-explorer-grid" aria-label="Seed Explorer results">
-        ${renderSeedExplorerResultsMarkup(records)}
+      <section id="seed-explorer-results" class="${displayMode === "cards" ? "source-directory-grid seed-explorer-grid" : "seed-explorer-list-results"}" aria-label="${displayMode === "cards" ? "Seed Explorer cards" : "Seed Explorer list"}">
+        ${renderSeedExplorerResultsMarkup(records, displayMode)}
       </section>
     </section>
   `;
@@ -52091,9 +52196,11 @@ function bindSeedExplorerControls(scope = app) {
   const results = panel.querySelector("#seed-explorer-results");
   const summary = panel.querySelector("#seed-explorer-results-summary");
   const filterButtons = Array.from(panel.querySelectorAll("[data-seed-explorer-filter]"));
+  const viewButtons = Array.from(panel.querySelectorAll("[data-seed-explorer-view]"));
   if (!results || !summary) {
     return;
   }
+  let activeDisplayMode = getSeedExplorerDisplayModePreference();
 
   const applySeedExplorerView = () => {
     const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.seedExplorerFilter || SEED_EXPLORER_DEFAULT_FILTER;
@@ -52102,8 +52209,17 @@ function bindSeedExplorerControls(scope = app) {
       filterKey: activeFilter,
       sortKey: sortSelect?.value || SEED_EXPLORER_DEFAULT_SORT,
     });
-    results.innerHTML = renderSeedExplorerResultsMarkup(visibleSeeds);
+    const isCardMode = activeDisplayMode === "cards";
+    results.className = isCardMode ? "source-directory-grid seed-explorer-grid" : "seed-explorer-list-results";
+    results.setAttribute("aria-label", isCardMode ? "Seed Explorer cards" : "Seed Explorer list");
+    results.innerHTML = renderSeedExplorerResultsMarkup(visibleSeeds, activeDisplayMode);
     summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} demo seeds`;
+    viewButtons.forEach((button) => {
+      const buttonMode = normalizeSeedExplorerDisplayMode(button.getAttribute("data-seed-explorer-view") || SEED_EXPLORER_DEFAULT_DISPLAY_MODE);
+      const isActive = buttonMode === activeDisplayMode;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
   };
 
   searchInput?.addEventListener("input", applySeedExplorerView);
@@ -52115,6 +52231,12 @@ function bindSeedExplorerControls(scope = app) {
         nextButton.classList.toggle("is-active", isActive);
         nextButton.setAttribute("aria-pressed", isActive ? "true" : "false");
       });
+      applySeedExplorerView();
+    });
+  });
+  viewButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      activeDisplayMode = setSeedExplorerDisplayModePreference(button.getAttribute("data-seed-explorer-view") || SEED_EXPLORER_DEFAULT_DISPLAY_MODE);
       applySeedExplorerView();
     });
   });
