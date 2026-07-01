@@ -71940,8 +71940,45 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
   const rows = data.regionRows;
   const stats = data.platformStats;
   const mapRows = [...rows].sort((left, right) => Math.max(0, Number(right.adoptionCount) || 0) - Math.max(0, Number(left.adoptionCount) || 0));
-  const hubMarker = mapRows[0]?.marker || { x: 500, y: 230 };
-  const connectionRows = mapRows.slice(1, 10).filter((row) => row.marker);
+  const primaryHubRow = rows.find((row) => row.key === "north-america") || mapRows[0] || null;
+  const primaryHubMarker = primaryHubRow?.marker || { x: 228, y: 142 };
+  const primaryHubKey = primaryHubRow?.key || "north-america";
+  const adoptionRows = mapRows.filter((row) => row.key !== primaryHubKey && row.marker && Math.max(0, Number(row.adoptionCount) || 0) > 0);
+  const primaryArcs = adoptionRows.map((row, index) => ({ row, from: primaryHubMarker, to: row.marker, index, type: "primary" }));
+  const secondaryHubRows = mapRows
+    .filter((row) => row.key !== primaryHubKey && row.marker && Math.max(0, Number(row.share) || 0) >= 64)
+    .slice(0, 2);
+  const secondaryArcs = secondaryHubRows.flatMap((hubRow, hubIndex) => (
+    mapRows
+      .filter((row) => row.key !== primaryHubKey && row.key !== hubRow.key && row.marker && Math.max(0, Number(row.share) || 0) < Math.max(0, Number(hubRow.share) || 0))
+      .slice(0, 2)
+      .map((row, index) => ({ row, from: hubRow.marker, to: row.marker, index: (hubIndex * 2) + index + primaryArcs.length, type: "secondary" }))
+  ));
+  const mapArcs = [...primaryArcs, ...secondaryArcs];
+  const renderMapArc = (arc, index) => {
+    const from = arc.from || primaryHubMarker;
+    const to = arc.to || { x: 500, y: 230 };
+    const fromX = Number(from.x) || 500;
+    const fromY = Number(from.y) || 230;
+    const toX = Number(to.x) || 500;
+    const toY = Number(to.y) || 230;
+    const horizontalDistance = Math.abs(toX - fromX);
+    const arcLift = Math.min(138, Math.max(48, Math.round(horizontalDistance * 0.18) + 46 + (index % 4) * 8));
+    const midX = Math.round((fromX + toX) / 2);
+    const midY = Math.max(28, Math.round(Math.min(fromY, toY) - arcLift));
+    const arcId = `community-map-arc-${index}`;
+    const classNames = `community-adoption-map-arc is-${arc.type}${arc.row?.hasLiveActivity ? " is-live" : ""}`;
+    const pulseClassNames = `community-adoption-map-arc-pulse is-${arc.type}${arc.row?.hasLiveActivity ? " is-live" : ""}`;
+    const path = `M${fromX} ${fromY} Q${midX} ${midY} ${toX} ${toY}`;
+    return `
+      <path id="${escapeHtml(arcId)}" class="${escapeHtml(classNames)}" d="${escapeHtml(path)}"></path>
+      <circle class="${escapeHtml(pulseClassNames)}" r="${arc.type === "secondary" ? "2.2" : "2.6"}">
+        <animateMotion dur="${arc.type === "secondary" ? "8.5s" : "7s"}" begin="${escapeHtml(String((index % 5) * 0.55))}s" repeatCount="indefinite">
+          <mpath href="#${escapeHtml(arcId)}"></mpath>
+        </animateMotion>
+      </circle>
+    `;
+  };
   return `
     <section id="community-live-network" class="card gallery-section community-global-section community-intelligence-live-network" data-community-intelligence-section="live-network" aria-labelledby="community-global-title">
       <div class="community-intelligence-live-head">
@@ -71973,12 +72010,7 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
                 </filter>
               </defs>
               <g class="community-global-map-arcs">
-                ${connectionRows.map((row, index) => {
-                  const marker = row.marker || { x: 500, y: 230 };
-                  const midX = Math.round((Number(hubMarker.x) + Number(marker.x)) / 2);
-                  const midY = Math.max(42, Math.round(Math.min(Number(hubMarker.y), Number(marker.y)) - 54 - (index * 9)));
-                  return `<path class="community-adoption-map-arc${row.hasLiveActivity ? " is-live" : ""}" d="M${escapeHtml(String(hubMarker.x))} ${escapeHtml(String(hubMarker.y))} Q${escapeHtml(String(midX))} ${escapeHtml(String(midY))} ${escapeHtml(String(marker.x))} ${escapeHtml(String(marker.y))}"></path>`;
-                }).join("")}
+                ${mapArcs.map((arc, index) => renderMapArc(arc, index)).join("")}
               </g>
               <g class="source-report-map-markers community-global-map-markers">
                 ${rows.map((row) => {
@@ -71993,7 +72025,7 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
                         : " is-growing";
                   const markerRadius = Math.max(5, Math.min(13, 5 + Math.round(share / 12)));
                   const pulseRadius = Math.max(markerRadius + 8, Math.min(38, Math.max((Number(marker.pulse) || 24) * 0.62, markerRadius + Math.round(share / 5.5))));
-                  const classNames = `${tierClass}${row.hasLiveActivity ? " is-live" : ""}`;
+                  const classNames = `${tierClass}${row.key === primaryHubKey ? " is-primary-hub" : ""}${row.hasLiveActivity ? " is-live" : ""}`;
                   return `
                     <circle class="community-adoption-map-halo${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius + 4))}"></circle>
                     <circle class="source-report-map-pulse community-adoption-map-pulse${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>

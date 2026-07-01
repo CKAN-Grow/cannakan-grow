@@ -8602,11 +8602,44 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   animation: community-map-arc-flow 10.5s linear infinite;
 }
 
+.community-adoption-map-arc.is-primary {
+  stroke: rgba(148, 209, 89, 0.2);
+  stroke-width: 0.95;
+  opacity: 0.68;
+}
+
+.community-adoption-map-arc.is-secondary {
+  stroke: rgba(148, 209, 89, 0.11);
+  stroke-width: 0.72;
+  opacity: 0.44;
+}
+
 .community-adoption-map-arc.is-live {
   stroke: rgba(184, 216, 246, 0.26);
   stroke-dasharray: 5 12;
   opacity: 0.76;
   animation-duration: 7s;
+}
+
+.community-adoption-map-arc-pulse {
+  fill: #d8ff61;
+  opacity: 0.58;
+  filter:
+    drop-shadow(0 0 5px rgba(148, 209, 89, 0.46))
+    drop-shadow(0 0 10px rgba(148, 209, 89, 0.2));
+}
+
+.community-adoption-map-arc-pulse.is-secondary {
+  fill: rgba(148, 209, 89, 0.78);
+  opacity: 0.34;
+}
+
+.community-adoption-map-arc-pulse.is-live {
+  fill: rgba(184, 216, 246, 0.9);
+  opacity: 0.66;
+  filter:
+    drop-shadow(0 0 5px rgba(184, 216, 246, 0.5))
+    drop-shadow(0 0 11px rgba(148, 209, 89, 0.22));
 }
 
 .community-adoption-map-halo {
@@ -8634,6 +8667,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   fill: rgba(206, 171, 255, 0.075);
   stroke: rgba(206, 171, 255, 0.28);
   animation-duration: 3.6s;
+}
+
+.community-adoption-map-halo.is-primary-hub {
+  fill: rgba(216, 255, 97, 0.09);
+  stroke: rgba(216, 255, 97, 0.34);
+  opacity: 0.74;
 }
 
 .community-adoption-map-marker {
@@ -8683,10 +8722,24 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     drop-shadow(0 0 18px rgba(57, 170, 255, 0.28));
 }
 
+.community-adoption-map-marker.is-primary-hub {
+  fill: #ecff9b;
+  stroke: rgba(255, 255, 232, 0.98);
+  filter:
+    drop-shadow(0 0 10px rgba(216, 255, 97, 0.62))
+    drop-shadow(0 0 22px rgba(148, 209, 89, 0.34));
+}
+
 .community-adoption-map-pulse.is-live {
   fill: rgba(206, 171, 255, 0.065);
   stroke: rgba(206, 171, 255, 0.38);
   animation: community-adoption-pulse 2.8s ease-in-out infinite;
+}
+
+.community-adoption-map-pulse.is-primary-hub {
+  fill: rgba(216, 255, 97, 0.07);
+  stroke: rgba(216, 255, 97, 0.34);
+  animation-duration: 3.8s;
 }
 
 @keyframes community-map-arc-flow {
