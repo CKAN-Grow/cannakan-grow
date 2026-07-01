@@ -32489,13 +32489,16 @@ textarea::placeholder {
   width: 176px;
   height: 176px;
   flex-basis: 176px;
-  border-radius: 22px;
+  align-self: flex-start;
+  margin-top: 4px;
+  border-radius: 20px;
   background:
     linear-gradient(160deg, rgba(181, 232, 111, 0.13), rgba(148, 209, 89, 0.055)),
     rgba(255, 255, 255, 0.04);
   border-color: rgba(148, 209, 89, 0.42);
   box-shadow:
-    0 0 28px rgba(148, 209, 89, 0.18),
+    0 18px 42px rgba(0, 0, 0, 0.3),
+    0 0 26px rgba(148, 209, 89, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
@@ -32528,7 +32531,7 @@ textarea::placeholder {
 }
 
 .seed-report-hero-card .source-report-hero-main {
-  align-items: center;
+  align-items: flex-start;
   gap: clamp(22px, 3vw, 34px);
 }
 
@@ -32879,6 +32882,7 @@ textarea::placeholder {
     width: 118px;
     height: 118px;
     flex-basis: 118px;
+    margin-top: 0;
     border-radius: 18px;
   }
 
