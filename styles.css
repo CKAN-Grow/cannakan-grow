@@ -8102,6 +8102,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.45;
 }
 
+.community-intelligence-live-subtitle {
+  margin: 0;
+  max-width: 72ch;
+  color: rgba(225, 236, 224, 0.66);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .community-intelligence-section-head--inline {
   align-items: center;
 }
@@ -8204,6 +8212,48 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-intelligence-world-map .source-report-world-map-image {
   opacity: 0.56;
   filter: saturate(1.08) contrast(1.08);
+}
+
+.community-adoption-map-marker {
+  fill: #94d159;
+  stroke: rgba(232, 255, 199, 0.94);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 10px rgba(148, 209, 89, 0.42));
+}
+
+.community-adoption-map-pulse {
+  fill: rgba(148, 209, 89, 0.13);
+  stroke: rgba(148, 209, 89, 0.26);
+  stroke-width: 1;
+}
+
+.community-adoption-map-marker.is-live {
+  fill: #d8ff61;
+  filter:
+    drop-shadow(0 0 10px rgba(148, 209, 89, 0.52))
+    drop-shadow(0 0 18px rgba(57, 170, 255, 0.28));
+}
+
+.community-adoption-map-pulse.is-live {
+  fill: rgba(57, 170, 255, 0.13);
+  stroke: rgba(148, 209, 89, 0.42);
+  animation: community-adoption-pulse 2.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes community-adoption-pulse {
+  0%,
+  100% {
+    opacity: 0.36;
+    transform: scale(0.96);
+    transform-origin: center;
+  }
+
+  50% {
+    opacity: 0.78;
+    transform: scale(1.06);
+  }
 }
 
 .community-intelligence-map-cta {

@@ -71260,14 +71260,138 @@ function setMockDataEnabledAndRefresh(enabled) {
 }
 
 
-function getCommunityGlobalRegionRows() {
-  return [
-    { code: "north-america", flag: "🇺🇸", region: "North America", sessions: 1247, share: 34, trend: 14 },
-    { code: "europe", flag: "🇪🇺", region: "Europe", sessions: 986, share: 27, trend: 22 },
-    { code: "south-america", flag: "🇧🇷", region: "South America", sessions: 342, share: 14, trend: 18 },
-    { code: "asia", flag: "🇨🇳", region: "Asia", sessions: 158, share: 9, trend: 12 },
-    { code: "australia", flag: "🇦🇺", region: "Australia", sessions: 116, share: 7, trend: 9 },
-  ];
+const COMMUNITY_REGION_DEFINITIONS = Object.freeze([
+  { key: "north-america", flag: "🇺🇸", label: "North America", countries: ["US", "CA", "MX"], marker: { x: 228, y: 142, pulse: 38 }, fallbackAccounts: 1247, fallbackReports: 96, fallbackActivity: 14 },
+  { key: "europe", flag: "🇪🇺", label: "Europe", countries: ["GB", "IE", "FR", "DE", "AT", "CH", "NL", "BE", "ES", "PT", "IT", "DK", "NO", "SE", "FI", "PL", "CZ", "SI", "GR"], marker: { x: 529, y: 108, pulse: 30 }, fallbackAccounts: 986, fallbackReports: 54, fallbackActivity: 22 },
+  { key: "south-america", flag: "🇧🇷", label: "South America", countries: ["CO", "BR", "AR", "CL", "PE", "UY", "EC", "BO", "PY", "VE"], marker: { x: 294, y: 237, pulse: 25 }, fallbackAccounts: 342, fallbackReports: 37, fallbackActivity: 18 },
+  { key: "asia", flag: "🇨🇳", label: "Asia", countries: ["CN", "JP", "KR", "IN", "TH", "VN", "PH", "SG", "MY", "ID", "TR", "IL", "AE"], marker: { x: 690, y: 170, pulse: 28 }, fallbackAccounts: 158, fallbackReports: 18, fallbackActivity: 12 },
+  { key: "australia", flag: "🇦🇺", label: "Australia", countries: ["AU", "NZ"], marker: { x: 780, y: 290, pulse: 24 }, fallbackAccounts: 116, fallbackReports: 12, fallbackActivity: 9 },
+  { key: "africa", flag: "🌍", label: "Africa", countries: ["ZA", "NG", "KE", "MA", "EG", "GH", "ET"], marker: { x: 545, y: 245, pulse: 22 }, fallbackAccounts: 74, fallbackReports: 8, fallbackActivity: 6 },
+]);
+
+const COMMUNITY_LIVE_SIGNAL_THRESHOLD = 3;
+
+function getCommunityRegionKeyForCountryCode(countryCode = "") {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  if (!normalizedCode) {
+    return "";
+  }
+  const definition = COMMUNITY_REGION_DEFINITIONS.find((region) => region.countries.includes(normalizedCode));
+  return definition?.key || "other";
+}
+
+function getCommunityRegionRollups({
+  profiles = [],
+  snapshots = [],
+  activities = [],
+} = {}) {
+  const rollups = new Map(COMMUNITY_REGION_DEFINITIONS.map((definition) => [definition.key, {
+    ...definition,
+    region: definition.label,
+    accountIds: new Set(),
+    reportIds: new Set(),
+    activityIds: new Set(),
+    countries: new Set(),
+  }]));
+
+  const ensureRegion = (regionKey = "") => {
+    const normalizedKey = String(regionKey || "").trim() || "other";
+    if (!rollups.has(normalizedKey)) {
+      rollups.set(normalizedKey, {
+        key: normalizedKey,
+        flag: "🌐",
+        label: "Other Regions",
+        region: "Other Regions",
+        countries: [],
+        marker: { x: 835, y: 210, pulse: 20 },
+        fallbackAccounts: 36,
+        fallbackReports: 5,
+        fallbackActivity: 4,
+        accountIds: new Set(),
+        reportIds: new Set(),
+        activityIds: new Set(),
+        countries: new Set(),
+      });
+    }
+    return rollups.get(normalizedKey);
+  };
+
+  (profiles || []).forEach((profile, index) => {
+    const countryCode = normalizeCountryCode(profile?.countryCode || profile?.country_code || "")
+      || inferCountryCodeFromLegacyRegion(profile?.locationRegion || profile?.location_region || "");
+    const regionKey = getCommunityRegionKeyForCountryCode(countryCode);
+    if (!regionKey) {
+      return;
+    }
+    const rollup = ensureRegion(regionKey);
+    const accountId = String(profile?.id || profile?.userId || profile?.user_id || `profile-${index}`).trim();
+    rollup.accountIds.add(accountId);
+    if (countryCode) {
+      rollup.countries.add(countryCode);
+    }
+  });
+
+  (snapshots || []).forEach((snapshot, index) => {
+    const member = getGallerySnapshotCardMemberProfile(snapshot);
+    const countryCode = normalizeCountryCode(
+      member.countryCode
+      || snapshot?.countryCode
+      || snapshot?.country_code
+      || "",
+    );
+    const regionKey = getCommunityRegionKeyForCountryCode(countryCode);
+    if (!regionKey) {
+      return;
+    }
+    const rollup = ensureRegion(regionKey);
+    rollup.reportIds.add(String(snapshot?.id || snapshot?.sessionId || `snapshot-${index}`).trim());
+    if (countryCode) {
+      rollup.countries.add(countryCode);
+    }
+  });
+
+  (activities || []).forEach((activity, index) => {
+    const countryCode = normalizeCountryCode(activity?.countryCode || activity?.country_code || "");
+    const regionKey = getCommunityRegionKeyForCountryCode(countryCode);
+    if (!regionKey) {
+      return;
+    }
+    const rollup = ensureRegion(regionKey);
+    rollup.activityIds.add(String(activity?.id || `activity-${index}`).trim());
+    if (countryCode) {
+      rollup.countries.add(countryCode);
+    }
+  });
+
+  const maxAccounts = Math.max(1, ...[...rollups.values()].map((rollup) => rollup.accountIds.size || 0));
+  return [...rollups.values()]
+    .map((rollup) => {
+      const accountCount = rollup.accountIds.size;
+      const reportCount = rollup.reportIds.size;
+      const activityCount = rollup.activityIds.size;
+      const hasObservedSignals = accountCount > 0 || reportCount > 0 || activityCount > 0;
+      const adoptionCount = hasObservedSignals ? accountCount : rollup.fallbackAccounts;
+      const knowledgeSignals = hasObservedSignals ? reportCount : rollup.fallbackReports;
+      const liveSignals = hasObservedSignals ? activityCount : rollup.fallbackActivity;
+      const share = Math.max(8, Math.round((Math.max(1, accountCount || adoptionCount) / maxAccounts) * 100));
+      return {
+        ...rollup,
+        adoptionCount,
+        knowledgeSignals,
+        liveSignals,
+        countriesRepresented: rollup.countries.size,
+        share,
+        trend: liveSignals,
+        hasObservedSignals,
+        hasLiveActivity: liveSignals >= COMMUNITY_LIVE_SIGNAL_THRESHOLD,
+      };
+    })
+    .filter((rollup) => rollup.hasObservedSignals || rollup.fallbackAccounts > 0)
+    .sort((left, right) => (
+      (right.hasObservedSignals ? 1 : 0) - (left.hasObservedSignals ? 1 : 0)
+      || right.adoptionCount - left.adoptionCount
+      || left.region.localeCompare(right.region)
+    ));
 }
 
 function getCommunityIntelligenceDashboardData() {
@@ -71287,8 +71411,17 @@ function getCommunityIntelligenceDashboardData() {
     : buildGalleryLeaderboardEntries(dashboardSnapshots, "variety");
   const cstpPublicStatistics = insightsState.futureHooks?.cstpPublicStatistics || buildCommunityInsightsCstpPublicHooks(dashboardSnapshots);
   const publicProfiles = Object.values(appState.publicMemberProfiles || {});
-  const dashboardProfiles = publicProfiles.length ? publicProfiles : DEMO_GALLERY_CONTRIBUTOR_PROFILES;
-  const countryCodes = new Set(dashboardProfiles.map((profile) => String(profile?.countryCode || "").trim()).filter(Boolean));
+  const currentProfile = appState.profile && (appState.profile.countryCode || appState.profile.locationRegion)
+    ? [appState.profile]
+    : [];
+  const dashboardProfiles = publicProfiles.length ? [...publicProfiles, ...currentProfile] : [...DEMO_GALLERY_CONTRIBUTOR_PROFILES, ...currentProfile];
+  const activityEntries = getGrowNetworkActivityEntries()
+    .map((activity) => buildCommunityActivityFeedEntry(activity) || activity)
+    .filter(Boolean);
+  const countryCodes = new Set(dashboardProfiles.map((profile) => (
+    normalizeCountryCode(profile?.countryCode || profile?.country_code || "")
+    || inferCountryCodeFromLegacyRegion(profile?.locationRegion || profile?.location_region || "")
+  )).filter(Boolean));
   const dashboardSessionIds = new Set(dashboardSnapshots.map((snapshot) => String(snapshot?.sessionId || snapshot?.id || "").trim()).filter(Boolean));
   const dashboardContributorIds = new Set(dashboardSnapshots.map((snapshot) => String(snapshot?.userId || "").trim()).filter(Boolean));
   const dashboardSources = new Set();
@@ -71316,7 +71449,18 @@ function getCommunityIntelligenceDashboardData() {
     const startedAt = parseCompletedAtValue(session?.sessionStartedAt || session?.session_started_at || session?.createdAt || session?.created_at || "");
     return startedAt && startedAt.toISOString().slice(0, 10) === todayKey;
   }).length;
-  const regionRows = getCommunityGlobalRegionRows();
+  const regionRows = getCommunityRegionRollups({
+    profiles: dashboardProfiles,
+    snapshots: dashboardSnapshots,
+    activities: activityEntries,
+  });
+  const regionsWithAdoption = regionRows.filter((row) => row.adoptionCount > 0);
+  const recentActivitySignals = Math.max(
+    activityEntries.length,
+    sessionsStartedToday,
+    activeSessions.length,
+    regionRows.reduce((sum, row) => sum + Math.max(0, Number(row.liveSignals) || 0), 0),
+  );
   const sourcesTrackedCount = Math.max((insightsState.sourceRows || []).filter((row) => row.totalSeeds > 0).length, dashboardSources.size);
   const varietiesTrackedCount = Math.max((insightsState.varietyRows || []).filter((row) => row.totalSeeds > 0).length, dashboardVarieties.size);
   const highConfidenceReports = [
@@ -71341,10 +71485,13 @@ function getCommunityIntelligenceDashboardData() {
     regionRows,
     spotlightSnapshot,
     platformStats: {
-      activeSessions: Math.max(activeSessions.length, Math.min(dashboardSnapshots.length, 18)),
-      growersOnline: Math.max(insightsState.overview?.activeCommunityContributors || 0, dashboardContributorIds.size, Math.min(dashboardProfiles.length || 0, 2487)),
-      countriesRepresented: Math.max(countryCodes.size, regionRows.length),
-      sessionsStartedToday: Math.max(sessionsStartedToday, Math.min(monthlySnapshots.length || dashboardSnapshots.length, 426)),
+      growAccounts: Math.max(dashboardProfiles.length, dashboardContributorIds.size),
+      regionsRepresented: Math.max(regionsWithAdoption.length, Math.min(regionRows.length, countryCodes.size || regionRows.length)),
+      knowledgeReports: Math.max(insightsState.overview?.totalApprovedCommunityGrowEntries || 0, dashboardSnapshots.length),
+      recentActivitySignals,
+      activeSessions: activeSessions.length,
+      sessionsStartedToday,
+      showLiveActivity: recentActivitySignals >= COMMUNITY_LIVE_SIGNAL_THRESHOLD,
     },
     factStats: {
       totalSessions: Math.max(insightsState.overview?.totalPublicSessionsRepresented || 0, dashboardSessionIds.size),
@@ -71397,17 +71544,18 @@ function renderCommunityGlobalMapSection() {
     <section id="community-live-network" class="card gallery-section community-global-section community-intelligence-live-network" data-community-intelligence-section="live-network" aria-labelledby="community-global-title">
       <div class="community-intelligence-live-head">
         <div>
-          <p class="eyebrow">Live Grow Network <span class="community-intelligence-live-badge">Live</span></p>
-          <h3 id="community-global-title">What growers are experiencing right now</h3>
+          <p class="eyebrow">Grow Adoption Map${stats.showLiveActivity ? ' <span class="community-intelligence-live-badge">Activity Pulse</span>' : ""}</p>
+          <h3 id="community-global-title">Where Grow is used, where knowledge is growing, and where activity is happening</h3>
+          <p class="community-intelligence-live-subtitle">Region strength is based first on account profile location. Public reports and recent activity add secondary glow when available.</p>
         </div>
         <a class="button button-secondary community-intelligence-map-cta" href="#community-regions">Explore Regions</a>
       </div>
       <div class="community-intelligence-live-layout">
         <div class="community-intelligence-live-stats" aria-label="Community platform stats">
-          ${renderCommunityIntelligenceMetricListItem({ icon: "mySessionsSprout", label: "Active sessions", value: formatPrivateAnalyticsNumber(stats.activeSessions), detail: "public and in-progress signals" })}
-          ${renderCommunityIntelligenceMetricListItem({ icon: "profileUser", label: "Growers online", value: formatPrivateAnalyticsNumber(stats.growersOnline), detail: "community preview window" })}
-          ${renderCommunityIntelligenceMetricListItem({ icon: "growNetworkNodes", label: "Countries represented", value: formatPrivateAnalyticsNumber(stats.countriesRepresented), detail: "public profile coverage" })}
-          ${renderCommunityIntelligenceMetricListItem({ icon: "activeSessionWaveform", label: "Sessions started today", value: formatPrivateAnalyticsNumber(stats.sessionsStartedToday), detail: "live and preview activity" })}
+          ${renderCommunityIntelligenceMetricListItem({ icon: "profileUser", label: "Grow accounts", value: formatPrivateAnalyticsNumber(stats.growAccounts), detail: "profile region adoption" })}
+          ${renderCommunityIntelligenceMetricListItem({ icon: "growNetworkNodes", label: "Regions represented", value: formatPrivateAnalyticsNumber(stats.regionsRepresented), detail: "cumulative app usage" })}
+          ${renderCommunityIntelligenceMetricListItem({ icon: "reportDocument", label: "Knowledge reports", value: formatPrivateAnalyticsNumber(stats.knowledgeReports), detail: "shared public grow evidence" })}
+          ${stats.showLiveActivity ? renderCommunityIntelligenceMetricListItem({ icon: "activeSessionWaveform", label: "Recent activity", value: formatPrivateAnalyticsNumber(stats.recentActivitySignals), detail: "reports, sessions, and feed signals" }) : ""}
         </div>
         <div class="source-report-world-map community-global-world-map community-intelligence-world-map" aria-hidden="true">
           <img
@@ -71428,16 +71576,15 @@ function renderCommunityGlobalMapSection() {
               </filter>
             </defs>
             <g class="source-report-map-markers community-global-map-markers">
-              <circle class="source-report-map-pulse is-us" cx="228" cy="142" r="38"></circle>
-              <circle class="source-report-map-marker is-us" cx="228" cy="142" r="9"></circle>
-              <circle class="source-report-map-pulse is-colombia" cx="294" cy="237" r="25"></circle>
-              <circle class="source-report-map-marker is-colombia" cx="294" cy="237" r="7"></circle>
-              <circle class="source-report-map-pulse is-germany" cx="529" cy="108" r="27"></circle>
-              <circle class="source-report-map-marker is-germany" cx="529" cy="108" r="8"></circle>
-              <circle class="source-report-map-pulse is-canada" cx="206" cy="94" r="24"></circle>
-              <circle class="source-report-map-marker is-canada" cx="206" cy="94" r="7"></circle>
-              <circle class="source-report-map-pulse is-other" cx="780" cy="290" r="24"></circle>
-              <circle class="source-report-map-marker is-other" cx="780" cy="290" r="6"></circle>
+              ${rows.map((row) => {
+                const marker = row.marker || { x: 500, y: 230, pulse: 20 };
+                const markerRadius = Math.max(5, Math.min(13, 5 + Math.round((row.share || 0) / 14)));
+                const pulseRadius = Math.max(markerRadius + 12, Math.min(48, Number(marker.pulse) || 24));
+                return `
+                  <circle class="source-report-map-pulse community-adoption-map-pulse${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>
+                  <circle class="source-report-map-marker community-adoption-map-marker${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius))}"></circle>
+                `;
+              }).join("")}
             </g>
           </svg>
         </div>
@@ -71647,10 +71794,10 @@ function renderCommunityIntelligenceRegionSection(data = getCommunityIntelligenc
             <span class="source-report-region-flag-emoji" aria-hidden="true">${escapeHtml(row.flag)}</span>
             <span>
               <strong>${escapeHtml(row.region)}</strong>
-              <small>${escapeHtml(formatPrivateAnalyticsNumber(row.sessions))} active grows</small>
+              <small>${escapeHtml(`${formatPrivateAnalyticsNumber(row.adoptionCount)} accounts · ${formatPrivateAnalyticsNumber(row.knowledgeSignals)} reports`)}</small>
             </span>
             ${renderCommunityIntelligenceSparklineMarkup(index)}
-            <em>+${escapeHtml(String(row.trend))}%</em>
+            <em>${row.hasLiveActivity ? `+${escapeHtml(String(row.liveSignals))}` : escapeHtml(formatPrivateAnalyticsNumber(row.countriesRepresented || 1))}</em>
           </article>
         `).join("")}
       </div>
