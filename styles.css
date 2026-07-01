@@ -8926,12 +8926,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 3;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto minmax(370px, auto) auto;
-  gap: 18px;
+  grid-template-rows: auto 342px 34px;
+  gap: 13px;
   min-width: 0;
   min-height: auto;
   margin-left: clamp(-70px, -4vw, -28px);
-  padding: 20px;
+  padding: 18px;
   border: 1px solid rgba(148, 209, 89, 0.2);
   border-radius: 18px;
   background:
@@ -9030,7 +9030,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator-track {
   position: relative;
-  min-height: 370px;
+  min-height: 342px;
   min-width: 0;
 }
 
@@ -9038,10 +9038,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: absolute;
   inset: 0;
   display: grid;
-  align-content: start;
-  gap: 16px;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
+  gap: 12px;
   min-width: 0;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   border-radius: 14px;
   background:
@@ -9078,7 +9079,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator-card-head span {
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -9092,7 +9093,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator-card-head strong {
   color: #ffffff;
-  font-size: clamp(1.08rem, 1.45vw, 1.3rem);
+  font-size: clamp(1.02rem, 1.32vw, 1.22rem);
   line-height: 1.15;
 }
 
@@ -9112,7 +9113,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-panel-stat-list {
   display: grid;
-  gap: 12px;
+  align-content: start;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -9122,14 +9124,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   grid-template-columns: 28px minmax(118px, 1fr) minmax(52px, max-content);
   align-items: center;
-  gap: 11px;
-  min-height: 40px;
+  gap: 10px;
+  min-height: 32px;
   min-width: 0;
 }
 
 .community-intelligence-panel-stat-icon {
-  width: 23px;
-  height: 23px;
+  width: 21px;
+  height: 21px;
   color: #94d159;
 }
 
@@ -9145,7 +9147,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-panel-stat-list strong {
   color: #f8fff3;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   line-height: 1.1;
   text-align: right;
   white-space: nowrap;
@@ -9156,8 +9158,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  min-height: 28px;
-  padding: 8px 10px 2px;
+  min-height: 34px;
+  padding: 9px 10px 4px;
   border-top: 1px solid rgba(148, 209, 89, 0.1);
 }
 
@@ -9849,7 +9851,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-intelligence-rotator-track {
-    min-height: 350px;
+    min-height: 342px;
   }
 }
 
@@ -9933,8 +9935,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .community-intelligence-rotator {
     padding: 14px;
-    gap: 14px;
-    grid-template-rows: auto minmax(390px, auto) auto;
+    gap: 12px;
+    grid-template-rows: auto 368px 34px;
   }
 
   .community-intelligence-rotator-head,
@@ -9945,6 +9947,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .community-intelligence-panel-stat-list li {
     grid-template-columns: 24px minmax(0, 1fr) auto;
     gap: 9px;
+    min-height: 34px;
   }
 
   .community-intelligence-panel-stat-list strong {
