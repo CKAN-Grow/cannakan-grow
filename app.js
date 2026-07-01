@@ -52769,7 +52769,6 @@ function renderSeedReportActivityStripMarkup(activity = {}) {
     { icon: "sourceDirectoryBars", value: activity.sourcesCarrying, label: "Sources Carrying", detail: "Preview" },
     { icon: "mySessionsSprout", value: activity.recentGrowReports, label: "Grow Reports", detail: "Recent" },
     { icon: "seedVault", value: activity.seedsAddedThisMonth, label: "Seeds Added", detail: "This Month" },
-    { icon: "clock", value: activity.lastUpdated, label: "Last Updated", detail: "" },
   ];
   return `
     <div class="source-report-activity-strip seed-report-activity-strip" aria-label="Seed community activity summary">
@@ -52800,8 +52799,11 @@ function renderSeedReportEvidenceStrengthMarkup(seed = {}, activity = getSeedRep
         <strong>${escapeHtml(seed.communityConfidence || "Early Signal")}</strong>
         <p>Based on ${escapeHtml(seedsTracked)} tracked seeds, ${escapeHtml(sessions)} sessions, ${escapeHtml(reports)} grow reports, and ${escapeHtml(sources)} sources carrying this variety.</p>
       </div>
-      <div class="seed-report-evidence-strength-meter" aria-hidden="true">
-        <span style="width: ${escapeHtml(String(Math.max(0, Math.min(100, Number(seed.confidencePercent) || 0))))}%;"></span>
+      <div class="seed-report-evidence-strength-aside">
+        <div class="seed-report-evidence-strength-meter" aria-hidden="true">
+          <span style="width: ${escapeHtml(String(Math.max(0, Math.min(100, Number(seed.confidencePercent) || 0))))}%;"></span>
+        </div>
+        <span class="seed-report-evidence-strength-updated">Last Updated: ${escapeHtml(activity.lastUpdated)}</span>
       </div>
     </aside>
   `;
@@ -52918,7 +52920,6 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
       </div>
       <div class="source-report-hero-note-row">
         <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
-        <span>Last Updated: ${escapeHtml(activity.lastUpdated)} <i aria-hidden="true"></i></span>
       </div>
     </article>
   `;

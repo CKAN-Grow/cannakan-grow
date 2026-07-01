@@ -32540,7 +32540,7 @@ textarea::placeholder {
 }
 
 .seed-report-evidence-strength {
-  grid-template-columns: auto minmax(0, 1fr) minmax(150px, 0.24fr);
+  grid-template-columns: auto minmax(0, 1fr) minmax(190px, 0.3fr);
   align-items: center;
   gap: 16px;
   padding: 18px 22px;
@@ -32579,6 +32579,13 @@ textarea::placeholder {
   line-height: 1.45;
 }
 
+.seed-report-evidence-strength-aside {
+  display: grid;
+  justify-items: stretch;
+  gap: 8px;
+  min-width: 0;
+}
+
 .seed-report-evidence-strength-meter {
   height: 10px;
   border-radius: 999px;
@@ -32594,8 +32601,16 @@ textarea::placeholder {
   box-shadow: 0 0 16px rgba(148, 209, 89, 0.3);
 }
 
+.seed-report-evidence-strength-updated {
+  color: rgba(231, 238, 226, 0.68);
+  font-size: 0.78rem;
+  font-weight: 760;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .seed-report-activity-strip {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .seed-report-evidence-snapshot-layout {
@@ -32673,8 +32688,12 @@ textarea::placeholder {
     padding: 16px;
   }
 
-  .seed-report-evidence-strength-meter {
+  .seed-report-evidence-strength-aside {
     grid-column: 1 / -1;
+  }
+
+  .seed-report-evidence-strength-updated {
+    text-align: left;
   }
 
   .seed-report-evidence-snapshot-grid {
@@ -62032,7 +62051,7 @@ a.source-directory-variety-chip:focus-visible {
   }
 
   .seed-report-evidence-strength {
-    grid-template-columns: auto minmax(0, 1fr) minmax(150px, 0.24fr);
+    grid-template-columns: auto minmax(0, 1fr) minmax(190px, 0.3fr);
   }
 }
 
@@ -62048,8 +62067,12 @@ a.source-directory-variety-chip:focus-visible {
     padding: 16px;
   }
 
-  .seed-report-evidence-strength-meter {
+  .seed-report-evidence-strength-aside {
     grid-column: 1 / -1;
+  }
+
+  .seed-report-evidence-strength-updated {
+    text-align: left;
   }
 
   .seed-report-germination-support .source-report-distribution-donut {
