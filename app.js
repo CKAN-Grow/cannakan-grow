@@ -51846,6 +51846,29 @@ function getSeedExplorerMetrics(records = getSeedExplorerDemoSeeds()) {
   };
 }
 
+function renderSeedExplorerCommunityConfidenceMetricMarkup(metrics = {}) {
+  const confidenceLabel = getSourceDirectoryCommunityConfidenceLabel({
+    communitySessions: metrics.totalSessions,
+    seedsTracked: metrics.totalSeedsTracked,
+  });
+  const confidencePercent = getSourceDirectoryCommunityConfidencePercent(confidenceLabel);
+  return `
+    <article class="card stat-card admin-overview-card grow-kpi-card source-directory-metric-card source-directory-hero-stat-card source-directory-community-confidence-card seed-explorer-stat-card seed-explorer-stat-card--confidence">
+      <span class="source-directory-hero-stat-icon" aria-hidden="true">${renderAppIconSvgMarkup("sourceHeroShieldCheck", { className: "source-directory-hero-stat-icon-svg" })}</span>
+      <div class="stat-card-content">
+        <span class="stat-label">Community Confidence</span>
+        <strong class="stat-value">${escapeHtml(confidenceLabel)}</strong>
+        <p class="summary-subtext">${escapeHtml(Number(metrics.totalSessions || 0).toLocaleString())} sessions tracked</p>
+      </div>
+      ${renderConfidenceIndicatorMarkup({
+        className: "source-directory-kpi-confidence-meter",
+        label: `${confidenceLabel} community confidence`,
+        percent: confidencePercent,
+      })}
+    </article>
+  `;
+}
+
 function getSeedExplorerConfidenceTone(seed = {}) {
   const confidencePercent = Number(seed.confidencePercent) || 0;
   if (confidencePercent >= 85) {
@@ -51932,10 +51955,10 @@ function renderSeedExplorerMetricCardsMarkup(records = getSeedExplorerDemoSeeds(
   const metrics = getSeedExplorerMetrics(records);
   return `
     <div class="summary-grid seed-explorer-metrics-grid">
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Varieties", value: metrics.totalVarieties.toLocaleString(), detail: "preview seed profiles", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Avg. Germination", value: `${metrics.averageGermination}%`, detail: "across preview seeds", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), detail: "community preview signal", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "High Confidence", value: metrics.highConfidenceCount.toLocaleString(), detail: "ready for comparison", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Varieties", value: metrics.totalVarieties.toLocaleString(), subtext: "preview seed profiles", icon: "sourceHeroSprout", modifier: "seed-explorer-stat-card seed-explorer-stat-card--varieties", visualization: "sessions" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Seeds Reported", value: metrics.totalSeedsTracked.toLocaleString(), subtext: "across preview seeds", icon: "mySessionsSprout", modifier: "seed-explorer-stat-card seed-explorer-stat-card--seeds", visualization: "seeds" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), subtext: "community preview signal", icon: "communityGroup", modifier: "seed-explorer-stat-card seed-explorer-stat-card--sessions", visualization: "sessions" })}
+      ${renderSeedExplorerCommunityConfidenceMetricMarkup(metrics)}
     </div>
   `;
 }
