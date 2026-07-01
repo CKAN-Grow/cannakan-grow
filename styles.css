@@ -8447,16 +8447,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-intelligence-map-layout {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.36fr);
-  align-items: stretch;
-  gap: clamp(16px, 2.2vw, 26px);
+  grid-template-columns: minmax(0, 1fr) minmax(292px, 0.32fr);
+  align-items: center;
+  gap: 0;
 }
 
 .community-intelligence-map-stage {
   display: grid;
   align-content: stretch;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -8508,16 +8509,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-intelligence-world-map {
-  min-height: clamp(260px, 32vw, 390px);
-  border-color: rgba(148, 209, 89, 0.1);
+  min-height: clamp(360px, 42vw, 560px);
+  border-color: rgba(148, 209, 89, 0.16);
   background:
-    radial-gradient(circle at 50% 44%, rgba(148, 209, 89, 0.11), transparent 40%),
-    linear-gradient(180deg, rgba(7, 15, 12, 0.32), rgba(3, 8, 7, 0.72));
+    radial-gradient(circle at 28% 48%, rgba(148, 209, 89, 0.16), transparent 28%),
+    radial-gradient(circle at 68% 38%, rgba(148, 209, 89, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(7, 15, 12, 0.42), rgba(3, 8, 7, 0.82));
+  box-shadow:
+    0 28px 58px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 48px rgba(148, 209, 89, 0.055);
 }
 
 .community-intelligence-world-map .source-report-world-map-image {
-  opacity: 0.56;
-  filter: saturate(1.08) contrast(1.08);
+  opacity: 0.66;
+  filter: saturate(1.14) contrast(1.12);
 }
 
 .community-intelligence-map-legend {
@@ -8534,6 +8540,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(226, 236, 225, 0.68);
   font-size: 0.72rem;
   line-height: 1.2;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 14px 30px rgba(0, 0, 0, 0.16);
 }
 
 .community-intelligence-map-legend span {
@@ -8579,17 +8588,92 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow: 0 0 14px rgba(206, 171, 255, 0.5);
 }
 
+.community-global-map-arcs {
+  filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.22));
+}
+
+.community-adoption-map-arc {
+  fill: none;
+  stroke: rgba(148, 209, 89, 0.22);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-dasharray: 5 12;
+  opacity: 0.72;
+  animation: community-map-arc-flow 9s linear infinite;
+}
+
+.community-adoption-map-arc.is-live {
+  stroke: rgba(184, 216, 246, 0.34);
+  stroke-dasharray: 6 10;
+  opacity: 0.86;
+  animation-duration: 6s;
+}
+
+.community-adoption-map-halo {
+  fill: rgba(148, 209, 89, 0.08);
+  stroke: rgba(148, 209, 89, 0.18);
+  stroke-width: 1;
+  opacity: 0.74;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: community-map-halo-breathe 5.8s ease-in-out infinite;
+}
+
+.community-adoption-map-halo.is-established {
+  fill: rgba(148, 209, 89, 0.1);
+  stroke: rgba(148, 209, 89, 0.24);
+}
+
+.community-adoption-map-halo.is-active,
+.community-adoption-map-halo.is-major {
+  fill: rgba(184, 246, 95, 0.12);
+  stroke: rgba(184, 246, 95, 0.32);
+}
+
+.community-adoption-map-halo.is-live {
+  fill: rgba(206, 171, 255, 0.12);
+  stroke: rgba(206, 171, 255, 0.34);
+  animation-duration: 3.6s;
+}
+
 .community-adoption-map-marker {
   fill: #94d159;
   stroke: rgba(232, 255, 199, 0.94);
   stroke-width: 2;
-  filter: drop-shadow(0 0 10px rgba(148, 209, 89, 0.42));
+  filter:
+    drop-shadow(0 0 9px rgba(148, 209, 89, 0.56))
+    drop-shadow(0 0 18px rgba(148, 209, 89, 0.24));
 }
 
 .community-adoption-map-pulse {
-  fill: rgba(148, 209, 89, 0.13);
-  stroke: rgba(148, 209, 89, 0.26);
+  fill: rgba(148, 209, 89, 0.09);
+  stroke: rgba(148, 209, 89, 0.23);
   stroke-width: 1;
+  opacity: 0.46;
+  animation: community-adoption-pulse 4.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.community-adoption-map-marker.is-established {
+  fill: #abe86a;
+}
+
+.community-adoption-map-marker.is-active,
+.community-adoption-map-marker.is-major {
+  fill: #d8ff61;
+  stroke: rgba(251, 255, 222, 0.96);
+}
+
+.community-adoption-map-pulse.is-established {
+  fill: rgba(148, 209, 89, 0.12);
+  stroke: rgba(148, 209, 89, 0.32);
+}
+
+.community-adoption-map-pulse.is-active,
+.community-adoption-map-pulse.is-major {
+  fill: rgba(184, 246, 95, 0.13);
+  stroke: rgba(184, 246, 95, 0.42);
 }
 
 .community-adoption-map-marker.is-live {
@@ -8603,21 +8687,38 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   fill: rgba(206, 171, 255, 0.14);
   stroke: rgba(206, 171, 255, 0.46);
   animation: community-adoption-pulse 2.8s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
+}
+
+@keyframes community-map-arc-flow {
+  to {
+    stroke-dashoffset: -68;
+  }
+}
+
+@keyframes community-map-halo-breathe {
+  0%,
+  100% {
+    opacity: 0.46;
+    transform: scale(0.95);
+  }
+
+  50% {
+    opacity: 0.82;
+    transform: scale(1.08);
+  }
 }
 
 @keyframes community-adoption-pulse {
   0%,
   100% {
-    opacity: 0.36;
-    transform: scale(0.96);
+    opacity: 0.28;
+    transform: scale(0.94);
     transform-origin: center;
   }
 
   50% {
-    opacity: 0.78;
-    transform: scale(1.06);
+    opacity: 0.72;
+    transform: scale(1.08);
   }
 }
 
@@ -8625,21 +8726,47 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-self: flex-start;
 }
 
+.community-intelligence-map-status {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  gap: 8px;
+  margin: -2px 0 0;
+  color: rgba(226, 236, 225, 0.58);
+  font-size: 0.73rem;
+  font-weight: 760;
+  line-height: 1.3;
+}
+
+.community-intelligence-map-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #94d159;
+  box-shadow: 0 0 10px rgba(148, 209, 89, 0.58);
+}
+
 .community-intelligence-rotator {
   position: relative;
+  z-index: 3;
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
   min-width: 0;
-  min-height: 100%;
+  min-height: min(500px, 100%);
+  margin-left: clamp(-76px, -4.8vw, -32px);
   padding: 16px;
-  border: 1px solid rgba(148, 209, 89, 0.14);
-  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 18px;
   background:
-    radial-gradient(circle at 74% 8%, rgba(148, 209, 89, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(11, 20, 17, 0.98), rgba(3, 8, 7, 0.98));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    radial-gradient(circle at 74% 8%, rgba(148, 209, 89, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(12, 24, 19, 0.94), rgba(3, 8, 7, 0.96));
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.36),
+    0 0 34px rgba(148, 209, 89, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
 }
 
 .community-intelligence-rotator-head,
@@ -8728,6 +8855,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator.is-count-3 .community-intelligence-rotator-card {
   animation-name: community-intelligence-rotate-three;
+}
+
+.community-intelligence-rotator.is-count-4 .community-intelligence-rotator-card {
+  animation-name: community-intelligence-rotate-four;
+  animation-duration: calc(var(--community-intelligence-rotation-step) * 4);
 }
 
 .community-intelligence-rotator-card-head span {
@@ -8836,6 +8968,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   animation-name: community-intelligence-dot-three;
 }
 
+.community-intelligence-rotator.is-count-4 .community-intelligence-rotator-dots span {
+  animation-name: community-intelligence-dot-four;
+  animation-duration: calc(var(--community-intelligence-rotation-step) * 4);
+}
+
 @keyframes community-intelligence-rotate-two {
   0%,
   42% {
@@ -8864,6 +9001,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 }
 
+@keyframes community-intelligence-rotate-four {
+  0%,
+  20% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  25%,
+  100% {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+}
+
 @keyframes community-intelligence-dot-two {
   0%,
   42% {
@@ -8886,6 +9037,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   33%,
+  100% {
+    background: rgba(226, 236, 225, 0.32);
+    box-shadow: none;
+  }
+}
+
+@keyframes community-intelligence-dot-four {
+  0%,
+  20% {
+    background: #94d159;
+    box-shadow: 0 0 10px rgba(148, 209, 89, 0.46);
+  }
+
+  25%,
   100% {
     background: rgba(226, 236, 225, 0.32);
     box-shadow: none;
@@ -9422,6 +9587,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .community-intelligence-map-layout {
+    gap: 16px;
+  }
+
+  .community-intelligence-world-map {
+    min-height: clamp(300px, 58vw, 430px);
+  }
+
+  .community-intelligence-rotator {
+    margin-left: 0;
+    min-height: auto;
+  }
+
   .community-intelligence-shortcut-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -9508,6 +9686,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .community-intelligence-map-legend {
     justify-content: flex-start;
     border-radius: 14px;
+  }
+
+  .community-intelligence-map-status {
+    justify-self: start;
+    align-items: flex-start;
   }
 
   .community-intelligence-rotator {

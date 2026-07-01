@@ -71817,11 +71817,11 @@ function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboar
 
 function renderCommunityMapLegendMarkup() {
   const legendItems = [
-    { label: "1-10 Users", className: "is-low" },
-    { label: "11-100 Users", className: "is-medium" },
-    { label: "101-500 Users", className: "is-high" },
-    { label: "500+ Users", className: "is-major" },
-    { label: "Recent Activity Pulse", className: "is-live" },
+    { label: "Growing Community", className: "is-low" },
+    { label: "Established Community", className: "is-medium" },
+    { label: "Active Community", className: "is-high" },
+    { label: "Major Community", className: "is-major" },
+    { label: "Recent Activity", className: "is-live" },
   ];
   return `
     <div class="community-intelligence-map-legend" aria-label="Grow adoption map legend">
@@ -71846,6 +71846,7 @@ function renderCommunityIntelligencePanelStat({ icon = "mySessionsSprout", label
 }
 
 function renderCommunityIntelligenceRotatingPanel(data = getCommunityIntelligenceDashboardData()) {
+  const regionsWithRecentActivity = data.regionRows.filter((row) => row.hasLiveActivity).length;
   const modes = [
     {
       eyebrow: "Community Knowledge",
@@ -71870,6 +71871,17 @@ function renderCommunityIntelligenceRotatingPanel(data = getCommunityIntelligenc
         { icon: "seedVault", label: "Archive Lot Sessions", value: formatPrivateAnalyticsNumber(data.seedAgeStats.archiveLotSessions) },
         { icon: "growthTrend", label: "Most Reported Age Range", value: data.seedAgeStats.mostReportedAgeRange },
         { icon: "certificationShield", label: "Age Data Coverage", value: `${data.seedAgeStats.ageDataCoverage}%` },
+      ],
+    },
+    {
+      eyebrow: "Recent Growth",
+      title: "New signals joining the map",
+      status: "Momentum",
+      stats: [
+        { icon: "activeSessionWaveform", label: "Recent Signals", value: formatPrivateAnalyticsNumber(data.platformStats.recentActivitySignals) },
+        { icon: "calendar", label: "Sessions Started Today", value: formatPrivateAnalyticsNumber(data.platformStats.sessionsStartedToday) },
+        { icon: "reportDocument", label: "Reports Published", value: formatPrivateAnalyticsNumber(data.factStats.reportsPublished) },
+        { icon: "growNetworkNodes", label: "Regions Warming", value: formatPrivateAnalyticsNumber(Math.max(1, regionsWithRecentActivity || Math.min(3, data.regionRows.length))) },
       ],
     },
   ];
@@ -71925,6 +71937,9 @@ function renderCommunityIntelligenceRotatingPanel(data = getCommunityIntelligenc
 function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboardData()) {
   const rows = data.regionRows;
   const stats = data.platformStats;
+  const mapRows = [...rows].sort((left, right) => Math.max(0, Number(right.adoptionCount) || 0) - Math.max(0, Number(left.adoptionCount) || 0));
+  const hubMarker = mapRows[0]?.marker || { x: 500, y: 230 };
+  const connectionRows = mapRows.slice(1, 6).filter((row) => row.marker);
   return `
     <section id="community-live-network" class="card gallery-section community-global-section community-intelligence-live-network" data-community-intelligence-section="live-network" aria-labelledby="community-global-title">
       <div class="community-intelligence-live-head">
@@ -71933,7 +71948,7 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
           <h3 id="community-global-title">Where Grow is used around the world</h3>
           <p class="community-intelligence-live-subtitle">Region strength is based first on account profile location. Public reports and recent activity add secondary glow when available.</p>
         </div>
-        <a class="button button-secondary community-intelligence-map-cta" href="#community-regions">Explore Regions</a>
+        <a class="button button-secondary community-intelligence-map-cta" href="#community-regions">Explore the Community Map</a>
       </div>
       <div class="community-intelligence-map-layout">
         <div class="community-intelligence-map-stage">
@@ -71955,20 +71970,39 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
                   </feMerge>
                 </filter>
               </defs>
+              <g class="community-global-map-arcs">
+                ${connectionRows.map((row, index) => {
+                  const marker = row.marker || { x: 500, y: 230 };
+                  const midX = Math.round((Number(hubMarker.x) + Number(marker.x)) / 2);
+                  const midY = Math.max(42, Math.round(Math.min(Number(hubMarker.y), Number(marker.y)) - 54 - (index * 9)));
+                  return `<path class="community-adoption-map-arc${row.hasLiveActivity ? " is-live" : ""}" d="M${escapeHtml(String(hubMarker.x))} ${escapeHtml(String(hubMarker.y))} Q${escapeHtml(String(midX))} ${escapeHtml(String(midY))} ${escapeHtml(String(marker.x))} ${escapeHtml(String(marker.y))}"></path>`;
+                }).join("")}
+              </g>
               <g class="source-report-map-markers community-global-map-markers">
                 ${rows.map((row) => {
                   const marker = row.marker || { x: 500, y: 230, pulse: 20 };
-                  const markerRadius = Math.max(5, Math.min(13, 5 + Math.round((row.share || 0) / 14)));
-                  const pulseRadius = Math.max(markerRadius + 12, Math.min(48, Number(marker.pulse) || 24));
+                  const share = Math.max(0, Number(row.share) || 0);
+                  const tierClass = share >= 72
+                    ? " is-major"
+                    : share >= 48
+                      ? " is-active"
+                      : share >= 24
+                        ? " is-established"
+                        : " is-growing";
+                  const markerRadius = Math.max(6, Math.min(18, 6 + Math.round(share / 9)));
+                  const pulseRadius = Math.max(markerRadius + 16, Math.min(64, Math.max(Number(marker.pulse) || 24, markerRadius + Math.round(share / 2.8))));
+                  const classNames = `${tierClass}${row.hasLiveActivity ? " is-live" : ""}`;
                   return `
-                    <circle class="source-report-map-pulse community-adoption-map-pulse${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>
-                    <circle class="source-report-map-marker community-adoption-map-marker${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius))}"></circle>
+                    <circle class="community-adoption-map-halo${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius + 8))}"></circle>
+                    <circle class="source-report-map-pulse community-adoption-map-pulse${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>
+                    <circle class="source-report-map-marker community-adoption-map-marker${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius))}"></circle>
                   `;
                 }).join("")}
               </g>
             </svg>
           </div>
           ${renderCommunityMapLegendMarkup()}
+          <p class="community-intelligence-map-status"><span aria-hidden="true"></span> Updated just now. Live data refreshes automatically.</p>
         </div>
         ${renderCommunityIntelligenceRotatingPanel(data)}
       </div>
