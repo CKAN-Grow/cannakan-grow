@@ -8174,36 +8174,38 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance {
-  gap: clamp(16px, 1.8vw, 22px);
-  padding: clamp(18px, 2.2vw, 28px);
+  gap: clamp(12px, 1.4vw, 16px);
+  padding: clamp(14px, 1.8vw, 22px);
 }
 
 .community-at-a-glance-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(18px, 2.2vw, 26px);
+  gap: clamp(12px, 1.5vw, 18px);
 }
 
 .community-at-a-glance-card {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: clamp(62px, 5.4vw, 74px) minmax(0, 1fr);
-  grid-template-rows: minmax(98px, 1fr) auto;
-  align-items: start;
-  gap: 12px clamp(16px, 1.8vw, 22px);
-  min-height: clamp(170px, 16vw, 198px);
-  padding: clamp(16px, 1.8vw, 22px);
-  border: 1px solid rgba(148, 209, 89, 0.18);
-  border-radius: 20px;
+  grid-template-columns: clamp(46px, 4vw, 56px) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 6px clamp(12px, 1.4vw, 16px);
+  min-height: clamp(112px, 10.5vw, 132px);
+  padding: clamp(12px, 1.35vw, 16px);
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 16px;
   background:
-    radial-gradient(circle at 17% 24%, rgba(148, 209, 89, 0.13), transparent 30%),
-    radial-gradient(circle at 72% 94%, rgba(148, 209, 89, 0.07), transparent 36%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.01)),
-    rgba(4, 10, 8, 0.74);
+    radial-gradient(circle at 10% 18%, rgba(148, 209, 89, 0.2), transparent 30%),
+    radial-gradient(circle at 92% 112%, rgba(148, 209, 89, 0.12), transparent 38%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012) 48%, rgba(148, 209, 89, 0.03)),
+    rgba(4, 10, 8, 0.78);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.055),
-    0 18px 36px rgba(0, 0, 0, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    inset 0 -1px 0 rgba(148, 209, 89, 0.06),
+    0 12px 24px rgba(0, 0, 0, 0.18);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 .community-at-a-glance-card::after {
@@ -8211,9 +8213,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 36%);
-  opacity: 0.75;
+  background:
+    linear-gradient(90deg, rgba(148, 209, 89, 0.14), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), transparent 36%);
+  opacity: 0.52;
   pointer-events: none;
+}
+
+.community-at-a-glance-card:hover,
+.community-at-a-glance-card:focus-within {
+  transform: translateY(-2px);
+  border-color: rgba(148, 209, 89, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 -1px 0 rgba(148, 209, 89, 0.1),
+    0 16px 30px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(148, 209, 89, 0.08);
 }
 
 .community-at-a-glance-icon-shell {
@@ -8221,8 +8236,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 1;
   display: grid;
   place-items: center;
-  width: clamp(60px, 5vw, 70px);
-  height: clamp(60px, 5vw, 70px);
+  grid-row: 1 / span 2;
+  width: clamp(44px, 3.7vw, 52px);
+  height: clamp(44px, 3.7vw, 52px);
   border: 1px solid rgba(148, 209, 89, 0.24);
   border-radius: 999px;
   background:
@@ -8236,8 +8252,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance-icon {
-  width: clamp(30px, 2.7vw, 38px);
-  height: clamp(30px, 2.7vw, 38px);
+  width: clamp(24px, 2.1vw, 30px);
+  height: clamp(24px, 2.1vw, 30px);
   color: inherit;
   filter: drop-shadow(0 0 14px rgba(148, 209, 89, 0.38));
 }
@@ -8247,13 +8263,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 1;
   display: grid;
   align-content: start;
-  gap: 7px;
+  gap: 4px;
   min-width: 0;
 }
 
 .community-at-a-glance-copy strong {
   color: #ffffff;
-  font-size: clamp(1.8rem, 3.05vw, 2.55rem);
+  font-size: clamp(1.45rem, 2.25vw, 2rem);
   font-weight: 950;
   line-height: 0.95;
   letter-spacing: 0;
@@ -8268,15 +8284,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-at-a-glance-copy small {
   color: rgba(248, 255, 243, 0.95);
-  font-size: clamp(0.9rem, 1.08vw, 1.02rem);
+  font-size: clamp(0.78rem, 0.92vw, 0.88rem);
   font-weight: 900;
   line-height: 1.16;
 }
 
 .community-at-a-glance-copy em {
-  max-width: 22ch;
+  max-width: 24ch;
   color: rgba(226, 236, 225, 0.72);
-  font-size: clamp(0.78rem, 0.94vw, 0.9rem);
+  font-size: clamp(0.68rem, 0.78vw, 0.76rem);
   font-style: normal;
   font-weight: 520;
   line-height: 1.38;
@@ -8285,11 +8301,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-at-a-glance-trend {
   position: relative;
   z-index: 1;
-  grid-column: 1 / -1;
+  grid-column: 2;
   align-self: end;
   min-width: 0;
-  height: 46px;
-  margin-top: 0;
+  height: 16px;
+  margin-top: 1px;
+  opacity: 0.72;
 }
 
 .community-at-a-glance-trend::after {
@@ -8310,7 +8327,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-at-a-glance-trend-line {
   fill: none;
   stroke: #a8f51f;
-  stroke-width: 2.35;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.42));
@@ -8318,20 +8335,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-at-a-glance-trend-dot {
   fill: #a8f51f;
-  filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.52));
+  filter: drop-shadow(0 0 5px rgba(148, 209, 89, 0.44));
 }
 
 .community-at-a-glance-trend--bars {
   display: flex;
   align-items: end;
-  gap: clamp(4px, 0.55vw, 7px);
-  padding: 5px 2px 2px;
+  gap: 3px;
+  padding: 1px 2px 1px;
 }
 
 .community-at-a-glance-trend--bars i {
   flex: 1 1 0;
-  min-width: 4px;
-  max-width: 11px;
+  min-width: 3px;
+  max-width: 7px;
   height: var(--community-glance-bar-height);
   border-radius: 4px 4px 2px 2px;
   background:
@@ -9379,23 +9396,23 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-at-a-glance-card {
-    grid-template-columns: 58px minmax(0, 1fr);
-    min-height: 178px;
-    padding: 16px;
+    grid-template-columns: 46px minmax(0, 1fr);
+    min-height: 112px;
+    padding: 13px;
   }
 
   .community-at-a-glance-icon-shell {
-    width: 54px;
-    height: 54px;
+    width: 42px;
+    height: 42px;
   }
 
   .community-at-a-glance-icon {
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
   }
 
   .community-at-a-glance-copy {
-    gap: 8px;
+    gap: 4px;
   }
 
   .community-at-a-glance-copy em {
@@ -9403,7 +9420,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-at-a-glance-trend {
-    height: 44px;
+    height: 16px;
   }
 
   .community-intelligence-map-legend {
