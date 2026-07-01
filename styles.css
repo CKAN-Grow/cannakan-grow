@@ -55997,6 +55997,10 @@ body.theme-dark option[selected] {
     font-size: clamp(1.48rem, 9vw, 2rem);
   }
 
+  .seed-explorer-hero.source-directory-hero.app-hero {
+    --app-hero-art-position: center right;
+  }
+
   .source-directory-hero .app-hero-subtitle {
     font-size: 1rem;
   }
@@ -56876,6 +56880,20 @@ a.source-directory-variety-chip:focus-visible {
     inset 0 1px 0 rgba(255, 255, 255, 0.11),
     0 12px 24px rgba(0, 0, 0, 0.2),
     0 0 20px rgba(148, 209, 89, 0.11);
+}
+
+.seed-explorer-hero.source-directory-hero.app-hero {
+  --app-hero-art: url("/assets/images/seed-explorer-hero-bg.png");
+  --app-hero-art-size: cover;
+  --app-hero-art-position: center right;
+  --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(5, 10, 8, 0.96) 0%, rgba(5, 10, 8, 0.86) 34%, rgba(5, 10, 8, 0.54) 56%, rgba(5, 10, 8, 0.16) 82%, rgba(5, 10, 8, 0.18) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034) 0%, rgba(255, 255, 255, 0.006) 100%);
+}
+
+.seed-explorer-hero.source-directory-hero.app-hero::before {
+  opacity: 0.045;
 }
 
 .source-directory-card .source-directory-view-report-button.button:hover,
