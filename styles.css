@@ -32401,7 +32401,156 @@ textarea::placeholder {
   margin-top: 0;
 }
 
+.seed-report-evidence-strength {
+  grid-template-columns: auto minmax(0, 1fr) minmax(150px, 0.24fr);
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  overflow: visible;
+}
+
+.seed-report-evidence-strength-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 999px;
+  color: #9bea38;
+  background:
+    radial-gradient(circle at 45% 35%, rgba(155, 234, 56, 0.24), transparent 62%),
+    rgba(148, 209, 89, 0.1);
+  box-shadow: 0 0 22px rgba(148, 209, 89, 0.12);
+}
+
+.seed-report-evidence-strength-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.seed-report-evidence-strength-copy strong {
+  color: #f7faf4;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.seed-report-evidence-strength-copy p {
+  margin: 0;
+  color: rgba(231, 238, 226, 0.76);
+  line-height: 1.45;
+}
+
+.seed-report-evidence-strength-meter {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.seed-report-evidence-strength-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #36b9ff 0%, #67e28e 58%, #9bea38 100%);
+  box-shadow: 0 0 16px rgba(148, 209, 89, 0.3);
+}
+
+.seed-report-activity-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.seed-report-evidence-snapshot-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.seed-report-evidence-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.seed-report-evidence-snapshot-grid .source-profile-stat-card {
+  min-height: 108px;
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.seed-report-evidence-snapshot-grid .source-profile-stat-card .stat-value {
+  font-size: clamp(1.35rem, 2.6vw, 1.95rem);
+}
+
+.seed-report-evidence-snapshot-grid .source-profile-stat-card .summary-subtext {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.seed-report-germination-support {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(148, 209, 89, 0.12);
+}
+
+.seed-report-germination-support .source-report-distribution-layout {
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.seed-report-germination-support .source-report-distribution-donut {
+  width: 118px;
+}
+
+.seed-report-germination-support .source-report-distribution-donut span {
+  width: 72px;
+  height: 72px;
+}
+
+.seed-report-germination-support .source-report-distribution-donut strong {
+  font-size: 1.08rem;
+}
+
+.seed-report-germination-support .source-report-distribution-legend {
+  gap: 8px;
+}
+
+.seed-report-germination-support .source-report-consistency-range {
+  margin-top: 0;
+  padding-top: 10px;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.seed-report-germination-support > p {
+  margin: 0;
+  color: rgba(231, 238, 226, 0.68);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 @media (max-width: 760px) {
+  .seed-report-evidence-strength {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .seed-report-evidence-strength-meter {
+    grid-column: 1 / -1;
+  }
+
+  .seed-report-evidence-snapshot-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .seed-report-germination-support .source-report-distribution-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .seed-report-germination-support .source-report-distribution-donut {
+    justify-self: center;
+  }
+
   .explore-foundation-shell {
     align-items: stretch;
     flex-direction: column;
@@ -61736,6 +61885,37 @@ a.source-directory-variety-chip:focus-visible {
 @media (max-width: 720px) {
   .seed-report-page .seed-report-evidence-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1080px) {
+  .seed-report-activity-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seed-report-evidence-strength {
+    grid-template-columns: auto minmax(0, 1fr) minmax(150px, 0.24fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .seed-report-activity-strip,
+  .seed-report-evidence-snapshot-grid,
+  .seed-report-germination-support .source-report-distribution-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .seed-report-evidence-strength {
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .seed-report-evidence-strength-meter {
+    grid-column: 1 / -1;
+  }
+
+  .seed-report-germination-support .source-report-distribution-donut {
+    justify-self: center;
   }
 }
 

@@ -52725,6 +52725,28 @@ function renderSeedReportActivityStripMarkup(activity = {}) {
   `;
 }
 
+function renderSeedReportEvidenceStrengthMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
+  const sessions = Number(seed.communitySessions || 0).toLocaleString();
+  const seedsTracked = Number(seed.seedsTracked || 0).toLocaleString();
+  const reports = Number(activity.recentGrowReports || 0).toLocaleString();
+  const sources = Number(activity.sourcesCarrying || 0).toLocaleString();
+  return `
+    <aside class="source-report-activity-strip seed-report-evidence-strength" aria-label="Seed report evidence strength">
+      <div class="seed-report-evidence-strength-icon" aria-hidden="true">
+        ${renderAppIconSvgMarkup("adminShield", { className: "source-report-activity-icon" })}
+      </div>
+      <div class="seed-report-evidence-strength-copy">
+        <span class="stat-label">Evidence Strength</span>
+        <strong>${escapeHtml(seed.communityConfidence || "Early Signal")}</strong>
+        <p>Based on ${escapeHtml(seedsTracked)} tracked seeds, ${escapeHtml(sessions)} sessions, ${escapeHtml(reports)} grow reports, and ${escapeHtml(sources)} sources carrying this variety.</p>
+      </div>
+      <div class="seed-report-evidence-strength-meter" aria-hidden="true">
+        <span style="width: ${escapeHtml(String(Math.max(0, Math.min(100, Number(seed.confidencePercent) || 0))))}%;"></span>
+      </div>
+    </aside>
+  `;
+}
+
 function renderSeedReportRelationshipListMarkup(rows = [], button = null) {
   return `
     <div class="source-report-variety-list seed-report-relationship-list">
@@ -52821,10 +52843,9 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
             <span>${escapeHtml(seed.batchAge || "Preview lot")}</span>
           </p>
           <strong class="source-report-established-line">${escapeHtml(seed.summary || "Community-powered seed adoption report.")}</strong>
-          <div class="source-report-hero-actions">
-            <span class="source-report-cstp-chip">Community Preview</span>
-            ${renderMetricBadgeMarkup(seed.communityConfidence || "Community Signal", { className: "source-directory-evidence-badge seed-explorer-badge", tone: getSeedExplorerConfidenceTone(seed) })}
-          </div>
+      <div class="source-report-hero-actions">
+        <span class="source-report-cstp-chip">Community Preview</span>
+      </div>
         </div>
       </div>
 
@@ -52833,13 +52854,60 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
         ${renderSourceReportHeroMetricMarkup({ icon: "communityGroup", value: Number(seed.communitySessions || 0).toLocaleString(), label: "Community Sessions", tone: "green" })}
         ${renderSourceReportHeroMetricMarkup({ icon: "seedVault", value: Number(seed.seedsTracked || 0).toLocaleString(), label: "Seeds Tracked", tone: "green" })}
         ${renderSourceReportHeroMetricMarkup({ icon: "mySessionsSprout", value: activity.recentGrowReports, label: "Grow Reports", tone: "green" })}
-        ${renderSourceReportHeroMetricMarkup({ icon: "adminShield", value: seed.communityConfidence || "Early Signal", label: "Community Confidence", tone: "shield" })}
+        ${renderSourceReportHeroMetricMarkup({ icon: "sourceDirectoryBars", value: activity.sourcesCarrying, label: "Sources Carrying", tone: "green" })}
       </div>
       <div class="source-report-hero-note-row">
-        <p>Popularity, adoption, and confidence are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
+        <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
         <span>Last Updated: ${escapeHtml(activity.lastUpdated)} <i aria-hidden="true"></i></span>
       </div>
     </article>
+  `;
+}
+
+function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
+  const evidenceStats = [
+    {
+      label: "Seeds Tracked",
+      value: Number(seed.seedsTracked || 0).toLocaleString(),
+      detail: "Seed observations represented",
+    },
+    {
+      label: "Sessions Represented",
+      value: Number(seed.communitySessions || 0).toLocaleString(),
+      detail: "Community sessions in preview data",
+    },
+    {
+      label: "Grow Reports",
+      value: Number(activity.recentGrowReports || 0).toLocaleString(),
+      detail: "Recent reports supporting this profile",
+    },
+    {
+      label: "Sources Carrying",
+      value: Number(activity.sourcesCarrying || 0).toLocaleString(),
+      detail: "Available source relationships",
+    },
+    {
+      label: "Popularity Rank",
+      value: getSeedReportAdoptionRankLabel(seed),
+      detail: "Adoption signal among preview seeds",
+    },
+    {
+      label: "Germination Success",
+      value: `${seed.germinationSuccess}%`,
+      detail: "Supporting performance evidence",
+      progressValue: seed.germinationSuccess,
+    },
+  ];
+  return `
+    <div class="seed-report-evidence-snapshot-layout">
+      <div class="seed-report-evidence-snapshot-grid">
+        ${evidenceStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+      </div>
+      <div class="seed-report-germination-support">
+        ${renderSourceReportDistributionMarkup(seed.seedsTracked, seed.germinationSuccess)}
+        <p>Germination is one supporting evidence layer. Grow weighs it alongside adoption, sessions, reports, and source availability.</p>
+      </div>
+    </div>
   `;
 }
 
@@ -52938,9 +53006,9 @@ function renderSeedProfilePage(seedId = "") {
   const timelineRows = getSeedReportTimelineRows(seed, activity);
   const confidenceStats = [
     {
-      label: "Community Confidence",
+      label: "Evidence Strength",
       value: seed.communityConfidence || "Early Signal",
-      detail: `${Number(seed.communitySessions || 0).toLocaleString()} community preview sessions`,
+      detail: "Confidence explained through adoption evidence",
       progressValue: seed.confidencePercent,
     },
     {
@@ -52980,6 +53048,7 @@ function renderSeedProfilePage(seedId = "") {
       </div>
 
       ${renderSeedReportHeroMarkup(seed, activity)}
+      ${renderSeedReportEvidenceStrengthMarkup(seed, activity)}
       ${renderSeedReportActivityStripMarkup(activity)}
 
       <article class="card source-report-section-card source-report-performance-card seed-report-performance-card">
@@ -53004,8 +53073,8 @@ function renderSeedProfilePage(seedId = "") {
         </article>
 
         <article class="card source-report-section-card source-report-distribution-card seed-report-distribution-card">
-          ${renderSourceReportSectionTitle(3, "Germination Snapshot")}
-          ${renderSourceReportDistributionMarkup(seed.seedsTracked, seed.germinationSuccess)}
+          ${renderSourceReportSectionTitle(3, "Community Evidence Snapshot")}
+          ${renderSeedReportEvidenceSnapshotMarkup(seed, activity)}
         </article>
       </div>
 
@@ -53047,7 +53116,7 @@ function renderSeedProfilePage(seedId = "") {
       ${renderSeedReportEvidenceMarkup(seed)}
 
       <article class="card source-report-section-card source-profile-track-record-card seed-report-confidence-card">
-        ${renderSourceReportSectionTitle(11, "Community Confidence")}
+        ${renderSourceReportSectionTitle(11, "Evidence Strength Details")}
         <div class="summary-grid source-profile-track-grid source-report-confidence-grid">
           ${confidenceStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
