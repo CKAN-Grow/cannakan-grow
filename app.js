@@ -52932,10 +52932,6 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
 
       <div class="source-report-hero-metrics seed-report-hero-metrics" aria-label="Primary seed evidence metrics">
         ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: getSeedReportAdoptionRankLabel(seed), label: "Popularity Rank", detail: "out of preview seeds", tone: "gold" })}
-        ${renderSeedReportHeroMetricMarkup({ icon: "sessions", value: Number(seed.communitySessions || 0).toLocaleString(), label: "Community Sessions", detail: "growers tracked this variety" })}
-        ${renderSeedReportHeroMetricMarkup({ icon: "seeds", value: Number(seed.seedsTracked || 0).toLocaleString(), label: "Seeds Tracked", detail: "seed observations" })}
-        ${renderSeedReportHeroMetricMarkup({ icon: "reports", value: activity.recentGrowReports, label: "Grow Reports", detail: "community reports" })}
-        ${renderSeedReportHeroMetricMarkup({ icon: "sources", value: activity.sourcesCarrying, label: "Sources Carrying", detail: "available sources" })}
       </div>
       <div class="source-report-hero-note-row">
         <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
