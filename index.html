@@ -359,29 +359,31 @@
   </template>
 
   <template id="gallery-template">
-    <section class="card gallery-hero-section app-hero app-hero--gallery app-hero--contained-right">
+    <section class="card gallery-hero-section community-intelligence-header app-hero app-hero--gallery app-hero--contained-right">
       <div class="app-hero-background" aria-hidden="true"></div>
       <div class="app-hero-overlay" aria-hidden="true"></div>
       <div class="app-hero-content section-title-with-icon app-section-header-main">
-        <span class="app-hero-icon section-title-icon" data-app-icon="communityGroup" data-icon-variant="plate" data-icon-label="Community Grow" aria-hidden="true"></span>
+        <span class="app-hero-icon section-title-icon" data-app-icon="communityGroup" data-icon-variant="plate" data-icon-label="Community Intelligence" aria-hidden="true"></span>
         <div class="app-hero-copy">
-          <p class="app-hero-eyebrow eyebrow">Community Grow</p>
-          <h2 class="app-hero-title">Community Grow</h2>
-          <p class="app-hero-subtitle muted">Explore shared grow sessions in Community Grow</p>
+          <p class="app-hero-eyebrow eyebrow">Community</p>
+          <h2 class="app-hero-title">Community Intelligence</h2>
+          <p class="app-hero-subtitle muted">See what growers are experiencing around the world right now.</p>
           <div class="app-hero-actions hero-actions">
+            <a class="button button-primary" href="#community-regions">Explore Regions</a>
+            <a class="button button-secondary" href="#latest-grow-reports">Filter Reports</a>
             <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Question">Report / Contact Admin</button>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="card gallery-section gallery-feed-section">
+    <section id="latest-grow-reports" class="card gallery-section gallery-feed-section community-intelligence-latest-section">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
           <span class="section-title-icon" data-app-icon="uploadImage" data-icon-variant="plate" data-icon-label="Published snapshots" aria-hidden="true"></span>
           <div>
-            <p class="eyebrow">Published Snapshots</p>
-            <h3>Published Snapshots</h3>
+            <p class="eyebrow">Latest Grow Reports</p>
+            <h3>Latest Grow Reports</h3>
             <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Date · Newest to Oldest</p>
             <p id="gallery-count-state" class="gallery-count-state muted">Showing 0 of 0 snapshots</p>
           </div>
