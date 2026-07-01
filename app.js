@@ -52907,6 +52907,7 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
           <strong class="source-report-established-line">${escapeHtml(seed.summary || "Community-powered seed adoption report.")}</strong>
       <div class="source-report-hero-actions">
         <span class="source-report-cstp-chip">Community Preview</span>
+        ${renderMetricBadgeMarkup(seed.communityConfidence || "Community Signal", { className: "source-directory-evidence-badge seed-explorer-badge seed-report-confidence-badge", tone: getSeedExplorerConfidenceTone(seed) })}
       </div>
         </div>
       </div>
