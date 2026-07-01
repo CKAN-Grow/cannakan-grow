@@ -32810,64 +32810,149 @@ textarea::placeholder {
 
 .seed-report-evidence-snapshot-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
   gap: 16px;
+  align-items: stretch;
 }
 
-.seed-report-evidence-snapshot-grid {
+.seed-report-evidence-summary-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.seed-report-evidence-summary-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  min-height: 124px;
+  padding: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(148, 209, 89, 0.085), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.014)),
+    rgba(5, 12, 9, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.seed-report-evidence-summary-card--primary {
+  grid-column: 1 / -1;
+  min-height: 116px;
+  border-color: rgba(148, 209, 89, 0.22);
+  background:
+    radial-gradient(circle at 92% 8%, rgba(148, 209, 89, 0.14), transparent 44%),
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08), rgba(255, 255, 255, 0.014)),
+    rgba(5, 12, 9, 0.68);
+}
+
+.seed-report-evidence-summary-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 14px;
+  color: #94d159;
+  background: rgba(148, 209, 89, 0.1);
+  box-shadow: 0 0 18px rgba(148, 209, 89, 0.1);
+}
+
+.seed-report-evidence-summary-icon svg {
+  display: block;
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.seed-report-evidence-summary-card div {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.seed-report-evidence-summary-card strong {
+  color: #f7faf4;
+  font-size: clamp(1.05rem, 1.7vw, 1.28rem);
+  line-height: 1.15;
+}
+
+.seed-report-evidence-summary-card--primary strong {
+  color: #d8ff9e;
+  font-size: clamp(1.32rem, 2vw, 1.62rem);
+}
+
+.seed-report-evidence-summary-card p {
+  margin: 0;
+  color: rgba(231, 238, 226, 0.68);
+  font-size: 0.84rem;
+  line-height: 1.42;
+}
+
+.seed-report-germination-support {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(148, 209, 89, 0.1), transparent 54%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.seed-report-consistency-header {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.seed-report-evidence-snapshot-grid .source-profile-stat-card {
-  min-height: 108px;
-  padding: 14px;
-  border-radius: 16px;
-}
-
-.seed-report-evidence-snapshot-grid .source-profile-stat-card .stat-value {
-  font-size: clamp(1.35rem, 2.6vw, 1.95rem);
-}
-
-.seed-report-evidence-snapshot-grid .source-profile-stat-card .summary-subtext {
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
-
-.seed-report-germination-support {
+.seed-report-consistency-header > div {
   display: grid;
-  gap: 10px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(148, 209, 89, 0.12);
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 12px;
+  background: rgba(5, 12, 9, 0.48);
+}
+
+.seed-report-consistency-header strong {
+  color: #d8ff9e;
+  font-size: 1.2rem;
+  line-height: 1.1;
 }
 
 .seed-report-germination-support .source-report-distribution-layout {
-  grid-template-columns: 132px minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 12px;
 }
 
 .seed-report-germination-support .source-report-distribution-donut {
-  width: 118px;
+  width: 98px;
 }
 
 .seed-report-germination-support .source-report-distribution-donut span {
-  width: 72px;
-  height: 72px;
+  width: 58px;
+  height: 58px;
 }
 
 .seed-report-germination-support .source-report-distribution-donut strong {
-  font-size: 1.08rem;
+  font-size: 0.95rem;
 }
 
 .seed-report-germination-support .source-report-distribution-legend {
-  gap: 8px;
+  gap: 7px;
 }
 
 .seed-report-germination-support .source-report-consistency-range {
-  margin-top: 0;
-  padding-top: 10px;
-  font-size: 0.82rem;
-  text-align: left;
+  display: none;
 }
 
 .seed-report-germination-support > p {
@@ -32935,7 +33020,8 @@ textarea::placeholder {
     text-align: left;
   }
 
-  .seed-report-evidence-snapshot-grid {
+  .seed-report-evidence-snapshot-layout,
+  .seed-report-evidence-summary-main {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -62296,7 +62382,8 @@ a.source-directory-variety-chip:focus-visible {
 
 @media (max-width: 720px) {
   .seed-report-activity-strip,
-  .seed-report-evidence-snapshot-grid,
+  .seed-report-evidence-snapshot-layout,
+  .seed-report-evidence-summary-main,
   .seed-report-germination-support .source-report-distribution-layout {
     grid-template-columns: minmax(0, 1fr);
   }

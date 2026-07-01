@@ -52992,47 +52992,62 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
 }
 
 function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const evidenceStats = [
-    {
-      label: "Seeds Tracked",
-      value: Number(seed.seedsTracked || 0).toLocaleString(),
-      detail: "Seed observations represented",
-    },
-    {
-      label: "Sessions Represented",
-      value: Number(seed.communitySessions || 0).toLocaleString(),
-      detail: "Community sessions in preview data",
-    },
-    {
-      label: "Grow Reports",
-      value: Number(activity.recentGrowReports || 0).toLocaleString(),
-      detail: "Recent reports supporting this profile",
-    },
-    {
-      label: "Sources Carrying",
-      value: Number(activity.sourcesCarrying || 0).toLocaleString(),
-      detail: "Available source relationships",
-    },
-    {
-      label: "Popularity Rank",
-      value: getSeedReportAdoptionRankLabel(seed),
-      detail: "Adoption signal among preview seeds",
-    },
-    {
-      label: "Germination Success",
-      value: `${seed.germinationSuccess}%`,
-      detail: "Supporting performance evidence",
-      progressValue: seed.germinationSuccess,
-    },
-  ];
+  const sessions = Number(seed.communitySessions || 0).toLocaleString();
+  const seedsTracked = Number(seed.seedsTracked || 0).toLocaleString();
+  const reports = Number(activity.recentGrowReports || 0).toLocaleString();
+  const sources = Number(activity.sourcesCarrying || 0).toLocaleString();
   return `
     <div class="seed-report-evidence-snapshot-layout">
-      <div class="seed-report-evidence-snapshot-grid">
-        ${evidenceStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+      <div class="seed-report-evidence-summary-main">
+        <article class="seed-report-evidence-summary-card seed-report-evidence-summary-card--primary">
+          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderAppIconSvgMarkup("adminShield", { className: "source-report-activity-icon" })}</span>
+          <div>
+            <span class="stat-label">Evidence</span>
+            <strong>${escapeHtml(seed.communityConfidence || "Early Signal")}</strong>
+            <p>Confidence is calculated using tracked seeds, community sessions, grow reports, source diversity, consistency, and adoption history.</p>
+          </div>
+        </article>
+
+        <article class="seed-report-evidence-summary-card">
+          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderAppIconSvgMarkup("communityGroup", { className: "source-report-activity-icon" })}</span>
+          <div>
+            <span class="stat-label">Community Adoption</span>
+            <strong>${escapeHtml(sessions)} sessions</strong>
+            <p>${escapeHtml(seedsTracked)} tracked seeds, ${escapeHtml(reports)} grow reports, and ${escapeHtml(sources)} sources carrying this variety.</p>
+          </div>
+        </article>
+
+        <article class="seed-report-evidence-summary-card">
+          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderAppIconSvgMarkup("clock", { className: "source-report-activity-icon" })}</span>
+          <div>
+            <span class="stat-label">Community History</span>
+            <strong>First report: Mar 2025</strong>
+            <p>Last updated ${escapeHtml(activity.lastUpdated)} with new community activity and source evidence.</p>
+          </div>
+        </article>
+
+        <article class="seed-report-evidence-summary-card">
+          <span class="seed-report-evidence-summary-icon" aria-hidden="true">${renderSeedReportHeroMetricIconMarkup("rank")}</span>
+          <div>
+            <span class="stat-label">Popularity</span>
+            <strong>${escapeHtml(getSeedReportAdoptionRankLabel(seed))}</strong>
+            <p>Adoption signal among preview seeds without implying seed quality or genetic superiority.</p>
+          </div>
+        </article>
       </div>
-      <div class="seed-report-germination-support">
+      <div class="seed-report-germination-support" aria-label="Seed report consistency support">
+        <div class="seed-report-consistency-header">
+          <div>
+            <span class="stat-label">Consistency</span>
+            <strong>${escapeHtml(`${seed.germinationSuccess}%`)}</strong>
+          </div>
+          <div>
+            <span class="stat-label">Range</span>
+            <strong>84-100%</strong>
+          </div>
+        </div>
         ${renderSourceReportDistributionMarkup(seed.seedsTracked, seed.germinationSuccess)}
-        <p>Germination is one supporting evidence layer. Grow weighs it alongside adoption, sessions, reports, and source availability.</p>
+        <p>Germination is supporting evidence. Trust comes from repeated community activity, source diversity, adoption, and consistency over time.</p>
       </div>
     </div>
   `;
@@ -53200,7 +53215,7 @@ function renderSeedProfilePage(seedId = "") {
         </article>
 
         <article class="card source-report-section-card source-report-distribution-card seed-report-distribution-card">
-          ${renderSourceReportSectionTitle(3, "Community Evidence Snapshot")}
+          ${renderSourceReportSectionTitle(3, "Evidence Summary")}
           ${renderSeedReportEvidenceSnapshotMarkup(seed, activity)}
         </article>
       </div>
