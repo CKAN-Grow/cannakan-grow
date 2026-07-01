@@ -51598,8 +51598,64 @@ const SEED_EXPLORER_FILTERS = Object.freeze([
   Object.freeze({ key: "all", label: "All Seeds" }),
   Object.freeze({ key: "photoperiod", label: "Photoperiod" }),
   Object.freeze({ key: "auto", label: "Auto" }),
+  Object.freeze({ key: "fast-flower", label: "Fast Flower" }),
   Object.freeze({ key: "high-confidence", label: "High Confidence" }),
-  Object.freeze({ key: "fresh-lot", label: "Fresh Lots" }),
+]);
+
+const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
+  Object.freeze({
+    key: "type",
+    label: "Type",
+    options: Object.freeze([
+      Object.freeze({ key: "photoperiod", label: "Photoperiod" }),
+      Object.freeze({ key: "auto", label: "Auto" }),
+      Object.freeze({ key: "fast-flower", label: "Fast Flower" }),
+    ]),
+  }),
+  Object.freeze({
+    key: "confidence",
+    label: "Confidence",
+    options: Object.freeze([
+      Object.freeze({ key: "high", label: "High Confidence" }),
+      Object.freeze({ key: "medium", label: "Medium Confidence" }),
+    ]),
+  }),
+  Object.freeze({
+    key: "seedAge",
+    label: "Seed Age",
+    options: Object.freeze([
+      Object.freeze({ key: "fresh", label: "Fresh" }),
+      Object.freeze({ key: "1-2-years", label: "1-2 Years" }),
+      Object.freeze({ key: "archive", label: "Archive" }),
+    ]),
+  }),
+  Object.freeze({
+    key: "sex",
+    label: "Sex",
+    options: Object.freeze([
+      Object.freeze({ key: "feminized", label: "Feminized" }),
+      Object.freeze({ key: "regular", label: "Regular" }),
+      Object.freeze({ key: "autoflower", label: "Autoflower" }),
+    ]),
+  }),
+  Object.freeze({
+    key: "category",
+    label: "Category",
+    options: Object.freeze([
+      Object.freeze({ key: "cannabis", label: "Cannabis" }),
+      Object.freeze({ key: "vegetables", label: "Vegetables" }),
+      Object.freeze({ key: "flowers", label: "Flowers" }),
+    ]),
+  }),
+  Object.freeze({
+    key: "floweringTime",
+    label: "Flowering Time",
+    options: Object.freeze([
+      Object.freeze({ key: "under-8", label: "Under 8 Weeks" }),
+      Object.freeze({ key: "8-10", label: "8-10 Weeks" }),
+      Object.freeze({ key: "over-10", label: "Over 10 Weeks" }),
+    ]),
+  }),
 ]);
 
 const SEED_EXPLORER_SORT_OPTIONS = Object.freeze([
@@ -51627,6 +51683,9 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     sourceRelationship: "Seedsman is currently the strongest source signal for this variety in community preview data.",
     growInsight: "Fresh one-year inventory is driving the strongest outcomes. Older-lot comparisons should stay separated until more sessions land.",
     tags: ["high-confidence", "fresh-lot", "photoperiod"],
+    sex: "Feminized",
+    category: "Cannabis",
+    floweringWeeks: 9,
     gallery: ["/assets/demo/snapshots/IMG_5254.jpg", "/assets/demo/snapshots/IMG_0327.jpg", "/assets/demo/snapshots/IMG_0086.jpg"],
     related: ["Wedding Cake", "Gorilla Runtz", "Gorilla Jealousy F1"],
   }),
@@ -51647,6 +51706,9 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     sourceRelationship: "Performance is strongest when tied to Seedsman fresh-pack sessions.",
     growInsight: "The community signal is mature enough for comparison, but phenotype notes remain a future insight layer.",
     tags: ["high-confidence", "fresh-lot", "photoperiod"],
+    sex: "Feminized",
+    category: "Cannabis",
+    floweringWeeks: 9,
     gallery: ["/assets/demo/snapshots/7890.jpg", "/assets/demo/snapshots/5678.jpg", "/assets/demo/snapshots/IMG_5587.jpg"],
     related: ["Banana Jealousy", "Blueberry Muffin", "Gelato OG"],
   }),
@@ -51666,7 +51728,10 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     summary: "Strong repeat testing with stable performance across community preview sessions.",
     sourceRelationship: "Most tracked sessions currently originate from Seedsman inventory.",
     growInsight: "Results are consistent enough to group with top Seedsman performers in future Seed Explorer comparisons.",
-    tags: ["high-confidence", "fresh-lot", "photoperiod"],
+    tags: ["high-confidence", "fresh-lot", "photoperiod", "fast-flower"],
+    sex: "Feminized",
+    category: "Cannabis",
+    floweringWeeks: 8,
     gallery: ["/assets/demo/snapshots/IMG_5590.jpg", "/assets/demo/snapshots/IMG_E5598.JPG", "/assets/demo/snapshots/KAN%20A.jpg"],
     related: ["Gorilla Jealousy F1", "Banana Jealousy", "Bruce Banger"],
   }),
@@ -51686,7 +51751,10 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     summary: "A promising auto variety with fast starts and a growing community evidence base.",
     sourceRelationship: "Source signal is concentrated in Seedsman auto-focused TRA sessions.",
     growInsight: "Auto performance looks promising, but more community sessions are needed before it should rank beside high-confidence photoperiod entries.",
-    tags: ["auto", "fresh-lot"],
+    tags: ["auto", "fresh-lot", "fast-flower"],
+    sex: "Autoflower",
+    category: "Cannabis",
+    floweringWeeks: 7,
     gallery: ["/assets/demo/snapshots/KAN%20B.jpg", "/assets/demo/snapshots/KAN%20C.jpg", "/assets/demo/snapshots/pic1.jpg"],
     related: ["Badazz OG Cheese", "Bruce Banger", "White OG"],
   }),
@@ -51707,6 +51775,9 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     sourceRelationship: "Early evidence connects this variety to Poppin Fire source records.",
     growInsight: "Seed-age context matters here. Future profiles should separate fresh and stored inventory views.",
     tags: ["photoperiod"],
+    sex: "Regular",
+    category: "Cannabis",
+    floweringWeeks: 10,
     gallery: ["/assets/demo/snapshots/pic2.jpg", "/assets/demo/snapshots/pic3.jpg", "/assets/demo/snapshots/pic4.jpg"],
     related: ["Wedding Cake", "Gelato OG", "Banana Jealousy"],
   }),
@@ -51727,6 +51798,9 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     sourceRelationship: "Current evidence is tied to older Seedsman inventory and should not be blended with fresh-lot performance.",
     growInsight: "A future insight layer should flag this as an age-sensitive result before making recommendations.",
     tags: ["photoperiod"],
+    sex: "Feminized",
+    category: "Cannabis",
+    floweringWeeks: 11,
     gallery: ["/assets/demo/snapshots/pic5.jpg", "/assets/demo/snapshots/IMG_E6131.JPG", "/assets/demo/snapshots/IMG_5587.jpg"],
     related: ["L.A. Peyote Kush", "Alaskan Purple", "Bruce Banger"],
   }),
@@ -51880,6 +51954,77 @@ function getSeedExplorerConfidenceTone(seed = {}) {
   return "early";
 }
 
+function getSeedExplorerSeedAgeFilterKey(seed = {}) {
+  const batchAge = String(seed.batchAge || "").trim().toLowerCase();
+  if (batchAge.includes("fresh")) {
+    return "fresh";
+  }
+  if (batchAge.includes("archive") || batchAge.includes("older")) {
+    return "archive";
+  }
+  return "1-2-years";
+}
+
+function getSeedExplorerFloweringTimeFilterKey(seed = {}) {
+  const floweringWeeks = Number(seed.floweringWeeks) || 0;
+  if (floweringWeeks && floweringWeeks < 8) {
+    return "under-8";
+  }
+  if (!floweringWeeks || floweringWeeks <= 10) {
+    return "8-10";
+  }
+  return "over-10";
+}
+
+function getSeedExplorerFilterTokens(seed = {}) {
+  const tags = Array.isArray(seed.tags)
+    ? seed.tags.map((tag) => String(tag || "").trim().toLowerCase()).filter(Boolean)
+    : [];
+  const seedType = String(seed.seedType || "").trim().toLowerCase();
+  const confidencePercent = Number(seed.confidencePercent) || 0;
+  const floweringTime = getSeedExplorerFloweringTimeFilterKey(seed);
+  const sex = String(seed.sex || (seedType === "auto" ? "autoflower" : "feminized")).trim().toLowerCase().replace(/\s+/g, "-");
+  const typeTokens = new Set(tags.filter((tag) => ["photoperiod", "auto", "fast-flower"].includes(tag)));
+  if (seedType.includes("photo")) {
+    typeTokens.add("photoperiod");
+  }
+  if (seedType.includes("auto")) {
+    typeTokens.add("auto");
+    typeTokens.add("autoflower");
+  }
+  if (floweringTime === "under-8") {
+    typeTokens.add("fast-flower");
+  }
+  return {
+    type: [...typeTokens],
+    confidence: confidencePercent >= 85 ? ["high"] : confidencePercent >= 60 ? ["medium"] : ["early"],
+    seedAge: [getSeedExplorerSeedAgeFilterKey(seed)],
+    sex: [sex],
+    category: [String(seed.category || "Cannabis").trim().toLowerCase().replace(/\s+/g, "-")],
+    floweringTime: [floweringTime],
+  };
+}
+
+function seedMatchesSeedExplorerAdvancedFilters(seed = {}, advancedFilters = {}) {
+  return SEED_EXPLORER_ADVANCED_FILTER_GROUPS.every((group) => {
+    const selectedValues = Array.isArray(advancedFilters[group.key])
+      ? advancedFilters[group.key].map((value) => String(value || "").trim()).filter(Boolean)
+      : [];
+    if (!selectedValues.length) {
+      return true;
+    }
+    const seedValues = getSeedExplorerFilterTokens(seed)[group.key] || [];
+    return selectedValues.some((value) => seedValues.includes(value));
+  });
+}
+
+function getSeedExplorerAdvancedFilterCount(advancedFilters = {}) {
+  return SEED_EXPLORER_ADVANCED_FILTER_GROUPS.reduce((count, group) => {
+    const selectedValues = Array.isArray(advancedFilters[group.key]) ? advancedFilters[group.key] : [];
+    return count + selectedValues.length;
+  }, 0);
+}
+
 function normalizeSeedExplorerDisplayMode(value = SEED_EXPLORER_DEFAULT_DISPLAY_MODE) {
   const normalizedValue = String(value || SEED_EXPLORER_DEFAULT_DISPLAY_MODE).trim().toLowerCase();
   return normalizedValue === "cards" ? "cards" : "list";
@@ -51908,6 +52053,7 @@ function setSeedExplorerDisplayModePreference(mode = SEED_EXPLORER_DEFAULT_DISPL
 function filterAndSortSeedExplorerRecords(records = getSeedExplorerDemoSeeds(), {
   query = "",
   filterKey = SEED_EXPLORER_DEFAULT_FILTER,
+  advancedFilters = {},
   sortKey = SEED_EXPLORER_DEFAULT_SORT,
 } = {}) {
   const normalizedQuery = String(query || "").trim().toLowerCase();
@@ -51920,9 +52066,15 @@ function filterAndSortSeedExplorerRecords(records = getSeedExplorerDemoSeeds(), 
       seed.seedType,
       seed.communityConfidence,
       seed.batchAge,
+      seed.sex,
+      seed.category,
+      seed.floweringWeeks ? `${seed.floweringWeeks} weeks` : "",
       ...(Array.isArray(seed.related) ? seed.related : []),
     ].join(" ").toLowerCase();
     if (normalizedQuery && !searchableText.includes(normalizedQuery)) {
+      return false;
+    }
+    if (!seedMatchesSeedExplorerAdvancedFilters(seed, advancedFilters)) {
       return false;
     }
     if (normalizedFilterKey === "all") {
@@ -51931,10 +52083,7 @@ function filterAndSortSeedExplorerRecords(records = getSeedExplorerDemoSeeds(), 
     if (normalizedFilterKey === "high-confidence") {
       return Number(seed.confidencePercent) >= 85;
     }
-    if (normalizedFilterKey === "fresh-lot") {
-      return String(seed.batchAge || "").toLowerCase().includes("fresh");
-    }
-    return String(seed.seedType || "").trim().toLowerCase() === normalizedFilterKey;
+    return (getSeedExplorerFilterTokens(seed).type || []).includes(normalizedFilterKey);
   });
 
   return filteredRecords.sort((left, right) => {
@@ -51984,6 +52133,50 @@ function renderSeedExplorerViewToggleMarkup(activeMode = SEED_EXPLORER_DEFAULT_D
   `;
 }
 
+function renderSeedExplorerAdvancedFilterCountMarkup() {
+  return `<span class="seed-explorer-filter-count" data-seed-explorer-active-filter-count hidden>0</span>`;
+}
+
+function renderSeedExplorerAdvancedFiltersMarkup() {
+  return `
+    <div id="seed-explorer-advanced-filters" class="seed-explorer-filter-panel" data-seed-explorer-advanced-filter-panel hidden aria-hidden="true">
+      <div class="seed-explorer-filter-panel-backdrop" data-seed-explorer-advanced-filter-close aria-hidden="true"></div>
+      <aside class="seed-explorer-filter-drawer" role="dialog" aria-modal="true" aria-labelledby="seed-explorer-advanced-filter-title">
+        <div class="seed-explorer-filter-drawer-head">
+          <div>
+            <p class="eyebrow">Advanced Filters</p>
+            <h3 id="seed-explorer-advanced-filter-title">Filter Seeds</h3>
+            <p>Refine seed discovery by type, confidence, age, category, and flowering profile.</p>
+          </div>
+          <button type="button" class="seed-explorer-filter-close" data-seed-explorer-advanced-filter-close aria-label="Close advanced filters">&times;</button>
+        </div>
+        <div class="seed-explorer-filter-drawer-body">
+          ${SEED_EXPLORER_ADVANCED_FILTER_GROUPS.map((group) => `
+            <fieldset class="seed-explorer-filter-group">
+              <legend>${escapeHtml(group.label)}</legend>
+              <div class="seed-explorer-filter-options">
+                ${group.options.map((option) => {
+                  const inputId = `seed-filter-${group.key}-${option.key}`;
+                  return `
+                    <label class="seed-explorer-filter-option" for="${escapeHtml(inputId)}">
+                      <input id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(option.key)}" data-seed-explorer-advanced-filter="${escapeHtml(group.key)}">
+                      <span>${escapeHtml(option.label)}</span>
+                    </label>
+                  `;
+                }).join("")}
+              </div>
+            </fieldset>
+          `).join("")}
+        </div>
+        <div class="seed-explorer-filter-drawer-footer">
+          <button type="button" class="button button-secondary" data-seed-explorer-advanced-filter-clear>Clear All</button>
+          <button type="button" class="button button-primary" data-seed-explorer-advanced-filter-close>Apply Filters</button>
+        </div>
+      </aside>
+    </div>
+  `;
+}
+
 function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) {
   return `
     <section id="seed-explorer-controls" class="card source-directory-controls-card seed-explorer-controls-card">
@@ -51992,7 +52185,13 @@ function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) 
           <p class="eyebrow">Explorer Controls</p>
           <h3>Explore Seed Reports</h3>
         </div>
-        <span class="source-directory-mock-note">Preview Data</span>
+        <div class="seed-explorer-controls-actions">
+          <span class="source-directory-mock-note">Preview Data</span>
+          <button type="button" class="button button-secondary seed-explorer-filter-trigger" data-seed-explorer-advanced-filter-trigger>
+            Filter Seeds
+            ${renderSeedExplorerAdvancedFilterCountMarkup()}
+          </button>
+        </div>
       </div>
       <div class="source-directory-controls-grid">
         <label class="source-directory-search-field">
@@ -52186,12 +52385,16 @@ function renderSeedExplorerPanelMarkup({ active = false } = {}) {
         },
         secondaryAction: {
           href: "#seed-explorer-controls",
-          label: "Filter Seeds",
+          label: `Filter Seeds ${renderSeedExplorerAdvancedFilterCountMarkup()}`,
           className: "button button-secondary source-directory-hero-secondary-action",
+          attributes: {
+            "data-seed-explorer-advanced-filter-trigger": true,
+          },
         },
       })}
       ${renderSeedExplorerMetricCardsMarkup(records)}
       ${renderSeedExplorerControlsMarkup(records)}
+      ${renderSeedExplorerAdvancedFiltersMarkup()}
       <div class="source-directory-results-head source-directory-results-head--cards seed-explorer-results-head">
         <div>
           <h3>Seed Performance Profiles</h3>
@@ -52220,16 +52423,72 @@ function bindSeedExplorerControls(scope = app) {
   const summary = panel.querySelector("#seed-explorer-results-summary");
   const filterButtons = Array.from(panel.querySelectorAll("[data-seed-explorer-filter]"));
   const viewButtons = Array.from(panel.querySelectorAll("[data-seed-explorer-view]"));
+  const advancedFilterPanel = panel.querySelector("[data-seed-explorer-advanced-filter-panel]");
+  const advancedFilterTriggers = Array.from(panel.querySelectorAll("[data-seed-explorer-advanced-filter-trigger]"));
+  const advancedFilterCloseButtons = Array.from(panel.querySelectorAll("[data-seed-explorer-advanced-filter-close]"));
+  const advancedFilterClearButton = panel.querySelector("[data-seed-explorer-advanced-filter-clear]");
+  const advancedFilterCheckboxes = Array.from(panel.querySelectorAll("[data-seed-explorer-advanced-filter]"));
+  const advancedFilterCountBadges = Array.from(panel.querySelectorAll("[data-seed-explorer-active-filter-count]"));
   if (!results || !summary) {
     return;
   }
   let activeDisplayMode = getSeedExplorerDisplayModePreference();
 
+  const getActiveAdvancedFilters = () => {
+    return advancedFilterCheckboxes.reduce((filters, checkbox) => {
+      if (!checkbox.checked) {
+        return filters;
+      }
+      const groupKey = String(checkbox.getAttribute("data-seed-explorer-advanced-filter") || "").trim();
+      const value = String(checkbox.value || "").trim();
+      if (!groupKey || !value) {
+        return filters;
+      }
+      filters[groupKey] = [...(filters[groupKey] || []), value];
+      return filters;
+    }, {});
+  };
+
+  const updateAdvancedFilterCount = () => {
+    const activeCount = getSeedExplorerAdvancedFilterCount(getActiveAdvancedFilters());
+    advancedFilterCountBadges.forEach((badge) => {
+      badge.textContent = String(activeCount);
+      badge.hidden = activeCount === 0;
+    });
+  };
+
+  const openAdvancedFilters = () => {
+    if (!advancedFilterPanel) {
+      return;
+    }
+    advancedFilterPanel.hidden = false;
+    advancedFilterPanel.setAttribute("aria-hidden", "false");
+    requestAnimationFrame(() => {
+      advancedFilterPanel.classList.add("is-open");
+      (advancedFilterCheckboxes.find((checkbox) => !checkbox.checked) || advancedFilterCheckboxes[0] || advancedFilterPanel.querySelector("[data-seed-explorer-advanced-filter-close]"))?.focus?.();
+    });
+  };
+
+  const closeAdvancedFilters = () => {
+    if (!advancedFilterPanel) {
+      return;
+    }
+    advancedFilterPanel.classList.remove("is-open");
+    advancedFilterPanel.setAttribute("aria-hidden", "true");
+    window.setTimeout(() => {
+      if (!advancedFilterPanel.classList.contains("is-open")) {
+        advancedFilterPanel.hidden = true;
+      }
+    }, 180);
+  };
+
   const applySeedExplorerView = () => {
     const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.seedExplorerFilter || SEED_EXPLORER_DEFAULT_FILTER;
+    const activeAdvancedFilters = getActiveAdvancedFilters();
     const visibleSeeds = filterAndSortSeedExplorerRecords(getSeedExplorerDemoSeeds(), {
       query: searchInput?.value || "",
       filterKey: activeFilter,
+      advancedFilters: activeAdvancedFilters,
       sortKey: sortSelect?.value || SEED_EXPLORER_DEFAULT_SORT,
     });
     const isCardMode = activeDisplayMode === "cards";
@@ -52237,6 +52496,7 @@ function bindSeedExplorerControls(scope = app) {
     results.setAttribute("aria-label", isCardMode ? "Seed Explorer cards" : "Seed Explorer list");
     results.innerHTML = renderSeedExplorerResultsMarkup(visibleSeeds, activeDisplayMode);
     summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} preview seeds`;
+    updateAdvancedFilterCount();
     viewButtons.forEach((button) => {
       const buttonMode = normalizeSeedExplorerDisplayMode(button.getAttribute("data-seed-explorer-view") || SEED_EXPLORER_DEFAULT_DISPLAY_MODE);
       const isActive = buttonMode === activeDisplayMode;
@@ -52247,6 +52507,29 @@ function bindSeedExplorerControls(scope = app) {
 
   searchInput?.addEventListener("input", applySeedExplorerView);
   sortSelect?.addEventListener("change", applySeedExplorerView);
+  advancedFilterTriggers.forEach((trigger) => {
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      openAdvancedFilters();
+    });
+  });
+  advancedFilterCloseButtons.forEach((button) => {
+    button.addEventListener("click", closeAdvancedFilters);
+  });
+  advancedFilterClearButton?.addEventListener("click", () => {
+    advancedFilterCheckboxes.forEach((checkbox) => {
+      checkbox.checked = false;
+    });
+    applySeedExplorerView();
+  });
+  advancedFilterCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", applySeedExplorerView);
+  });
+  advancedFilterPanel?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAdvancedFilters();
+    }
+  });
   filterButtons.forEach((button) => {
     button.addEventListener("click", () => {
       filterButtons.forEach((nextButton) => {
