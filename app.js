@@ -50585,7 +50585,10 @@ function getSourceDirectoryPerformanceContextLabel(source = {}, totalSources = 0
 }
 function renderSourceDirectoryTopVarietiesMarkup(varieties = []) {
   const normalizedVarieties = (Array.isArray(varieties) ? varieties : [])
-    .map((variety) => ({ label: String(variety?.label || variety?.name || variety || "").trim() }))
+    .map((variety) => ({
+      label: String(variety?.label || variety?.name || variety || "").trim(),
+      href: String(variety?.href || getSeedExplorerReportHrefForVariety(variety?.label || variety?.name || variety || "") || "").trim(),
+    }))
     .filter((variety) => variety.label);
   const visibleVarieties = normalizedVarieties.slice(0, 3);
   const extraCount = Math.max(0, normalizedVarieties.length - visibleVarieties.length);
@@ -50594,7 +50597,9 @@ function renderSourceDirectoryTopVarietiesMarkup(varieties = []) {
       <span>Top Performing Varieties</span>
       ${visibleVarieties.length ? `
         <div class="source-directory-variety-chip-row">
-          ${visibleVarieties.map((variety) => `<span class="source-directory-variety-chip">${escapeHtml(variety.label)}</span>`).join("")}
+          ${visibleVarieties.map((variety) => variety.href
+            ? `<a class="source-directory-variety-chip" href="${escapeHtml(variety.href)}">${escapeHtml(variety.label)}</a>`
+            : `<span class="source-directory-variety-chip">${escapeHtml(variety.label)}</span>`).join("")}
           ${extraCount ? `<span class="source-directory-variety-chip source-directory-variety-chip--more">+${escapeHtml(String(extraCount))}</span>` : ""}
         </div>
       ` : `<p>No variety performance yet.</p>`}
@@ -50606,7 +50611,7 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
   const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
   const trust = getSourceDirectoryTrustScore(source);
   const confidenceMeta = getSourceDirectoryConfidenceMeta(trust);
-  const topVarieties = getSourceDirectoryCardTopVarieties(source, options.topVarietyLookup || new Map());
+  const topVarieties = getExploreSourceTopSeedRows(source, options.topVarietyLookup || new Map(), 3);
   const sessionsLabel = source.directoryStats?.sessionsLogged || source.community?.sessions || "0";
   const seedsTrackedLabel = source.community?.seedsTracked || "0";
   const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
@@ -50680,8 +50685,9 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
     const cstpState = getSourceDirectoryCstpCardState(source);
     const trust = getSourceDirectoryTrustScore(source);
     const confidenceMeta = getSourceDirectoryConfidenceMeta(trust);
-    const topVarieties = getSourceDirectoryCardTopVarieties(source, topVarietyLookup);
+    const topVarieties = getExploreSourceTopSeedRows(source, topVarietyLookup, 3);
     const topVarietyLabel = String(topVarieties?.[0]?.label || topVarieties?.[0]?.name || topVarieties?.[0] || "").trim();
+    const topVarietyHref = String(topVarieties?.[0]?.href || getSeedExplorerReportHrefForVariety(topVarietyLabel) || "").trim();
     const sessionsLabel = source.directoryStats?.sessionsLogged || source.community?.sessions || "0";
     const seedsTrackedLabel = source.community?.seedsTracked || "0";
     const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
@@ -50717,7 +50723,9 @@ function renderSourceDirectoryCompareRowsMarkup(records = []) {
           <strong>${escapeHtml(String(seedsTrackedLabel))}</strong>
         </div>
         <div class="source-directory-compare-cell source-directory-compare-variety" role="cell">
-          <strong>${escapeHtml(topVarietyLabel || "No variety data")}</strong>
+          ${topVarietyHref
+            ? `<a href="${escapeHtml(topVarietyHref)}">${escapeHtml(topVarietyLabel || "No variety data")}</a>`
+            : `<strong>${escapeHtml(topVarietyLabel || "No variety data")}</strong>`}
         </div>
         <div class="source-directory-compare-cell source-directory-compare-badges" role="cell">
           ${renderSourceDirectoryEvidenceBadgesMarkup(source, cstpState, trust) || `<span class="source-directory-evidence-badge is-limited">Community Data</span>`}
@@ -51730,6 +51738,94 @@ function getSeedExplorerSeedById(seedId = "") {
   return getSeedExplorerDemoSeeds().find((seed) => String(seed.id || "").toLowerCase() === normalizedSeedId) || null;
 }
 
+function normalizeSeedExplorerVarietyLabel(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getSeedExplorerSeedByVarietyLabel(label = "") {
+  const normalizedLabel = normalizeSeedExplorerVarietyLabel(label);
+  if (!normalizedLabel) {
+    return null;
+  }
+  return getSeedExplorerDemoSeeds().find((seed) => normalizeSeedExplorerVarietyLabel(seed.varietyName || "") === normalizedLabel) || null;
+}
+
+function getSeedExplorerReportHrefForVariety(label = "") {
+  const seed = getSeedExplorerSeedByVarietyLabel(label);
+  return seed?.id ? `#seeds/${encodeURIComponent(seed.id)}` : "";
+}
+
+function getSeedExplorerSourceHref(seed = {}) {
+  const sourceId = String(seed?.sourceId || "").trim();
+  return sourceId ? `#sources/${encodeURIComponent(sourceId)}` : "#sources";
+}
+
+function sourceMatchesSeedExplorerSource(source = {}, seed = {}) {
+  const sourceKeys = [source?.id, source?.name, source?.label]
+    .map((value) => normalizeSourceNameForMatching(value || ""))
+    .filter(Boolean);
+  const seedKeys = [seed?.sourceId, seed?.source]
+    .map((value) => normalizeSourceNameForMatching(value || ""))
+    .filter(Boolean);
+  return Boolean(sourceKeys.length && seedKeys.some((key) => sourceKeys.includes(key)));
+}
+
+function getSeedExplorerRowsForSource(source = {}) {
+  return getSeedExplorerDemoSeeds()
+    .filter((seed) => sourceMatchesSeedExplorerSource(source, seed))
+    .sort((left, right) => (
+      (Number(right.germinationSuccess) || 0) - (Number(left.germinationSuccess) || 0)
+      || (Number(right.confidencePercent) || 0) - (Number(left.confidencePercent) || 0)
+      || (Number(right.communitySessions) || 0) - (Number(left.communitySessions) || 0)
+    ))
+    .map((seed) => ({
+      label: seed.varietyName,
+      imageUrl: seed.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
+      rate: `${Number(seed.germinationSuccess) || 0}%`,
+      germination: `${Number(seed.germinationSuccess) || 0}%`,
+      confidence: seed.communityConfidence || "Early Signal",
+      sessions: Number(seed.communitySessions || 0).toLocaleString(),
+      href: `#seeds/${encodeURIComponent(seed.id)}`,
+    }));
+}
+
+function getExploreSourceTopSeedRows(source = {}, topVarietyLookup = new Map(), limit = 3) {
+  const seededRows = getSeedExplorerRowsForSource(source);
+  const fallbackRows = getSourceDirectoryCardTopVarieties(source, topVarietyLookup)
+    .map((variety, index) => {
+      const label = String(variety?.label || variety?.name || variety || "").trim();
+      if (!label) {
+        return null;
+      }
+      const seed = getSeedExplorerSeedByVarietyLabel(label);
+      const baseRate = parseSourceDirectoryMetricNumber(variety?.rate || variety?.averageRate || "") || (92 - index);
+      return {
+        label,
+        imageUrl: seed?.thumbnail || variety?.imageUrl || DEMO_SNAPSHOT_IMAGE_URLS[index % DEMO_SNAPSHOT_IMAGE_URLS.length],
+        rate: seed ? `${seed.germinationSuccess}%` : `${Math.max(84, Math.min(99, baseRate))}%`,
+        germination: seed ? `${seed.germinationSuccess}%` : `${Math.max(84, Math.min(99, baseRate))}%`,
+        confidence: seed?.communityConfidence || "Community Signal",
+        sessions: seed ? Number(seed.communitySessions || 0).toLocaleString() : "Demo",
+        href: seed ? `#seeds/${encodeURIComponent(seed.id)}` : "",
+      };
+    })
+    .filter(Boolean);
+  const rowsByLabel = new Map();
+  [...seededRows, ...fallbackRows].forEach((row) => {
+    const key = normalizeSeedExplorerVarietyLabel(row.label || "");
+    if (key && !rowsByLabel.has(key)) {
+      rowsByLabel.set(key, row);
+    }
+  });
+  return [...rowsByLabel.values()].slice(0, limit);
+}
+
 function getSeedExplorerMetrics(records = getSeedExplorerDemoSeeds()) {
   const safeRecords = Array.isArray(records) ? records : [];
   const totalSessions = safeRecords.reduce((sum, seed) => sum + Math.max(0, Number(seed.communitySessions) || 0), 0);
@@ -51883,7 +51979,9 @@ function renderSeedExplorerCardMarkup(seed = {}) {
         ${renderSeedExplorerThumbnailMarkup(seed)}
         <div class="source-directory-report-identity seed-explorer-card-identity">
           <h3>${escapeHtml(seed.varietyName || "Seed Variety")}</h3>
-          <p class="source-directory-card-type">${escapeHtml(seed.source || "Unknown Source")}</p>
+          <p class="source-directory-card-type">
+            <a class="seed-explorer-source-link" href="${escapeHtml(getSeedExplorerSourceHref(seed))}">${escapeHtml(seed.source || "Unknown Source")}</a>
+          </p>
           <div class="seed-explorer-card-badges">
             ${renderMetricBadgeMarkup(seed.seedType || "Seed", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.seedType || "").toLowerCase() === "auto" ? "growing" : "high" })}
             ${renderMetricBadgeMarkup(seed.batchAge || "Demo lot", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.batchAge || "").toLowerCase().includes("fresh") ? "high" : "growing" })}
@@ -52111,6 +52209,7 @@ function getSeedReportRelatedVarietyRows(seed = {}) {
     imageUrl: images[index % images.length],
     rate: `${Math.max(82, Math.min(99, Math.round(baseRate - index - 1)))}%`,
     detail: "Related through source, seed type, or community performance pattern.",
+    href: getSeedExplorerReportHrefForVariety(label),
   }));
 }
 
@@ -52394,7 +52493,7 @@ function renderSeedProfilePage(seedId = "") {
         <article class="card source-report-section-card source-report-varieties-card seed-report-sources-card">
           <div class="source-report-section-head">
             <div>
-              ${renderSourceReportSectionTitle(2, "Sources Carrying This Variety")}
+              ${renderSourceReportSectionTitle(2, "Available From")}
             </div>
             <span>Signal</span>
           </div>
@@ -52715,6 +52814,10 @@ function hasMeaningfulSourceReportStatValue(value = "") {
 
 function getSourceReportTopVarieties(sourceProfile = {}, averageRate = 0) {
   const topVarietyLookup = buildSourceDirectoryTopVarietyLookup();
+  const sourceSeedRows = getExploreSourceTopSeedRows(sourceProfile, topVarietyLookup, 5);
+  if (sourceSeedRows.length) {
+    return sourceSeedRows;
+  }
   const varieties = getSourceDirectoryCardTopVarieties(sourceProfile, topVarietyLookup)
     .map((variety) => ({ label: String(variety?.label || variety?.name || variety || "").trim() }))
     .filter((variety) => variety.label);
@@ -52740,6 +52843,10 @@ function getSourceReportTopVarieties(sourceProfile = {}, averageRate = 0) {
     ...variety,
     imageUrl: demoImages[index % demoImages.length],
     rate: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
+    germination: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
+    confidence: "Community Signal",
+    sessions: "Demo",
+    href: getSeedExplorerReportHrefForVariety(variety.label),
   }));
 }
 
@@ -52874,13 +52981,14 @@ function renderSourceReportTopVarietiesMarkup(varieties = [], sourceProfile = {}
     ? `#sources/${encodeURIComponent(sourceProfile.id)}/varieties`
     : "#sources";
   return `
-    <div class="source-report-variety-list">
+    <div class="source-report-variety-list source-report-variety-list--linked">
       ${varieties.map((variety) => `
-        <article class="source-report-variety-row">
-          <img src="${escapeHtml(variety.imageUrl)}" alt="" loading="lazy" decoding="async">
+        ${variety.href ? `<a class="source-report-variety-row source-report-variety-row--linked" href="${escapeHtml(variety.href)}">` : `<article class="source-report-variety-row">`}
+          <img src="${escapeHtml(variety.imageUrl || DEMO_SNAPSHOT_IMAGE_URLS[0])}" alt="" loading="lazy" decoding="async">
           <strong>${escapeHtml(variety.label)}</strong>
-          <span>${escapeHtml(variety.rate)}</span>
-        </article>
+          <span>${escapeHtml(variety.germination || variety.rate || "")}</span>
+          <small>${escapeHtml(`${variety.confidence || "Community Signal"} · ${variety.sessions || "Demo"} sessions`)}</small>
+        ${variety.href ? "</a>" : "</article>"}
       `).join("")}
     </div>
     <a class="button button-secondary source-report-subtle-button" href="${escapeHtml(sourceReportHref)}">View All Varieties</a>
