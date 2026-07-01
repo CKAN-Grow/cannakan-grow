@@ -8038,11 +8038,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-intelligence-header {
+  --app-hero-art: url("/assets/images/community-grow-hero-bg.png");
+  --app-hero-art-size: cover;
+  --app-hero-art-position: center right;
+  --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(5, 10, 8, 0.96) 0%, rgba(5, 10, 8, 0.84) 34%, rgba(5, 10, 8, 0.46) 58%, rgba(5, 10, 8, 0.12) 82%, rgba(5, 10, 8, 0.18) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034) 0%, rgba(255, 255, 255, 0.006) 100%);
   --app-hero-min-height: clamp(184px, 19vw, 252px);
   border-color: rgba(148, 209, 89, 0.14);
-  background:
-    radial-gradient(circle at 74% 18%, rgba(148, 209, 89, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(12, 20, 16, 0.96), rgba(5, 10, 8, 0.98));
+  background: linear-gradient(180deg, rgba(12, 20, 16, 0.96), rgba(5, 10, 8, 0.98));
+}
+
+.community-intelligence-header .app-hero-background {
+  filter: none;
+  opacity: 1;
 }
 
 .community-intelligence-header .app-hero-content {
