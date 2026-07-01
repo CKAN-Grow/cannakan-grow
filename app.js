@@ -51624,7 +51624,7 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     seedsTracked: 1420,
     thumbnail: "/assets/demo/snapshots/IMG_5254.jpg",
     summary: "A high-signal Seedsman variety with repeated fresh-lot KAN outcomes and strong community consistency.",
-    sourceRelationship: "Seedsman is currently the strongest source signal for this variety in demo community data.",
+    sourceRelationship: "Seedsman is currently the strongest source signal for this variety in community preview data.",
     growInsight: "Fresh one-year inventory is driving the strongest outcomes. Older-lot comparisons should stay separated until more sessions land.",
     tags: ["high-confidence", "fresh-lot", "photoperiod"],
     gallery: ["/assets/demo/snapshots/IMG_5254.jpg", "/assets/demo/snapshots/IMG_0327.jpg", "/assets/demo/snapshots/IMG_0086.jpg"],
@@ -51663,7 +51663,7 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     communitySessions: 112,
     seedsTracked: 824,
     thumbnail: "/assets/demo/snapshots/IMG_5590.jpg",
-    summary: "Strong repeat testing with stable performance across demo community sessions.",
+    summary: "Strong repeat testing with stable performance across community preview sessions.",
     sourceRelationship: "Most tracked sessions currently originate from Seedsman inventory.",
     growInsight: "Results are consistent enough to group with top Seedsman performers in future Seed Explorer comparisons.",
     tags: ["high-confidence", "fresh-lot", "photoperiod"],
@@ -51703,7 +51703,7 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
     communitySessions: 58,
     seedsTracked: 336,
     thumbnail: "/assets/demo/snapshots/pic2.jpg",
-    summary: "A steady performer with useful two-year seed-age comparisons in demo community data.",
+    summary: "A steady performer with useful two-year seed-age comparisons in community preview data.",
     sourceRelationship: "Early evidence connects this variety to Poppin Fire source records.",
     growInsight: "Seed-age context matters here. Future profiles should separate fresh and stored inventory views.",
     tags: ["photoperiod"],
@@ -51814,7 +51814,7 @@ function getExploreSourceTopSeedRows(source = {}, topVarietyLookup = new Map(), 
         rate: seed ? `${seed.germinationSuccess}%` : `${Math.max(84, Math.min(99, baseRate))}%`,
         germination: seed ? `${seed.germinationSuccess}%` : `${Math.max(84, Math.min(99, baseRate))}%`,
         confidence: seed?.communityConfidence || "Community Signal",
-        sessions: seed ? Number(seed.communitySessions || 0).toLocaleString() : "Demo",
+        sessions: seed ? Number(seed.communitySessions || 0).toLocaleString() : "Preview",
         href: seed ? `#seeds/${encodeURIComponent(seed.id)}` : "",
       };
     })
@@ -51932,9 +51932,9 @@ function renderSeedExplorerMetricCardsMarkup(records = getSeedExplorerDemoSeeds(
   const metrics = getSeedExplorerMetrics(records);
   return `
     <div class="summary-grid seed-explorer-metrics-grid">
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Varieties", value: metrics.totalVarieties.toLocaleString(), detail: "demo seed profiles", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Avg. Germination", value: `${metrics.averageGermination}%`, detail: "across demo seeds", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
-      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), detail: "mock community signal", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Varieties", value: metrics.totalVarieties.toLocaleString(), detail: "preview seed profiles", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Avg. Germination", value: `${metrics.averageGermination}%`, detail: "across preview seeds", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
+      ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), detail: "community preview signal", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
       ${renderStatCardMarkup({ className: "card stat-card admin-overview-card grow-kpi-card seed-explorer-stat-card", label: "High Confidence", value: metrics.highConfidenceCount.toLocaleString(), detail: "ready for comparison", labelClassName: "stat-label", valueClassName: "stat-value", detailTag: "p", detailClassName: "summary-subtext" })}
     </div>
   `;
@@ -51969,7 +51969,7 @@ function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) 
           <p class="eyebrow">Explorer Controls</p>
           <h3>Explore Seed Reports</h3>
         </div>
-        <span class="source-directory-mock-note">Demo Data</span>
+        <span class="source-directory-mock-note">Preview Data</span>
       </div>
       <div class="source-directory-controls-grid">
         <label class="source-directory-search-field">
@@ -52021,7 +52021,7 @@ function renderSeedExplorerCardMarkup(seed = {}) {
           </p>
           <div class="seed-explorer-card-badges">
             ${renderMetricBadgeMarkup(seed.seedType || "Seed", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.seedType || "").toLowerCase() === "auto" ? "growing" : "high" })}
-            ${renderMetricBadgeMarkup(seed.batchAge || "Demo lot", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.batchAge || "").toLowerCase().includes("fresh") ? "high" : "growing" })}
+            ${renderMetricBadgeMarkup(seed.batchAge || "Preview lot", { className: "source-directory-evidence-badge seed-explorer-badge", tone: String(seed.batchAge || "").toLowerCase().includes("fresh") ? "high" : "growing" })}
           </div>
         </div>
       </div>
@@ -52079,7 +52079,7 @@ function renderSeedExplorerListRowsMarkup(records = []) {
           ${renderSeedExplorerThumbnailMarkup(seed, "seed-explorer-list-thumb")}
           <span class="seed-explorer-list-identity">
             <strong>${escapeHtml(seed.varietyName || "Seed Variety")}</strong>
-            <em>${escapeHtml(seed.batchAge || "Demo lot")}</em>
+            <em>${escapeHtml(seed.batchAge || "Preview lot")}</em>
           </span>
         </div>
         <div class="seed-explorer-list-cell seed-explorer-list-source" role="cell">${escapeHtml(seed.source || "Unknown Source")}</div>
@@ -52146,9 +52146,9 @@ function renderSeedExplorerPanelMarkup({ active = false } = {}) {
         iconMarkup: renderAppSectionHeaderIcon("plant"),
         eyebrow: "Seeds",
         title: "Seed Explorer",
-        descriptionMarkup: `Discover seed performance, community confidence, trusted sources, and grow intelligence through <span>demo community data</span>.`,
+        descriptionMarkup: `Discover seed performance, community confidence, trusted sources, and grow intelligence through <span>community preview data</span>.`,
         beforeActionsMarkup: `
-          <p class="source-directory-hero-proof">Seed Explorer uses mock data in this sprint while the product structure, controls, and profiles are established.</p>
+          <p class="source-directory-hero-proof">Seed Explorer uses curated preview data while the community intelligence model expands.</p>
           <div class="source-directory-hero-trust-list" aria-label="Seed Explorer trust signals">
             <span>Community Confidence</span>
             <span>Germination Success</span>
@@ -52172,10 +52172,10 @@ function renderSeedExplorerPanelMarkup({ active = false } = {}) {
       <div class="source-directory-results-head source-directory-results-head--cards seed-explorer-results-head">
         <div>
           <h3>Seed Performance Profiles</h3>
-          <p class="muted">Demo variety profiles shaped for future community-powered recommendations.</p>
+          <p class="muted">Preview variety profiles shaped for future community-powered recommendations.</p>
         </div>
         <div class="source-directory-results-tools seed-explorer-results-tools">
-          <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} demo seeds</p>
+          <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} preview seeds</p>
           ${renderSeedExplorerViewToggleMarkup(displayMode)}
         </div>
       </div>
@@ -52213,7 +52213,7 @@ function bindSeedExplorerControls(scope = app) {
     results.className = isCardMode ? "source-directory-grid seed-explorer-grid" : "seed-explorer-list-results";
     results.setAttribute("aria-label", isCardMode ? "Seed Explorer cards" : "Seed Explorer list");
     results.innerHTML = renderSeedExplorerResultsMarkup(visibleSeeds, activeDisplayMode);
-    summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} demo seeds`;
+    summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} preview seeds`;
     viewButtons.forEach((button) => {
       const buttonMode = normalizeSeedExplorerDisplayMode(button.getAttribute("data-seed-explorer-view") || SEED_EXPLORER_DEFAULT_DISPLAY_MODE);
       const isActive = buttonMode === activeDisplayMode;
@@ -52252,7 +52252,7 @@ function renderSeedProfileUnavailablePage(seedId = "") {
           <div>
             <p class="eyebrow">Seed Report</p>
             <h2>Seed report unavailable</h2>
-            <p class="muted">The demo Seed Report for ${escapeHtml(seedId || "this variety")} is not available yet.</p>
+            <p class="muted">The preview Seed Report for ${escapeHtml(seedId || "this variety")} is not available yet.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -52293,14 +52293,14 @@ function getSeedReportRelationshipRows(seed = {}) {
       label: seed.source || "Primary Source",
       imageUrl: seed.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
       rate: "Primary",
-      detail: seed.sourceRelationship || "Primary demo source relationship.",
+      detail: seed.sourceRelationship || "Primary preview source relationship.",
       href: seed.sourceId ? `#sources/${encodeURIComponent(seed.sourceId)}` : "#sources",
     },
     {
       label: "Poppin Fire",
       imageUrl: "/assets/demo/snapshots/IMG_E5598.JPG",
       rate: "Similar",
-      detail: "Comparable community performance pattern in demo data.",
+      detail: "Comparable community performance pattern in preview data.",
       href: "#sources/poppin-fire",
     },
     {
@@ -52346,7 +52346,7 @@ function getSeedReportSimilarPerformanceRows(seed = {}) {
       label: candidate.varietyName,
       imageUrl: candidate.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
       rate: `${Number(candidate.germinationSuccess) || 0}%`,
-      detail: `${candidate.communityConfidence || "Community signal"} from ${candidate.source || "demo source"}.`,
+      detail: `${candidate.communityConfidence || "Community signal"} from ${candidate.source || "preview source"}.`,
       href: `#seeds/${encodeURIComponent(candidate.id)}`,
     }));
 }
@@ -52373,7 +52373,7 @@ function getSeedReportTimelineRows(seed = {}, activity = getSeedReportActivityMe
   return [
     { text: `${activity.newSessionsThisWeek} new community sessions reported this week`, time: "2 hrs ago" },
     { text: `${freshLotLabel}`, time: "5 hrs ago" },
-    { text: `${seed.communityConfidence || "Community confidence"} signal updated from demo evidence`, time: "1 day ago" },
+    { text: `${seed.communityConfidence || "Community confidence"} signal updated from preview evidence`, time: "1 day ago" },
     { text: `Recent grow reports added for ${seed.varietyName || "this variety"}`, time: "2 days ago" },
   ];
 }
@@ -52442,25 +52442,25 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
           <p>
             <span>${escapeHtml(seed.source || "Primary Source")}</span>
             <span>${escapeHtml(seed.seedType || "Seed")}</span>
-            <span>${escapeHtml(seed.batchAge || "Demo lot")}</span>
+            <span>${escapeHtml(seed.batchAge || "Preview lot")}</span>
           </p>
           <strong class="source-report-established-line">${escapeHtml(seed.summary || "Community-powered seed performance report.")}</strong>
           <div class="source-report-hero-actions">
-            <span class="source-report-cstp-chip">Demo Seed Report</span>
+            <span class="source-report-cstp-chip">Community Preview</span>
             ${renderMetricBadgeMarkup(seed.communityConfidence || "Community Signal", { className: "source-directory-evidence-badge seed-explorer-badge", tone: getSeedExplorerConfidenceTone(seed) })}
           </div>
         </div>
       </div>
 
       <div class="source-report-hero-metrics seed-report-hero-metrics" aria-label="Primary seed evidence metrics">
-        ${renderSourceReportHeroMetricMarkup({ icon: "leaderboard", value: getSeedReportPercentileLabel(seed), label: "of Demo Seeds", tone: "gold" })}
+        ${renderSourceReportHeroMetricMarkup({ icon: "leaderboard", value: getSeedReportPercentileLabel(seed), label: "of Preview Seeds", tone: "gold" })}
         ${renderSourceReportHeroMetricMarkup({ icon: "mySessionsSprout", value: `${seed.germinationSuccess}%`, label: "Germination Success", tone: "green" })}
         ${renderSourceReportHeroMetricMarkup({ icon: "adminShield", value: seed.communityConfidence || "Early Signal", label: "Confidence Level", tone: "shield" })}
         ${renderSourceReportHeroMetricMarkup({ icon: "communityGroup", value: Number(seed.communitySessions || 0).toLocaleString(), label: "Community Sessions", tone: "green" })}
         ${renderSourceReportHeroMetricMarkup({ icon: "seedVault", value: Number(seed.seedsTracked || 0).toLocaleString(), label: "Seeds Tracked", tone: "green" })}
       </div>
       <div class="source-report-hero-note-row">
-        <p>Performance and confidence are based on mock community seed data for the Seed Explorer foundation.</p>
+        <p>Performance and confidence are based on curated community preview signals for the Seed Explorer foundation.</p>
         <span>Last Updated: ${escapeHtml(activity.lastUpdated)} <i aria-hidden="true"></i></span>
       </div>
     </article>
@@ -52475,10 +52475,10 @@ function renderSeedReportGalleryMarkup(seed = {}) {
       <div class="seed-profile-gallery-grid seed-report-gallery-grid">
         ${galleryItems.map((imagePath, index) => `
           <article class="card seed-profile-gallery-card">
-            <img src="${escapeHtml(imagePath)}" alt="${escapeHtml(`${seed.varietyName || "Seed"} demo community snapshot ${index + 1}`)}" loading="lazy" decoding="async">
+            <img src="${escapeHtml(imagePath)}" alt="${escapeHtml(`${seed.varietyName || "Seed"} community preview snapshot ${index + 1}`)}" loading="lazy" decoding="async">
             <div>
               <span>${escapeHtml(seed.seedType || "Seed")}</span>
-              <strong>${escapeHtml(index === 0 ? "Community snapshot" : "Demo grow evidence")}</strong>
+              <strong>${escapeHtml(index === 0 ? "Community snapshot" : "Preview grow evidence")}</strong>
             </div>
           </article>
         `).join("")}
@@ -52509,7 +52509,7 @@ function renderSeedReportInsightsMarkup(seed = {}) {
           iconMarkup: `<span aria-hidden="true">${confidenceIcon}</span>`,
           label: "Confidence Read",
           value: seed.communityConfidence || "Early Signal",
-          detail: `${Number(seed.communitySessions || 0).toLocaleString()} demo sessions support this report's current confidence level.`,
+          detail: `${Number(seed.communitySessions || 0).toLocaleString()} preview sessions support this report's current confidence level.`,
         })}
         ${renderInsightCardMarkup({
           className: "seed-vault-performance-insight seed-profile-grow-insight",
@@ -52526,9 +52526,9 @@ function renderSeedReportInsightsMarkup(seed = {}) {
 
 function renderSeedReportEvidenceMarkup(seed = {}) {
   const rows = [
-    { label: "Report Type", value: "Demo Seed Report" },
+    { label: "Report Type", value: "Community Preview" },
     { label: "Evidence Model", value: "Community Sessions" },
-    { label: "Seed Lot Context", value: seed.batchAge || "Demo lot" },
+    { label: "Seed Lot Context", value: seed.batchAge || "Preview lot" },
     { label: "Primary Source", value: seed.source || "Unknown Source" },
   ];
   return `
@@ -52542,7 +52542,7 @@ function renderSeedReportEvidenceMarkup(seed = {}) {
           </article>
         `).join("")}
       </div>
-      <p class="source-profile-cstp-trust-note source-report-cstp-trust-note">Seed Report evidence is demo-only in this sprint and remains separate from production Source Report business logic.</p>
+      <p class="source-profile-cstp-trust-note source-report-cstp-trust-note">Seed Report evidence is preview-only in this sprint and remains separate from production Source Report business logic.</p>
     </article>
   `;
 }
@@ -52564,13 +52564,13 @@ function renderSeedProfilePage(seedId = "") {
     {
       label: "Confidence Level",
       value: seed.communityConfidence || "Early Signal",
-      detail: `${Number(seed.communitySessions || 0).toLocaleString()} demo community sessions`,
+      detail: `${Number(seed.communitySessions || 0).toLocaleString()} community preview sessions`,
       progressValue: seed.confidencePercent,
     },
     {
       label: "Germination Success",
       value: `${seed.germinationSuccess}%`,
-      detail: "Demo community success rate",
+      detail: "Community preview success rate",
       progressValue: seed.germinationSuccess,
     },
     {
@@ -52581,12 +52581,12 @@ function renderSeedProfilePage(seedId = "") {
     {
       label: "Seeds Tracked",
       value: Number(seed.seedsTracked || 0).toLocaleString(),
-      detail: "Demo seed observations",
+      detail: "Preview seed observations",
     },
     {
       label: "Seed Type",
       value: seed.seedType || "Seed",
-      detail: seed.batchAge || "Demo lot",
+      detail: seed.batchAge || "Preview lot",
     },
   ];
 
@@ -52595,7 +52595,7 @@ function renderSeedProfilePage(seedId = "") {
       <a class="source-profile-back-link source-report-back-link" href="#seeds">&larr; Back to Seed Explorer</a>
       <div class="source-profile-title-block source-report-title-block">
         <h1>Seed Report</h1>
-        <span class="source-profile-demo-badge source-report-demo-badge">Demo Data</span>
+        <span class="source-profile-demo-badge source-report-demo-badge">Preview Data</span>
       </div>
 
       ${renderSeedReportHeroMarkup(seed, activity)}
@@ -52605,7 +52605,7 @@ function renderSeedProfilePage(seedId = "") {
         <div class="source-report-section-head">
           <div>
             ${renderSourceReportSectionTitle(1, "Performance Over Sessions")}
-            <p>Based on demo community seed session data</p>
+            <p>Based on community preview seed session data</p>
           </div>
         </div>
         ${renderSourceReportPerformanceChartMarkup(seed.germinationSuccess, Number(seed.communitySessions || 0))}
@@ -52676,7 +52676,7 @@ function renderSeedProfilePage(seedId = "") {
         <div>
           <p class="eyebrow">Seed Actions</p>
           <h3>Continue exploring this seed report</h3>
-          <p class="muted">Seed Reports use mock data in this sprint while the shared report framework is prepared for future community intelligence.</p>
+          <p class="muted">Seed Reports use curated preview data while the shared report framework is prepared for future community intelligence.</p>
         </div>
         <div class="source-profile-request-actions">
           <a class="button button-secondary" href="#seeds">Back to Seed Explorer</a>
@@ -52848,7 +52848,7 @@ function renderSourcesLandingPage(activeTab = "sources") {
             <p class="eyebrow">Explorer Controls</p>
             <h3>Explore Source Reports</h3>
           </div>
-          ${isMockDataEnabled() ? `<span class="source-directory-mock-note">Demo Data</span>` : ""}
+          ${isMockDataEnabled() ? `<span class="source-directory-mock-note">Preview Data</span>` : ""}
         </div>
         <div class="source-directory-controls-grid">
           <label class="source-directory-search-field">
@@ -52968,7 +52968,7 @@ function getSourceReportTopVarieties(sourceProfile = {}, averageRate = 0) {
     rate: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
     germination: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
     confidence: "Community Signal",
-    sessions: "Demo",
+    sessions: "Preview",
     href: getSeedExplorerReportHrefForVariety(variety.label),
   }));
 }
@@ -53110,7 +53110,7 @@ function renderSourceReportTopVarietiesMarkup(varieties = [], sourceProfile = {}
           <img src="${escapeHtml(variety.imageUrl || DEMO_SNAPSHOT_IMAGE_URLS[0])}" alt="" loading="lazy" decoding="async">
           <strong>${escapeHtml(variety.label)}</strong>
           <span>${escapeHtml(variety.germination || variety.rate || "")}</span>
-          <small>${escapeHtml(`${variety.confidence || "Community Signal"} · ${variety.sessions || "Demo"} sessions`)}</small>
+          <small>${escapeHtml(`${variety.confidence || "Community Signal"} · ${variety.sessions || "Preview"} sessions`)}</small>
         ${variety.href ? "</a>" : "</article>"}
       `).join("")}
     </div>
@@ -53719,7 +53719,7 @@ function renderSourceVarietiesPage(sourceId = "") {
       <a class="source-profile-back-link source-report-back-link" href="${escapeHtml(reportHref)}">&larr; Back to Source Report</a>
       <div class="source-profile-title-block source-report-title-block">
         <h1>Source Varieties</h1>
-        ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Demo Data</span>` : ""}
+        ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Preview Data</span>` : ""}
       </div>
 
       <article class="card source-report-hero-card source-varieties-hero-card">
@@ -53795,7 +53795,7 @@ function renderSourceProfilePage(sourceId = "") {
 
   if (!sourceProfile) {
     const unavailableCopy = isMockDataEnabled()
-      ? "This mock source report could not be loaded."
+      ? "This preview source report could not be loaded."
       : "This source report could not be loaded.";
     app.innerHTML = `
       <section class="card source-profile-page source-report-empty-card">
@@ -53869,7 +53869,7 @@ function renderSourceProfilePage(sourceId = "") {
       <a class="source-profile-back-link source-report-back-link" href="#sources">&larr; Back to Source Explorer</a>
       <div class="source-profile-title-block source-report-title-block">
         <h1>Source Report</h1>
-        ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Demo Data</span>` : ""}
+        ${showDemoDataBadge ? `<span class="source-profile-demo-badge source-report-demo-badge">Preview Data</span>` : ""}
       </div>
 
       <article class="card source-report-hero-card">
