@@ -80297,7 +80297,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
             <div class="session-analytics-summary-row">
               <span>Active</span>
               <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
-                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--active chart-gradient-bar-green-blue" style="width:${escapeHtml(`${activeShare}%`)};"></span>
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--active chart-gradient-bar-green" style="width:${escapeHtml(`${activeShare}%`)};"></span>
               </div>
               <strong>${escapeHtml(`${activeShare}%`)}</strong>
             </div>

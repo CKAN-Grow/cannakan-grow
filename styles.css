@@ -10389,7 +10389,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-width: 4px;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
 }
 
 .community-insights-bar-row > strong {
@@ -15053,8 +15053,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   height: 100%;
   min-width: 16px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #39aaff 0%, #51d6c5 46%, #9be13d 100%);
-  box-shadow: 0 0 14px rgba(76, 219, 191, 0.16);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.2);
 }
 .home-cstp-overview-layout {
   display: grid;
@@ -18660,7 +18660,7 @@ body.theme-dark .contact-reason-card.is-active {
   min-width: 5px;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
 }
 
 .gallery-compact-trend-bar-row > strong {
@@ -32283,8 +32283,8 @@ textarea::placeholder {
   height: 100%;
   min-width: 18px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #39aaff 0%, #51d6c5 46%, #9be13d 100%);
-  box-shadow: 0 0 14px rgba(76, 219, 191, 0.16);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.2);
 }
 
 .seed-explorer-list-kpi strong {
@@ -33697,8 +33697,8 @@ textarea::placeholder {
   height: 100%;
   min-width: 18px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #39aaff 0%, #4dddc2 48%, #9be13d 100%);
-  box-shadow: 0 0 16px rgba(76, 219, 191, 0.18);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
+  box-shadow: 0 0 16px rgba(148, 209, 89, 0.22);
 }
 
 .source-directory-trust-note,
@@ -36058,7 +36058,7 @@ textarea::placeholder {
 }
 
 .cstp-cert-bar-row.is-time .cstp-cert-bar-track span {
-  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
 }
 
 .cstp-cert-bar-row p {
@@ -50947,9 +50947,9 @@ body.theme-dark #session-analytics-section {
   background: linear-gradient(90deg, #7fd157 0%, #a8e86d 52%, #f0ffb5 100%);
 }
 
-.session-analytics-panel .chart-gradient-bar-green-blue,
-.admin-seed-age-analytics-section .chart-gradient-bar-green-blue {
-  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+.session-analytics-panel .chart-gradient-bar-green,
+.admin-seed-age-analytics-section .chart-gradient-bar-green {
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
 }
 
 .session-analytics-panel .chart-gradient-bar-orange-green,
@@ -51056,7 +51056,7 @@ body.theme-dark #session-analytics-section {
 }
 
 .session-analytics-summary-fill--active {
-  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
 }
 
 .session-analytics-full-dashboard-link.button {
@@ -51414,7 +51414,7 @@ body.theme-dark #session-analytics-section {
   min-width: 4px;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
 }
 
 .private-analytics-bar-row > strong {
@@ -59786,8 +59786,8 @@ body.theme-dark option[selected] {
   height: 100%;
   min-width: 16px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #39aaff 0%, #4dddc2 48%, #9be13d 100%);
-  box-shadow: 0 0 16px rgba(76, 219, 191, 0.18);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
+  box-shadow: 0 0 16px rgba(148, 209, 89, 0.22);
 }
 
 .source-directory-report-kpis {
@@ -60277,7 +60277,7 @@ a.source-directory-variety-chip:focus-visible {
   line-height: 0.82;
   text-shadow:
     0 0 18px rgba(148, 209, 89, 0.18),
-    0 0 34px rgba(76, 219, 191, 0.06);
+    0 0 34px rgba(148, 209, 89, 0.08);
 }
 
 .source-directory-card .source-directory-average-germination-block .source-directory-performance-context {
@@ -60313,10 +60313,10 @@ a.source-directory-variety-chip:focus-visible {
 
 .source-directory-confidence-meter b {
   min-width: 22px;
-  background: linear-gradient(90deg, #39aaff 0%, #51d6c5 46%, #9be13d 100%);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 0 18px rgba(76, 219, 191, 0.2);
+    0 0 18px rgba(148, 209, 89, 0.24);
 }
 
 .source-directory-report-kpis {
@@ -60804,8 +60804,8 @@ a.source-directory-variety-chip:focus-visible {
   height: 100%;
   min-width: 18px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #39aaff 0%, #51d6c5 46%, #9be13d 100%);
-  box-shadow: 0 0 14px rgba(76, 219, 191, 0.16);
+  background: linear-gradient(90deg, #6fbd45 0%, #94d159 62%, #c8f06f 100%);
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.2);
 }
 
 .source-directory-compare-kpi strong {
