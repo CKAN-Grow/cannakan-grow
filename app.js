@@ -71659,18 +71659,73 @@ function renderCommunityIntelligenceMetricListItem({ icon = "mySessionsSprout", 
   `;
 }
 
-function renderCommunityAtAGlanceTrendMarkup(index = 0) {
-  const patterns = [
-    [32, 46, 38, 54, 48, 62, 56, 70, 64, 78],
-    [44, 52, 40, 48, 58, 66, 60, 54, 68, 74],
-    [38, 30, 48, 42, 62, 54, 72, 60, 76, 68],
-    [28, 40, 36, 46, 52, 58, 64, 60, 70, 82],
-    [42, 34, 46, 58, 54, 62, 50, 66, 72, 80],
-    [36, 48, 48, 56, 50, 44, 58, 62, 70, 84],
-  ];
-  const bars = patterns[index % patterns.length];
+function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
+  const bars = [38, 30, 48, 42, 62, 54, 72, 60, 76, 68];
+  if (type === "sparkline") {
+    return `
+      <div class="community-at-a-glance-trend community-at-a-glance-trend--sparkline" aria-hidden="true">
+        <svg viewBox="0 0 160 24" focusable="false">
+          <path class="community-glance-chart-baseline" d="M4 19 H156"></path>
+          <path class="community-glance-chart-line" d="M4 18 C20 16 28 20 42 13 S68 15 82 9 112 13 126 7 146 6 156 4"></path>
+        </svg>
+      </div>
+    `;
+  }
+  if (type === "step") {
+    return `
+      <div class="community-at-a-glance-trend community-at-a-glance-trend--step" aria-hidden="true">
+        <svg viewBox="0 0 160 24" focusable="false">
+          <path class="community-glance-chart-baseline" d="M4 19 H156"></path>
+          <path class="community-glance-chart-line" d="M4 18 H30 V15 H56 V12 H82 V10 H108 V7 H134 V5 H156"></path>
+        </svg>
+      </div>
+    `;
+  }
+  if (type === "dots") {
+    return `
+      <div class="community-at-a-glance-trend community-at-a-glance-trend--dots" aria-hidden="true">
+        <svg viewBox="0 0 160 24" focusable="false">
+          <path class="community-glance-chart-baseline" d="M4 19 H156"></path>
+          <path class="community-glance-chart-line" d="M8 18 L34 14 L60 16 L86 10 L112 12 L138 6"></path>
+          ${[
+            [8, 18],
+            [34, 14],
+            [60, 16],
+            [86, 10],
+            [112, 12],
+            [138, 6],
+          ].map(([cx, cy]) => `<circle cx="${escapeHtml(String(cx))}" cy="${escapeHtml(String(cy))}" r="2.4"></circle>`).join("")}
+        </svg>
+      </div>
+    `;
+  }
+  if (type === "distribution") {
+    return `
+      <div class="community-at-a-glance-trend community-at-a-glance-trend--distribution" aria-hidden="true">
+        ${[28, 44, 68, 84, 70, 52, 36].map((height, barIndex) => `<i style="--community-glance-bar-height: ${escapeHtml(String(height))}%; --community-glance-bar-index: ${escapeHtml(String(barIndex))};"></i>`).join("")}
+      </div>
+    `;
+  }
+  if (type === "radar") {
+    return `
+      <div class="community-at-a-glance-trend community-at-a-glance-trend--radar" aria-hidden="true">
+        <svg viewBox="0 0 160 24" focusable="false">
+          <circle class="community-glance-radar-ring" cx="80" cy="12" r="9"></circle>
+          <circle class="community-glance-radar-ring is-wide" cx="80" cy="12" r="15"></circle>
+          ${[
+            [44, 13],
+            [58, 7],
+            [78, 12],
+            [100, 8],
+            [116, 15],
+          ].map(([cx, cy]) => `<circle class="community-glance-radar-dot" cx="${escapeHtml(String(cx))}" cy="${escapeHtml(String(cy))}" r="2.3"></circle>`).join("")}
+        </svg>
+      </div>
+    `;
+  }
+
   return `
-    <div class="community-at-a-glance-trend" aria-hidden="true">
+    <div class="community-at-a-glance-trend community-at-a-glance-trend--bars" aria-hidden="true">
       ${bars.map((height, barIndex) => `<i style="--community-glance-bar-height: ${escapeHtml(String(height))}%; --community-glance-bar-index: ${escapeHtml(String(barIndex))};"></i>`).join("")}
     </div>
   `;
@@ -71678,12 +71733,12 @@ function renderCommunityAtAGlanceTrendMarkup(index = 0) {
 
 function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboardData()) {
   const stats = [
-    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence" },
-    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal" },
-    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence" },
-    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped" },
-    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports" },
-    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals" },
+    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence", visual: "sparkline" },
+    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal", visual: "step" },
+    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence", visual: "bars" },
+    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped", visual: "dots" },
+    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports", visual: "distribution" },
+    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals", visual: "radar" },
   ];
 
   return `
@@ -71709,7 +71764,7 @@ function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboar
               </span>
               <em>${escapeHtml(stat.trend)}</em>
             </div>
-            ${renderCommunityAtAGlanceTrendMarkup(index)}
+            ${renderCommunityAtAGlanceTrendMarkup(stat.visual)}
           </article>
         `).join("")}
       </div>

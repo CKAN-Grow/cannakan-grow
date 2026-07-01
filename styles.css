@@ -8330,7 +8330,44 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: linear-gradient(90deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.42), rgba(148, 209, 89, 0.12));
 }
 
-.community-at-a-glance-trend i {
+.community-at-a-glance-trend svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.community-glance-chart-baseline {
+  fill: none;
+  stroke: rgba(148, 209, 89, 0.22);
+  stroke-linecap: round;
+  stroke-width: 1.2;
+}
+
+.community-glance-chart-line {
+  fill: none;
+  stroke: #94d159;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 7px rgba(148, 209, 89, 0.36));
+}
+
+.community-at-a-glance-trend--step .community-glance-chart-line {
+  stroke-width: 2;
+}
+
+.community-at-a-glance-trend--dots circle:not(.community-glance-radar-ring) {
+  fill: #b8ff5f;
+  stroke: rgba(3, 8, 7, 0.78);
+  stroke-width: 1;
+  filter: drop-shadow(0 0 6px rgba(148, 209, 89, 0.34));
+}
+
+.community-at-a-glance-trend--bars i,
+.community-at-a-glance-trend--distribution i {
   position: relative;
   z-index: 1;
   flex: 1 1 0;
@@ -8345,6 +8382,30 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     0 0 8px rgba(148, 209, 89, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   opacity: calc(0.52 + (var(--community-glance-bar-index) * 0.035));
+}
+
+.community-at-a-glance-trend--distribution {
+  justify-content: center;
+}
+
+.community-at-a-glance-trend--distribution i {
+  max-width: 12px;
+}
+
+.community-glance-radar-ring {
+  fill: rgba(148, 209, 89, 0.06);
+  stroke: rgba(148, 209, 89, 0.34);
+  stroke-width: 1.2;
+}
+
+.community-glance-radar-ring.is-wide {
+  fill: none;
+  stroke: rgba(148, 209, 89, 0.16);
+}
+
+.community-glance-radar-dot {
+  fill: #b8ff5f;
+  filter: drop-shadow(0 0 6px rgba(148, 209, 89, 0.36));
 }
 
 .community-intelligence-live-layout {
