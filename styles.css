@@ -8449,7 +8449,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-intelligence-map-layout {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(292px, 0.32fr);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.34fr);
   align-items: center;
   gap: 0;
 }
@@ -8926,12 +8926,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 3;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-rows: auto minmax(370px, auto) auto;
+  gap: 18px;
   min-width: 0;
-  min-height: min(500px, 100%);
-  margin-left: clamp(-76px, -4.8vw, -32px);
-  padding: 16px;
+  min-height: auto;
+  margin-left: clamp(-70px, -4vw, -28px);
+  padding: 20px;
   border: 1px solid rgba(148, 209, 89, 0.2);
   border-radius: 18px;
   background:
@@ -8949,7 +8949,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -8962,18 +8962,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-intelligence-rotator-head h4 {
   position: relative;
   overflow: hidden;
-  min-height: 1.15em;
+  min-height: 1.18em;
   margin: 0;
   color: #f8fff3;
-  font-size: 0.98rem;
+  font-size: 1.02rem;
   line-height: 1.15;
 }
 
 .community-intelligence-active-mode span {
   position: absolute;
   inset: 0;
+  min-width: max-content;
   opacity: 0;
   transform: translateX(12px);
+  white-space: nowrap;
   animation-delay: calc(var(--community-intelligence-rotation-index) * var(--community-intelligence-rotation-step));
   animation-duration: calc(var(--community-intelligence-rotation-step) * 3);
   animation-iteration-count: infinite;
@@ -9002,6 +9004,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-intelligence-rotator-head > span {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -9027,7 +9030,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator-track {
   position: relative;
-  min-height: 330px;
+  min-height: 370px;
+  min-width: 0;
 }
 
 .community-intelligence-rotator-card {
@@ -9035,9 +9039,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   inset: 0;
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
-  padding: 16px;
+  padding: 18px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   border-radius: 14px;
   background:
@@ -9074,7 +9078,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator-card-head span {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -9088,7 +9092,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-rotator-card-head strong {
   color: #ffffff;
-  font-size: clamp(1.12rem, 1.7vw, 1.38rem);
+  font-size: clamp(1.08rem, 1.45vw, 1.3rem);
   line-height: 1.15;
 }
 
@@ -9108,7 +9112,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-panel-stat-list {
   display: grid;
-  gap: 11px;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -9116,16 +9120,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-panel-stat-list li {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(118px, 1fr) minmax(52px, max-content);
   align-items: center;
-  gap: 9px;
-  min-height: 38px;
+  gap: 11px;
+  min-height: 40px;
   min-width: 0;
 }
 
 .community-intelligence-panel-stat-icon {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   color: #94d159;
 }
 
@@ -9141,7 +9145,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .community-intelligence-panel-stat-list strong {
   color: #f8fff3;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   line-height: 1.1;
   text-align: right;
   white-space: nowrap;
@@ -9152,7 +9156,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   justify-content: center;
   gap: 9px;
-  min-height: 14px;
+  min-height: 28px;
+  padding: 8px 10px 2px;
+  border-top: 1px solid rgba(148, 209, 89, 0.1);
 }
 
 .community-intelligence-rotator-dots span {
@@ -9797,6 +9803,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 }
 
+@media (max-width: 1080px) {
+  .community-intelligence-map-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .community-intelligence-rotator {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 880px) {
   .community-intelligence-live-layout,
   .community-intelligence-map-layout,
@@ -9817,6 +9835,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .community-intelligence-rotator {
     margin-left: 0;
     min-height: auto;
+    padding: 18px;
   }
 
   .community-intelligence-shortcut-grid {
@@ -9830,7 +9849,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-intelligence-rotator-track {
-    min-height: 300px;
+    min-height: 350px;
   }
 }
 
@@ -9914,6 +9933,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .community-intelligence-rotator {
     padding: 14px;
+    gap: 14px;
+    grid-template-rows: auto minmax(390px, auto) auto;
   }
 
   .community-intelligence-rotator-head,
@@ -9922,12 +9943,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .community-intelligence-panel-stat-list li {
-    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 9px;
   }
 
   .community-intelligence-panel-stat-list strong {
-    grid-column: 2;
-    text-align: left;
+    grid-column: auto;
+    text-align: right;
+  }
+
+  .community-intelligence-panel-stat-list span {
+    white-space: normal;
   }
 }
 
