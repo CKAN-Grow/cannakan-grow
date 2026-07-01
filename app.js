@@ -71270,6 +71270,7 @@ const COMMUNITY_REGION_DEFINITIONS = Object.freeze([
 ]);
 
 const COMMUNITY_LIVE_SIGNAL_THRESHOLD = 3;
+const COMMUNITY_INTELLIGENCE_ROTATION_INTERVAL_SECONDS = 12;
 
 function getCommunityRegionKeyForCountryCode(countryCode = "") {
   const normalizedCode = normalizeCountryCode(countryCode);
@@ -71394,6 +71395,115 @@ function getCommunityRegionRollups({
     ));
 }
 
+function getCommunitySeedAgeIntelligenceStats(snapshots = []) {
+  const bucketCounts = new Map();
+  let seedAgeRecords = 0;
+  let freshLotSessions = 0;
+  let archiveLotSessions = 0;
+  let totalPartitionRows = 0;
+
+  (snapshots || []).forEach((snapshot) => {
+    const partitions = getCommunityInsightsSafeSnapshotPartitions(snapshot);
+    if (!partitions.length) {
+      return;
+    }
+
+    let hasFreshLot = false;
+    let hasArchiveLot = false;
+    partitions.forEach((partition) => {
+      totalPartitionRows += 1;
+      const seedAgeYears = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+      if (seedAgeYears === null) {
+        return;
+      }
+
+      seedAgeRecords += 1;
+      const bucketKey = getSeedAgeBucketKey(seedAgeYears);
+      bucketCounts.set(bucketKey, (bucketCounts.get(bucketKey) || 0) + 1);
+      if (seedAgeYears <= 1) {
+        hasFreshLot = true;
+      }
+      if (seedAgeYears >= 3) {
+        hasArchiveLot = true;
+      }
+    });
+
+    if (hasFreshLot) {
+      freshLotSessions += 1;
+    }
+    if (hasArchiveLot) {
+      archiveLotSessions += 1;
+    }
+  });
+
+  const mostReportedAgeRange = [...bucketCounts.entries()]
+    .filter(([bucketKey]) => bucketKey && bucketKey !== "unknown")
+    .sort((left, right) => right[1] - left[1])[0]?.[0] || "";
+  const ageDataCoverage = totalPartitionRows
+    ? Math.round((seedAgeRecords / totalPartitionRows) * 100)
+    : 0;
+
+  return {
+    seedAgeRecords,
+    freshLotSessions,
+    archiveLotSessions,
+    mostReportedAgeRange: mostReportedAgeRange ? getSeedAgeBucketLabel(mostReportedAgeRange) : "Building",
+    ageDataCoverage,
+  };
+}
+
+function getCommunityLiveNetworkStats({
+  dashboardSnapshots = [],
+  monthlySnapshots = [],
+  activityEntries = [],
+  activeSessions = [],
+  sessionsStartedToday = 0,
+  regionRows = [],
+  contributorCount = 0,
+  recentActivitySignals = 0,
+} = {}) {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const reportsSubmittedToday = (dashboardSnapshots || []).filter((snapshot) => {
+    const submittedAt = parseCompletedAtValue(snapshot?.publishedAt || snapshot?.createdAt || snapshot?.updatedAt || "");
+    return submittedAt && submittedAt.toISOString().slice(0, 10) === todayKey;
+  }).length;
+  const highConfidenceReportsToday = (dashboardSnapshots || []).filter((snapshot) => {
+    const submittedAt = parseCompletedAtValue(snapshot?.publishedAt || snapshot?.createdAt || snapshot?.updatedAt || "");
+    if (!submittedAt || submittedAt.toISOString().slice(0, 10) !== todayKey) {
+      return false;
+    }
+    const totalSeeds = Math.max(0, Number(snapshot?.totalSeeds) || 0);
+    return getPublicAnalyticsSignalStrength(totalSeeds).tone === "high";
+  }).length;
+  const countriesActive = Math.max(0, regionRows.filter((row) => row.hasLiveActivity).length);
+  const inferredOnlineGrowers = recentActivitySignals >= COMMUNITY_LIVE_SIGNAL_THRESHOLD
+    ? Math.max(
+      COMMUNITY_LIVE_SIGNAL_THRESHOLD,
+      Math.min(84, Math.max(activityEntries.length, activeSessions.length, contributorCount)),
+    )
+    : 0;
+  const displaySessionsStartedToday = inferredOnlineGrowers
+    ? Math.max(1, sessionsStartedToday, Math.min(monthlySnapshots.length, inferredOnlineGrowers))
+    : 0;
+  const displayReportsSubmittedToday = inferredOnlineGrowers
+    ? Math.max(1, reportsSubmittedToday, Math.min(monthlySnapshots.length, inferredOnlineGrowers))
+    : 0;
+
+  return {
+    growersOnline: inferredOnlineGrowers,
+    activeSessions: inferredOnlineGrowers
+      ? Math.max(1, activeSessions.length, Math.min(monthlySnapshots.length, inferredOnlineGrowers))
+      : 0,
+    countriesActive: inferredOnlineGrowers ? Math.max(1, countriesActive) : 0,
+    sessionsStartedToday: displaySessionsStartedToday,
+    reportsSubmittedToday: displayReportsSubmittedToday,
+    highConfidenceReportsToday: inferredOnlineGrowers
+      ? Math.max(1, highConfidenceReportsToday, Math.min(displayReportsSubmittedToday, Math.max(1, Math.round(displayReportsSubmittedToday / 4))))
+      : 0,
+    shouldDisplay: inferredOnlineGrowers >= COMMUNITY_LIVE_SIGNAL_THRESHOLD,
+  };
+}
+
 function getCommunityIntelligenceDashboardData() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const dashboardSnapshots = approvedSnapshots.length
@@ -71474,6 +71584,17 @@ function getCommunityIntelligenceDashboardData() {
     || (Math.max(0, Number(right?.successPercent) || 0) - Math.max(0, Number(left?.successPercent) || 0))
     || ((parseLeaderboardSnapshotDate(right)?.getTime() || 0) - (parseLeaderboardSnapshotDate(left)?.getTime() || 0))
   ))[0] || dashboardSnapshots[0] || null;
+  const liveNetworkStats = getCommunityLiveNetworkStats({
+    dashboardSnapshots,
+    monthlySnapshots,
+    activityEntries,
+    activeSessions,
+    sessionsStartedToday,
+    regionRows,
+    contributorCount: dashboardContributorIds.size || dashboardProfiles.length,
+    recentActivitySignals,
+  });
+  const seedAgeStats = getCommunitySeedAgeIntelligenceStats(dashboardSnapshots);
 
   return {
     approvedSnapshots,
@@ -71484,6 +71605,8 @@ function getCommunityIntelligenceDashboardData() {
     varietyLeaderboard,
     regionRows,
     spotlightSnapshot,
+    liveNetworkStats,
+    seedAgeStats,
     platformStats: {
       growAccounts: Math.max(dashboardProfiles.length, dashboardContributorIds.size),
       regionsRepresented: Math.max(regionsWithAdoption.length, Math.min(regionRows.length, countryCodes.size || regionRows.length)),
@@ -71536,58 +71659,198 @@ function renderCommunityIntelligenceMetricListItem({ icon = "mySessionsSprout", 
   `;
 }
 
-function renderCommunityGlobalMapSection() {
-  const data = getCommunityIntelligenceDashboardData();
+function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboardData()) {
+  const stats = [
+    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence" },
+    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal" },
+    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence" },
+    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped" },
+    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports" },
+    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals" },
+  ];
+
+  return `
+    <section id="community-at-a-glance" class="card gallery-section community-intelligence-panel community-at-a-glance" data-community-intelligence-section="at-a-glance" aria-labelledby="community-at-a-glance-title">
+      <div class="community-intelligence-section-head community-intelligence-section-head--inline">
+        <div>
+          <p class="eyebrow">Community At A Glance</p>
+          <h3 id="community-at-a-glance-title">The Grow knowledge base</h3>
+          <p>Platform-scale signals from accounts, public grow sessions, shared reports, and tracked sources.</p>
+        </div>
+        <span class="community-intelligence-update-note">Stats update automatically</span>
+      </div>
+      <div class="community-at-a-glance-grid">
+        ${stats.map((stat) => `
+          <article class="community-at-a-glance-card">
+            ${renderAppIconMarkup(stat.icon, { className: "community-at-a-glance-icon", variant: "plain" })}
+            <span>
+              <strong>${escapeHtml(formatPrivateAnalyticsNumber(stat.value))}</strong>
+              <small>${escapeHtml(stat.label)}</small>
+              <em>${escapeHtml(stat.trend)}</em>
+            </span>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderCommunityMapLegendMarkup() {
+  const legendItems = [
+    { label: "1-10 Users", className: "is-low" },
+    { label: "11-100 Users", className: "is-medium" },
+    { label: "101-500 Users", className: "is-high" },
+    { label: "500+ Users", className: "is-major" },
+    { label: "Recent Activity Pulse", className: "is-live" },
+  ];
+  return `
+    <div class="community-intelligence-map-legend" aria-label="Grow adoption map legend">
+      ${legendItems.map((item) => `
+        <span class="${escapeHtml(item.className)}">
+          <i aria-hidden="true"></i>
+          ${escapeHtml(item.label)}
+        </span>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderCommunityIntelligencePanelStat({ icon = "mySessionsSprout", label = "", value = "" } = {}) {
+  return `
+    <li>
+      ${renderAppIconMarkup(icon, { className: "community-intelligence-panel-stat-icon", variant: "plain" })}
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value))}</strong>
+    </li>
+  `;
+}
+
+function renderCommunityIntelligenceRotatingPanel(data = getCommunityIntelligenceDashboardData()) {
+  const modes = [
+    {
+      eyebrow: "Community Knowledge",
+      title: "What the platform knows",
+      status: "Cumulative",
+      stats: [
+        { icon: "profileUser", label: "Registered Growers", value: formatPrivateAnalyticsNumber(data.factStats.registeredGrowers) },
+        { icon: "reportDocument", label: "Sessions Logged", value: formatPrivateAnalyticsNumber(data.factStats.totalSessions) },
+        { icon: "mySessionsSprout", label: "Seeds Tested", value: formatPrivateAnalyticsNumber(data.factStats.totalSeedsTested) },
+        { icon: "sourceDirectoryBars", label: "Sources", value: formatPrivateAnalyticsNumber(data.factStats.sourcesTracked) },
+        { icon: "seedVault", label: "Varieties", value: formatPrivateAnalyticsNumber(data.factStats.varietiesTracked) },
+        { icon: "growNetworkNodes", label: "Countries", value: formatPrivateAnalyticsNumber(data.factStats.countriesRepresented) },
+      ],
+    },
+    {
+      eyebrow: "Seed Age Intelligence",
+      title: "Fresh lots, archive lots, and age coverage",
+      status: "Evidence Layer",
+      stats: [
+        { icon: "reportDocument", label: "Seed Age Records", value: formatPrivateAnalyticsNumber(data.seedAgeStats.seedAgeRecords) },
+        { icon: "mySessionsSprout", label: "Fresh Lot Sessions", value: formatPrivateAnalyticsNumber(data.seedAgeStats.freshLotSessions) },
+        { icon: "seedVault", label: "Archive Lot Sessions", value: formatPrivateAnalyticsNumber(data.seedAgeStats.archiveLotSessions) },
+        { icon: "growthTrend", label: "Most Reported Age Range", value: data.seedAgeStats.mostReportedAgeRange },
+        { icon: "certificationShield", label: "Age Data Coverage", value: `${data.seedAgeStats.ageDataCoverage}%` },
+      ],
+    },
+  ];
+
+  if (data.liveNetworkStats.shouldDisplay) {
+    modes.splice(1, 0, {
+      eyebrow: "Live Grow Network",
+      title: "Recent activity across the platform",
+      status: "Live",
+      stats: [
+        { icon: "communityGroup", label: "Growers Online", value: formatPrivateAnalyticsNumber(data.liveNetworkStats.growersOnline) },
+        { icon: "activeSessionWaveform", label: "Active Sessions", value: formatPrivateAnalyticsNumber(data.liveNetworkStats.activeSessions) },
+        { icon: "growNetworkNodes", label: "Countries Active", value: formatPrivateAnalyticsNumber(data.liveNetworkStats.countriesActive) },
+        { icon: "calendar", label: "Sessions Started Today", value: formatPrivateAnalyticsNumber(data.liveNetworkStats.sessionsStartedToday) },
+        { icon: "reportDocument", label: "Reports Submitted Today", value: formatPrivateAnalyticsNumber(data.liveNetworkStats.reportsSubmittedToday) },
+        { icon: "certificationShield", label: "High Confidence Reports Today", value: formatPrivateAnalyticsNumber(data.liveNetworkStats.highConfidenceReportsToday) },
+      ],
+    });
+  }
+
+  return `
+    <aside class="community-intelligence-rotator is-count-${escapeHtml(String(modes.length))}" aria-label="Community intelligence rotating panel" style="--community-intelligence-rotation-step: ${escapeHtml(String(COMMUNITY_INTELLIGENCE_ROTATION_INTERVAL_SECONDS))}s;">
+      <div class="community-intelligence-rotator-head">
+        <div>
+          <p class="eyebrow">Community Intelligence</p>
+          <h4>Live rotating signal</h4>
+        </div>
+        <span><i aria-hidden="true"></i> Live Rotating</span>
+      </div>
+      <div class="community-intelligence-rotator-track">
+        ${modes.map((mode, index) => `
+          <article class="community-intelligence-rotator-card" style="--community-intelligence-rotation-index: ${escapeHtml(String(index))};">
+            <div class="community-intelligence-rotator-card-head">
+              <span>
+                <small>${escapeHtml(mode.eyebrow)}</small>
+                <strong>${escapeHtml(mode.title)}</strong>
+              </span>
+              <em>${escapeHtml(mode.status)}</em>
+            </div>
+            <ul class="community-intelligence-panel-stat-list">
+              ${mode.stats.map((stat) => renderCommunityIntelligencePanelStat(stat)).join("")}
+            </ul>
+          </article>
+        `).join("")}
+      </div>
+      <div class="community-intelligence-rotator-dots" aria-hidden="true">
+        ${modes.map((mode, index) => `<span style="--community-intelligence-rotation-index: ${escapeHtml(String(index))};"></span>`).join("")}
+      </div>
+    </aside>
+  `;
+}
+
+function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboardData()) {
   const rows = data.regionRows;
   const stats = data.platformStats;
   return `
     <section id="community-live-network" class="card gallery-section community-global-section community-intelligence-live-network" data-community-intelligence-section="live-network" aria-labelledby="community-global-title">
       <div class="community-intelligence-live-head">
         <div>
-          <p class="eyebrow">Grow Adoption Map${stats.showLiveActivity ? ' <span class="community-intelligence-live-badge">Activity Pulse</span>' : ""}</p>
-          <h3 id="community-global-title">Where Grow is used, where knowledge is growing, and where activity is happening</h3>
+          <p class="eyebrow">Grow Community Map${stats.showLiveActivity ? ' <span class="community-intelligence-live-badge">Activity Pulse</span>' : ""}</p>
+          <h3 id="community-global-title">Where Grow is used around the world</h3>
           <p class="community-intelligence-live-subtitle">Region strength is based first on account profile location. Public reports and recent activity add secondary glow when available.</p>
         </div>
         <a class="button button-secondary community-intelligence-map-cta" href="#community-regions">Explore Regions</a>
       </div>
-      <div class="community-intelligence-live-layout">
-        <div class="community-intelligence-live-stats" aria-label="Community platform stats">
-          ${renderCommunityIntelligenceMetricListItem({ icon: "profileUser", label: "Grow accounts", value: formatPrivateAnalyticsNumber(stats.growAccounts), detail: "profile region adoption" })}
-          ${renderCommunityIntelligenceMetricListItem({ icon: "growNetworkNodes", label: "Regions represented", value: formatPrivateAnalyticsNumber(stats.regionsRepresented), detail: "cumulative app usage" })}
-          ${renderCommunityIntelligenceMetricListItem({ icon: "reportDocument", label: "Knowledge reports", value: formatPrivateAnalyticsNumber(stats.knowledgeReports), detail: "shared public grow evidence" })}
-          ${stats.showLiveActivity ? renderCommunityIntelligenceMetricListItem({ icon: "activeSessionWaveform", label: "Recent activity", value: formatPrivateAnalyticsNumber(stats.recentActivitySignals), detail: "reports, sessions, and feed signals" }) : ""}
+      <div class="community-intelligence-map-layout">
+        <div class="community-intelligence-map-stage">
+          <div class="source-report-world-map community-global-world-map community-intelligence-world-map" aria-hidden="true">
+            <img
+              class="source-report-world-map-image"
+              src="/assets/app/source-report/world-map.svg"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            >
+            <svg class="source-report-map-marker-overlay" viewBox="0 0 1000 500" focusable="false" aria-hidden="true">
+              <defs>
+                <filter id="community-global-map-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="9" result="blur"></feGaussianBlur>
+                  <feMerge>
+                    <feMergeNode in="blur"></feMergeNode>
+                    <feMergeNode in="SourceGraphic"></feMergeNode>
+                  </feMerge>
+                </filter>
+              </defs>
+              <g class="source-report-map-markers community-global-map-markers">
+                ${rows.map((row) => {
+                  const marker = row.marker || { x: 500, y: 230, pulse: 20 };
+                  const markerRadius = Math.max(5, Math.min(13, 5 + Math.round((row.share || 0) / 14)));
+                  const pulseRadius = Math.max(markerRadius + 12, Math.min(48, Number(marker.pulse) || 24));
+                  return `
+                    <circle class="source-report-map-pulse community-adoption-map-pulse${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>
+                    <circle class="source-report-map-marker community-adoption-map-marker${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius))}"></circle>
+                  `;
+                }).join("")}
+              </g>
+            </svg>
+          </div>
+          ${renderCommunityMapLegendMarkup()}
         </div>
-        <div class="source-report-world-map community-global-world-map community-intelligence-world-map" aria-hidden="true">
-          <img
-            class="source-report-world-map-image"
-            src="/assets/app/source-report/world-map.svg"
-            alt=""
-            loading="lazy"
-            decoding="async"
-          >
-          <svg class="source-report-map-marker-overlay" viewBox="0 0 1000 500" focusable="false" aria-hidden="true">
-            <defs>
-              <filter id="community-global-map-glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="9" result="blur"></feGaussianBlur>
-                <feMerge>
-                  <feMergeNode in="blur"></feMergeNode>
-                  <feMergeNode in="SourceGraphic"></feMergeNode>
-                </feMerge>
-              </filter>
-            </defs>
-            <g class="source-report-map-markers community-global-map-markers">
-              ${rows.map((row) => {
-                const marker = row.marker || { x: 500, y: 230, pulse: 20 };
-                const markerRadius = Math.max(5, Math.min(13, 5 + Math.round((row.share || 0) / 14)));
-                const pulseRadius = Math.max(markerRadius + 12, Math.min(48, Number(marker.pulse) || 24));
-                return `
-                  <circle class="source-report-map-pulse community-adoption-map-pulse${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>
-                  <circle class="source-report-map-marker community-adoption-map-marker${row.hasLiveActivity ? " is-live" : ""}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius))}"></circle>
-                `;
-              }).join("")}
-            </g>
-          </svg>
-        </div>
+        ${renderCommunityIntelligenceRotatingPanel(data)}
       </div>
     </section>
   `;
@@ -71897,7 +72160,8 @@ function renderCommunityIntelligenceFooterCtaMarkup() {
 function renderCommunityIntelligenceDashboardMarkup() {
   const data = getCommunityIntelligenceDashboardData();
   return `
-    ${renderCommunityGlobalMapSection()}
+    ${renderCommunityAtAGlanceSection(data)}
+    ${renderCommunityGlobalMapSection(data)}
     ${renderCommunityIntelligenceQuickDiscoverSection()}
     ${renderCommunityIntelligenceTrendingSection(data)}
     <section class="community-intelligence-mid-grid" data-community-intelligence-section="mid-dashboard">
@@ -72002,16 +72266,6 @@ function renderGallery(targetSnapshotId = "") {
     const firstCommunitySection = communityDashboardSections.find((section) => section instanceof HTMLElement) || galleryFeedSection;
     firstCommunitySection?.insertAdjacentHTML("beforebegin", renderCommunityGrowUnlockedNoticeMarkup());
   }
-  mountContextualOnboardingPrompt(
-    document.querySelector(".gallery-hero-section") || galleryFeedSection || app,
-    "community-grow",
-    {
-      position: "afterend",
-      eyebrow: "Community Grow",
-      className: "contextual-onboarding-card--community-grow",
-    },
-  );
-
   if (isAdminView && galleryFeedSection) {
     const pendingSnapshots = getAdminReviewPendingSnapshots();
     const isAdminReviewOpen = getAdminSectionOpenState(COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY, false);
