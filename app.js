@@ -71269,8 +71269,68 @@ const COMMUNITY_REGION_DEFINITIONS = Object.freeze([
   { key: "africa", flag: "🌍", label: "Africa", countries: ["ZA", "NG", "KE", "MA", "EG", "GH", "ET"], marker: { x: 545, y: 245, pulse: 22 }, fallbackAccounts: 74, fallbackReports: 8, fallbackActivity: 6 },
 ]);
 
+const COMMUNITY_COUNTRY_MARKERS = Object.freeze({
+  US: { x: 228, y: 142 },
+  CA: { x: 210, y: 102 },
+  MX: { x: 214, y: 182 },
+  GB: { x: 482, y: 101 },
+  IE: { x: 466, y: 104 },
+  FR: { x: 500, y: 126 },
+  DE: { x: 518, y: 112 },
+  AT: { x: 524, y: 126 },
+  CH: { x: 510, y: 124 },
+  NL: { x: 508, y: 104 },
+  BE: { x: 503, y: 113 },
+  ES: { x: 486, y: 148 },
+  PT: { x: 470, y: 148 },
+  IT: { x: 526, y: 150 },
+  DK: { x: 521, y: 94 },
+  NO: { x: 520, y: 72 },
+  SE: { x: 543, y: 78 },
+  FI: { x: 566, y: 76 },
+  PL: { x: 544, y: 112 },
+  CZ: { x: 532, y: 118 },
+  SI: { x: 530, y: 133 },
+  GR: { x: 552, y: 171 },
+  CO: { x: 277, y: 246 },
+  BR: { x: 331, y: 280 },
+  AR: { x: 308, y: 340 },
+  CL: { x: 287, y: 344 },
+  PE: { x: 265, y: 282 },
+  UY: { x: 322, y: 338 },
+  EC: { x: 260, y: 251 },
+  BO: { x: 292, y: 293 },
+  PY: { x: 313, y: 312 },
+  VE: { x: 287, y: 225 },
+  CN: { x: 706, y: 166 },
+  JP: { x: 802, y: 165 },
+  KR: { x: 779, y: 160 },
+  IN: { x: 655, y: 202 },
+  TH: { x: 704, y: 228 },
+  VN: { x: 724, y: 226 },
+  PH: { x: 762, y: 234 },
+  SG: { x: 717, y: 254 },
+  MY: { x: 710, y: 252 },
+  ID: { x: 748, y: 279 },
+  TR: { x: 579, y: 159 },
+  IL: { x: 585, y: 184 },
+  AE: { x: 624, y: 194 },
+  AU: { x: 780, y: 304 },
+  NZ: { x: 850, y: 356 },
+  ZA: { x: 548, y: 340 },
+  NG: { x: 514, y: 236 },
+  KE: { x: 575, y: 260 },
+  MA: { x: 477, y: 182 },
+  EG: { x: 555, y: 190 },
+  GH: { x: 501, y: 247 },
+  ET: { x: 574, y: 236 },
+});
+
 const COMMUNITY_LIVE_SIGNAL_THRESHOLD = 3;
 const COMMUNITY_INTELLIGENCE_ROTATION_INTERVAL_SECONDS = 12;
+const COMMUNITY_MAP_EXPANSION_SEEN_COUNTRIES_SESSION_KEY = "grow-community-map-seen-countries-v1";
+const COMMUNITY_MAP_EXPANSION_ACTIVE_SESSION_KEY = "grow-community-map-active-expansion-v1";
+const COMMUNITY_MAP_EXPANSION_ANIMATION_DURATION_MS = 5600;
 
 function getCommunityRegionKeyForCountryCode(countryCode = "") {
   const normalizedCode = normalizeCountryCode(countryCode);
@@ -71279,6 +71339,122 @@ function getCommunityRegionKeyForCountryCode(countryCode = "") {
   }
   const definition = COMMUNITY_REGION_DEFINITIONS.find((region) => region.countries.includes(normalizedCode));
   return definition?.key || "other";
+}
+
+function readCommunityMapSessionCountryCodes() {
+  try {
+    const rawValue = sessionStorage.getItem(COMMUNITY_MAP_EXPANSION_SEEN_COUNTRIES_SESSION_KEY);
+    const parsedValue = rawValue ? JSON.parse(rawValue) : [];
+    return new Set((Array.isArray(parsedValue) ? parsedValue : []).map((countryCode) => normalizeCountryCode(countryCode)).filter(Boolean));
+  } catch (error) {
+    console.error("Failed to read Community map expansion session state", error);
+    return new Set();
+  }
+}
+
+function writeCommunityMapSessionCountryCodes(countryCodes = []) {
+  try {
+    sessionStorage.setItem(
+      COMMUNITY_MAP_EXPANSION_SEEN_COUNTRIES_SESSION_KEY,
+      JSON.stringify([...new Set(countryCodes)].map((countryCode) => normalizeCountryCode(countryCode)).filter(Boolean).sort()),
+    );
+  } catch (error) {
+    console.error("Failed to write Community map expansion session state", error);
+  }
+}
+
+function readCommunityMapActiveExpansion() {
+  try {
+    const rawValue = sessionStorage.getItem(COMMUNITY_MAP_EXPANSION_ACTIVE_SESSION_KEY);
+    const parsedValue = rawValue ? JSON.parse(rawValue) : null;
+    if (!parsedValue || !parsedValue.countryCode || !parsedValue.startedAt) {
+      return null;
+    }
+    if (Date.now() - Number(parsedValue.startedAt) > COMMUNITY_MAP_EXPANSION_ANIMATION_DURATION_MS) {
+      sessionStorage.removeItem(COMMUNITY_MAP_EXPANSION_ACTIVE_SESSION_KEY);
+      return null;
+    }
+    return {
+      countryCode: normalizeCountryCode(parsedValue.countryCode),
+      startedAt: Number(parsedValue.startedAt),
+    };
+  } catch (error) {
+    console.error("Failed to read active Community map expansion", error);
+    return null;
+  }
+}
+
+function writeCommunityMapActiveExpansion(countryCode = "") {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  if (!normalizedCode) {
+    return;
+  }
+  try {
+    sessionStorage.setItem(
+      COMMUNITY_MAP_EXPANSION_ACTIVE_SESSION_KEY,
+      JSON.stringify({ countryCode: normalizedCode, startedAt: Date.now() }),
+    );
+  } catch (error) {
+    console.error("Failed to write active Community map expansion", error);
+  }
+}
+
+function getCommunityMapRowCountryCodes(row = {}) {
+  const countryValues = row.countries instanceof Set
+    ? [...row.countries]
+    : Array.isArray(row.countries)
+      ? row.countries
+      : [];
+  return countryValues.map((countryCode) => normalizeCountryCode(countryCode)).filter(Boolean);
+}
+
+function getCommunityMapCountryMarker(countryCode = "", row = {}) {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  return COMMUNITY_COUNTRY_MARKERS[normalizedCode] || row.marker || { x: 500, y: 230 };
+}
+
+function getCommunityMapExpansionCandidate(rows = [], primaryHubKey = "north-america") {
+  const activeExpansion = readCommunityMapActiveExpansion();
+  const candidates = rows.flatMap((row) => getCommunityMapRowCountryCodes(row).map((countryCode) => ({
+    countryCode,
+    row,
+    marker: getCommunityMapCountryMarker(countryCode, row),
+  })));
+  const uniqueCandidates = [...new Map(candidates.map((candidate) => [candidate.countryCode, candidate])).values()]
+    .filter((candidate) => candidate.countryCode && candidate.countryCode !== "US");
+  if (activeExpansion?.countryCode) {
+    const activeCandidate = uniqueCandidates.find((candidate) => candidate.countryCode === activeExpansion.countryCode);
+    if (activeCandidate) {
+      return activeCandidate;
+    }
+  }
+
+  const representedCountryCodes = uniqueCandidates.map((candidate) => candidate.countryCode);
+  if (!representedCountryCodes.length) {
+    const seenCountryCodes = readCommunityMapSessionCountryCodes();
+    if (seenCountryCodes.has("GB")) {
+      return null;
+    }
+    const fallbackRow = rows.find((row) => row.key === "europe") || rows.find((row) => row.key !== primaryHubKey) || {};
+    writeCommunityMapSessionCountryCodes([...seenCountryCodes, "GB"]);
+    writeCommunityMapActiveExpansion("GB");
+    return {
+      countryCode: "GB",
+      row: fallbackRow,
+      marker: getCommunityMapCountryMarker("GB", fallbackRow),
+    };
+  }
+
+  const seenCountryCodes = readCommunityMapSessionCountryCodes();
+  const hasExistingSessionState = seenCountryCodes.size > 0;
+  const newCandidate = uniqueCandidates.find((candidate) => !seenCountryCodes.has(candidate.countryCode));
+  const demoCandidate = uniqueCandidates.find((candidate) => candidate.countryCode !== "CA" && candidate.countryCode !== "MX") || uniqueCandidates[0];
+  const selectedCandidate = hasExistingSessionState ? newCandidate : demoCandidate;
+  writeCommunityMapSessionCountryCodes([...seenCountryCodes, ...representedCountryCodes]);
+  if (selectedCandidate?.countryCode) {
+    writeCommunityMapActiveExpansion(selectedCandidate.countryCode);
+  }
+  return selectedCandidate || null;
 }
 
 function getCommunityRegionRollups({
@@ -71955,6 +72131,37 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
       .map((row, index) => ({ row, from: hubRow.marker, to: row.marker, index: (hubIndex * 2) + index + primaryArcs.length, type: "secondary" }))
   ));
   const mapArcs = [...primaryArcs, ...secondaryArcs];
+  const expansionCandidate = getCommunityMapExpansionCandidate(rows, primaryHubKey);
+  const renderExpansionArc = (candidate) => {
+    if (!candidate?.countryCode || !candidate.marker) {
+      return "";
+    }
+    const fromX = Number(primaryHubMarker.x) || 228;
+    const fromY = Number(primaryHubMarker.y) || 142;
+    const toX = Number(candidate.marker.x) || 500;
+    const toY = Number(candidate.marker.y) || 230;
+    if (candidate.countryCode === "US" || (Math.abs(fromX - toX) < 3 && Math.abs(fromY - toY) < 3)) {
+      return "";
+    }
+    const horizontalDistance = Math.abs(toX - fromX);
+    const arcLift = Math.min(148, Math.max(58, Math.round(horizontalDistance * 0.2) + 58));
+    const midX = Math.round((fromX + toX) / 2);
+    const midY = Math.max(26, Math.round(Math.min(fromY, toY) - arcLift));
+    const arcId = `community-map-expansion-${escapeHtml(candidate.countryCode.toLowerCase())}`;
+    const path = `M${fromX} ${fromY} Q${midX} ${midY} ${toX} ${toY}`;
+    return `
+      <g class="community-country-expansion" aria-hidden="true">
+        <path id="${arcId}" class="community-country-expansion-arc" d="${escapeHtml(path)}" pathLength="1"></path>
+        <circle class="community-country-expansion-traveler" r="3">
+          <animateMotion dur="2.55s" repeatCount="1" fill="freeze">
+            <mpath href="#${arcId}"></mpath>
+          </animateMotion>
+        </circle>
+        <circle class="community-country-expansion-ripple" cx="${escapeHtml(String(toX))}" cy="${escapeHtml(String(toY))}" r="14"></circle>
+        <circle class="community-country-expansion-hotspot" cx="${escapeHtml(String(toX))}" cy="${escapeHtml(String(toY))}" r="5"></circle>
+      </g>
+    `;
+  };
   const renderMapArc = (arc, index) => {
     const from = arc.from || primaryHubMarker;
     const to = arc.to || { x: 500, y: 230 };
@@ -72011,6 +72218,7 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
               </defs>
               <g class="community-global-map-arcs">
                 ${mapArcs.map((arc, index) => renderMapArc(arc, index)).join("")}
+                ${renderExpansionArc(expansionCandidate)}
               </g>
               <g class="source-report-map-markers community-global-map-markers">
                 ${rows.map((row) => {

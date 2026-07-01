@@ -8642,6 +8642,58 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     drop-shadow(0 0 11px rgba(148, 209, 89, 0.22));
 }
 
+.community-country-expansion {
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 7px rgba(148, 209, 89, 0.32))
+    drop-shadow(0 0 14px rgba(148, 209, 89, 0.16));
+}
+
+.community-country-expansion-arc {
+  fill: none;
+  stroke: #94d159;
+  stroke-linecap: round;
+  stroke-width: 1.2;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  animation: community-country-expansion-draw 4.7s ease-out forwards;
+}
+
+.community-country-expansion-traveler {
+  fill: #d8ff61;
+  opacity: 0;
+  filter:
+    drop-shadow(0 0 7px rgba(148, 209, 89, 0.68))
+    drop-shadow(0 0 14px rgba(148, 209, 89, 0.32));
+  animation: community-country-expansion-traveler 2.65s ease-out forwards;
+}
+
+.community-country-expansion-ripple,
+.community-country-expansion-hotspot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.community-country-expansion-ripple {
+  fill: rgba(148, 209, 89, 0.08);
+  stroke: rgba(148, 209, 89, 0.42);
+  stroke-width: 1;
+  opacity: 0;
+  animation: community-country-expansion-ripple 2.6s ease-out 2.35s forwards;
+}
+
+.community-country-expansion-hotspot {
+  fill: #d8ff61;
+  stroke: rgba(249, 255, 221, 0.96);
+  stroke-width: 1.4;
+  opacity: 0;
+  filter:
+    drop-shadow(0 0 8px rgba(148, 209, 89, 0.58))
+    drop-shadow(0 0 16px rgba(148, 209, 89, 0.26));
+  animation: community-country-expansion-hotspot 2.8s ease-out 2.25s forwards;
+}
+
 .community-adoption-map-halo {
   fill: rgba(148, 209, 89, 0.045);
   stroke: rgba(148, 209, 89, 0.16);
@@ -8745,6 +8797,76 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 @keyframes community-map-arc-flow {
   to {
     stroke-dashoffset: -68;
+  }
+}
+
+@keyframes community-country-expansion-draw {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 1;
+  }
+
+  12% {
+    opacity: 0.82;
+  }
+
+  58% {
+    opacity: 0.82;
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    opacity: 0.16;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes community-country-expansion-traveler {
+  0% {
+    opacity: 0;
+  }
+
+  12%,
+  86% {
+    opacity: 0.78;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes community-country-expansion-ripple {
+  0% {
+    opacity: 0;
+    transform: scale(0.62);
+  }
+
+  28% {
+    opacity: 0.64;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.58);
+  }
+}
+
+@keyframes community-country-expansion-hotspot {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+
+  22%,
+  62% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
   }
 }
 
