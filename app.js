@@ -51606,6 +51606,8 @@ const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
   Object.freeze({
     key: "type",
     label: "Type",
+    icon: "sourceHeroSprout",
+    helper: "Choose the seed formats you want to compare.",
     options: Object.freeze([
       Object.freeze({ key: "photoperiod", label: "Photoperiod" }),
       Object.freeze({ key: "auto", label: "Auto" }),
@@ -51615,6 +51617,8 @@ const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
   Object.freeze({
     key: "confidence",
     label: "Confidence",
+    icon: "adminShield",
+    helper: "Filter by the current community evidence strength.",
     options: Object.freeze([
       Object.freeze({ key: "high", label: "High Confidence" }),
       Object.freeze({ key: "medium", label: "Medium Confidence" }),
@@ -51623,6 +51627,8 @@ const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
   Object.freeze({
     key: "seedAge",
     label: "Seed Age",
+    icon: "calendar",
+    helper: "Filter by the reported age of the seeds.",
     options: Object.freeze([
       Object.freeze({ key: "fresh", label: "Fresh" }),
       Object.freeze({ key: "1-2-years", label: "1-2 Years" }),
@@ -51632,6 +51638,8 @@ const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
   Object.freeze({
     key: "sex",
     label: "Sex",
+    icon: "seedVault",
+    helper: "Narrow results by reported seed sex or auto behavior.",
     options: Object.freeze([
       Object.freeze({ key: "feminized", label: "Feminized" }),
       Object.freeze({ key: "regular", label: "Regular" }),
@@ -51641,6 +51649,8 @@ const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
   Object.freeze({
     key: "category",
     label: "Category",
+    icon: "sourceDirectoryBars",
+    helper: "Focus discovery by grow category.",
     options: Object.freeze([
       Object.freeze({ key: "cannabis", label: "Cannabis" }),
       Object.freeze({ key: "vegetables", label: "Vegetables" }),
@@ -51650,6 +51660,8 @@ const SEED_EXPLORER_ADVANCED_FILTER_GROUPS = Object.freeze([
   Object.freeze({
     key: "floweringTime",
     label: "Flowering Time",
+    icon: "clock",
+    helper: "Compare varieties by expected flowering window.",
     options: Object.freeze([
       Object.freeze({ key: "under-8", label: "Under 8 Weeks" }),
       Object.freeze({ key: "8-10", label: "8-10 Weeks" }),
@@ -52137,38 +52149,61 @@ function renderSeedExplorerAdvancedFilterCountMarkup() {
   return `<span class="seed-explorer-filter-count" data-seed-explorer-active-filter-count hidden>0</span>`;
 }
 
+function renderSeedExplorerAdvancedFilterGroupMarkup(group = {}, index = 0) {
+  const sectionId = `seed-filter-section-${group.key}`;
+  const optionsId = `${sectionId}-options`;
+  const isOpen = index === 0;
+  return `
+    <details class="grow-filter-section seed-explorer-filter-group" data-seed-explorer-filter-group="${escapeHtml(group.key || "")}"${isOpen ? " open" : ""}>
+      <summary class="grow-filter-section-summary">
+        <span class="grow-filter-section-icon" aria-hidden="true">
+          ${renderAppIconSvgMarkup(group.icon || "filter", { className: "grow-filter-section-icon-svg" })}
+        </span>
+        <span class="grow-filter-section-title">
+          <span>
+            ${escapeHtml(group.label || "Filter")}
+            <em data-seed-explorer-filter-group-count="${escapeHtml(group.key || "")}" hidden>0</em>
+          </span>
+          <small>${escapeHtml(group.helper || "Refine this filter group.")}</small>
+        </span>
+        <span class="grow-filter-section-chevron" aria-hidden="true"></span>
+      </summary>
+      <div id="${escapeHtml(optionsId)}" class="grow-filter-section-panel seed-explorer-filter-options">
+        ${group.options.map((option) => {
+          const inputId = `seed-filter-${group.key}-${option.key}`;
+          return `
+            <label class="grow-filter-chip seed-explorer-filter-option" for="${escapeHtml(inputId)}">
+              <input id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(option.key)}" data-seed-explorer-advanced-filter="${escapeHtml(group.key)}">
+              <span>${escapeHtml(option.label)}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+    </details>
+  `;
+}
+
 function renderSeedExplorerAdvancedFiltersMarkup() {
   return `
-    <div id="seed-explorer-advanced-filters" class="seed-explorer-filter-panel" data-seed-explorer-advanced-filter-panel hidden aria-hidden="true">
+    <div id="seed-explorer-advanced-filters" class="grow-filter-panel seed-explorer-filter-panel" data-seed-explorer-advanced-filter-panel hidden aria-hidden="true">
       <div class="seed-explorer-filter-panel-backdrop" data-seed-explorer-advanced-filter-close aria-hidden="true"></div>
-      <aside class="seed-explorer-filter-drawer" role="dialog" aria-modal="true" aria-labelledby="seed-explorer-advanced-filter-title">
-        <div class="seed-explorer-filter-drawer-head">
+      <aside class="grow-filter-drawer seed-explorer-filter-drawer" role="dialog" aria-modal="true" aria-labelledby="seed-explorer-advanced-filter-title">
+        <div class="grow-filter-drawer-head seed-explorer-filter-drawer-head">
           <div>
             <p class="eyebrow">Advanced Filters</p>
             <h3 id="seed-explorer-advanced-filter-title">Filter Seeds</h3>
             <p>Refine seed discovery by type, confidence, age, category, and flowering profile.</p>
+            <div class="grow-filter-summary seed-explorer-filter-summary" data-seed-explorer-filter-summary hidden>
+              <strong data-seed-explorer-filter-summary-count>0 Filters Selected</strong>
+              <span data-seed-explorer-filter-summary-list></span>
+            </div>
           </div>
           <button type="button" class="seed-explorer-filter-close" data-seed-explorer-advanced-filter-close aria-label="Close advanced filters">&times;</button>
         </div>
-        <div class="seed-explorer-filter-drawer-body">
-          ${SEED_EXPLORER_ADVANCED_FILTER_GROUPS.map((group) => `
-            <fieldset class="seed-explorer-filter-group">
-              <legend>${escapeHtml(group.label)}</legend>
-              <div class="seed-explorer-filter-options">
-                ${group.options.map((option) => {
-                  const inputId = `seed-filter-${group.key}-${option.key}`;
-                  return `
-                    <label class="seed-explorer-filter-option" for="${escapeHtml(inputId)}">
-                      <input id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(option.key)}" data-seed-explorer-advanced-filter="${escapeHtml(group.key)}">
-                      <span>${escapeHtml(option.label)}</span>
-                    </label>
-                  `;
-                }).join("")}
-              </div>
-            </fieldset>
-          `).join("")}
+        <div class="grow-filter-drawer-body seed-explorer-filter-drawer-body">
+          ${SEED_EXPLORER_ADVANCED_FILTER_GROUPS.map((group, index) => renderSeedExplorerAdvancedFilterGroupMarkup(group, index)).join("")}
         </div>
-        <div class="seed-explorer-filter-drawer-footer">
+        <div class="grow-filter-drawer-footer seed-explorer-filter-drawer-footer">
           <button type="button" class="button button-secondary" data-seed-explorer-advanced-filter-clear>Clear All</button>
           <button type="button" class="button button-primary" data-seed-explorer-advanced-filter-close>Apply Filters</button>
         </div>
@@ -52429,6 +52464,10 @@ function bindSeedExplorerControls(scope = app) {
   const advancedFilterClearButton = panel.querySelector("[data-seed-explorer-advanced-filter-clear]");
   const advancedFilterCheckboxes = Array.from(panel.querySelectorAll("[data-seed-explorer-advanced-filter]"));
   const advancedFilterCountBadges = Array.from(panel.querySelectorAll("[data-seed-explorer-active-filter-count]"));
+  const advancedFilterGroupCountBadges = Array.from(panel.querySelectorAll("[data-seed-explorer-filter-group-count]"));
+  const advancedFilterSummary = panel.querySelector("[data-seed-explorer-filter-summary]");
+  const advancedFilterSummaryCount = panel.querySelector("[data-seed-explorer-filter-summary-count]");
+  const advancedFilterSummaryList = panel.querySelector("[data-seed-explorer-filter-summary-list]");
   if (!results || !summary) {
     return;
   }
@@ -52450,11 +52489,27 @@ function bindSeedExplorerControls(scope = app) {
   };
 
   const updateAdvancedFilterCount = () => {
-    const activeCount = getSeedExplorerAdvancedFilterCount(getActiveAdvancedFilters());
+    const activeFilters = getActiveAdvancedFilters();
+    const activeCount = getSeedExplorerAdvancedFilterCount(activeFilters);
     advancedFilterCountBadges.forEach((badge) => {
       badge.textContent = String(activeCount);
       badge.hidden = activeCount === 0;
     });
+    advancedFilterGroupCountBadges.forEach((badge) => {
+      const groupKey = String(badge.getAttribute("data-seed-explorer-filter-group-count") || "").trim();
+      const groupCount = Array.isArray(activeFilters[groupKey]) ? activeFilters[groupKey].length : 0;
+      badge.textContent = String(groupCount);
+      badge.hidden = groupCount === 0;
+    });
+    const selectedLabels = advancedFilterCheckboxes
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => String(checkbox.nextElementSibling?.textContent || checkbox.value || "").trim())
+      .filter(Boolean);
+    if (advancedFilterSummary && advancedFilterSummaryCount && advancedFilterSummaryList) {
+      advancedFilterSummary.hidden = activeCount === 0;
+      advancedFilterSummaryCount.textContent = `${activeCount} ${activeCount === 1 ? "Filter" : "Filters"} Selected`;
+      advancedFilterSummaryList.textContent = selectedLabels.join(" • ");
+    }
   };
 
   const openAdvancedFilters = () => {
@@ -52465,7 +52520,12 @@ function bindSeedExplorerControls(scope = app) {
     advancedFilterPanel.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => {
       advancedFilterPanel.classList.add("is-open");
-      (advancedFilterCheckboxes.find((checkbox) => !checkbox.checked) || advancedFilterCheckboxes[0] || advancedFilterPanel.querySelector("[data-seed-explorer-advanced-filter-close]"))?.focus?.();
+      (
+        advancedFilterPanel.querySelector(".grow-filter-section[open] [data-seed-explorer-advanced-filter]:not(:checked)")
+        || advancedFilterPanel.querySelector(".grow-filter-section[open] [data-seed-explorer-advanced-filter]")
+        || advancedFilterPanel.querySelector(".grow-filter-section-summary")
+        || advancedFilterPanel.querySelector("[data-seed-explorer-advanced-filter-close]")
+      )?.focus?.();
     });
   };
 
