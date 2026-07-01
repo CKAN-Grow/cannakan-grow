@@ -52763,52 +52763,6 @@ function renderReportActivityTimelineRowsMarkup(rows = []) {
   `;
 }
 
-function renderSeedReportActivityStripMarkup(activity = {}) {
-  const items = [
-    { icon: "communityGroup", value: activity.newSessionsThisWeek, label: "New Sessions", detail: "This Week" },
-    { icon: "sourceDirectoryBars", value: activity.sourcesCarrying, label: "Sources Carrying", detail: "Preview" },
-    { icon: "mySessionsSprout", value: activity.recentGrowReports, label: "Grow Reports", detail: "Recent" },
-    { icon: "seedVault", value: activity.seedsAddedThisMonth, label: "Seeds Added", detail: "This Month" },
-  ];
-  return `
-    <div class="source-report-activity-strip seed-report-activity-strip" aria-label="Seed community activity summary">
-      ${items.map((item) => `
-        <article class="source-report-activity-item">
-          <span aria-hidden="true">${renderAppIconSvgMarkup(item.icon, { className: "source-report-activity-icon" })}</span>
-          <strong>${escapeHtml(String(item.value))}</strong>
-          <span>${escapeHtml(item.label)}</span>
-          ${item.detail ? `<small>${escapeHtml(item.detail)}</small>` : ""}
-        </article>
-      `).join("")}
-    </div>
-  `;
-}
-
-function renderSeedReportEvidenceStrengthMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const sessions = Number(seed.communitySessions || 0).toLocaleString();
-  const seedsTracked = Number(seed.seedsTracked || 0).toLocaleString();
-  const reports = Number(activity.recentGrowReports || 0).toLocaleString();
-  const sources = Number(activity.sourcesCarrying || 0).toLocaleString();
-  return `
-    <aside class="source-report-activity-strip seed-report-evidence-strength" aria-label="Seed report evidence strength">
-      <div class="seed-report-evidence-strength-icon" aria-hidden="true">
-        ${renderAppIconSvgMarkup("adminShield", { className: "source-report-activity-icon" })}
-      </div>
-      <div class="seed-report-evidence-strength-copy">
-        <span class="stat-label">Evidence Strength</span>
-        <strong>${escapeHtml(seed.communityConfidence || "Early Signal")}</strong>
-        <p>Based on ${escapeHtml(seedsTracked)} tracked seeds, ${escapeHtml(sessions)} sessions, ${escapeHtml(reports)} grow reports, and ${escapeHtml(sources)} sources carrying this variety.</p>
-      </div>
-      <div class="seed-report-evidence-strength-aside">
-        <div class="seed-report-evidence-strength-meter" aria-hidden="true">
-          <span style="width: ${escapeHtml(String(Math.max(0, Math.min(100, Number(seed.confidencePercent) || 0))))}%;"></span>
-        </div>
-        <span class="seed-report-evidence-strength-updated">Last Updated: ${escapeHtml(activity.lastUpdated)}</span>
-      </div>
-    </aside>
-  `;
-}
-
 function renderSeedReportRelationshipListMarkup(rows = [], button = null) {
   return `
     <div class="source-report-variety-list seed-report-relationship-list">
@@ -53156,40 +53110,6 @@ function renderSeedProfilePage(seedId = "") {
   const similarRows = getSeedReportSimilarAdoptionRows(seed);
   const regions = getSeedReportRegionRows(seed);
   const timelineRows = getSeedReportTimelineRows(seed, activity);
-  const confidenceStats = [
-    {
-      label: "Evidence Strength",
-      value: seed.communityConfidence || "Early Signal",
-      detail: "Confidence explained through adoption evidence",
-      progressValue: seed.confidencePercent,
-    },
-    {
-      label: "Community Sessions",
-      value: Number(seed.communitySessions || 0).toLocaleString(),
-      detail: "Sessions represented",
-    },
-    {
-      label: "Seeds Tracked",
-      value: Number(seed.seedsTracked || 0).toLocaleString(),
-      detail: "Preview seed observations",
-    },
-    {
-      label: "Grow Reports",
-      value: Number(activity.recentGrowReports || 0).toLocaleString(),
-      detail: "Recent community reports",
-    },
-    {
-      label: "Germination Success",
-      value: `${seed.germinationSuccess}%`,
-      detail: "Supporting performance signal",
-      progressValue: seed.germinationSuccess,
-    },
-    {
-      label: "Seed Type",
-      value: seed.seedType || "Seed",
-      detail: seed.batchAge || "Preview lot",
-    },
-  ];
 
   app.innerHTML = `
     <section class="source-profile-page source-report-page seed-profile-page seed-report-page">
@@ -53200,8 +53120,11 @@ function renderSeedProfilePage(seedId = "") {
       </div>
 
       ${renderSeedReportHeroMarkup(seed, activity)}
-      ${renderSeedReportEvidenceStrengthMarkup(seed, activity)}
-      ${renderSeedReportActivityStripMarkup(activity)}
+
+      <article class="card source-report-section-card source-report-distribution-card seed-report-distribution-card">
+        ${renderSourceReportSectionTitle(3, "Evidence Summary")}
+        ${renderSeedReportEvidenceSnapshotMarkup(seed, activity)}
+      </article>
 
       <article class="card source-report-section-card source-report-performance-card seed-report-performance-card">
         <div class="source-report-section-head">
@@ -53224,10 +53147,6 @@ function renderSeedProfilePage(seedId = "") {
           ${renderSeedReportRelationshipListMarkup(sourceRows, seed.sourceId ? { href: `#sources/${encodeURIComponent(seed.sourceId)}`, label: "View Primary Source" } : null)}
         </article>
 
-        <article class="card source-report-section-card source-report-distribution-card seed-report-distribution-card">
-          ${renderSourceReportSectionTitle(3, "Evidence Summary")}
-          ${renderSeedReportEvidenceSnapshotMarkup(seed, activity)}
-        </article>
       </div>
 
       <article class="card source-report-section-card source-report-region-card seed-report-region-card">
@@ -53266,13 +53185,6 @@ function renderSeedProfilePage(seedId = "") {
 
       ${renderSeedReportInsightsMarkup(seed)}
       ${renderSeedReportEvidenceMarkup(seed)}
-
-      <article class="card source-report-section-card source-profile-track-record-card seed-report-confidence-card">
-        ${renderSourceReportSectionTitle(11, "Evidence Strength Details")}
-        <div class="summary-grid source-profile-track-grid source-report-confidence-grid">
-          ${confidenceStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
-        </div>
-      </article>
 
       <article class="card source-report-actions-card seed-report-actions-card">
         <div>
