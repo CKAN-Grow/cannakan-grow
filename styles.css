@@ -32519,6 +32519,7 @@ textarea::placeholder {
 .seed-report-hero-card.source-report-hero-card {
   gap: 26px;
   padding: clamp(24px, 3vw, 40px) clamp(22px, 3vw, 42px) 22px;
+  padding-right: clamp(260px, 28vw, 360px);
   border-color: rgba(148, 209, 89, 0.24);
   border-radius: 26px;
   background:
@@ -32537,7 +32538,7 @@ textarea::placeholder {
 
 .seed-report-hero-card .source-report-hero-copy {
   gap: 14px;
-  max-width: 680px;
+  max-width: 650px;
 }
 
 .seed-report-hero-card .source-report-hero-copy h2 {
@@ -32599,41 +32600,49 @@ textarea::placeholder {
   box-shadow: 0 0 14px rgba(148, 209, 89, 0.65);
 }
 
-.seed-report-hero-metrics {
-  width: min(300px, 100%);
+.seed-report-hero-card .seed-report-hero-metrics {
+  position: absolute;
+  top: 50%;
+  right: clamp(22px, 3vw, 42px);
+  z-index: 1;
+  width: clamp(220px, 18vw, 260px);
+  aspect-ratio: 1 / 1;
   grid-template-columns: minmax(0, 1fr);
-  justify-self: start;
+  justify-self: end;
   border-color: rgba(148, 209, 89, 0.32);
-  border-radius: 22px;
+  border-radius: 24px;
   background:
-    radial-gradient(circle at 30% 10%, rgba(255, 201, 75, 0.16), transparent 36%),
-    radial-gradient(circle at 80% 0%, rgba(148, 209, 89, 0.12), transparent 44%),
-    linear-gradient(180deg, rgba(5, 18, 13, 0.78), rgba(3, 9, 7, 0.8));
+    radial-gradient(circle at 50% 0%, rgba(255, 201, 75, 0.18), transparent 38%),
+    radial-gradient(circle at 82% 8%, rgba(148, 209, 89, 0.14), transparent 46%),
+    linear-gradient(180deg, rgba(6, 18, 14, 0.82), rgba(3, 9, 7, 0.84));
   box-shadow:
-    0 0 28px rgba(255, 201, 75, 0.08),
-    0 0 24px rgba(148, 209, 89, 0.08),
+    0 26px 52px rgba(0, 0, 0, 0.34),
+    0 0 30px rgba(255, 201, 75, 0.1),
+    0 0 26px rgba(148, 209, 89, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-50%);
   backdrop-filter: blur(14px);
 }
 
-.seed-report-hero-metric {
-  min-height: 190px;
-  gap: 9px;
-  padding: 24px 20px 22px;
+.seed-report-hero-card .seed-report-hero-metric {
+  width: 100%;
+  min-height: 100%;
+  gap: 10px;
+  padding: 24px 20px;
 }
 
-.seed-report-hero-metric + .seed-report-hero-metric {
+.seed-report-hero-card .seed-report-hero-metric + .seed-report-hero-metric {
   border-left-color: rgba(148, 209, 89, 0.32);
 }
 
-.seed-report-hero-metric-icon {
-  width: 74px;
-  height: 74px;
+.seed-report-hero-card .seed-report-hero-metric-icon {
+  width: 98px;
+  height: 98px;
   color: #94d159;
   filter: drop-shadow(0 0 10px rgba(148, 209, 89, 0.3));
 }
 
-.seed-report-hero-metric-icon svg {
+.seed-report-hero-card .seed-report-hero-metric-icon svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -32644,28 +32653,43 @@ textarea::placeholder {
   stroke-linejoin: round;
 }
 
-.seed-report-hero-metric.is-gold .seed-report-hero-metric-icon,
-.seed-report-hero-metric.is-gold strong {
+.seed-report-hero-card .seed-report-hero-metric.is-gold .seed-report-hero-metric-icon,
+.seed-report-hero-card .seed-report-hero-metric.is-gold strong {
   color: #ffc94b;
   filter: drop-shadow(0 0 12px rgba(255, 201, 75, 0.26));
 }
 
-.seed-report-hero-metric strong {
+.seed-report-hero-card .seed-report-hero-metric.is-gold .seed-report-hero-metric-icon {
+  width: 112px;
+  height: 112px;
+  margin-bottom: -4px;
+}
+
+.seed-report-hero-card .seed-report-hero-metric.is-gold .seed-report-hero-metric-icon svg {
+  transform: scale(1.14);
+  transform-origin: center;
+}
+
+.seed-report-hero-card .seed-report-hero-metric strong {
   color: #94d159;
-  font-size: clamp(2.7rem, 5vw, 4.25rem);
+  font-size: clamp(3.2rem, 5.3vw, 4.6rem);
+  line-height: 0.92;
   text-shadow: 0 0 18px rgba(148, 209, 89, 0.2);
 }
 
-.seed-report-hero-metric span:not(.source-report-hero-metric-icon) {
+.seed-report-hero-card .seed-report-hero-metric span:not(.source-report-hero-metric-icon) {
   color: #f7faf4;
-  font-size: clamp(0.94rem, 1.35vw, 1.1rem);
+  font-size: clamp(0.98rem, 1.08vw, 1.12rem);
   font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
-.seed-report-hero-metric small {
+.seed-report-hero-card .seed-report-hero-metric small {
   color: rgba(231, 238, 226, 0.76);
-  font-size: clamp(0.82rem, 1.18vw, 0.96rem);
-  line-height: 1.3;
+  font-size: clamp(0.76rem, 0.92vw, 0.88rem);
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .seed-report-relationship-row {
@@ -33029,6 +33053,13 @@ textarea::placeholder {
     border-radius: 20px;
   }
 
+  .seed-report-hero-card .seed-report-hero-metrics {
+    position: static;
+    width: min(240px, 100%);
+    margin-top: 4px;
+    transform: none;
+  }
+
   .seed-report-hero-card .source-report-hero-copy {
     gap: 10px;
   }
@@ -33048,14 +33079,24 @@ textarea::placeholder {
     font-size: 0.68rem;
   }
 
-  .seed-report-hero-metric {
-    min-height: 148px;
+  .seed-report-hero-card .seed-report-hero-metric {
+    min-height: 178px;
     padding: 20px 14px;
   }
 
-  .seed-report-hero-metric-icon {
-    width: 54px;
-    height: 54px;
+  .seed-report-hero-card .seed-report-hero-metric-icon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .seed-report-hero-card .seed-report-hero-metric.is-gold .seed-report-hero-metric-icon {
+    width: 82px;
+    height: 82px;
+    margin-bottom: 0;
+  }
+
+  .seed-report-hero-card .seed-report-hero-metric.is-gold .seed-report-hero-metric-icon svg {
+    transform: scale(1.08);
   }
 
   .seed-report-evidence-snapshot-layout,

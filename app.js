@@ -52931,7 +52931,7 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
       </div>
 
       <div class="source-report-hero-metrics seed-report-hero-metrics" aria-label="Primary seed evidence metrics">
-        ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: getSeedReportAdoptionRankLabel(seed), label: "Popularity Rank", detail: "out of preview seeds", tone: "gold" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: getSeedReportAdoptionRankLabel(seed), label: "Popularity Rank", detail: "Out of preview seeds", tone: "gold" })}
       </div>
       <div class="source-report-hero-note-row">
         <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
