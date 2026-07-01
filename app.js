@@ -52891,6 +52891,70 @@ function renderSeedReportAdoptionChartMarkup(seed = {}, activity = getSeedReport
   `;
 }
 
+function renderSeedReportHeroMetricIconMarkup(icon = "sessions") {
+  const icons = {
+    rank: `
+      <svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">
+        <path d="M22 21h20v6c0 7-4.5 12-10 12S22 34 22 27v-6Z"></path>
+        <path d="M26 21v-4h12v4"></path>
+        <path d="M24 47h16"></path>
+        <path d="M32 39v8"></path>
+        <path d="M22 25h-8c0 7 4 11 10 12"></path>
+        <path d="M42 25h8c0 7-4 11-10 12"></path>
+        <path d="m32 26 2 4.2 4.6.6-3.3 3.2.8 4.6-4.1-2.2-4.1 2.2.8-4.6-3.3-3.2 4.6-.6Z"></path>
+      </svg>
+    `,
+    sessions: `
+      <svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">
+        <circle cx="24" cy="24" r="8"></circle>
+        <circle cx="43" cy="23" r="7"></circle>
+        <path d="M10 50c0-10 7-17 16-17h2c9 0 16 7 16 17"></path>
+        <path d="M36 35c9 0 16 6 18 15"></path>
+      </svg>
+    `,
+    seeds: `
+      <svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">
+        <ellipse cx="25" cy="35" rx="8" ry="14" transform="rotate(-28 25 35)"></ellipse>
+        <ellipse cx="42" cy="29" rx="8" ry="14" transform="rotate(28 42 29)"></ellipse>
+        <ellipse cx="35" cy="44" rx="7" ry="12" transform="rotate(20 35 44)"></ellipse>
+        <path d="M22 37c3-2 6-5 8-10"></path>
+        <path d="M39 31c3-3 5-7 6-12"></path>
+      </svg>
+    `,
+    reports: `
+      <svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">
+        <path d="M18 10h22l8 8v36H18Z"></path>
+        <path d="M40 10v10h8"></path>
+        <path d="M25 28h16"></path>
+        <path d="M25 36h8"></path>
+        <path d="M25 46h4v-6h6v6h4V34h6v12"></path>
+      </svg>
+    `,
+    sources: `
+      <svg viewBox="0 0 64 64" focusable="false" aria-hidden="true">
+        <path d="M12 26h40l-4-12H16Z"></path>
+        <path d="M16 26v26h32V26"></path>
+        <path d="M25 52V39h14v13"></path>
+        <path d="M12 26c0 5 4 8 8 8s8-3 8-8"></path>
+        <path d="M28 26c0 5 4 8 8 8s8-3 8-8"></path>
+        <path d="M44 26c0 5 4 8 8 8"></path>
+      </svg>
+    `,
+  };
+  return icons[icon] || icons.sessions;
+}
+
+function renderSeedReportHeroMetricMarkup({ icon = "sessions", value = "", label = "", detail = "", tone = "green" } = {}) {
+  return `
+    <article class="source-report-hero-metric seed-report-hero-metric is-${escapeHtml(tone)}">
+      <span class="source-report-hero-metric-icon seed-report-hero-metric-icon" aria-hidden="true">${renderSeedReportHeroMetricIconMarkup(icon)}</span>
+      <strong>${escapeHtml(String(value))}</strong>
+      <span>${escapeHtml(label)}</span>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+    </article>
+  `;
+}
+
 function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
   return `
     <article class="card source-report-hero-card seed-report-hero-card">
@@ -52905,22 +52969,23 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
             <span>${escapeHtml(seed.batchAge || "Preview lot")}</span>
           </p>
           <strong class="source-report-established-line">${escapeHtml(seed.summary || "Community-powered seed adoption report.")}</strong>
-      <div class="source-report-hero-actions">
-        <span class="source-report-cstp-chip">Community Preview</span>
-        ${renderMetricBadgeMarkup(seed.communityConfidence || "Community Signal", { className: "source-directory-evidence-badge seed-explorer-badge seed-report-confidence-badge", tone: getSeedExplorerConfidenceTone(seed) })}
-      </div>
+          <div class="source-report-hero-actions">
+            <span class="source-report-cstp-chip">Community Preview</span>
+            ${renderMetricBadgeMarkup(seed.communityConfidence || "Community Signal", { className: "source-directory-evidence-badge seed-explorer-badge seed-report-confidence-badge", tone: getSeedExplorerConfidenceTone(seed) })}
+          </div>
         </div>
       </div>
 
       <div class="source-report-hero-metrics seed-report-hero-metrics" aria-label="Primary seed evidence metrics">
-        ${renderSourceReportHeroMetricMarkup({ icon: "leaderboard", value: getSeedReportAdoptionRankLabel(seed), label: "Popularity Rank", tone: "gold" })}
-        ${renderSourceReportHeroMetricMarkup({ icon: "communityGroup", value: Number(seed.communitySessions || 0).toLocaleString(), label: "Community Sessions", tone: "green" })}
-        ${renderSourceReportHeroMetricMarkup({ icon: "seedVault", value: Number(seed.seedsTracked || 0).toLocaleString(), label: "Seeds Tracked", tone: "green" })}
-        ${renderSourceReportHeroMetricMarkup({ icon: "mySessionsSprout", value: activity.recentGrowReports, label: "Grow Reports", tone: "green" })}
-        ${renderSourceReportHeroMetricMarkup({ icon: "sourceDirectoryBars", value: activity.sourcesCarrying, label: "Sources Carrying", tone: "green" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: getSeedReportAdoptionRankLabel(seed), label: "Popularity Rank", detail: "out of preview seeds", tone: "gold" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "sessions", value: Number(seed.communitySessions || 0).toLocaleString(), label: "Community Sessions", detail: "growers tracked this variety" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "seeds", value: Number(seed.seedsTracked || 0).toLocaleString(), label: "Seeds Tracked", detail: "seed observations" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "reports", value: activity.recentGrowReports, label: "Grow Reports", detail: "community reports" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "sources", value: activity.sourcesCarrying, label: "Sources Carrying", detail: "available sources" })}
       </div>
       <div class="source-report-hero-note-row">
         <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
+        <span>Last Updated: ${escapeHtml(activity.lastUpdated)} <i aria-hidden="true"></i></span>
       </div>
     </article>
   `;

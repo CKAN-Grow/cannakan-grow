@@ -32486,10 +32486,17 @@ textarea::placeholder {
 }
 
 .seed-report-hero-image {
+  width: 176px;
+  height: 176px;
+  flex-basis: 176px;
+  border-radius: 22px;
   background:
     linear-gradient(160deg, rgba(181, 232, 111, 0.13), rgba(148, 209, 89, 0.055)),
     rgba(255, 255, 255, 0.04);
-  border-color: rgba(181, 232, 111, 0.18);
+  border-color: rgba(148, 209, 89, 0.42);
+  box-shadow:
+    0 0 28px rgba(148, 209, 89, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .seed-report-hero-image img {
@@ -32501,9 +32508,156 @@ textarea::placeholder {
 .seed-report-hero-card .source-report-hero-bg {
   opacity: 1;
   background:
-    linear-gradient(90deg, rgba(5, 10, 8, 0.96) 0%, rgba(5, 10, 8, 0.78) 34%, rgba(5, 10, 8, 0.34) 62%, rgba(5, 10, 8, 0.08) 100%),
+    linear-gradient(90deg, rgba(5, 10, 8, 0.98) 0%, rgba(5, 10, 8, 0.82) 31%, rgba(5, 10, 8, 0.34) 57%, rgba(5, 10, 8, 0.05) 100%),
     url("/assets/images/seed-report-hero-bg.png") center right / cover no-repeat;
-  filter: saturate(1.04) contrast(1.02);
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.seed-report-hero-card.source-report-hero-card {
+  gap: 26px;
+  padding: clamp(24px, 3vw, 40px) clamp(22px, 3vw, 42px) 22px;
+  border-color: rgba(148, 209, 89, 0.24);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 100% 16%, rgba(148, 209, 89, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(12, 25, 19, 0.98), rgba(5, 11, 8, 0.98));
+  box-shadow:
+    0 28px 62px rgba(0, 0, 0, 0.32),
+    0 0 34px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.seed-report-hero-card .source-report-hero-main {
+  align-items: center;
+  gap: clamp(22px, 3vw, 34px);
+}
+
+.seed-report-hero-card .source-report-hero-copy {
+  gap: 14px;
+  max-width: 680px;
+}
+
+.seed-report-hero-card .source-report-hero-copy h2 {
+  font-size: clamp(3rem, 6.6vw, 5.2rem);
+  letter-spacing: 0;
+  text-shadow: 0 6px 24px rgba(0, 0, 0, 0.34);
+}
+
+.seed-report-hero-card .source-report-hero-copy p {
+  gap: 8px 16px;
+  color: rgba(244, 249, 241, 0.9);
+  font-size: clamp(1rem, 1.6vw, 1.22rem);
+}
+
+.seed-report-hero-card .source-report-hero-copy p span + span::before {
+  background: #94d159;
+  box-shadow: 0 0 10px rgba(148, 209, 89, 0.55);
+}
+
+.seed-report-hero-card .source-report-established-line {
+  max-width: 640px;
+  color: #9bea38;
+  font-size: clamp(1rem, 1.6vw, 1.22rem);
+  line-height: 1.5;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.48);
+}
+
+.seed-report-hero-card .source-report-hero-actions {
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.seed-report-hero-card .source-report-cstp-chip,
+.seed-report-hero-card .seed-report-confidence-badge {
+  min-height: 40px;
+  padding-inline: 18px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  letter-spacing: 0.045em;
+}
+
+.seed-report-hero-card .source-report-hero-note-row {
+  align-items: center;
+  padding-top: 2px;
+}
+
+.seed-report-hero-card .source-report-hero-note-row p {
+  color: rgba(238, 246, 234, 0.78);
+  font-size: clamp(0.9rem, 1.3vw, 1.02rem);
+}
+
+.seed-report-hero-card .source-report-hero-note-row span {
+  color: rgba(244, 249, 241, 0.9);
+  font-size: clamp(0.9rem, 1.3vw, 1.02rem);
+}
+
+.seed-report-hero-card .source-report-hero-note-row i {
+  background: #94d159;
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.65);
+}
+
+.seed-report-hero-metrics {
+  border-color: rgba(148, 209, 89, 0.32);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(148, 209, 89, 0.13), transparent 52%),
+    linear-gradient(180deg, rgba(5, 18, 13, 0.83), rgba(3, 9, 7, 0.84));
+  box-shadow:
+    0 0 28px rgba(148, 209, 89, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+}
+
+.seed-report-hero-metric {
+  min-height: 216px;
+  gap: 10px;
+  padding: 28px 18px 24px;
+}
+
+.seed-report-hero-metric + .seed-report-hero-metric {
+  border-left-color: rgba(148, 209, 89, 0.32);
+}
+
+.seed-report-hero-metric-icon {
+  width: 74px;
+  height: 74px;
+  color: #94d159;
+  filter: drop-shadow(0 0 10px rgba(148, 209, 89, 0.3));
+}
+
+.seed-report-hero-metric-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.seed-report-hero-metric.is-gold .seed-report-hero-metric-icon,
+.seed-report-hero-metric.is-gold strong {
+  color: #ffc94b;
+  filter: drop-shadow(0 0 12px rgba(255, 201, 75, 0.26));
+}
+
+.seed-report-hero-metric strong {
+  color: #94d159;
+  font-size: clamp(2.7rem, 5vw, 4.25rem);
+  text-shadow: 0 0 18px rgba(148, 209, 89, 0.2);
+}
+
+.seed-report-hero-metric span:not(.source-report-hero-metric-icon) {
+  color: #f7faf4;
+  font-size: clamp(0.94rem, 1.35vw, 1.1rem);
+  font-weight: 900;
+}
+
+.seed-report-hero-metric small {
+  color: rgba(231, 238, 226, 0.76);
+  font-size: clamp(0.82rem, 1.18vw, 0.96rem);
+  line-height: 1.3;
 }
 
 .seed-report-relationship-row {
@@ -32721,6 +32875,48 @@ textarea::placeholder {
 }
 
 @media (max-width: 760px) {
+  .seed-report-hero-image {
+    width: 118px;
+    height: 118px;
+    flex-basis: 118px;
+    border-radius: 18px;
+  }
+
+  .seed-report-hero-card.source-report-hero-card {
+    gap: 20px;
+    padding: 22px 18px 18px;
+    border-radius: 20px;
+  }
+
+  .seed-report-hero-card .source-report-hero-copy {
+    gap: 10px;
+  }
+
+  .seed-report-hero-card .source-report-hero-copy h2 {
+    font-size: clamp(2.45rem, 12vw, 3.4rem);
+  }
+
+  .seed-report-hero-card .source-report-hero-actions {
+    gap: 8px;
+  }
+
+  .seed-report-hero-card .source-report-cstp-chip,
+  .seed-report-hero-card .seed-report-confidence-badge {
+    min-height: 36px;
+    padding-inline: 12px;
+    font-size: 0.68rem;
+  }
+
+  .seed-report-hero-metric {
+    min-height: 156px;
+    padding: 20px 14px;
+  }
+
+  .seed-report-hero-metric-icon {
+    width: 54px;
+    height: 54px;
+  }
+
   .seed-report-evidence-strength {
     grid-template-columns: auto minmax(0, 1fr);
     padding: 16px;
