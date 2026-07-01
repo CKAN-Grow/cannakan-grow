@@ -8197,9 +8197,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border: 1px solid rgba(148, 209, 89, 0.2);
   border-radius: 16px;
   background:
-    radial-gradient(circle at 10% 18%, rgba(148, 209, 89, 0.2), transparent 30%),
-    radial-gradient(circle at 92% 112%, rgba(148, 209, 89, 0.12), transparent 38%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012) 48%, rgba(148, 209, 89, 0.03)),
+    radial-gradient(circle at 11% 20%, rgba(148, 209, 89, 0.22), transparent 32%),
+    radial-gradient(circle at 92% 112%, rgba(148, 209, 89, 0.14), transparent 40%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.014) 48%, rgba(148, 209, 89, 0.04)),
     rgba(4, 10, 8, 0.78);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.075),
@@ -8267,7 +8267,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-width: 0;
 }
 
-.community-at-a-glance-copy strong {
+.community-at-a-glance-stat-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.community-at-a-glance-stat-line strong {
   color: #ffffff;
   font-size: clamp(1.45rem, 2.25vw, 2rem);
   font-weight: 950;
@@ -8276,13 +8284,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   text-shadow: 0 12px 22px rgba(0, 0, 0, 0.28);
 }
 
-.community-at-a-glance-copy small,
+.community-at-a-glance-stat-line small,
 .community-at-a-glance-copy em {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.community-at-a-glance-copy small {
+.community-at-a-glance-stat-line small {
+  min-width: 0;
   color: rgba(248, 255, 243, 0.95);
   font-size: clamp(0.78rem, 0.92vw, 0.88rem);
   font-weight: 900;
@@ -8301,61 +8310,41 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-at-a-glance-trend {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: end;
   grid-column: 2;
   align-self: end;
+  gap: 4px;
   min-width: 0;
-  height: 16px;
+  height: 20px;
   margin-top: 1px;
-  opacity: 0.72;
+  padding: 3px 0 2px;
+  opacity: 0.82;
 }
 
 .community-at-a-glance-trend::after {
   content: "";
   position: absolute;
-  inset: auto 0 0;
+  inset: auto 0 2px;
   height: 1px;
-  background: linear-gradient(90deg, rgba(148, 209, 89, 0.1), rgba(148, 209, 89, 0.34), rgba(148, 209, 89, 0.08));
+  background: linear-gradient(90deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.42), rgba(148, 209, 89, 0.12));
 }
 
-.community-at-a-glance-trend svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.community-at-a-glance-trend-line {
-  fill: none;
-  stroke: #a8f51f;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.42));
-}
-
-.community-at-a-glance-trend-dot {
-  fill: #a8f51f;
-  filter: drop-shadow(0 0 5px rgba(148, 209, 89, 0.44));
-}
-
-.community-at-a-glance-trend--bars {
-  display: flex;
-  align-items: end;
-  gap: 3px;
-  padding: 1px 2px 1px;
-}
-
-.community-at-a-glance-trend--bars i {
+.community-at-a-glance-trend i {
+  position: relative;
+  z-index: 1;
   flex: 1 1 0;
   min-width: 3px;
-  max-width: 7px;
+  max-width: 10px;
   height: var(--community-glance-bar-height);
-  border-radius: 4px 4px 2px 2px;
+  border-radius: 999px 999px 2px 2px;
   background:
-    linear-gradient(180deg, rgba(184, 255, 75, 0.94), rgba(82, 151, 42, 0.72)),
+    linear-gradient(180deg, rgba(207, 255, 105, 0.98), rgba(148, 209, 89, 0.78) 54%, rgba(58, 104, 34, 0.7)),
     #94d159;
-  box-shadow: 0 0 12px rgba(148, 209, 89, 0.24);
-  opacity: calc(0.62 + (var(--community-glance-bar-delay) * 0.012));
+  box-shadow:
+    0 0 8px rgba(148, 209, 89, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  opacity: calc(0.52 + (var(--community-glance-bar-index) * 0.035));
 }
 
 .community-intelligence-live-layout {

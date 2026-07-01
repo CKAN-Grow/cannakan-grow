@@ -71659,48 +71659,31 @@ function renderCommunityIntelligenceMetricListItem({ icon = "mySessionsSprout", 
   `;
 }
 
-function renderCommunityAtAGlanceTrendMarkup(index = 0, type = "line") {
-  const linePatterns = [
-    "M4 56 C28 48 36 34 56 40 S92 52 116 36 154 30 196 34 238 20",
-    "M4 54 C24 36 46 48 66 40 S100 46 126 25 166 24 198 46 238 30",
-    "M4 58 C26 46 48 28 74 36 S112 32 138 42 176 38 206 25 238 18",
-    "M4 60 C30 46 48 50 74 42 S118 38 142 28 180 34 204 24 238 14",
-    "M4 52 C24 58 40 46 62 34 S100 28 126 36 166 48 198 30 238 18",
+function renderCommunityAtAGlanceTrendMarkup(index = 0) {
+  const patterns = [
+    [32, 46, 38, 54, 48, 62, 56, 70, 64, 78],
+    [44, 52, 40, 48, 58, 66, 60, 54, 68, 74],
+    [38, 30, 48, 42, 62, 54, 72, 60, 76, 68],
+    [28, 40, 36, 46, 52, 58, 64, 60, 70, 82],
+    [42, 34, 46, 58, 54, 62, 50, 66, 72, 80],
+    [36, 48, 48, 56, 50, 44, 58, 62, 70, 84],
   ];
-  const barHeights = [34, 22, 28, 46, 32, 54, 30, 44, 26, 58, 36, 48, 60, 42, 34, 56, 40];
-  if (type === "bars") {
-    return `
-      <div class="community-at-a-glance-trend community-at-a-glance-trend--bars" aria-hidden="true">
-        ${barHeights.map((height, barIndex) => `<i style="--community-glance-bar-height: ${escapeHtml(String(height))}%; --community-glance-bar-delay: ${escapeHtml(String(barIndex))};"></i>`).join("")}
-      </div>
-    `;
-  }
-
+  const bars = patterns[index % patterns.length];
   return `
-    <div class="community-at-a-glance-trend community-at-a-glance-trend--line" aria-hidden="true">
-      <svg viewBox="0 0 242 72" focusable="false">
-        <defs>
-          <linearGradient id="community-glance-fill-${escapeHtml(String(index))}" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="#94D159" stop-opacity="0.24"></stop>
-            <stop offset="100%" stop-color="#94D159" stop-opacity="0"></stop>
-          </linearGradient>
-        </defs>
-        <path class="community-at-a-glance-trend-fill" fill="url(#community-glance-fill-${escapeHtml(String(index))})" d="${escapeHtml(`${linePatterns[index % linePatterns.length]} L238 72 L4 72 Z`)}"></path>
-        <path class="community-at-a-glance-trend-line" d="${escapeHtml(linePatterns[index % linePatterns.length])}"></path>
-        <circle class="community-at-a-glance-trend-dot" cx="238" cy="${escapeHtml(String([20, 30, 18, 14, 18][index % 5]))}" r="4.5"></circle>
-      </svg>
+    <div class="community-at-a-glance-trend" aria-hidden="true">
+      ${bars.map((height, barIndex) => `<i style="--community-glance-bar-height: ${escapeHtml(String(height))}%; --community-glance-bar-index: ${escapeHtml(String(barIndex))};"></i>`).join("")}
     </div>
   `;
 }
 
 function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboardData()) {
   const stats = [
-    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence", visual: "line" },
-    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal", visual: "line" },
-    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence", visual: "bars" },
-    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped", visual: "line" },
-    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports", visual: "line" },
-    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals", visual: "line" },
+    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence" },
+    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal" },
+    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence" },
+    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped" },
+    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports" },
+    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals" },
   ];
 
   return `
@@ -71720,11 +71703,13 @@ function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboar
               ${renderAppIconMarkup(stat.icon, { className: "community-at-a-glance-icon", variant: "plain" })}
             </div>
             <div class="community-at-a-glance-copy">
-              <strong>${escapeHtml(formatPrivateAnalyticsNumber(stat.value))}</strong>
-              <small>${escapeHtml(stat.label)}</small>
+              <span class="community-at-a-glance-stat-line">
+                <strong>${escapeHtml(formatPrivateAnalyticsNumber(stat.value))}</strong>
+                <small>${escapeHtml(stat.label)}</small>
+              </span>
               <em>${escapeHtml(stat.trend)}</em>
             </div>
-            ${renderCommunityAtAGlanceTrendMarkup(index, stat.visual)}
+            ${renderCommunityAtAGlanceTrendMarkup(index)}
           </article>
         `).join("")}
       </div>
