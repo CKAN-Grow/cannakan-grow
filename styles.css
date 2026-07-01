@@ -8308,6 +8308,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance-trend {
+  --community-glance-chart-accent: #94d159;
+  --community-glance-chart-bright: #cfff64;
+  --community-glance-chart-soft: rgba(148, 209, 89, 0.12);
+  --community-glance-chart-grid: rgba(181, 232, 111, 0.09);
+  --community-glance-chart-glow: rgba(181, 232, 111, 0.28);
   position: relative;
   z-index: 1;
   grid-column: 1 / -1;
@@ -8322,33 +8327,65 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   opacity: 0.94;
 }
 
+.community-at-a-glance-trend--tone-seed {
+  --community-glance-chart-accent: #b8d85a;
+  --community-glance-chart-bright: #d6ef7a;
+  --community-glance-chart-soft: rgba(184, 216, 90, 0.13);
+  --community-glance-chart-grid: rgba(214, 239, 122, 0.1);
+  --community-glance-chart-glow: rgba(214, 239, 122, 0.24);
+}
+
+.community-at-a-glance-trend--tone-source {
+  --community-glance-chart-accent: #55c98a;
+  --community-glance-chart-bright: #8de7b1;
+  --community-glance-chart-soft: rgba(85, 201, 138, 0.13);
+  --community-glance-chart-grid: rgba(141, 231, 177, 0.1);
+  --community-glance-chart-glow: rgba(85, 201, 138, 0.24);
+}
+
+.community-at-a-glance-trend--tone-variety {
+  --community-glance-chart-accent: #78d8d0;
+  --community-glance-chart-bright: #a9eee8;
+  --community-glance-chart-soft: rgba(120, 216, 208, 0.13);
+  --community-glance-chart-grid: rgba(169, 238, 232, 0.1);
+  --community-glance-chart-glow: rgba(120, 216, 208, 0.24);
+}
+
+.community-at-a-glance-trend--tone-global {
+  --community-glance-chart-accent: #7db7e8;
+  --community-glance-chart-bright: #b4d8f6;
+  --community-glance-chart-soft: rgba(125, 183, 232, 0.13);
+  --community-glance-chart-grid: rgba(180, 216, 246, 0.1);
+  --community-glance-chart-glow: rgba(125, 183, 232, 0.24);
+}
+
 .community-glance-chart-grid {
   fill: none;
-  stroke: rgba(181, 232, 111, 0.09);
+  stroke: var(--community-glance-chart-grid);
   stroke-width: 1;
 }
 
 .community-glance-chart-area {
-  fill: rgba(148, 209, 89, 0.12);
+  fill: var(--community-glance-chart-soft);
 }
 
 .community-glance-chart-line {
   fill: none;
-  stroke: #b8ef45;
+  stroke: var(--community-glance-chart-accent);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.3;
-  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.28));
+  filter: drop-shadow(0 0 6px var(--community-glance-chart-glow));
 }
 
 .community-at-a-glance-trend--trusted .community-glance-chart-line {
-  stroke: rgba(181, 232, 111, 0.88);
+  stroke: color-mix(in srgb, var(--community-glance-chart-accent) 88%, white 12%);
   stroke-dasharray: 5 7;
   stroke-width: 2;
 }
 
 .community-at-a-glance-trend--trusted .community-glance-chart-area {
-  fill: rgba(148, 209, 89, 0.1);
+  fill: var(--community-glance-chart-soft);
 }
 
 .community-at-a-glance-trend--step .community-glance-chart-line {
@@ -8360,46 +8397,46 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-glance-chart-markers circle {
-  fill: #cfff64;
+  fill: var(--community-glance-chart-bright);
   stroke: rgba(7, 13, 10, 0.92);
   stroke-width: 1.5;
-  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.44));
+  filter: drop-shadow(0 0 6px var(--community-glance-chart-glow));
 }
 
 .community-glance-chart-bars rect {
-  fill: rgba(164, 222, 76, 0.7);
-  filter: drop-shadow(0 0 5px rgba(181, 232, 111, 0.18));
+  fill: color-mix(in srgb, var(--community-glance-chart-accent) 70%, transparent);
+  filter: drop-shadow(0 0 5px var(--community-glance-chart-glow));
 }
 
 .community-glance-chart-bars rect:nth-child(3n) {
-  fill: rgba(181, 232, 111, 0.46);
+  fill: color-mix(in srgb, var(--community-glance-chart-accent) 46%, transparent);
 }
 
 .community-glance-chart-bars rect:nth-child(5n) {
-  fill: rgba(207, 255, 100, 0.82);
+  fill: color-mix(in srgb, var(--community-glance-chart-bright) 82%, transparent);
 }
 
 .community-at-a-glance-trend--distribution .community-glance-chart-bars rect {
-  fill: rgba(148, 209, 89, 0.58);
+  fill: color-mix(in srgb, var(--community-glance-chart-accent) 58%, transparent);
 }
 
 .community-at-a-glance-trend--distribution .community-glance-chart-bars rect:nth-child(4n) {
-  fill: rgba(207, 255, 100, 0.78);
+  fill: color-mix(in srgb, var(--community-glance-chart-bright) 78%, transparent);
 }
 
 .community-glance-region-link {
   fill: none;
-  stroke: rgba(181, 232, 111, 0.36);
+  stroke: color-mix(in srgb, var(--community-glance-chart-accent) 38%, transparent);
   stroke-linecap: round;
   stroke-width: 1.6;
   stroke-dasharray: 4 7;
 }
 
 .community-glance-region-dots circle {
-  fill: #cfff64;
+  fill: var(--community-glance-chart-bright);
   stroke: rgba(7, 13, 10, 0.92);
   stroke-width: 1.4;
-  filter: drop-shadow(0 0 7px rgba(181, 232, 111, 0.42));
+  filter: drop-shadow(0 0 7px var(--community-glance-chart-glow));
 }
 
 .community-intelligence-live-layout {

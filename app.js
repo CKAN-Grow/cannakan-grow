@@ -71659,8 +71659,10 @@ function renderCommunityIntelligenceMetricListItem({ icon = "mySessionsSprout", 
   `;
 }
 
-function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
+function renderCommunityAtAGlanceTrendMarkup(type = "bars", tone = "community") {
   const normalizedType = String(type || "sessions").trim();
+  const normalizedTone = String(tone || "community").trim().toLowerCase().replace(/[^a-z0-9-]/g, "") || "community";
+  const className = `community-at-a-glance-trend community-at-a-glance-trend--${normalizedType} community-at-a-glance-trend--tone-${normalizedTone}`;
   if (normalizedType === "bars" || normalizedType === "distribution") {
     const barRects = normalizedType === "distribution"
       ? [
@@ -71701,7 +71703,7 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
         [211, 10, 7, 40],
       ];
     return `
-      <svg class="community-at-a-glance-trend community-at-a-glance-trend--bars${normalizedType === "distribution" ? " community-at-a-glance-trend--distribution" : ""}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+      <svg class="${escapeHtml(className)}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
         <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
         <g class="community-glance-chart-bars">
           ${barRects.map(([x, y, width, height]) => `<rect x="${escapeHtml(String(x))}" y="${escapeHtml(String(y))}" width="${escapeHtml(String(width))}" height="${escapeHtml(String(height))}" rx="2"></rect>`).join("")}
@@ -71712,7 +71714,7 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
 
   if (normalizedType === "step") {
     return `
-      <svg class="community-at-a-glance-trend community-at-a-glance-trend--step" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+      <svg class="${escapeHtml(className)}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
         <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
         <path class="community-glance-chart-area" d="M7 45 H38 V39 H70 V33 H102 V27 H134 V20 H166 V13 H213 V54 H7 Z"></path>
         <path class="community-glance-chart-line" d="M7 45 H38 V39 H70 V33 H102 V27 H134 V20 H166 V13 H213"></path>
@@ -71728,7 +71730,7 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
 
   if (normalizedType === "dots") {
     return `
-      <svg class="community-at-a-glance-trend community-at-a-glance-trend--dots" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+      <svg class="${escapeHtml(className)}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
         <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
         <path class="community-glance-chart-line" d="M8 42 L30 38 L52 43 L74 30 L96 34 L118 24 L140 28 L162 18 L184 22 L212 10"></path>
         <g class="community-glance-chart-markers">
@@ -71740,7 +71742,7 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
 
   if (normalizedType === "regions") {
     return `
-      <svg class="community-at-a-glance-trend community-at-a-glance-trend--regions" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+      <svg class="${escapeHtml(className)}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
         <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
         <path class="community-glance-region-link" d="M30 32 C56 18 84 22 108 30 S158 42 190 18"></path>
         <g class="community-glance-region-dots">
@@ -71761,7 +71763,7 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
     ? [[24, 36], [60, 28], [100, 21], [162, 30], [216, 7]]
     : [[31, 31], [116, 19], [144, 20], [216, 5]];
   return `
-    <svg class="community-at-a-glance-trend community-at-a-glance-trend--line${isTrusted ? " community-at-a-glance-trend--trusted" : ""}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
+    <svg class="${escapeHtml(`${className}${isTrusted ? " community-at-a-glance-trend--trusted" : ""}`)}" viewBox="0 0 220 54" aria-hidden="true" focusable="false">
       <path class="community-glance-chart-grid" d="M4 14H216M4 30H216M4 46H216"></path>
       <path class="community-glance-chart-area" d="${escapeHtml(areaPath)}"></path>
       <path class="community-glance-chart-line" d="${escapeHtml(linePath)}"></path>
@@ -71774,12 +71776,12 @@ function renderCommunityAtAGlanceTrendMarkup(type = "bars") {
 
 function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboardData()) {
   const stats = [
-    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence", visual: "sessions" },
-    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal", visual: "step" },
-    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence", visual: "bars" },
-    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped", visual: "dots" },
-    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports", visual: "distribution" },
-    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals", visual: "regions" },
+    { icon: "communityGroup", label: "Total Sessions", value: data.factStats.totalSessions, trend: "Knowledge reports and session evidence", visual: "sessions", tone: "community" },
+    { icon: "profileUser", label: "Registered Growers", value: data.factStats.registeredGrowers, trend: "Community accounts contributing signal", visual: "step", tone: "community" },
+    { icon: "mySessionsSprout", label: "Total Seeds Tested", value: data.factStats.totalSeedsTested, trend: "Seeds represented in public evidence", visual: "bars", tone: "seed" },
+    { icon: "sourceDirectoryBars", label: "Sources Tracked", value: data.factStats.sourcesTracked, trend: "Source relationships being mapped", visual: "dots", tone: "source" },
+    { icon: "seedVault", label: "Varieties Tracked", value: data.factStats.varietiesTracked, trend: "Genetics appearing in reports", visual: "distribution", tone: "variety" },
+    { icon: "growNetworkNodes", label: "Countries Represented", value: data.factStats.countriesRepresented, trend: "Regional adoption and profile signals", visual: "regions", tone: "global" },
   ];
 
   return `
@@ -71805,7 +71807,7 @@ function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboar
               </span>
               <em>${escapeHtml(stat.trend)}</em>
             </div>
-            ${renderCommunityAtAGlanceTrendMarkup(stat.visual)}
+            ${renderCommunityAtAGlanceTrendMarkup(stat.visual, stat.tone)}
           </article>
         `).join("")}
       </div>
