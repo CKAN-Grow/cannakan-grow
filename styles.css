@@ -31437,7 +31437,7 @@ textarea::placeholder {
 
 .explore-page {
   display: grid;
-  gap: 18px;
+  gap: 16px;
 }
 
 .explore-page [hidden] {
@@ -31448,8 +31448,8 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 2px 0 0;
+  gap: clamp(18px, 3vw, 34px);
+  padding: 2px 0 4px;
 }
 
 .explore-foundation-heading {
@@ -31467,17 +31467,19 @@ textarea::placeholder {
 .explore-segmented-nav {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 46px;
-  padding: 4px;
-  border: 1px solid rgba(148, 209, 89, 0.18);
-  border-radius: 999px;
+  gap: 6px;
+  min-height: 62px;
+  padding: 6px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  border-radius: 22px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-    rgba(7, 13, 10, 0.68);
+    radial-gradient(circle at 100% 0%, rgba(148, 209, 89, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
+    rgba(7, 13, 10, 0.82);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 12px 28px rgba(0, 0, 0, 0.14);
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    0 18px 38px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(148, 209, 89, 0.035);
 }
 
 .explore-segmented-tab {
@@ -31485,17 +31487,17 @@ textarea::placeholder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-width: 112px;
-  min-height: 38px;
-  padding: 0 16px;
+  gap: 10px;
+  min-width: clamp(178px, 17vw, 224px);
+  min-height: 50px;
+  padding: 0 22px;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 17px;
   background: transparent;
   color: rgba(224, 234, 222, 0.74);
   font: inherit;
-  font-size: 0.9rem;
-  font-weight: 900;
+  font-size: clamp(0.98rem, 1.15vw, 1.08rem);
+  font-weight: 950;
   letter-spacing: 0;
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
@@ -31504,7 +31506,7 @@ textarea::placeholder {
 .explore-segmented-tab:hover,
 .explore-segmented-tab:focus-visible {
   color: #f8ffe9;
-  background: rgba(148, 209, 89, 0.08);
+  background: rgba(148, 209, 89, 0.1);
   outline: none;
 }
 
@@ -31513,18 +31515,19 @@ textarea::placeholder {
 }
 
 .explore-segmented-tab.is-active {
-  border-color: rgba(205, 255, 134, 0.38);
+  border-color: rgba(205, 255, 134, 0.5);
   background:
-    linear-gradient(180deg, rgba(205, 255, 134, 0.2), rgba(148, 209, 89, 0.08)),
-    rgba(255, 255, 255, 0.04);
+    linear-gradient(180deg, rgba(205, 255, 134, 0.26), rgba(148, 209, 89, 0.11)),
+    rgba(255, 255, 255, 0.06);
   color: #f7ffe7;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 10px 22px rgba(89, 148, 44, 0.12);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(89, 148, 44, 0.2),
+    0 0 26px rgba(148, 209, 89, 0.1);
 }
 
 .explore-segmented-tab-icon {
-  font-size: 1rem;
+  font-size: 1.14rem;
   line-height: 1;
 }
 
@@ -32402,16 +32405,25 @@ textarea::placeholder {
   .explore-foundation-shell {
     align-items: stretch;
     flex-direction: column;
+    gap: 12px;
   }
 
   .explore-segmented-nav {
     width: 100%;
+    min-height: 58px;
+    border-radius: 18px;
   }
 
   .explore-segmented-tab {
     flex: 1 1 0;
     min-width: 0;
+    min-height: 46px;
     padding-inline: 10px;
+    font-size: clamp(0.83rem, 3.3vw, 0.98rem);
+  }
+
+  .explore-segmented-tab-icon {
+    font-size: 1rem;
   }
 
   .seed-profile-hero .source-report-hero-identity {

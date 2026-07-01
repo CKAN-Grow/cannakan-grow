@@ -53020,8 +53020,8 @@ function renderExploreSegmentedNavItemMarkup({
 
 function renderExploreSegmentedNavigationMarkup(activeTab = "sources") {
   const tabs = [
-    { key: "sources", icon: "🏪", label: "Sources" },
-    { key: "seeds", icon: "🌱", label: "Seeds" },
+    { key: "sources", icon: "🏪", label: "Source Explorer" },
+    { key: "seeds", icon: "🌱", label: "Seed Explorer" },
   ];
   return `
     <section class="explore-foundation-shell" aria-labelledby="explore-foundation-title">
