@@ -71817,10 +71817,10 @@ function renderCommunityAtAGlanceSection(data = getCommunityIntelligenceDashboar
 
 function renderCommunityMapLegendMarkup() {
   const legendItems = [
-    { label: "Growing Community", className: "is-low" },
-    { label: "Established Community", className: "is-medium" },
-    { label: "Active Community", className: "is-high" },
-    { label: "Major Community", className: "is-major" },
+    { label: "1-10 Users", className: "is-low" },
+    { label: "11-100 Users", className: "is-medium" },
+    { label: "101-500 Users", className: "is-high" },
+    { label: "500+ Users", className: "is-major" },
     { label: "Recent Activity", className: "is-live" },
   ];
   return `
@@ -71907,9 +71907,11 @@ function renderCommunityIntelligenceRotatingPanel(data = getCommunityIntelligenc
       <div class="community-intelligence-rotator-head">
         <div>
           <p class="eyebrow">Community Intelligence</p>
-          <h4>Live rotating signal</h4>
+          <h4 class="community-intelligence-active-mode is-count-${escapeHtml(String(modes.length))}" aria-label="Active intelligence mode">
+            ${modes.map((mode, index) => `<span style="--community-intelligence-rotation-index: ${escapeHtml(String(index))};">${escapeHtml(mode.eyebrow)}</span>`).join("")}
+          </h4>
         </div>
-        <span><i aria-hidden="true"></i> Live Rotating</span>
+        <span><i aria-hidden="true"></i> Auto Updates</span>
       </div>
       <div class="community-intelligence-rotator-track">
         ${modes.map((mode, index) => `
@@ -71939,7 +71941,7 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
   const stats = data.platformStats;
   const mapRows = [...rows].sort((left, right) => Math.max(0, Number(right.adoptionCount) || 0) - Math.max(0, Number(left.adoptionCount) || 0));
   const hubMarker = mapRows[0]?.marker || { x: 500, y: 230 };
-  const connectionRows = mapRows.slice(1, 6).filter((row) => row.marker);
+  const connectionRows = mapRows.slice(1, 10).filter((row) => row.marker);
   return `
     <section id="community-live-network" class="card gallery-section community-global-section community-intelligence-live-network" data-community-intelligence-section="live-network" aria-labelledby="community-global-title">
       <div class="community-intelligence-live-head">
@@ -71989,11 +71991,11 @@ function renderCommunityGlobalMapSection(data = getCommunityIntelligenceDashboar
                       : share >= 24
                         ? " is-established"
                         : " is-growing";
-                  const markerRadius = Math.max(6, Math.min(18, 6 + Math.round(share / 9)));
-                  const pulseRadius = Math.max(markerRadius + 16, Math.min(64, Math.max(Number(marker.pulse) || 24, markerRadius + Math.round(share / 2.8))));
+                  const markerRadius = Math.max(5, Math.min(13, 5 + Math.round(share / 12)));
+                  const pulseRadius = Math.max(markerRadius + 8, Math.min(38, Math.max((Number(marker.pulse) || 24) * 0.62, markerRadius + Math.round(share / 5.5))));
                   const classNames = `${tierClass}${row.hasLiveActivity ? " is-live" : ""}`;
                   return `
-                    <circle class="community-adoption-map-halo${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius + 8))}"></circle>
+                    <circle class="community-adoption-map-halo${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius + 4))}"></circle>
                     <circle class="source-report-map-pulse community-adoption-map-pulse${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(pulseRadius))}"></circle>
                     <circle class="source-report-map-marker community-adoption-map-marker${classNames}" cx="${escapeHtml(String(marker.x))}" cy="${escapeHtml(String(marker.y))}" r="${escapeHtml(String(markerRadius))}"></circle>
                   `;
