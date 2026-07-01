@@ -51966,8 +51966,8 @@ function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) 
     <section id="seed-explorer-controls" class="card source-directory-controls-card seed-explorer-controls-card">
       <div class="source-directory-controls-head">
         <div>
-          <p class="eyebrow">Seed Controls</p>
-          <h3>Explore Seed Performance</h3>
+          <p class="eyebrow">Explorer Controls</p>
+          <h3>Explore Seed Reports</h3>
         </div>
         <span class="source-directory-mock-note">Demo Data</span>
       </div>
