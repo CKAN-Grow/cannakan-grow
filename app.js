@@ -52681,25 +52681,26 @@ function getSeedReportActivityMetrics(seed = {}) {
 }
 
 function getSeedReportRelationshipRows(seed = {}) {
+  const baseSessions = Math.max(12, Number(seed.communitySessions) || 0);
   const sourceRows = [
     {
       label: seed.source || "Primary Source",
       imageUrl: seed.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
-      rate: "Primary",
+      sessions: baseSessions,
       detail: seed.sourceRelationship || "Primary preview source relationship.",
       href: seed.sourceId ? `#sources/${encodeURIComponent(seed.sourceId)}` : "#sources",
     },
     {
       label: "Poppin Fire",
       imageUrl: "/assets/demo/snapshots/IMG_E5598.JPG",
-      rate: "Similar",
+      sessions: Math.max(8, Math.round(baseSessions * 0.32)),
       detail: "Comparable community adoption pattern in preview data.",
       href: "#sources/poppin-fire",
     },
     {
       label: "Good Genetix",
       imageUrl: "/assets/demo/snapshots/pic3.jpg",
-      rate: "Watch",
+      sessions: Math.max(6, Math.round(baseSessions * 0.17)),
       detail: "Emerging source relationship for future comparison.",
       href: "#sources/good-genetix",
     },
@@ -52712,7 +52713,7 @@ function getSeedReportRelationshipRows(seed = {}) {
     }
     seen.add(key);
     return true;
-  }).slice(0, 3);
+  }).sort((left, right) => (Number(right.sessions) || 0) - (Number(left.sessions) || 0)).slice(0, 6);
 }
 
 function getSeedReportRelatedVarietyRows(seed = {}) {
@@ -52820,6 +52821,22 @@ function renderSeedReportRelationshipListMarkup(rows = [], button = null) {
       }).join("")}
     </div>
     ${button ? `<a class="button button-secondary source-report-subtle-button" href="${escapeHtml(button.href)}">${escapeHtml(button.label)}</a>` : ""}
+  `;
+}
+
+function renderSeedReportSourceListMarkup(rows = []) {
+  const sortedRows = [...rows].sort((left, right) => (Number(right.sessions) || 0) - (Number(left.sessions) || 0));
+  return `
+    <div class="seed-report-source-list" aria-label="Sources carrying this variety">
+      ${sortedRows.map((row) => `
+        <a class="seed-report-source-row" href="${escapeHtml(row.href || "#sources")}">
+          <span class="seed-report-source-name">${escapeHtml(row.label || "Source")}</span>
+          <span class="seed-report-source-sessions">${Number(row.sessions || 0).toLocaleString()} Sessions</span>
+          <span class="seed-report-source-action">View Source <b aria-hidden="true">&rarr;</b></span>
+        </a>
+      `).join("")}
+    </div>
+    <a class="button button-secondary source-report-subtle-button seed-report-view-all-sources" href="#sources">View All Sources &rarr;</a>
   `;
 }
 
@@ -53152,7 +53169,7 @@ function renderSeedProfilePage(seedId = "") {
             </div>
             <span>Signal</span>
           </div>
-          ${renderSeedReportRelationshipListMarkup(sourceRows, seed.sourceId ? { href: `#sources/${encodeURIComponent(seed.sourceId)}`, label: "View Primary Source" } : null)}
+          ${renderSeedReportSourceListMarkup(sourceRows)}
         </article>
 
         ${renderSeedReportInsightsMarkup(seed, renderSeedReportSectionTitle)}
