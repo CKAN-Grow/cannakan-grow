@@ -27660,7 +27660,7 @@ async function unpublishGallerySnapshot(snapshotId) {
   return deleteGallerySnapshot(snapshotId);
 }
 
-async function toggleGallerySnapshotLike(snapshotId) {
+async function toggleGallerySnapshotLike(snapshotId, options = {}) {
   const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
   if (!snapshot) {
     throw new Error("Could not find this Community Grow snapshot.");
@@ -27670,13 +27670,17 @@ async function toggleGallerySnapshotLike(snapshotId) {
   }
 
   if (!appState.supabase || !appState.user?.id) {
-    throw new Error("Sign in to like Community Grow snapshots.");
+    throw new Error("Sign in to like Community Grow reports.");
   }
   if (appState.gallerySnapshotLikesTableUnavailable) {
     throw new Error("Community Grow likes are temporarily unavailable.");
   }
 
-  if (snapshot.likedByCurrentUser) {
+  const shouldLike = typeof options.nextLiked === "boolean"
+    ? options.nextLiked
+    : !snapshot.likedByCurrentUser;
+
+  if (!shouldLike) {
     const { error } = await appState.supabase
       .from(GROW_GALLERY_LIKES_TABLE)
       .delete()
@@ -27714,6 +27718,123 @@ async function toggleGallerySnapshotLike(snapshotId) {
   }
 
   await refreshGallerySnapshotLikes([snapshotId], "toggle-like");
+}
+
+function getGallerySnapshotLikeSnapshot(snapshotId = "") {
+  const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  if (!snapshot) {
+    return null;
+  }
+
+  return {
+    likeCount: Math.max(0, Number(snapshot.likeCount) || 0),
+    likedByCurrentUser: Boolean(snapshot.likedByCurrentUser),
+  };
+}
+
+function applyGallerySnapshotLikeState(snapshotId = "", nextState = {}) {
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  if (!normalizedSnapshotId) {
+    return;
+  }
+
+  appState.gallerySnapshots = appState.gallerySnapshots.map((snapshot) => {
+    if (!snapshot || snapshot.id !== normalizedSnapshotId) {
+      return snapshot;
+    }
+
+    return {
+      ...snapshot,
+      likeCount: Math.max(0, Number(nextState.likeCount) || 0),
+      likedByCurrentUser: Boolean(nextState.likedByCurrentUser),
+    };
+  });
+}
+
+function setGalleryLikeButtonsLoading(snapshotId = "", isLoading = false) {
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  document.querySelectorAll("[data-gallery-like]").forEach((button) => {
+    if ((button.dataset.galleryLike || "") !== normalizedSnapshotId) {
+      return;
+    }
+    button.classList.toggle("is-pending", Boolean(isLoading));
+    button.toggleAttribute("aria-busy", Boolean(isLoading));
+  });
+}
+
+function syncGalleryLikeButtonsForSnapshot(snapshotId = "") {
+  const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  if (!snapshot) {
+    return;
+  }
+
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  const likeCount = Math.max(0, Number(snapshot.likeCount) || 0);
+  const isLiked = Boolean(snapshot.likedByCurrentUser);
+  document.querySelectorAll("[data-gallery-like]").forEach((button) => {
+    if ((button.dataset.galleryLike || "") !== normalizedSnapshotId) {
+      return;
+    }
+    button.classList.toggle("is-liked", isLiked);
+    button.setAttribute("aria-pressed", isLiked ? "true" : "false");
+    button.setAttribute("aria-label", isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report");
+    const countElement = button.querySelector(".gallery-like-count");
+    if (countElement) {
+      countElement.textContent = String(likeCount);
+    }
+  });
+}
+
+function promptForCommunityLikeSignIn() {
+  const opened = openAuthModal({
+    dismissHash: normalizeNavigationHash(window.location.hash || "#gallery"),
+    initialMode: "login",
+  });
+  if (!opened) {
+    window.alert("Sign in to like Community Grow reports.");
+  }
+}
+
+async function handleGallerySnapshotLikeButtonClick(button, options = {}) {
+  if (!button) {
+    return;
+  }
+  if (button.classList.contains("is-pending")) {
+    return;
+  }
+
+  const snapshotId = button.dataset.galleryLike || "";
+  const previousState = getGallerySnapshotLikeSnapshot(snapshotId);
+  if (!previousState) {
+    throw new Error("Could not find this Community Grow report.");
+  }
+  if (!appState.user?.id || !appState.supabase) {
+    promptForCommunityLikeSignIn();
+    return;
+  }
+
+  const nextState = {
+    likedByCurrentUser: !previousState.likedByCurrentUser,
+    likeCount: previousState.likeCount + (previousState.likedByCurrentUser ? -1 : 1),
+  };
+  nextState.likeCount = Math.max(0, nextState.likeCount);
+  applyGallerySnapshotLikeState(snapshotId, nextState);
+  syncGalleryLikeButtonsForSnapshot(snapshotId);
+  setGalleryLikeButtonsLoading(snapshotId, true);
+
+  try {
+    await toggleGallerySnapshotLike(snapshotId, { nextLiked: nextState.likedByCurrentUser });
+    syncGalleryLikeButtonsForSnapshot(snapshotId);
+    if (typeof options.afterPersist === "function") {
+      options.afterPersist();
+    }
+  } catch (error) {
+    applyGallerySnapshotLikeState(snapshotId, previousState);
+    syncGalleryLikeButtonsForSnapshot(snapshotId);
+    throw error;
+  } finally {
+    setGalleryLikeButtonsLoading(snapshotId, false);
+  }
 }
 
 function sortGallerySnapshotsNewestFirst(items) {
@@ -28546,8 +28667,11 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
       try {
-        await toggleGallerySnapshotLike(button.dataset.galleryLike || "");
-        rerender();
+        await handleGallerySnapshotLikeButtonClick(button, {
+          afterPersist: () => {
+            rerender();
+          },
+        });
         restoreGalleryInteractionScrollPosition(scrollX, scrollY);
       } catch (error) {
         restoreGalleryInteractionScrollPosition(scrollX, scrollY);
@@ -34620,7 +34744,7 @@ function renderGalleryLikeButtonMarkup(snapshot, options = {}) {
       class="gallery-like-button${isLiked ? " is-liked" : ""}${isThumbVariant ? " gallery-like-button--thumb" : ""}"
       data-gallery-like="${escapeHtml(snapshot?.id || "")}"
       aria-pressed="${isLiked ? "true" : "false"}"
-      aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow snapshot" : "Like this Community Grow snapshot")}"
+      aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report")}"
       ${isMock ? "disabled" : ""}
     >
       ${iconMarkup}
@@ -73220,6 +73344,92 @@ function renderCommunityIntelligenceLeaderboardRows(entries = [], options = {}) 
   `;
 }
 
+function getCommunityRecognitionIconDefinition(label = "") {
+  const normalizedLabel = String(label || "").trim().toLowerCase();
+  if (normalizedLabel.includes("documented") || normalizedLabel.includes("educational")) {
+    return { category: "documentation", shape: normalizedLabel.includes("educational") ? "book" : "document" };
+  }
+  if (normalizedLabel.includes("reliable") || normalizedLabel.includes("consistent")) {
+    return { category: "consistency", shape: "shield" };
+  }
+  if (normalizedLabel.includes("rare")) {
+    return { category: "discovery", shape: "dna" };
+  }
+  if (normalizedLabel.includes("international")) {
+    return { category: "excellence", shape: "globe" };
+  }
+  if (normalizedLabel.includes("pick")) {
+    return { category: "excellence", shape: "community" };
+  }
+  return { category: "excellence", shape: "trophy" };
+}
+
+function renderCommunityRecognitionIconMarkup(label = "", options = {}) {
+  const { size = "compact", className = "" } = options;
+  const definition = getCommunityRecognitionIconDefinition(label);
+  const shapeMarkup = {
+    trophy: `
+      <path class="community-recognition-svg-secondary" d="M14 15h-5v3c0 5 3.4 8.4 8.5 9.2" />
+      <path class="community-recognition-svg-secondary" d="M34 15h5v3c0 5-3.4 8.4-8.5 9.2" />
+      <path d="M14 11h20v9c0 7-4.5 12-10 12S14 27 14 20v-9Z" />
+      <path d="M20 38h8" />
+      <path d="M24 32v6" />
+      <path class="community-recognition-svg-highlight" d="M24 16l2.1 4.2 4.6.7-3.3 3.2.8 4.6-4.2-2.2-4.2 2.2.8-4.6-3.3-3.2 4.6-.7L24 16Z" />
+      <path class="community-recognition-svg-leaf" d="M18 39c4.8-1.2 8-1.2 12 0" />
+      <path class="community-recognition-svg-leaf" d="M20 39c1.5-3 4.4-4.6 8-4.6" />
+    `,
+    community: `
+      <circle cx="18" cy="18" r="5" />
+      <circle cx="30" cy="18" r="5" />
+      <path d="M9 35c2.2-6 6.2-9 12-9" />
+      <path d="M39 35c-2.2-6-6.2-9-12-9" />
+      <path class="community-recognition-svg-highlight" d="M24 28l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6L24 28Z" />
+    `,
+    globe: `
+      <circle cx="24" cy="24" r="15" />
+      <path d="M9 24h30" />
+      <path d="M24 9c5 4.8 7 9.8 7 15s-2 10.2-7 15c-5-4.8-7-9.8-7-15s2-10.2 7-15Z" />
+      <path class="community-recognition-svg-highlight" d="M15 15c5.4 3 12.6 3 18 0" />
+      <path class="community-recognition-svg-highlight" d="M15 33c5.4-3 12.6-3 18 0" />
+    `,
+    document: `
+      <path d="M15 8h13l7 7v25H15V8Z" />
+      <path d="M28 8v8h7" />
+      <path d="M19 22h10" />
+      <path d="M19 28h12" />
+      <path class="community-recognition-svg-highlight" d="M20 35l3 3 7-8" />
+    `,
+    book: `
+      <path d="M12 10h14a6 6 0 0 1 6 6v23H18a6 6 0 0 0-6 5V10Z" />
+      <path d="M18 17h9" />
+      <path d="M18 23h11" />
+      <path class="community-recognition-svg-highlight" d="M34 29h7" />
+      <path class="community-recognition-svg-highlight" d="M37.5 25v8" />
+    `,
+    shield: `
+      <path d="M24 7l15 6v10c0 10-6 16-15 19-9-3-15-9-15-19V13l15-6Z" />
+      <path class="community-recognition-svg-highlight" d="M17 25l5 5 10-12" />
+      <path class="community-recognition-svg-leaf" d="M20 36c2.5-3.2 5.2-4.8 8.8-5" />
+    `,
+    dna: `
+      <path d="M17 8c10 7 14 15 14 32" />
+      <path d="M31 8c-10 7-14 15-14 32" />
+      <path d="M19 15h10" />
+      <path d="M17 24h14" />
+      <path d="M19 33h10" />
+      <path class="community-recognition-svg-highlight" d="M37 11l1 2.7 2.8.2-2.1 1.9.7 2.8-2.4-1.5-2.4 1.5.7-2.8-2.1-1.9 2.8-.2L37 11Z" />
+    `,
+  }[definition.shape] || "";
+
+  return `
+    <span class="${escapeHtml(`community-recognition-icon community-recognition-icon--${definition.category} community-recognition-icon--${size}${className ? ` ${className}` : ""}`)}" aria-hidden="true">
+      <svg class="community-recognition-svg" viewBox="0 0 48 48" focusable="false" aria-hidden="true">
+        ${shapeMarkup}
+      </svg>
+    </span>
+  `;
+}
+
 function renderCommunityIntelligenceTrendingSection(data = getCommunityIntelligenceDashboardData()) {
   return `
     <section id="community-trending" class="card gallery-section community-intelligence-panel community-intelligence-trending" data-community-intelligence-section="trending" aria-labelledby="community-trending-title">
@@ -73294,15 +73504,15 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
     : getGallerySnapshotSubmittedDateLabel(snapshot);
   const likeCount = Math.max(0, Number(snapshot.likeCount) || 0);
   const recognitionCategories = [
-    { label: "Featured Community Grow", icon: "mySessionsSprout" },
-    { label: "Best First-Time Grow", icon: "mySessionsSprout" },
-    { label: "Best Documented Session", icon: "reportDocument" },
-    { label: "Rare Variety Spotlight", icon: "seedVault" },
-    { label: "International Grow Highlight", icon: "growNetworkNodes" },
-    { label: "Community Pick", icon: "heartLike" },
-    { label: "Most Improved Grow", icon: "activeSessionWaveform" },
-    { label: "Best Educational Report", icon: "reportDocument" },
-    { label: "Reliable Results / Consistent Grower", icon: "certificationShield" },
+    { label: "Featured Community Grow" },
+    { label: "Best First-Time Grow" },
+    { label: "Best Documented Session" },
+    { label: "Rare Variety Spotlight" },
+    { label: "International Grow Highlight" },
+    { label: "Community Pick" },
+    { label: "Most Improved Grow" },
+    { label: "Best Educational Report" },
+    { label: "Reliable Results / Consistent Grower" },
   ];
   const imageMarkup = hasGallerySnapshotImage(snapshot)
     ? `<img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(sessionTitle)}" loading="lazy" decoding="async">`
@@ -73336,7 +73546,7 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
             <p>${escapeHtml(sessionDescription)}</p>
           </div>
           <div class="community-featured-grow-recognition">
-            <div class="community-featured-grow-award-icon">${renderAppIconMarkup("certificationShield", { variant: "plain" })}</div>
+            <div class="community-featured-grow-award-icon">${renderCommunityRecognitionIconMarkup("Featured Community Grow", { size: "hero" })}</div>
             <div>
               <span>Recognized As</span>
               <strong>Featured Community Grow</strong>
@@ -73368,7 +73578,7 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
       </div>
       <div class="community-recognition-strip" aria-label="Recent recognition categories">
         <div class="community-recognition-strip-head">
-          ${renderAppIconMarkup("certificationShield", { variant: "plain", className: "community-recognition-strip-icon" })}
+          ${renderCommunityRecognitionIconMarkup("Featured Community Grow", { size: "strip", className: "community-recognition-strip-icon" })}
           <span>
             <strong>Recent Recognition</strong>
             <small>Different ways our community celebrates excellence.</small>
@@ -73377,7 +73587,7 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
         <div class="community-recognition-list">
           ${recognitionCategories.map((category) => `
             <span class="community-recognition-pill">
-              ${renderAppIconMarkup(category.icon, { variant: "plain" })}
+              ${renderCommunityRecognitionIconMarkup(category.label, { size: "pill" })}
               ${escapeHtml(category.label)}
             </span>
           `).join("")}
@@ -84829,6 +85039,7 @@ function renderPublicSessionDetail(snapshotId) {
   const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
   const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
   const publicSessionBackButtonMarkup = '<a class="button button-secondary" href="#gallery">Back to Community Grow</a>';
+  const publicSessionLikeMarkup = renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" });
   const mockScenarioSelectorMarkup = activeMockScenario
     ? `
       <section class="public-session-example-selector" aria-labelledby="public-session-example-selector-title">
@@ -84863,6 +85074,7 @@ function renderPublicSessionDetail(snapshotId) {
           </div>
         </div>
         <div class="inline-actions public-session-header-actions">
+          ${publicSessionLikeMarkup}
           ${publicSessionBackButtonMarkup}
         </div>
       </div>
@@ -84888,6 +85100,19 @@ function renderPublicSessionDetail(snapshotId) {
     button.addEventListener("click", () => {
       setActiveMockPublicSessionScenario(button.dataset.mockPublicSessionScenario || "");
       renderPublicSessionDetail(snapshotId);
+    });
+  });
+  app.querySelectorAll("[data-gallery-like]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        await handleGallerySnapshotLikeButtonClick(button, {
+          afterPersist: () => renderPublicSessionDetail(snapshotId),
+        });
+      } catch (error) {
+        window.alert(error.message || "Could not update your like right now.");
+      }
     });
   });
 }

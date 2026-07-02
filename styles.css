@@ -9681,16 +9681,100 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   place-items: center;
   width: 78px;
   height: 78px;
-  border: 1px solid rgba(246, 190, 47, 0.48);
   border-radius: 999px;
-  background: rgba(246, 190, 47, 0.1);
-  color: #ffd34d;
-  box-shadow: 0 0 24px rgba(246, 190, 47, 0.14);
 }
 
-.community-featured-grow-award-icon .cg-icon {
-  width: 42px;
-  height: 42px;
+.community-recognition-icon {
+  --recognition-accent: #ffd34d;
+  --recognition-highlight: #94d159;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--recognition-accent) 54%, transparent);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 34% 20%, rgba(255, 255, 255, 0.22), transparent 30%),
+    radial-gradient(circle at 50% 76%, color-mix(in srgb, var(--recognition-highlight) 18%, transparent), transparent 58%),
+    linear-gradient(145deg, color-mix(in srgb, var(--recognition-accent) 26%, #12160d), rgba(10, 13, 8, 0.92));
+  color: var(--recognition-accent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.24),
+    0 0 24px color-mix(in srgb, var(--recognition-accent) 22%, transparent);
+}
+
+.community-recognition-icon::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--recognition-accent) 22%, transparent);
+  pointer-events: none;
+}
+
+.community-recognition-icon--hero {
+  width: 78px;
+  height: 78px;
+}
+
+.community-recognition-icon--strip {
+  width: 34px;
+  height: 34px;
+}
+
+.community-recognition-icon--pill {
+  width: 28px;
+  height: 28px;
+}
+
+.community-recognition-icon--documentation {
+  --recognition-accent: #c184ff;
+  --recognition-highlight: #6bb8ff;
+}
+
+.community-recognition-icon--consistency {
+  --recognition-accent: #ffd34d;
+  --recognition-highlight: #94d159;
+}
+
+.community-recognition-icon--discovery {
+  --recognition-accent: #a78bfa;
+  --recognition-highlight: #38d9ff;
+}
+
+.community-recognition-svg {
+  position: relative;
+  z-index: 1;
+  width: 58%;
+  height: 58%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter:
+    drop-shadow(0 0 4px color-mix(in srgb, var(--recognition-accent) 42%, transparent))
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.12));
+}
+
+.community-recognition-icon--pill .community-recognition-svg,
+.community-recognition-icon--strip .community-recognition-svg {
+  width: 62%;
+  height: 62%;
+  stroke-width: 3;
+}
+
+.community-recognition-svg-highlight {
+  stroke: color-mix(in srgb, var(--recognition-accent) 72%, #ffffff);
+}
+
+.community-recognition-svg-secondary {
+  stroke: color-mix(in srgb, var(--recognition-accent) 58%, #8a5b16);
+}
+
+.community-recognition-svg-leaf {
+  stroke: var(--recognition-highlight);
 }
 
 .community-featured-grow-recognition span,
@@ -9783,12 +9867,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   text-transform: uppercase;
 }
 
-.community-recognition-strip-icon {
-  width: 32px;
-  height: 32px;
-  color: #ffd34d;
-}
-
 .community-recognition-list {
   display: flex;
   align-items: stretch;
@@ -9814,12 +9892,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.86rem;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.community-recognition-pill .cg-icon {
-  width: 19px;
-  height: 19px;
-  color: #94d159;
 }
 
 .community-featured-grow-empty {
@@ -10557,9 +10629,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     height: 62px;
   }
 
-  .community-featured-grow-award-icon .cg-icon {
-    width: 34px;
-    height: 34px;
+  .community-featured-grow-award-icon .community-recognition-icon--hero {
+    width: 62px;
+    height: 62px;
   }
 
   .community-pulse-card {
@@ -20498,6 +20570,15 @@ body.theme-dark .contact-reason-card.is-active {
   outline: none;
 }
 
+.gallery-like-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.gallery-like-button.is-pending {
+  pointer-events: none;
+  opacity: 0.78;
+}
+
 .gallery-like-button.is-liked {
   background: rgba(148, 209, 89, 0.12);
   border-color: rgba(148, 209, 89, 0.38);
@@ -20589,6 +20670,10 @@ body.theme-dark .contact-reason-card.is-active {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 0 22px rgba(148, 209, 89, 0.16);
+}
+
+.public-session-header-actions .gallery-like-button--thumb {
+  flex: 0 0 auto;
 }
 
 .gallery-card--compact-preview {
