@@ -91708,7 +91708,7 @@ function renderPublicSessionQuickStatsMarkup(snapshot = null, publicDetails = {}
   const successLabel = summary?.overall?.percentageLabel && summary.overall.percentageLabel !== "N/A"
     ? summary.overall.percentageLabel
     : (publicDetails?.germinationRateLabel || `${Math.max(0, Number(snapshot?.successPercent) || 0)}%`);
-  const resultCountLabel = method.isStandardized ? "Partitions" : "Varieties";
+  const resultCountLabel = method.supportsPartitions ? "Partitions" : "Varieties";
 
   const stats = [
     { label: "Success Rate", value: successLabel, icon: "activeSessionWaveform" },
@@ -91754,6 +91754,11 @@ function getPublicSessionSourceReportHref(sourceLabel = "") {
   return sourceKey ? `#sources/${encodeURIComponent(sourceKey)}` : "#sources";
 }
 
+function getPublicSessionIndividualResultLabel(method, partition = {}, index = 0) {
+  const numericId = Math.max(1, Number(partition?.id) || index + 1);
+  return method?.supportsPartitions ? `P${numericId}` : `V${index + 1}`;
+}
+
 function renderPublicSessionIndividualResultsMarkup(publicDetails = {}, options = {}) {
   const summary = publicDetails?.resultSummary || null;
   const method = getPublicSessionMethodConfig(options.snapshot, publicDetails);
@@ -91770,16 +91775,14 @@ function renderPublicSessionIndividualResultsMarkup(publicDetails = {}, options 
         <div>
           <p class="eyebrow">Individual Results</p>
           <h2 id="public-session-individual-results-title">Individual Results</h2>
-          <p>Every ${method.isStandardized ? "partition" : "variety"} is evaluated independently as a mini evidence report.</p>
+          <p>Every ${method.supportsPartitions ? "partition" : "variety"} is evaluated independently as a mini evidence report.</p>
         </div>
         <span>${escapeHtml(overallLabel)}</span>
       </div>
       ${partitions.length ? `
         <div class="public-session-result-list">
           ${partitions.map((partition, index) => {
-            const label = method.isStandardized
-              ? getNewSessionSeedVaultPartitionLabel(method.id, Number(partition.id) || index + 1)
-              : `V${index + 1}`;
+            const label = getPublicSessionIndividualResultLabel(method, partition, index);
             const sourceLabel = partition.sourceLabel || partition.source || "Not shared";
             const varietyLabel = partition.varietyLabel || partition.seedVariety || "Not shared";
             const seedTypeSex = [
@@ -91850,7 +91853,7 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
     { label: "Method", value: publicDetails.systemLabel || method.name, icon: "sourceHeroSprout", isMethod: true },
     { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared", icon: "calendar" },
     { label: "Duration", value: durationLabel, icon: "clock" },
-    { label: method.isStandardized ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared", icon: method.isStandardized ? "sourceDirectoryBars" : "seedVault" },
+    { label: method.supportsPartitions ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared", icon: method.supportsPartitions ? "sourceDirectoryBars" : "seedVault" },
     { label: "Varieties Represented", value: representedVarietyCount ? String(representedVarietyCount) : "Not shared", icon: "seedVault" },
     { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "Not shared", icon: "sourceHeroShieldCheck" },
     ...optionalDetails,
@@ -91937,16 +91940,44 @@ function getPublicSessionOptionalOverviewRows(snapshot = null, publicDetails = {
 function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDetails = {}) {
   const summary = publicDetails?.resultSummary || null;
   const method = getPublicSessionMethodConfig(snapshot, publicDetails);
-  const rowCount = Array.isArray(summary?.partitions)
-    ? summary.partitions.filter((partition) => partition.hasSeeds).length
-    : 0;
+  const lifecycleState = buildPublicSessionLifecycleState(snapshot);
+  const linkedSession = getGallerySnapshotSession(snapshot) || {};
+  const countedResults = Array.isArray(summary?.partitions)
+    ? summary.partitions.filter((partition) => partition.hasSeeds)
+    : [];
+  const representedSourceCount = Math.max(
+    0,
+    Number(summary?.mixedContext?.sourceCount) || 0,
+    Array.isArray(summary?.sourceGroups) ? summary.sourceGroups.length : 0,
+    new Set(countedResults.map((partition) => partition.sourceKey || normalizeSourceNameForMatching(partition.sourceLabel || partition.source || "")).filter(Boolean)).size,
+  );
+  const explicitStatus = normalizeSessionStatus(
+    linkedSession.sessionStatus
+    || linkedSession.session_status
+    || snapshot?.sessionStatus
+    || snapshot?.session_status
+    || "",
+  );
+  const isCompleted = explicitStatus === "completed" || (!explicitStatus && Boolean(lifecycleState?.completedAt));
+  const statusLabel = isCompleted ? "Completed" : "Active";
+  const startedLabel = lifecycleState?.startedAt
+    ? formatPublicJourneyTimestamp(lifecycleState.startedAt)
+    : (lifecycleState?.startedDisplayLabel || publicDetails.sessionDateLabel || "");
+  const completedLabel = isCompleted && lifecycleState?.completedAt
+    ? formatPublicJourneyTimestamp(lifecycleState.completedAt)
+    : "";
+  const totalDurationLabel = isCompleted && lifecycleState?.startedAt && lifecycleState?.completedAt
+    ? formatPublicTimelineElapsedDuration(lifecycleState.startedAt, lifecycleState.completedAt)
+    : (isCompleted ? formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) : "");
   const rows = [
     { label: "Method Type", value: method.name, icon: "sourceHeroSprout", isMethod: true },
-    { label: "Workflow", value: "Flexible custom method", icon: "journeyFlag" },
-    { label: "Result Labels", value: "V1, V2, V3 by variety", icon: "seedVault" },
-    { label: "Varieties Shared", value: rowCount ? String(rowCount) : "Not shared", icon: "seedVault" },
-    { label: "Status", value: normalizeSessionStatus(getGallerySnapshotSession(snapshot)?.sessionStatus || "completed") === "completed" ? "Completed" : "Active", icon: "sourceHeroShieldCheck" },
-  ];
+    { label: "Status", value: statusLabel, icon: isCompleted ? "sourceHeroShieldCheck" : "activeSessionWaveform", isMethod: true },
+    { label: "Started", value: startedLabel, icon: "calendar" },
+    { label: "Completed", value: completedLabel, icon: "check" },
+    { label: "Total Duration", value: totalDurationLabel, icon: "clock" },
+    { label: "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "", icon: "seedVault" },
+    { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "", icon: "sourceHeroShieldCheck" },
+  ].filter((row) => row.value && row.value !== "Not shared");
 
   return `
     <section class="public-session-details-card public-session-custom-method-card" aria-labelledby="public-session-custom-method-title">
@@ -91960,7 +91991,7 @@ function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDet
         </span>
       </div>
       <div class="public-session-details-list">
-        ${rows.filter((row) => row.value && row.value !== "Not shared").map((row) => `
+        ${rows.map((row) => `
           <div class="public-session-details-row${row.isMethod ? " public-session-details-row--method" : ""}">
             <span class="public-session-details-row-icon" aria-hidden="true">
               ${renderAppIconMarkup(row.icon, { variant: "plain" })}
@@ -91976,6 +92007,9 @@ function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDet
 
 function renderPublicSessionJourneyAndDetailsMarkup(snapshot = null, publicDetails = {}) {
   const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  const primaryPanelMarkup = method.supportsTimeline
+    ? renderPublicSessionTimelineSection(snapshot)
+    : renderPublicSessionCustomMethodDetailsMarkup(snapshot, publicDetails);
   return `
     <section class="public-session-method-overview" aria-labelledby="public-session-method-overview-title">
       <div class="public-session-method-overview-heading">
@@ -91983,7 +92017,7 @@ function renderPublicSessionJourneyAndDetailsMarkup(snapshot = null, publicDetai
         <h2 id="public-session-method-overview-title">Method Overview</h2>
       </div>
       <div class="public-session-method-overview-grid">
-        ${method.isStandardized ? renderPublicSessionTimelineSection(snapshot) : renderPublicSessionCustomMethodDetailsMarkup(snapshot, publicDetails)}
+        ${primaryPanelMarkup}
         ${renderPublicSessionDetailsCardMarkup(snapshot, publicDetails)}
       </div>
     </section>
@@ -92101,7 +92135,7 @@ function getPublicSessionSummaryRows(snapshot = null, publicDetails = {}) {
     { label: "Success Rate", value: publicDetails.germinationRateLabel || "Not shared", featured: true },
     { label: "Session Duration", value: sessionDuration || "Not shared" },
     { label: "Published Date", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared" },
-    { label: method.isStandardized ? "Partition Count" : "Seed Row Count", value: countedPartitions.length ? String(countedPartitions.length) : "Not shared" },
+    { label: method.supportsPartitions ? "Partition Count" : "Variety Count", value: countedPartitions.length ? String(countedPartitions.length) : "Not shared" },
   ];
 
   if (mixedContext.sourceCount || summary?.sourceGroups?.length) {
