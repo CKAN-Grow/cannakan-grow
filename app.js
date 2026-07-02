@@ -1427,19 +1427,7 @@ const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "/src/assets/kan-partition-icon-v2.png",
   TRA: "/src/assets/tra-partition-icon.png",
 };
-const CUSTOM_METHOD_SEED_ICON_ASSET = `data:image/svg+xml,${encodeURIComponent(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="seedGlow" x1="14" y1="54" x2="50" y2="8" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#5da837"/>
-      <stop offset="1" stop-color="#c6ff6f"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="18" fill="#102012"/>
-  <path d="M32 10c9.5 8.7 15 18 15 27 0 9.4-6.2 16-15 16S17 46.4 17 37c0-9 5.5-18.3 15-27Z" fill="url(#seedGlow)" opacity=".95"/>
-  <path d="M32 17c2.2 9.6 1 20.7-4.6 29.5" fill="none" stroke="#0f2d13" stroke-width="3.2" stroke-linecap="round"/>
-</svg>
-`)}`;
+const CUSTOM_METHOD_HEADER_ICON_ASSET = "/assets/images/learn-share-preview.png";
 const METHOD_TYPE_CONFIG = Object.freeze({
   KAN: Object.freeze({
     id: "KAN",
@@ -1459,6 +1447,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     chartEyebrow: "Partitions",
     chartTitle: "KAN® Partition Chart",
     iconAlt: "KAN partition icon",
+    headerIconSrc: PARTITION_HEADER_ICON_ASSETS.KAN,
   }),
   TRA: Object.freeze({
     id: "TRA",
@@ -1478,6 +1467,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     chartEyebrow: "Partitions",
     chartTitle: "TRā™ Partition Chart",
     iconAlt: "TRā partition icon",
+    headerIconSrc: PARTITION_HEADER_ICON_ASSETS.TRA,
   }),
   PAPER_TOWEL: Object.freeze({
     id: "PAPER_TOWEL",
@@ -1496,7 +1486,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
     chartTitle: "Custom Seed Chart",
-    iconAlt: "Custom seed chart icon",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   ROCKWOOL: Object.freeze({
     id: "ROCKWOOL",
@@ -1515,7 +1506,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
     chartTitle: "Custom Seed Chart",
-    iconAlt: "Custom seed chart icon",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   WATER_SOAK: Object.freeze({
     id: "WATER_SOAK",
@@ -1534,7 +1526,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
     chartTitle: "Custom Seed Chart",
-    iconAlt: "Custom seed chart icon",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   DIRECT_SOW: Object.freeze({
     id: "DIRECT_SOW",
@@ -1553,7 +1546,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
     chartTitle: "Custom Seed Chart",
-    iconAlt: "Custom seed chart icon",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   OTHER: Object.freeze({
     id: "OTHER",
@@ -1572,7 +1566,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
     chartTitle: "Custom Seed Chart",
-    iconAlt: "Custom seed chart icon",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
 });
 const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
@@ -83589,8 +83584,9 @@ function updatePartitionWorkHeading(titleElement, systemType) {
 
   const method = getMethodConfig(systemType);
   const titleText = titleElement.querySelector("[data-partition-title-text]");
-  const titleIcon = titleElement.querySelector("[data-partition-title-icon]");
   const heading = titleElement.closest(".partition-work-heading");
+  const titleIcon = heading?.querySelector("[data-partition-title-icon]")
+    || titleElement.querySelector("[data-partition-title-icon]");
   const eyebrow = heading?.querySelector(".eyebrow");
 
   if (titleText) {
@@ -83604,9 +83600,7 @@ function updatePartitionWorkHeading(titleElement, systemType) {
   }
 
   if (titleIcon) {
-    const iconAsset = method.isStandardized
-      ? PARTITION_HEADER_ICON_ASSETS[method.id] || ""
-      : CUSTOM_METHOD_SEED_ICON_ASSET;
+    const iconAsset = method.headerIconSrc || PARTITION_HEADER_ICON_ASSETS[method.id] || "";
     if (iconAsset) {
       titleIcon.src = iconAsset;
     }
@@ -87417,6 +87411,16 @@ function addPartitionResultToGroup(group, partitionResult) {
 function getSessionResultSummary(session = null, options = {}) {
   const normalizedSession = normalizeStoredSession(session) || session || {};
   const method = getMethodConfig(options.methodType || getSessionMethodType(normalizedSession));
+  const sessionStatus = normalizeSessionStatus(
+    options.sessionStatus
+    || normalizedSession?.sessionStatus
+    || normalizedSession?.session_status
+    || "",
+  );
+  const includePendingCustomResults = options.includePendingCustomResults === true;
+  const isPendingCustomMethodSession = !method.isStandardized
+    && sessionStatus !== "completed"
+    && !includePendingCustomResults;
   const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
   const sourceGroups = new Map();
   const varietyGroups = new Map();
@@ -87431,13 +87435,14 @@ function getSessionResultSummary(session = null, options = {}) {
       && Number.isFinite(plantedCount)
       && plantedCount >= 0
       && plantedCount <= totalCount;
-    const germinatedCount = hasValidResultValue
+    const hasFinalResultValue = hasValidResultValue && !isPendingCustomMethodSession;
+    const germinatedCount = hasFinalResultValue
       ? Math.max(0, Math.min(totalCount, plantedCount))
       : 0;
-    const failedCount = hasValidResultValue ? Math.max(0, totalCount - germinatedCount) : 0;
-    const unaccountedCount = hasValidResultValue ? 0 : totalCount;
-    const accountedCount = hasValidResultValue ? totalCount : 0;
-    const percentage = totalCount > 0 && hasValidResultValue
+    const failedCount = hasFinalResultValue ? Math.max(0, totalCount - germinatedCount) : 0;
+    const unaccountedCount = hasFinalResultValue ? 0 : totalCount;
+    const accountedCount = hasFinalResultValue ? totalCount : 0;
+    const percentage = totalCount > 0 && hasFinalResultValue
       ? Math.round((germinatedCount / totalCount) * 100)
       : null;
     const sourceLabel = normalizeSessionResultLabel(formatPartitionSource(partition), "");
@@ -87491,21 +87496,25 @@ function getSessionResultSummary(session = null, options = {}) {
       unaccountedCount,
       accountedCount,
       percentage,
-      percentageLabel: percentage === null ? "N/A" : `${percentage}%`,
+      percentageLabel: isPendingCustomMethodSession && totalCount > 0
+        ? "Pending"
+        : (percentage === null ? "N/A" : `${percentage}%`),
       hasSeeds: totalCount > 0,
       hasResultValue,
       hasValidResultValue,
-      isAccounted: totalCount > 0 && hasValidResultValue,
+      hasFinalResultValue,
+      isPendingResult: isPendingCustomMethodSession && totalCount > 0,
+      isAccounted: totalCount > 0 && hasFinalResultValue,
       rawPartition: partition,
     };
 
-    if (result.hasSeeds && result.sourceKey) {
+    if (result.hasSeeds && result.sourceKey && !result.isPendingResult) {
       const group = sourceGroups.get(result.sourceKey)
         || createEmptySessionResultGroup(result.sourceKey, result.sourceLabel, "source");
       addPartitionResultToGroup(group, result);
       sourceGroups.set(result.sourceKey, group);
     }
-    if (result.hasSeeds && result.varietyKey) {
+    if (result.hasSeeds && result.varietyKey && !result.isPendingResult) {
       const group = varietyGroups.get(result.varietyKey)
         || createEmptySessionResultGroup(result.varietyKey, result.varietyLabel, "variety");
       addPartitionResultToGroup(group, result);
@@ -87515,7 +87524,8 @@ function getSessionResultSummary(session = null, options = {}) {
     return result;
   });
 
-  const countedPartitions = partitionResults.filter((partition) => partition.hasSeeds);
+  const countedPartitions = partitionResults.filter((partition) => partition.hasSeeds && !partition.isPendingResult);
+  const pendingPartitions = partitionResults.filter((partition) => partition.isPendingResult);
   const totalSeeds = countedPartitions.reduce((sum, partition) => sum + partition.totalCount, 0);
   const totalGerminated = countedPartitions.reduce((sum, partition) => sum + partition.germinatedCount, 0);
   const totalFailed = countedPartitions.reduce((sum, partition) => sum + partition.failedCount, 0);
@@ -87525,6 +87535,9 @@ function getSessionResultSummary(session = null, options = {}) {
 
   return {
     sessionId: String(normalizedSession?.id || "").trim(),
+    methodType: method.id,
+    sessionStatus,
+    isPendingCustomMethodSession,
     overall: {
       totalSeeds,
       totalStarted: totalSeeds,
@@ -87536,7 +87549,9 @@ function getSessionResultSummary(session = null, options = {}) {
       percentage,
       percentageLabel: percentage === null ? "N/A" : `${percentage}%`,
       hasResults: totalSeeds > 0,
-      hasIncompleteResults: countedPartitions.some((partition) => !partition.hasValidResultValue),
+      hasPendingResults: pendingPartitions.length > 0,
+      pendingResultCount: pendingPartitions.length,
+      hasIncompleteResults: pendingPartitions.length > 0 || countedPartitions.some((partition) => !partition.hasFinalResultValue),
       allSeedsAccountedFor: totalSeeds > 0 && totalAccounted === totalSeeds && totalUnaccounted === 0,
     },
     partitions: partitionResults,
@@ -87554,7 +87569,7 @@ function getSessionResultSummary(session = null, options = {}) {
 }
 
 function getSessionSeedResultAccounting(session = null) {
-  const summary = getSessionResultSummary(session);
+  const summary = getSessionResultSummary(session, { includePendingCustomResults: true });
   return {
     totalSeeds: summary.overall.totalSeeds,
     totalGerminated: summary.overall.totalGerminated,
@@ -87717,13 +87732,22 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
   const summary = sessionOrSummary?.overall && Array.isArray(sessionOrSummary?.partitions)
     ? sessionOrSummary
     : getSessionResultSummary(sessionOrSummary);
+  const method = getMethodConfig(
+    options.methodType
+    || summary.methodType
+    || sessionOrSummary?.methodType
+    || sessionOrSummary?.systemType
+    || sessionOrSummary?.system_type
+    || "KAN",
+  );
   const maxPartitions = Math.max(0, Number(options.maxPartitions) || 16);
   const maxGroups = Math.max(0, Number(options.maxGroups) || 4);
   const compact = options.compact === true;
   const countedPartitions = summary.partitions.filter((partition) => partition.hasSeeds).slice(0, maxPartitions);
   const sourceGroups = summary.sourceGroups.slice(0, maxGroups);
   const varietyGroups = summary.varietyGroups.slice(0, maxGroups);
-  if (!summary.overall.hasResults) {
+  const hasPendingCustomResults = Boolean(summary.isPendingCustomMethodSession && summary.overall.hasPendingResults);
+  if (!summary.overall.hasResults && !hasPendingCustomResults) {
     return "";
   }
 
@@ -87733,33 +87757,56 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
         summary.mixedContext.hasMultipleVarieties ? `${summary.mixedContext.varietyCount} varieties` : "",
       ].filter(Boolean).join(" / ")
     : "Single source or variety";
+  const breakdownTitle = method.isStandardized
+    ? "Fair view by partition, source, and variety"
+    : "Result view by seed row, source, and variety";
+  const overallLabel = hasPendingCustomResults
+    ? "Pending results"
+    : `${summary.overall.percentageLabel} overall`;
+  const pendingStatus = {
+    ...PARTITION_SUCCESS_STATUS_DEFINITIONS.none,
+    label: "Pending",
+    shortLabel: "Pending",
+  };
 
   return `
     <section class="session-result-breakdown${compact ? " session-result-breakdown--compact" : ""}" aria-label="Session result breakdown">
       <div class="session-result-breakdown-head">
         <div>
           <p class="eyebrow">RESULT BREAKDOWN</p>
-          <h4>Fair view by partition, source, and variety</h4>
+          <h4>${escapeHtml(breakdownTitle)}</h4>
         </div>
-        <span class="session-result-breakdown-overall">${escapeHtml(summary.overall.percentageLabel)} overall</span>
+        <span class="session-result-breakdown-overall">${escapeHtml(overallLabel)}</span>
       </div>
-      <p class="session-result-breakdown-context">${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}</p>
+      <p class="session-result-breakdown-context">${
+        hasPendingCustomResults
+          ? "Results not completed yet. Mark the session complete to publish final germination analytics."
+          : `${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}`
+      }</p>
       <div class="session-result-partition-grid">
         ${countedPartitions.map((partition) => {
-          const successStatus = getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount);
+          const successStatus = partition.isPendingResult
+            ? pendingStatus
+            : getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount);
+          const germinationLine = partition.isPendingResult
+            ? "Pending results"
+            : `${partition.germinatedCount}/${partition.totalCount} germinated`;
+          const accountingLine = partition.isPendingResult
+            ? "Results not completed yet"
+            : `${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`;
           return `
             <article class="session-result-partition-chip partition-success-card ${escapeHtml(successStatus.className)}">
               <span><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partition.label)}</span>
               <strong class="partition-success-rate">${escapeHtml(partition.percentageLabel)}</strong>
-              <p>${escapeHtml(`${partition.germinatedCount}/${partition.totalCount} germinated`)}</p>
-              <p>${escapeHtml(`${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`)}</p>
+              <p>${escapeHtml(germinationLine)}</p>
+              <p>${escapeHtml(accountingLine)}</p>
               <p><span class="partition-success-badge">${escapeHtml(successStatus.label)}</span></p>
               ${partition.source ? `<p>${escapeHtml(partition.source)}</p>` : ""}
             </article>
           `;
         }).join("")}
       </div>
-      ${compact ? "" : renderPartitionSuccessLegendMarkup({ compact: true })}
+      ${compact || hasPendingCustomResults ? "" : renderPartitionSuccessLegendMarkup({ compact: true })}
       ${(sourceGroups.length || varietyGroups.length) ? `
         <div class="session-result-group-grid">
           ${sourceGroups.length ? `
@@ -89794,7 +89841,10 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement, 
     || sectionElement.closest?.("[data-method-type]")?.dataset?.methodType
     || chartElement.closest?.("[data-method-type]")?.dataset?.methodType
     || "";
-  const items = getSessionResultSummary({ partitions, methodType }).partitions.filter((partition) => partition.hasSeeds || partition.hasResultValue);
+  const items = getSessionResultSummary(
+    { partitions, methodType },
+    { includePendingCustomResults: true },
+  ).partitions.filter((partition) => partition.hasSeeds || partition.hasResultValue);
 
   if (!items.length) {
     chartElement.innerHTML = "";
