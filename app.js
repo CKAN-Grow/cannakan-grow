@@ -54586,7 +54586,9 @@ function renderSourceVarietiesPage(sourceId = "") {
       </div>
 
       <article class="card source-report-hero-card source-varieties-hero-card">
-        <div class="source-report-hero-bg" aria-hidden="true"></div>
+        <div class="source-report-hero-bg" aria-hidden="true">
+          <img src="/assets/images/source-report-hero-bg.png" alt="">
+        </div>
         <div class="source-report-hero-main">
           ${renderSourceLogoMarkup(sourceProfile, {
             className: "source-profile-logo source-report-hero-logo",
@@ -54736,7 +54738,9 @@ function renderSourceProfilePage(sourceId = "") {
       </div>
 
       <article class="card source-report-hero-card">
-        <div class="source-report-hero-bg" aria-hidden="true"></div>
+        <div class="source-report-hero-bg" aria-hidden="true">
+          <img src="/assets/images/source-report-hero-bg.png" alt="">
+        </div>
         <div class="source-report-hero-main">
           ${renderSourceLogoMarkup(sourceProfile, {
             className: "source-profile-logo source-report-hero-logo",
