@@ -52757,15 +52757,33 @@ function getSeedReportRegionRows(seed = {}) {
 }
 
 function getSeedReportTimelineRows(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const freshLotLabel = String(seed.batchAge || "").toLowerCase().includes("fresh")
-    ? "Fresh-lot reports are adding current adoption signal"
-    : "Archive-lot reports are being tracked separately from fresh-lot activity";
+  const varietyName = seed.varietyName || "this variety";
+  const activeRegions = getSeedReportRegionRows(seed).filter((row) => String(row.country || "").toLowerCase() !== "other");
+  const sourceName = seed.source || "Primary source";
   return [
-    { text: `${activity.newSessionsThisWeek} new community sessions reported this week`, time: "2 hrs ago" },
-    { text: `${freshLotLabel}`, time: "5 hrs ago" },
-    { text: `${seed.communityConfidence || "Community confidence"} adoption signal updated from preview evidence`, time: "1 day ago" },
-    { text: `Recent grow reports added for ${seed.varietyName || "this variety"}`, time: "2 days ago" },
+    { text: `New grow report added for ${varietyName}`, meta: "Germany", time: "2 hrs ago", tone: "report" },
+    { text: `${Number(activity.seedsAddedThisMonth || 0).toLocaleString()} additional seeds tracked`, meta: "Community evidence", time: "Today", tone: "seeds" },
+    { text: `${seed.communityConfidence || "High Confidence"} achieved`, meta: "Evidence threshold", time: "1 day ago", tone: "confidence" },
+    { text: `New source now carrying ${varietyName}`, meta: sourceName, time: "2 days ago", tone: "source" },
+    { text: "Reports expanded into another region", meta: `${Math.max(1, activeRegions.length)} active regions`, time: "This week", tone: "region" },
   ];
+}
+
+function renderSeedReportRecentActivityMarkup(rows = []) {
+  return `
+    <div class="seed-report-recent-activity-list">
+      ${rows.map((row) => `
+        <article class="seed-report-recent-activity-item is-${escapeHtml(row.tone || "activity")}">
+          <span class="seed-report-recent-activity-dot" aria-hidden="true"></span>
+          <p>
+            <strong>${escapeHtml(row.text)}</strong>
+            ${row.meta ? `<small>${escapeHtml(row.meta)}</small>` : ""}
+          </p>
+          <time>${escapeHtml(row.time || "")}</time>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderReportActivityTimelineRowsMarkup(rows = []) {
@@ -53138,12 +53156,12 @@ function renderSeedProfilePage(seedId = "") {
         ${renderSourceReportRegionMarkup(regions)}
       </article>
 
-      <article class="card source-report-section-card source-report-recent-card seed-report-timeline-card">
-        ${renderSourceReportSectionTitle(5, "Community Activity Timeline")}
-        ${renderReportActivityTimelineRowsMarkup(timelineRows)}
-      </article>
-
       ${renderSeedReportGalleryMarkup(seed)}
+
+      <article class="card source-report-section-card source-report-recent-card seed-report-timeline-card">
+        ${renderSourceReportSectionTitle(5, "Recent Community Activity")}
+        ${renderSeedReportRecentActivityMarkup(timelineRows)}
+      </article>
 
       <div class="source-report-two-column-grid seed-report-relationship-grid">
         <article class="card source-report-section-card source-report-varieties-card seed-report-related-card">

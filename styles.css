@@ -62194,6 +62194,78 @@ a.source-directory-variety-chip:focus-visible {
   color: rgba(231, 238, 226, 0.72);
 }
 
+.seed-report-recent-activity-list {
+  display: grid;
+  gap: 0;
+}
+
+.seed-report-recent-activity-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  padding: 8px 0;
+  color: rgba(241, 246, 235, 0.9);
+}
+
+.seed-report-recent-activity-item + .seed-report-recent-activity-item {
+  border-top: 1px dashed rgba(148, 209, 89, 0.14);
+}
+
+.seed-report-recent-activity-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #94d159;
+  box-shadow:
+    0 0 0 5px rgba(148, 209, 89, 0.08),
+    0 0 16px rgba(148, 209, 89, 0.42);
+}
+
+.seed-report-recent-activity-item.is-report .seed-report-recent-activity-dot,
+.seed-report-recent-activity-item.is-confidence .seed-report-recent-activity-dot {
+  background: #b8ee5f;
+}
+
+.seed-report-recent-activity-item.is-source .seed-report-recent-activity-dot {
+  background: #7fdc8f;
+}
+
+.seed-report-recent-activity-item.is-region .seed-report-recent-activity-dot {
+  background: #8fd8ff;
+  box-shadow:
+    0 0 0 5px rgba(143, 216, 255, 0.08),
+    0 0 16px rgba(143, 216, 255, 0.28);
+}
+
+.seed-report-recent-activity-item p {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+}
+
+.seed-report-recent-activity-item strong {
+  color: #f7fff0;
+  font-size: 0.94rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.seed-report-recent-activity-item small {
+  color: rgba(215, 229, 209, 0.64);
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+.seed-report-recent-activity-item time {
+  color: rgba(231, 238, 226, 0.68);
+  font-size: 0.78rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
 
 .source-report-cstp-compact-card {
   display: flex;
@@ -62634,6 +62706,16 @@ a.source-directory-variety-chip:focus-visible {
   }
 
   .source-report-activity-timeline time {
+    grid-column: 2;
+  }
+
+  .seed-report-recent-activity-item {
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .seed-report-recent-activity-item time {
     grid-column: 2;
   }
 }
