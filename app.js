@@ -85140,6 +85140,14 @@ function renderPublicSessionDetail(snapshotId) {
       }
     });
   });
+  app.querySelectorAll("[data-public-session-share]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const shareSnapshotId = button.getAttribute("data-public-session-share") || snapshotId;
+      await handlePublicSessionShareButtonClick(shareSnapshotId);
+    });
+  });
 }
 
 function renderPublicMemberProfile(memberId) {
@@ -91647,7 +91655,10 @@ function renderPublicSessionHeroMarkup(snapshot = null, publicDetails = {}) {
     <section class="public-session-hero${heroImageUrl ? " has-image" : " has-placeholder"}"${heroStyle}>
       <div class="public-session-hero-topbar">
         <a class="public-session-back-link" href="#gallery">${renderAppIconMarkup("backArrow", { variant: "plain" })} Back to Community Grow</a>
-        <span class="public-session-hero-kicker">Community Grow Report</span>
+        <button type="button" class="public-session-share-button" data-public-session-share="${escapeHtml(snapshot?.id || "")}">
+          ${renderAppIconMarkup("growNetworkNodes", { variant: "plain" })}
+          Share
+        </button>
       </div>
       <div class="public-session-hero-content">
         <div class="public-session-hero-copy">
@@ -91815,7 +91826,7 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
   return `
     <section class="public-session-details-card" aria-labelledby="public-session-details-title">
       <div class="public-session-panel-heading">
-        <p class="eyebrow">Session Details</p>
+        <p class="eyebrow">Report Details</p>
         <h3 id="public-session-details-title">Report Details</h3>
       </div>
       <div class="public-session-details-list">
@@ -91875,8 +91886,8 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
     <section class="public-session-evidence-gallery" aria-labelledby="public-session-evidence-gallery-title">
       <div class="public-session-section-head">
         <div>
-          <p class="eyebrow">Evidence Gallery</p>
-          <h2 id="public-session-evidence-gallery-title">Evidence Gallery</h2>
+          <p class="eyebrow">Evidence</p>
+          <h2 id="public-session-evidence-gallery-title">Evidence</h2>
           <p>Session images shared with this public Community Grow Report.</p>
         </div>
         <span>${escapeHtml(`${images.length} / 3 images`)}</span>
@@ -91896,6 +91907,42 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
       `}
     </section>
   `;
+}
+
+async function handlePublicSessionShareButtonClick(snapshotId = "") {
+  const normalizedId = String(snapshotId || "").trim();
+  const reportPath = normalizedId ? `#sessions/public/${encodeURIComponent(normalizedId)}` : (window.location.hash || "#gallery");
+  const reportUrl = `${window.location.origin}${window.location.pathname}${reportPath}`;
+  const showShareToast = (message, title = "Community Grow Report") => {
+    if (typeof showNavigationLockToast === "function") {
+      showNavigationLockToast({ title, message });
+    }
+  };
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Community Grow Report",
+        text: "View this Community Grow Report on Grow.",
+        url: reportUrl,
+      });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        return;
+      }
+    }
+  }
+
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard is unavailable.");
+    }
+    await navigator.clipboard.writeText(reportUrl);
+    showShareToast("Report link copied.");
+  } catch (error) {
+    showShareToast("Could not copy the report link from this browser.", "Share Unavailable");
+  }
 }
 
 function formatPublicTimelineElapsedDuration(startedAt, endedAt, options = {}) {
@@ -92145,7 +92192,7 @@ function renderPublicSessionTimelineSection(snapshot) {
   return `
     <section class="session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
       <div class="progress-chart-heading">
-        <p class="eyebrow">Session Journey</p>
+        <p class="eyebrow">Method Journey</p>
         <h4 id="public-session-progress-title" class="section-title-with-icon">
           ${renderAppSectionHeaderIcon("activity")}
           <span>Start to Finish</span>

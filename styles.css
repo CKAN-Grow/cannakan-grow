@@ -32052,7 +32052,8 @@ textarea::placeholder {
 }
 
 .public-session-back-link,
-.public-session-hero-kicker {
+.public-session-hero-kicker,
+.public-session-share-button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -32063,6 +32064,35 @@ textarea::placeholder {
 }
 
 .public-session-back-link svg {
+  width: 18px;
+  height: 18px;
+  color: var(--public-session-green);
+}
+
+.public-session-share-button {
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  border-radius: 999px;
+  background: rgba(5, 12, 9, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 22px rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+
+.public-session-share-button:hover,
+.public-session-share-button:focus-visible {
+  border-color: rgba(148, 209, 89, 0.42);
+  color: #f6fff0;
+  background: rgba(148, 209, 89, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 22px rgba(148, 209, 89, 0.16);
+}
+
+.public-session-share-button svg {
   width: 18px;
   height: 18px;
   color: var(--public-session-green);
