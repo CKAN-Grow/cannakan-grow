@@ -53152,8 +53152,13 @@ function renderSeedProfilePage(seedId = "") {
       </div>
 
       <article class="card source-report-section-card source-report-region-card seed-report-region-card">
-        ${renderSourceReportSectionTitle(4, "Community Growth by Region")}
-        ${renderSourceReportRegionMarkup(regions)}
+        <div class="source-report-section-head">
+          <div>
+            ${renderSourceReportSectionTitle(4, "Where It’s Being Grown")}
+            <p>Regional distribution of community sessions for this variety.</p>
+          </div>
+        </div>
+        ${renderSourceReportRegionMarkup(regions, { shareLabel: "of community sessions" })}
       </article>
 
       ${renderSeedReportGalleryMarkup(seed)}
@@ -53669,7 +53674,8 @@ function getSourceReportRegionFlagLabel(row = {}) {
   return flags[code] || "➕";
 }
 
-function renderSourceReportRegionMarkup(regions = []) {
+function renderSourceReportRegionMarkup(regions = [], options = {}) {
+  const shareLabel = options.shareLabel || "of reports";
   return `
     <div class="source-report-region-layout">
       <div class="source-report-region-list">
@@ -53689,7 +53695,7 @@ function renderSourceReportRegionMarkup(regions = []) {
             </span>
             <span class="source-report-region-share">
               <em>${escapeHtml(String(row.share))}%</em>
-              <span>of reports</span>
+              <span>${escapeHtml(shareLabel)}</span>
             </span>
             <span class="source-report-region-progress" aria-hidden="true"><i></i></span>
           </article>
