@@ -53132,7 +53132,7 @@ function renderSeedProfilePage(seedId = "") {
         ${renderSeedReportAdoptionChartMarkup(seed, activity)}
       </article>
 
-      <div class="source-report-two-column-grid">
+      <div class="source-report-two-column-grid seed-report-source-insights-grid">
         <article class="card source-report-section-card source-report-varieties-card seed-report-sources-card">
           <div class="source-report-section-head">
             <div>
@@ -53143,6 +53143,7 @@ function renderSeedProfilePage(seedId = "") {
           ${renderSeedReportRelationshipListMarkup(sourceRows, seed.sourceId ? { href: `#sources/${encodeURIComponent(seed.sourceId)}`, label: "View Primary Source" } : null)}
         </article>
 
+        ${renderSeedReportInsightsMarkup(seed)}
       </div>
 
       <article class="card source-report-section-card source-report-region-card seed-report-region-card">
@@ -53179,7 +53180,6 @@ function renderSeedProfilePage(seedId = "") {
         </article>
       </div>
 
-      ${renderSeedReportInsightsMarkup(seed)}
       ${renderSeedReportEvidenceMarkup(seed)}
 
       <article class="card source-report-actions-card seed-report-actions-card">

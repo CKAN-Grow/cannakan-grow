@@ -32729,6 +32729,54 @@ textarea::placeholder {
   min-height: 100%;
 }
 
+.seed-report-source-insights-grid {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.02fr) minmax(320px, 0.98fr);
+}
+
+.seed-report-source-insights-grid .seed-report-sources-card,
+.seed-report-source-insights-grid .seed-report-insights-card {
+  align-self: start;
+  min-height: 0;
+}
+
+.seed-report-source-insights-grid .seed-report-insights-card {
+  gap: 14px;
+}
+
+.seed-report-source-insights-grid .seed-report-insight-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.seed-report-source-insights-grid .seed-report-insight-grid .seed-profile-grow-insight {
+  gap: 10px;
+  margin-top: 0;
+  min-height: 0;
+  padding: 11px 14px;
+}
+
+.seed-report-source-insights-grid .seed-report-insight-grid .seed-profile-grow-insight > span {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+}
+
+.seed-report-source-insights-grid .seed-report-insight-grid .seed-profile-grow-insight strong {
+  font-size: 1rem;
+}
+
+.seed-report-source-insights-grid .seed-report-insight-grid .seed-profile-grow-insight em {
+  font-size: 0.76rem;
+  line-height: 1.28;
+}
+
+@media (max-width: 1024px) {
+  .seed-report-source-insights-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .seed-report-evidence-grid {
   margin-top: 0;
 }
