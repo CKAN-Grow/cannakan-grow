@@ -31323,6 +31323,20 @@ select {
   font-weight: 700;
 }
 
+.custom-select-option:disabled,
+.custom-select-option.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.custom-select-option:disabled:hover,
+.custom-select-option:disabled:focus-visible,
+.custom-select-option.is-disabled:hover,
+.custom-select-option.is-disabled:focus-visible {
+  background: transparent;
+  color: #1f3a2a;
+}
+
 body.theme-dark .custom-select-trigger {
   background: #1f2a22;
   border-color: rgba(148, 209, 89, 0.22);
@@ -31372,6 +31386,14 @@ body.theme-dark .custom-select-option:focus-visible {
 body.theme-dark .custom-select-option.is-selected {
   background: #94d159;
   color: #0f140f;
+}
+
+body.theme-dark .custom-select-option:disabled:hover,
+body.theme-dark .custom-select-option:disabled:focus-visible,
+body.theme-dark .custom-select-option.is-disabled:hover,
+body.theme-dark .custom-select-option.is-disabled:focus-visible {
+  background: transparent;
+  color: #edf4ee;
 }
 
 body.theme-dark .admin-cstp-device-image-slot {
@@ -55207,6 +55229,20 @@ select:not([multiple]):not([size]) {
 .custom-select-option.is-selected {
   background: rgba(148, 209, 89, 0.92);
   color: #101810;
+}
+
+.custom-select-option:disabled,
+.custom-select-option.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.custom-select-option:disabled:hover,
+.custom-select-option:disabled:focus-visible,
+.custom-select-option.is-disabled:hover,
+.custom-select-option.is-disabled:focus-visible {
+  background: transparent;
+  color: #f4f7ef;
 }
 
 body.theme-dark select,

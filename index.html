@@ -380,12 +380,13 @@
     <section id="latest-grow-reports" class="card gallery-section gallery-feed-section community-intelligence-latest-section">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
-          <span class="section-title-icon" data-app-icon="uploadImage" data-icon-variant="plate" data-icon-label="Published snapshots" aria-hidden="true"></span>
+          <span class="section-title-icon" data-app-icon="uploadImage" data-icon-variant="plate" data-icon-label="Published reports" aria-hidden="true"></span>
           <div>
-            <p class="eyebrow">Latest Grow Reports</p>
-            <h3>Latest Grow Reports</h3>
+            <p class="eyebrow">Explore Community Grows</p>
+            <h3>Explore Community Grows</h3>
+            <p class="muted">Browse public grow reports from growers around the world.</p>
             <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Date · Newest to Oldest</p>
-            <p id="gallery-count-state" class="gallery-count-state muted">Showing 0 of 0 snapshots</p>
+            <p id="gallery-count-state" class="gallery-count-state muted">Showing 0 of 0 reports</p>
           </div>
         </div>
         <div class="gallery-sort-controls">
@@ -393,11 +394,18 @@
             <span>VIEW</span>
             <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-certification-filter">
               <select id="gallery-certification-filter" name="galleryCertificationFilter" class="custom-select-native" data-custom-select="true">
-                <option value="all">All Community Grow</option>
+                <option value="all">All Community Grows</option>
                 <option value="cstp-tested">CSTP Tested</option>
+                <option value="recognition-all" disabled>All Recognition</option>
+                <option value="recognition-featured" disabled>Featured Community Grow</option>
+                <option value="recognition-reliable" disabled>Reliable Results</option>
+                <option value="recognition-pick" disabled>Community Pick</option>
+                <option value="recognition-documented" disabled>Best Documented Session</option>
+                <option value="recognition-rare" disabled>Rare Variety Spotlight</option>
+                <option value="recognition-international" disabled>International Grow Highlight</option>
               </select>
               <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="custom-select-value">All Community Grow</span>
+                <span class="custom-select-value">All Community Grows</span>
                 <span class="custom-select-chevron" aria-hidden="true"></span>
               </button>
               <div class="custom-select-menu" role="listbox" hidden></div>
@@ -439,7 +447,7 @@
       </div>
       <div id="gallery-grid" class="gallery-grid"></div>
       <div id="gallery-load-more-shell" class="gallery-load-more-shell" hidden>
-        <button id="gallery-load-more-button" type="button" class="button button-secondary">Load More Snapshots</button>
+        <button id="gallery-load-more-button" type="button" class="button button-secondary">Load More Reports</button>
       </div>
     </section>
   </template>

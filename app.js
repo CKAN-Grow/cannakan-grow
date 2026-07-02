@@ -785,7 +785,7 @@ const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "photo-results", label: "Photo Results" }),
 ]);
 const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
-  Object.freeze({ key: "all", label: "All Community Grow" }),
+  Object.freeze({ key: "all", label: "All Community Grows" }),
   Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
@@ -3945,10 +3945,16 @@ function buildCustomSelectOptions(select, menu) {
     optionButton.textContent = option.textContent;
     optionButton.setAttribute("role", "option");
     optionButton.setAttribute("aria-selected", option.selected ? "true" : "false");
+    optionButton.disabled = Boolean(option.disabled);
+    optionButton.setAttribute("aria-disabled", option.disabled ? "true" : "false");
     optionButton.classList.toggle("is-selected", option.selected);
+    optionButton.classList.toggle("is-disabled", option.disabled);
     optionButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (option.disabled) {
+        return;
+      }
       select.value = option.value;
       syncCustomSelect(select);
       closeCustomSelect(select);
@@ -73982,8 +73988,8 @@ function renderGallery(targetSnapshotId = "") {
     ];
     if (galleryCountState) {
       const countLabel = appState.galleryCertificationFilter === "cstp-tested"
-        ? "CSTP-tested snapshots"
-        : "snapshots";
+        ? "CSTP-tested reports"
+        : "reports";
       galleryCountState.textContent = `Showing ${visibleApprovedSnapshots.length.toLocaleString()} of ${approvedSnapshots.length.toLocaleString()} ${countLabel}`;
     }
     if (galleryLoadMoreShell) {
@@ -74022,8 +74028,8 @@ function renderGallery(targetSnapshotId = "") {
             </svg>
           </div>
           <p>${appState.galleryCertificationFilter === "cstp-tested"
-            ? "No published Gold or Silver CSTP-certified Community Grow snapshots are available yet."
-            : "No Community Grow snapshots yet. Publish one from your Share Snapshot section."}</p>
+            ? "No published Gold or Silver CSTP-certified Community Grow reports are available yet."
+            : "No Community Grow reports yet. Publish one from your Share Snapshot section."}</p>
           ${renderLearnEmptyStateCtaMarkup("community-grow-basics", "Community Grow Basics")}
         </div>
       `;
