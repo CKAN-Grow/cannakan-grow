@@ -13457,7 +13457,7 @@ function getAdminMessageContext() {
 
   if (route === "sessions" && id === "public" && subroute) {
     const snapshot = getGallerySnapshotsForDisplay().find((entry) => entry?.id === subroute) || null;
-    context.pageContext = `Public Session${routeSuffix}`;
+    context.pageContext = `Community Grow Report${routeSuffix}`;
     context.snapshotId = snapshot?.id || subroute;
     context.sessionId = snapshot?.sessionId || "";
     return context;
@@ -39411,7 +39411,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
       pageKey: "public-session",
-      pageLabel: "Public Session",
+      pageLabel: "Community Grow Report",
       pagePath: `#sessions/public/${subroute}`,
     }));
     void refreshGallerySnapshots("route:public-session", subroute);
@@ -85058,9 +85058,9 @@ function renderPublicSessionDetail(snapshotId) {
           <div class="section-title-with-icon app-section-header-main">
             ${renderAppSectionHeaderIcon("public-session")}
             <div>
-              <p class="eyebrow">Public Session</p>
-              <h2>Grow session view</h2>
-              <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public session could not be found."}</p>
+              <p class="eyebrow">Community Grow Report</p>
+              <h2>Community Grow Report</h2>
+              <p class="muted">${isLoadingSnapshot ? "Loading Community Grow Report..." : "This Community Grow Report could not be found."}</p>
             </div>
           </div>
           <div class="inline-actions public-session-header-actions">
@@ -85085,19 +85085,15 @@ function renderPublicSessionDetail(snapshotId) {
         mixedSessionContext: basePublicDetails.mixedSessionContext,
       }
     : basePublicDetails;
-  const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
-  const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
-  const publicSessionBackButtonMarkup = '<a class="button button-secondary" href="#gallery">Back to Community Grow</a>';
-  const publicSessionLikeMarkup = renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" });
   const mockScenarioSelectorMarkup = activeMockScenario
     ? `
       <section class="public-session-example-selector" aria-labelledby="public-session-example-selector-title">
         <div class="public-session-panel-heading">
-          <p class="eyebrow">Example Public Sessions</p>
+          <p class="eyebrow">Example Reports</p>
           <h3 id="public-session-example-selector-title">Browse Session Examples</h3>
-          <p>Load a different example public session to compare summary, journey, and partition results.</p>
+          <p>Load a different example Community Grow Report to compare journey, evidence, and individual results.</p>
         </div>
-        <div class="public-session-example-selector-actions" aria-label="Example public sessions">
+        <div class="public-session-example-selector-actions" aria-label="Example Community Grow Reports">
           ${MOCK_PUBLIC_SESSION_SCENARIOS.map((scenario) => `
             <button
               type="button"
@@ -85110,38 +85106,18 @@ function renderPublicSessionDetail(snapshotId) {
       </section>
     `
     : "";
+  const reportSnapshot = activeMockScenario
+    ? { ...snapshot, title: activeMockScenario.name || snapshot.title }
+    : snapshot;
 
   app.innerHTML = `
-    <section class="card public-session-card">
-      <div class="section-heading app-section-header public-session-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("public-session")}
-          <div>
-            <p class="eyebrow">Public Session</p>
-            <h2>${escapeHtml(sessionTitle)}</h2>
-            <p class="muted">Read-only grow session view</p>
-          </div>
-        </div>
-        <div class="inline-actions public-session-header-actions">
-          ${publicSessionLikeMarkup}
-          ${publicSessionBackButtonMarkup}
-        </div>
-      </div>
-      ${sharedProfileMarkup ? `<div class="public-session-profile">${sharedProfileMarkup}</div>` : ""}
-      ${renderPublicSessionSummaryMarkup(snapshot, publicDetails)}
-      <div class="public-session-layout">
-        <div class="public-session-media">
-          ${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}
-        </div>
-        <div class="public-session-journey-column">
-          ${renderPublicSessionTimelineSection(snapshot)}
-        </div>
-      </div>
-      ${renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })}
+    <section class="public-session-card community-grow-report">
+      ${renderPublicSessionHeroMarkup(reportSnapshot, publicDetails)}
+      ${renderPublicSessionQuickStatsMarkup(reportSnapshot, publicDetails)}
+      ${renderPublicSessionIndividualResultsMarkup(publicDetails, { snapshot: reportSnapshot })}
+      ${renderPublicSessionJourneyAndDetailsMarkup(reportSnapshot, publicDetails)}
+      ${renderPublicSessionEvidenceGalleryMarkup(reportSnapshot)}
       ${mockScenarioSelectorMarkup}
-      <div class="inline-actions public-session-bottom-actions">
-        ${publicSessionBackButtonMarkup}
-      </div>
     </section>
   `;
 
@@ -91554,6 +91530,372 @@ function mountSharedSessionCommandCenter(host, options = {}) {
   renderSessionCommandCenter();
   startSessionTimer(renderSessionCommandCenter);
   return renderSessionCommandCenter;
+}
+
+function getPublicSessionMethodConfig(snapshot = null, publicDetails = {}) {
+  return getMethodConfig(
+    snapshot?.methodType
+    || snapshot?.method_type
+    || snapshot?.systemType
+    || snapshot?.system_type
+    || publicDetails?.methodType
+    || publicDetails?.systemType
+    || "KAN",
+  );
+}
+
+function getPublicSessionRecognitionLabel(snapshot = null) {
+  const explicitRecognition = String(
+    snapshot?.recognitionLabel
+    || snapshot?.recognition_label
+    || snapshot?.recognition
+    || snapshot?.communityRecognition
+    || snapshot?.community_recognition
+    || "",
+  ).trim();
+  if (explicitRecognition) {
+    return explicitRecognition;
+  }
+
+  if (Array.isArray(snapshot?.recognitions) && snapshot.recognitions.length) {
+    const firstRecognition = snapshot.recognitions.find(Boolean);
+    const label = String(firstRecognition?.label || firstRecognition?.name || firstRecognition || "").trim();
+    if (label) {
+      return label;
+    }
+  }
+
+  const spotlightSnapshot = getCommunityIntelligenceDashboardData()?.spotlightSnapshot;
+  return spotlightSnapshot?.id && snapshot?.id && spotlightSnapshot.id === snapshot.id
+    ? "Featured Community Grow"
+    : "";
+}
+
+function getPublicSessionRecognitionAwardedLabel(snapshot = null, publicDetails = {}) {
+  return String(
+    snapshot?.recognitionAwardedAt
+    || snapshot?.recognition_awarded_at
+    || publicDetails?.sessionDateLabel
+    || getGallerySnapshotSubmittedDateLabel(snapshot)
+    || "",
+  ).trim();
+}
+
+function getPublicSessionHeroImageUrl(snapshot = null) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const sessionImage = getEffectiveSessionImages(linkedSession).find((image) => image?.url);
+  return String(snapshot?.imageUrl || sessionImage?.url || "").trim();
+}
+
+function getPublicSessionEvidenceImages(snapshot = null) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const candidates = [
+    ...(getEffectiveSessionImages(linkedSession) || []).map((image) => ({
+      url: String(image?.url || "").trim(),
+      label: String(image?.filename || image?.name || "Session evidence").trim() || "Session evidence",
+    })),
+    {
+      url: String(snapshot?.imageUrl || "").trim(),
+      label: String(snapshot?.title || "Community Grow evidence").trim() || "Community Grow evidence",
+    },
+  ];
+  const seenUrls = new Set();
+  return candidates
+    .filter((image) => {
+      if (!image.url || seenUrls.has(image.url)) {
+        return false;
+      }
+      seenUrls.add(image.url);
+      return true;
+    })
+    .slice(0, 3);
+}
+
+function renderPublicSessionHeroRecognitionSeal(snapshot = null, publicDetails = {}) {
+  const recognitionLabel = getPublicSessionRecognitionLabel(snapshot);
+  if (!recognitionLabel) {
+    return "";
+  }
+  const awardedLabel = getPublicSessionRecognitionAwardedLabel(snapshot, publicDetails);
+  return `
+    <div class="public-session-recognition-seal">
+      ${renderCommunityRecognitionIconMarkup(recognitionLabel, { size: "hero", className: "public-session-recognition-icon" })}
+      <span>
+        <small>Recognized As</small>
+        <strong>${escapeHtml(recognitionLabel)}</strong>
+        ${awardedLabel ? `<em>Awarded ${escapeHtml(awardedLabel)}</em>` : ""}
+      </span>
+    </div>
+  `;
+}
+
+function renderPublicSessionHeroMarkup(snapshot = null, publicDetails = {}) {
+  const sessionTitle = String(snapshot?.title || publicDetails?.seedVarietyLabel || "Community Grow Report").trim() || "Community Grow Report";
+  const member = getGallerySnapshotCardMemberProfile(snapshot);
+  const growerLabel = member.canShowIdentity ? member.displayName : (snapshot?.submittedBy || "Community grower");
+  const sourceLabel = publicDetails?.sourceLabel && publicDetails.sourceLabel !== "Not shared"
+    ? publicDetails.sourceLabel
+    : getGallerySnapshotSourceLabel(snapshot);
+  const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  const methodLabel = publicDetails?.systemLabel || formatSnapshotSystemLabel(method.id);
+  const heroImageUrl = getPublicSessionHeroImageUrl(snapshot);
+  const noteText = String(snapshot?.publicGrowNote || snapshot?.caption || snapshot?.summary || "").trim();
+  const description = noteText || "A public Community Grow report with shared germination evidence, source context, and session documentation.";
+  const heroStyle = heroImageUrl ? ` style="--public-session-hero-image:url('${escapeHtml(heroImageUrl)}');"` : "";
+
+  return `
+    <section class="public-session-hero${heroImageUrl ? " has-image" : " has-placeholder"}"${heroStyle}>
+      <div class="public-session-hero-topbar">
+        <a class="public-session-back-link" href="#gallery">${renderAppIconMarkup("backArrow", { variant: "plain" })} Back to Community Grow</a>
+        <span class="public-session-hero-kicker">Community Grow Report</span>
+      </div>
+      <div class="public-session-hero-content">
+        <div class="public-session-hero-copy">
+          <p class="eyebrow">Community Grow Report</p>
+          <h1>${escapeHtml(sessionTitle)}</h1>
+          <div class="public-session-hero-meta">
+            <span>${renderAppIconMarkup("profileUser", { variant: "plain" })} ${escapeHtml(growerLabel)}</span>
+            <span>${renderAppIconMarkup("sourceDirectoryBars", { variant: "plain" })} ${escapeHtml(sourceLabel || "Source not shared")}</span>
+            <span>${renderAppIconMarkup("seedVault", { variant: "plain" })} ${escapeHtml(methodLabel || method.name)}</span>
+          </div>
+          <p>${escapeHtml(description)}</p>
+          ${renderPublicSessionHeroRecognitionSeal(snapshot, publicDetails)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderPublicSessionQuickStatsMarkup(snapshot = null, publicDetails = {}) {
+  const summary = publicDetails?.resultSummary || null;
+  const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  const countedResults = Array.isArray(summary?.partitions)
+    ? summary.partitions.filter((partition) => partition.hasSeeds)
+    : [];
+  const lifecycleState = buildPublicSessionLifecycleState(snapshot);
+  const durationLabel = lifecycleState?.startedAt && lifecycleState?.completedAt
+    ? formatPublicTimelineElapsedDuration(lifecycleState.startedAt, lifecycleState.completedAt)
+    : (formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) || "Not shared");
+  const totalSeeds = Math.max(0, Number(summary?.overall?.totalSeeds) || Number(publicDetails?.seedCountLabel) || Number(snapshot?.totalSeeds) || 0);
+  const totalGerminated = Math.max(0, Number(summary?.overall?.totalGerminated) || Number(publicDetails?.germinatedLabel) || Number(snapshot?.totalPlanted) || 0);
+  const successLabel = summary?.overall?.percentageLabel && summary.overall.percentageLabel !== "N/A"
+    ? summary.overall.percentageLabel
+    : (publicDetails?.germinationRateLabel || `${Math.max(0, Number(snapshot?.successPercent) || 0)}%`);
+  const resultCountLabel = method.isStandardized ? "Partitions" : "Varieties";
+
+  const stats = [
+    { label: "Success Rate", value: successLabel, icon: "activeSessionWaveform" },
+    { label: "Seeds Germinated", value: totalSeeds ? `${formatPrivateAnalyticsNumber(totalGerminated)} / ${formatPrivateAnalyticsNumber(totalSeeds)}` : "Not shared", icon: "mySessionsSprout" },
+    { label: "Total Time", value: durationLabel, icon: "reportDocument" },
+    { label: resultCountLabel, value: countedResults.length ? String(countedResults.length) : "Not shared", icon: "sourceDirectoryBars" },
+  ];
+
+  return `
+    <section class="public-session-quick-stats" aria-label="Community Grow Report quick stats">
+      ${stats.map((stat) => `
+        <article class="public-session-quick-stat">
+          ${renderAppIconMarkup(stat.icon, { variant: "plain" })}
+          <strong>${escapeHtml(stat.value)}</strong>
+          <span>${escapeHtml(stat.label)}</span>
+        </article>
+      `).join("")}
+      <article class="public-session-quick-stat public-session-quick-stat--like">
+        ${renderGalleryLikeButtonMarkup(snapshot)}
+        <span>Likes</span>
+      </article>
+    </section>
+  `;
+}
+
+function getPublicSessionSourceReportHref(sourceLabel = "") {
+  const sourceKey = normalizeSourceNameForMatching(sourceLabel || "");
+  return sourceKey ? `#sources/${encodeURIComponent(sourceKey)}` : "#sources";
+}
+
+function renderPublicSessionIndividualResultsMarkup(publicDetails = {}, options = {}) {
+  const summary = publicDetails?.resultSummary || null;
+  const method = getPublicSessionMethodConfig(options.snapshot, publicDetails);
+  const partitions = Array.isArray(summary?.partitions)
+    ? summary.partitions.filter((partition) => partition.hasSeeds)
+    : [];
+  const overallLabel = summary?.overall?.percentageLabel && summary.overall.percentageLabel !== "N/A"
+    ? `${summary.overall.percentageLabel} overall`
+    : "Evidence by result";
+
+  return `
+    <section class="public-session-individual-results" aria-labelledby="public-session-individual-results-title">
+      <div class="public-session-section-head">
+        <div>
+          <p class="eyebrow">Individual Results</p>
+          <h2 id="public-session-individual-results-title">Individual Results</h2>
+          <p>Every ${method.isStandardized ? "partition" : "variety"} is evaluated independently as a mini evidence report.</p>
+        </div>
+        <span>${escapeHtml(overallLabel)}</span>
+      </div>
+      ${partitions.length ? `
+        <div class="public-session-result-list">
+          ${partitions.map((partition, index) => {
+            const label = method.isStandardized
+              ? getNewSessionSeedVaultPartitionLabel(method.id, Number(partition.id) || index + 1)
+              : `V${index + 1}`;
+            const sourceLabel = partition.sourceLabel || partition.source || "Not shared";
+            const varietyLabel = partition.varietyLabel || partition.seedVariety || "Not shared";
+            const seedTypeSex = [
+              partition.seedTypeLabel || getSeedTypeLabel(partition.seedType) || "",
+              partition.sexLabel || getSeedSexLabel(partition.sex) || "",
+            ].filter(Boolean).join(" / ");
+            const successStatus = getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount);
+            const sourceHref = getPublicSessionSourceReportHref(sourceLabel);
+            const varietyHref = getSeedExplorerReportHrefForVariety(varietyLabel) || "#seeds";
+            const seedAgeLabel = getPublicSessionPartitionAgeLabel(partition, true);
+            return `
+              <article class="public-session-result-card partition-success-card ${escapeHtml(successStatus.className)}">
+                <div class="public-session-result-label">${escapeHtml(label)}</div>
+                <div class="public-session-result-main">
+                  <strong>${escapeHtml(varietyLabel)}</strong>
+                  <span>${escapeHtml(sourceLabel)}</span>
+                  ${seedTypeSex ? `<small>${escapeHtml(seedTypeSex)}</small>` : ""}
+                </div>
+                <div class="public-session-result-metrics">
+                  <span><small>Seeds Started</small><strong>${escapeHtml(formatPrivateAnalyticsNumber(partition.totalCount || 0))}</strong></span>
+                  <span><small>Seeds Germinated</small><strong>${escapeHtml(formatPrivateAnalyticsNumber(partition.germinatedCount || 0))}</strong></span>
+                  <span class="public-session-result-success"><small>Success</small><strong>${escapeHtml(partition.percentageLabel || "N/A")}</strong></span>
+                </div>
+                <div class="public-session-result-support">
+                  <span>${escapeHtml(seedAgeLabel || DEFAULT_SEED_AGE_DISPLAY_LABEL)}</span>
+                  <div>
+                    <a href="${escapeHtml(sourceHref)}">Source Report</a>
+                    <a href="${escapeHtml(varietyHref)}">Variety Report</a>
+                  </div>
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      ` : `
+        <div class="public-session-partition-results-empty">
+          <p>No individual result data shared for this report yet.</p>
+        </div>
+      `}
+    </section>
+  `;
+}
+
+function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {}) {
+  const summary = publicDetails?.resultSummary || null;
+  const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  const lifecycleState = buildPublicSessionLifecycleState(snapshot);
+  const durationLabel = lifecycleState?.startedAt && lifecycleState?.completedAt
+    ? formatPublicTimelineElapsedDuration(lifecycleState.startedAt, lifecycleState.completedAt)
+    : (formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) || "Not shared");
+  const countedResults = Array.isArray(summary?.partitions)
+    ? summary.partitions.filter((partition) => partition.hasSeeds)
+    : [];
+  const representedSourceCount = Math.max(
+    0,
+    Number(summary?.mixedContext?.sourceCount) || 0,
+    Array.isArray(summary?.sourceGroups) ? summary.sourceGroups.length : 0,
+    new Set(countedResults.map((partition) => partition.sourceKey || normalizeSourceNameForMatching(partition.sourceLabel || partition.source || "")).filter(Boolean)).size,
+  );
+  const representedVarietyCount = Math.max(
+    0,
+    Number(summary?.mixedContext?.varietyCount) || 0,
+    Array.isArray(summary?.varietyGroups) ? summary.varietyGroups.length : 0,
+    new Set(countedResults.map((partition) => partition.varietyKey || normalizeSeedVarietyNameForMatching(partition.varietyLabel || partition.seedVariety || "")).filter(Boolean)).size,
+  );
+  const rows = [
+    { label: "Method", value: publicDetails.systemLabel || method.name },
+    { label: "Session Duration", value: durationLabel },
+    { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared" },
+    { label: method.isStandardized ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared" },
+    { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "Not shared" },
+    { label: "Varieties Represented", value: representedVarietyCount ? String(representedVarietyCount) : "Not shared" },
+  ];
+
+  return `
+    <section class="public-session-details-card" aria-labelledby="public-session-details-title">
+      <div class="public-session-panel-heading">
+        <p class="eyebrow">Session Details</p>
+        <h3 id="public-session-details-title">Report Details</h3>
+      </div>
+      <div class="public-session-details-list">
+        ${rows.map((row) => `
+          <div>
+            <span>${escapeHtml(row.label)}</span>
+            <strong>${escapeHtml(row.value)}</strong>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDetails = {}) {
+  const summary = publicDetails?.resultSummary || null;
+  const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  const rows = [
+    { label: "Method Type", value: method.name },
+    { label: "Workflow", value: "Flexible custom method" },
+    { label: "Result Labels", value: "V1, V2, V3 by variety" },
+    { label: "Status", value: normalizeSessionStatus(getGallerySnapshotSession(snapshot)?.sessionStatus || "completed") === "completed" ? "Completed" : "Active" },
+  ];
+
+  return `
+    <section class="public-session-details-card public-session-custom-method-card" aria-labelledby="public-session-custom-method-title">
+      <div class="public-session-panel-heading">
+        <p class="eyebrow">Custom Method Details</p>
+        <h3 id="public-session-custom-method-title">Flexible Method Report</h3>
+        <p>This report uses variety-based evidence instead of a guided KAN/TRā partition journey.</p>
+      </div>
+      <div class="public-session-details-list">
+        ${rows.map((row) => `
+          <div>
+            <span>${escapeHtml(row.label)}</span>
+            <strong>${escapeHtml(row.value)}</strong>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderPublicSessionJourneyAndDetailsMarkup(snapshot = null, publicDetails = {}) {
+  const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  return `
+    <div class="public-session-report-grid">
+      ${method.isStandardized ? renderPublicSessionTimelineSection(snapshot) : renderPublicSessionCustomMethodDetailsMarkup(snapshot, publicDetails)}
+      ${renderPublicSessionDetailsCardMarkup(snapshot, publicDetails)}
+    </div>
+  `;
+}
+
+function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
+  const images = getPublicSessionEvidenceImages(snapshot);
+  return `
+    <section class="public-session-evidence-gallery" aria-labelledby="public-session-evidence-gallery-title">
+      <div class="public-session-section-head">
+        <div>
+          <p class="eyebrow">Evidence Gallery</p>
+          <h2 id="public-session-evidence-gallery-title">Evidence Gallery</h2>
+          <p>Session images shared with this public Community Grow Report.</p>
+        </div>
+        <span>${escapeHtml(`${images.length} / 3 images`)}</span>
+      </div>
+      ${images.length ? `
+        <div class="public-session-evidence-grid public-session-evidence-grid--${escapeHtml(String(images.length))}">
+          ${images.map((image, index) => `
+            <figure>
+              <img src="${escapeHtml(image.url)}" alt="${escapeHtml(`${image.label} ${index + 1}`)}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async">
+            </figure>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="public-session-partition-results-empty">
+          <p>No session images were shared with this report.</p>
+        </div>
+      `}
+    </section>
+  `;
 }
 
 function formatPublicTimelineElapsedDuration(startedAt, endedAt, options = {}) {
