@@ -53041,11 +53041,11 @@ function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedRep
   `;
 }
 
-function renderSeedReportGalleryMarkup(seed = {}) {
+function renderSeedReportGalleryMarkup(seed = {}, renderSectionTitle = (title) => renderSourceReportSectionTitle(6, title)) {
   const galleryItems = (Array.isArray(seed.gallery) ? seed.gallery : []).slice(0, 3);
   return `
     <article class="card source-report-section-card seed-report-gallery-card">
-      ${renderSourceReportSectionTitle(6, "Community Gallery")}
+      ${renderSectionTitle("Community Gallery")}
       <div class="seed-profile-gallery-grid seed-report-gallery-grid">
         ${galleryItems.map((imagePath, index) => `
           <article class="card seed-profile-gallery-card">
@@ -53061,13 +53061,13 @@ function renderSeedReportGalleryMarkup(seed = {}) {
   `;
 }
 
-function renderSeedReportInsightsMarkup(seed = {}) {
+function renderSeedReportInsightsMarkup(seed = {}, renderSectionTitle = (title) => renderSourceReportSectionTitle(9, title)) {
   const insightIcon = renderAppIconSvgMarkup("sourceHeroSprout", { className: "source-report-activity-icon" });
   const confidenceIcon = renderAppIconSvgMarkup("adminShield", { className: "source-report-activity-icon" });
   const sourceIcon = renderAppIconSvgMarkup("sourceDirectoryBars", { className: "source-report-activity-icon" });
   return `
     <article class="card source-report-section-card seed-report-insights-card">
-      ${renderSourceReportSectionTitle(9, "Seed Insights")}
+      ${renderSectionTitle("Seed Insights")}
       <div class="seed-report-insight-grid">
         ${renderInsightCardMarkup({
           className: "seed-vault-performance-insight seed-profile-grow-insight",
@@ -53111,6 +53111,8 @@ function renderSeedProfilePage(seedId = "") {
   const similarRows = getSeedReportSimilarAdoptionRows(seed);
   const regions = getSeedReportRegionRows(seed);
   const timelineRows = getSeedReportTimelineRows(seed, activity);
+  let seedReportSectionIndex = 0;
+  const renderSeedReportSectionTitle = (title = "") => renderSourceReportSectionTitle(++seedReportSectionIndex, title);
 
   app.innerHTML = `
     <section class="source-profile-page source-report-page seed-profile-page seed-report-page">
@@ -53123,14 +53125,14 @@ function renderSeedProfilePage(seedId = "") {
       ${renderSeedReportHeroMarkup(seed, activity)}
 
       <article class="card source-report-section-card source-report-distribution-card seed-report-distribution-card">
-        ${renderSourceReportSectionTitle(3, "Evidence Summary")}
+        ${renderSeedReportSectionTitle("Evidence Summary")}
         ${renderSeedReportEvidenceSnapshotMarkup(seed, activity)}
       </article>
 
       <article class="card source-report-section-card source-report-performance-card seed-report-performance-card">
         <div class="source-report-section-head">
           <div>
-            ${renderSourceReportSectionTitle(1, "Community Activity Over Time")}
+            ${renderSeedReportSectionTitle("Community Activity Over Time")}
             <p>Based on cumulative community sessions, tracked seeds, and grow reports</p>
           </div>
         </div>
@@ -53141,30 +53143,30 @@ function renderSeedProfilePage(seedId = "") {
         <article class="card source-report-section-card source-report-varieties-card seed-report-sources-card">
           <div class="source-report-section-head">
             <div>
-              ${renderSourceReportSectionTitle(2, "Available From")}
+              ${renderSeedReportSectionTitle("Available From")}
             </div>
             <span>Signal</span>
           </div>
           ${renderSeedReportRelationshipListMarkup(sourceRows, seed.sourceId ? { href: `#sources/${encodeURIComponent(seed.sourceId)}`, label: "View Primary Source" } : null)}
         </article>
 
-        ${renderSeedReportInsightsMarkup(seed)}
+        ${renderSeedReportInsightsMarkup(seed, renderSeedReportSectionTitle)}
       </div>
 
       <article class="card source-report-section-card source-report-region-card seed-report-region-card">
         <div class="source-report-section-head">
           <div>
-            ${renderSourceReportSectionTitle(4, "Where It’s Being Grown")}
+            ${renderSeedReportSectionTitle("Where It's Being Grown")}
             <p>Regional distribution of community sessions for this variety.</p>
           </div>
         </div>
         ${renderSourceReportRegionMarkup(regions, { shareLabel: "of community sessions" })}
       </article>
 
-      ${renderSeedReportGalleryMarkup(seed)}
+      ${renderSeedReportGalleryMarkup(seed, renderSeedReportSectionTitle)}
 
       <article class="card source-report-section-card source-report-recent-card seed-report-timeline-card">
-        ${renderSourceReportSectionTitle(5, "Recent Community Activity")}
+        ${renderSeedReportSectionTitle("Recent Community Activity")}
         ${renderSeedReportRecentActivityMarkup(timelineRows)}
       </article>
 
@@ -53172,7 +53174,7 @@ function renderSeedProfilePage(seedId = "") {
         <article class="card source-report-section-card source-report-varieties-card seed-report-related-card">
           <div class="source-report-section-head">
             <div>
-              ${renderSourceReportSectionTitle(7, "Related Varieties")}
+              ${renderSeedReportSectionTitle("Related Varieties")}
             </div>
             <span>Adoption</span>
           </div>
@@ -53182,7 +53184,7 @@ function renderSeedProfilePage(seedId = "") {
         <article class="card source-report-section-card source-report-varieties-card seed-report-similar-card">
           <div class="source-report-section-head">
             <div>
-              ${renderSourceReportSectionTitle(8, "Similar Adoption Patterns")}
+              ${renderSeedReportSectionTitle("Similar Adoption Patterns")}
             </div>
             <span>Sessions</span>
           </div>
