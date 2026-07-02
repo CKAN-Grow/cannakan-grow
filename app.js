@@ -29760,6 +29760,21 @@ const APP_ICON_LIBRARY = Object.freeze({
     <path d="M12.8 12.6c3.5-.4 5.6-2.6 6.2-6.4-3.9.2-6.2 2.2-6.8 5.9"></path>
     <path d="M7.5 20.1h9"></path>
   `,
+  journeyFlag: `
+    <path d="M6 20V6.8"></path>
+    <path d="M6 6.8c2.7-2 5.7-1.6 8.8-.2 1.5.7 2.8.8 4.2.1v7.2c-1.5.8-2.9.7-4.5 0-3-1.4-5.7-1.8-8.5.3"></path>
+    <circle cx="6" cy="20" r="1.8"></circle>
+  `,
+  waterDrop: `
+    <path data-solid="true" d="M12 3.8c3.7 4.2 5.6 7.4 5.6 10.1a5.6 5.6 0 0 1-11.2 0C6.4 11.2 8.3 8 12 3.8Z"></path>
+    <path d="M9.4 14.4c.3 1.2 1.3 2.1 2.6 2.1"></path>
+  `,
+  seedGermination: `
+    <path d="M12 18.8v-5.1"></path>
+    <path d="M12.1 13.8c-2.9-.4-4.7-2.2-5.2-5.2 3.1.1 5 1.8 5.5 4.8"></path>
+    <path d="M12 15.1c.3-3.7 2.3-6.2 6-7.3.1 4.1-2 6.5-5.6 7.2"></path>
+    <path data-solid="true" d="M8.4 20.2h7.2c.5 0 .9-.4.9-.9s-.4-.9-.9-.9H8.4c-.5 0-.9.4-.9.9s.4.9.9.9Z"></path>
+  `,
   sourceHeroShieldCheck: `
     <path d="M12 3.8 5.7 6.4v4.9c0 4.1 2.4 7.5 6.3 8.8 3.9-1.3 6.3-4.7 6.3-8.8V6.4Z"></path>
     <path d="m8.8 12.2 2.1 2.1 4.5-4.7"></path>
@@ -92062,37 +92077,54 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
     {
       label: "Started",
       timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : (state.startedDisplayLabel || "Not shared"),
-      durationLabel: "Session opened",
+      description: "Session opened",
+      durationLabel: "",
+      statusLabel: "Completed",
+      durationIcon: "check",
+      icon: "sourceHeroSprout",
       tone: "started",
       complete: Boolean(state.startedAt || state.startedDisplayLabel),
     },
     {
       label: "Soaking",
       timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : "Not shared",
-      durationLabel: formatPublicTimelineDurationDetail("Stage duration", state.startedAt, state.germinationStartedAt, { includeDays: false }),
+      description: formatPublicTimelineDurationDetail("Stage duration", state.startedAt, state.germinationStartedAt, { includeDays: false }),
+      durationLabel: formatPublicTimelineElapsedDuration(state.startedAt, state.germinationStartedAt, { includeDays: false }),
+      durationIcon: "clock",
+      icon: "waterDrop",
       tone: "soaking",
       complete: Boolean(state.startedAt && state.germinationStartedAt),
     },
     {
       label: "Germination",
       timeLabel: formatPublicJourneyTimestamp(state.germinationStartedAt),
-      durationLabel: formatPublicTimelineDurationDetail("Stage duration", state.germinationStartedAt, germinationDurationEndAt, { includeDays: false }),
+      description: formatPublicTimelineDurationDetail("Stage duration", state.germinationStartedAt, germinationDurationEndAt, { includeDays: false }),
+      durationLabel: formatPublicTimelineElapsedDuration(state.germinationStartedAt, germinationDurationEndAt, { includeDays: false }),
+      durationIcon: "clock",
+      icon: "seedGermination",
       tone: "germination",
       complete: Boolean(state.germinationStartedAt),
     },
     {
       label: "First Germinated",
       timeLabel: formatPublicJourneyTimestamp(state.firstPlantedAt),
-      durationLabel: state.firstPlantedAt
+      description: state.firstPlantedAt
         ? formatPublicTimelineDurationDetail("Time from start", state.startedAt, state.firstPlantedAt, { includeDays: false })
         : "Not shared",
+      durationLabel: state.firstPlantedAt ? formatPublicTimelineElapsedDuration(state.startedAt, state.firstPlantedAt, { includeDays: false }) : "",
+      durationIcon: "clock",
+      icon: "sourceHeroSprout",
       tone: "green",
       complete: Boolean(state.firstPlantedAt),
     },
     {
       label: "Completed",
       timeLabel: formatPublicJourneyTimestamp(state.completedAt),
-      durationLabel: formatPublicTimelineDurationDetail("Total duration", state.startedAt, state.completedAt),
+      description: formatPublicTimelineDurationDetail("Total duration", state.startedAt, state.completedAt),
+      durationLabel: formatPublicTimelineElapsedDuration(state.startedAt, state.completedAt),
+      statusLabel: state.completedAt ? "Completed" : "",
+      durationIcon: "check",
+      icon: "check",
       tone: "completed",
       complete: Boolean(state.completedAt),
     },
@@ -92102,14 +92134,39 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
     <div class="public-session-journey">
       ${events.map((event) => `
         <article class="public-session-journey-step public-session-journey-step--${escapeHtml(event.tone)} ${event.complete ? "is-complete" : ""}">
-          <span class="public-session-journey-marker" aria-hidden="true"></span>
-          <div>
-            <strong>${escapeHtml(event.label)}</strong>
-            <p>${escapeHtml(event.timeLabel)}</p>
-            <span>${escapeHtml(event.durationLabel)}</span>
+          <span class="public-session-journey-marker" aria-hidden="true">${renderAppIconMarkup(event.durationIcon || "check", { variant: "plain" })}</span>
+          <div class="public-session-journey-card">
+            <span class="public-session-journey-stage-icon" aria-hidden="true">
+              ${renderAppIconMarkup(event.icon || "info", { variant: "plain" })}
+            </span>
+            <span class="public-session-journey-stage-copy">
+              <strong>${escapeHtml(event.label)}</strong>
+              <p>${escapeHtml(event.timeLabel)}</p>
+              <span>${escapeHtml(event.description || "")}</span>
+            </span>
+            ${event.durationLabel || event.statusLabel ? `
+              <span class="public-session-journey-stage-side">
+                ${event.statusLabel ? `
+                  <span class="public-session-journey-status">
+                    ${renderAppIconMarkup(event.durationIcon || "check", { variant: "plain" })}
+                    ${escapeHtml(event.statusLabel)}
+                  </span>
+                ` : ""}
+                ${event.durationLabel ? `
+                  <span class="public-session-journey-duration">
+                    ${renderAppIconMarkup(event.durationIcon || "clock", { variant: "plain" })}
+                    ${escapeHtml(event.durationLabel)}
+                  </span>
+                ` : ""}
+              </span>
+            ` : ""}
           </div>
         </article>
       `).join("")}
+      <p class="public-session-journey-footer">
+        ${renderAppIconMarkup("info", { variant: "plain" })}
+        <span>All times are recorded in your local time zone.</span>
+      </p>
     </div>
   `;
 }
@@ -92220,12 +92277,14 @@ function renderPublicSessionTimelineSection(snapshot) {
 
   return `
     <section class="session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
-      <div class="progress-chart-heading">
-        <p class="eyebrow">Method Journey</p>
-        <h4 id="public-session-progress-title" class="section-title-with-icon">
-          ${renderAppSectionHeaderIcon("activity")}
-          <span>Start to Finish</span>
-        </h4>
+      <div class="public-session-journey-heading">
+        <span class="public-session-journey-heading-icon" aria-hidden="true">
+          ${renderAppIconMarkup("journeyFlag", { variant: "plain" })}
+        </span>
+        <span>
+          <h4 id="public-session-progress-title">Method Journey</h4>
+          <p>Start to finish timeline for this method.</p>
+        </span>
       </div>
       <div class="session-lifecycle-summary">
         ${timelineMarkup}

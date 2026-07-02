@@ -40079,8 +40079,19 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-timeline-section {
+  position: relative;
+  overflow: hidden;
   margin-top: 0;
-  padding: 16px;
+  padding: 28px;
+}
+
+.public-session-timeline-section::after {
+  content: "";
+  position: absolute;
+  inset: auto 7% 0;
+  height: 160px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center bottom, rgba(148, 209, 89, 0.13), transparent 70%);
 }
 
 .public-session-timeline-empty {
@@ -40193,104 +40204,381 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   min-height: 100px;
 }
 
-.public-session-journey {
+.public-session-journey-heading {
   position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 26px;
+}
+
+.public-session-journey-heading-icon {
+  width: 70px;
+  height: 70px;
   display: grid;
-  gap: 10px;
-  padding-left: 2px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(148, 209, 89, 0.34);
+  border-radius: 22px;
+  color: #b7f27d;
+  background:
+    radial-gradient(circle at 52% 34%, rgba(148, 209, 89, 0.26), transparent 62%),
+    rgba(148, 209, 89, 0.08);
+  box-shadow:
+    0 0 34px rgba(148, 209, 89, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.public-session-journey-heading-icon svg {
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 0 16px rgba(148, 209, 89, 0.32));
+}
+
+.public-session-journey-heading h4,
+.public-session-journey-heading p {
+  margin: 0;
+}
+
+.public-session-journey-heading h4 {
+  color: #f7fbf3;
+  font-size: clamp(1.34rem, 2.2vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.public-session-journey-heading p {
+  margin-top: 7px;
+  color: rgba(211, 222, 210, 0.76);
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.public-session-journey {
+  --journey-rail-left: 29px;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 18px;
+  padding-left: 86px;
 }
 
 .public-session-journey::before {
   content: "";
   position: absolute;
-  top: 16px;
-  bottom: 16px;
-  left: 10px;
-  width: 1px;
-  background: linear-gradient(180deg, rgba(127, 184, 255, 0.42), rgba(217, 122, 74, 0.38), rgba(148, 209, 89, 0.38), rgba(138, 103, 72, 0.4));
+  top: 32px;
+  bottom: 84px;
+  left: var(--journey-rail-left);
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #94d159 0%, #7fb8ff 30%, #f58b36 55%, #94d159 78%, #b8865c 100%);
+  box-shadow:
+    0 0 16px rgba(148, 209, 89, 0.28),
+    0 0 18px rgba(127, 184, 255, 0.12);
 }
 
 .public-session-journey-step {
-  --journey-accent: rgba(148, 209, 89, 0.7);
+  --journey-accent: #94d159;
+  --journey-accent-soft: rgba(148, 209, 89, 0.13);
   position: relative;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
   min-width: 0;
 }
 
 .public-session-journey-step--started {
-  --journey-accent: rgba(189, 204, 192, 0.72);
+  --journey-accent: #94d159;
+  --journey-accent-soft: rgba(148, 209, 89, 0.13);
 }
 
 .public-session-journey-step--soaking {
-  --journey-accent: #7fb8ff;
+  --journey-accent: #62b3ff;
+  --journey-accent-soft: rgba(98, 179, 255, 0.14);
 }
 
 .public-session-journey-step--germination {
-  --journey-accent: #d97a4a;
+  --journey-accent: #f58b36;
+  --journey-accent-soft: rgba(245, 139, 54, 0.14);
 }
 
 .public-session-journey-step--green {
   --journey-accent: #94d159;
+  --journey-accent-soft: rgba(148, 209, 89, 0.13);
 }
 
 .public-session-journey-step--completed {
-  --journey-accent: #8a6748;
+  --journey-accent: #b8865c;
+  --journey-accent-soft: rgba(184, 134, 92, 0.18);
 }
 
 .public-session-journey-marker {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  z-index: 2;
+  top: 38px;
+  left: calc(-86px + var(--journey-rail-left) - 19px);
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--journey-accent) 72%, transparent);
+  border-radius: 999px;
+  color: #06110a;
+  background:
+    radial-gradient(circle at 50% 42%, #f7fff0 0 18%, var(--journey-accent) 20% 52%, rgba(6, 14, 10, 0.96) 54%);
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--journey-accent) 15%, transparent),
+    0 0 26px color-mix(in srgb, var(--journey-accent) 48%, transparent);
+}
+
+.public-session-journey-marker svg {
   width: 18px;
   height: 18px;
-  margin-top: 2px;
-  border: 1px solid color-mix(in srgb, var(--journey-accent) 72%, transparent);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.54);
+  color: color-mix(in srgb, var(--journey-accent) 72%, #ffffff);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--journey-accent) 42%, transparent));
 }
 
-.public-session-journey-step.is-complete .public-session-journey-marker {
-  background: var(--journey-accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--journey-accent) 18%, transparent);
-}
-
-.public-session-journey-step > div {
+.public-session-journey-card {
   min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid rgba(24, 34, 24, 0.08);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.48);
+  min-height: 128px;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--journey-accent) 20%, transparent);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 8% 40%, var(--journey-accent-soft), transparent 34%),
+    linear-gradient(135deg, rgba(12, 22, 18, 0.9), rgba(7, 14, 12, 0.84));
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.public-session-journey-step strong,
-.public-session-journey-step p,
-.public-session-journey-step > div > span {
+.public-session-journey-stage-icon {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--journey-accent) 52%, transparent);
+  border-radius: 999px;
+  color: var(--journey-accent);
+  background:
+    radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--journey-accent) 26%, transparent), transparent 64%),
+    rgba(6, 12, 10, 0.7);
+  box-shadow:
+    inset 0 0 0 6px rgba(255, 255, 255, 0.025),
+    0 0 26px color-mix(in srgb, var(--journey-accent) 22%, transparent);
+}
+
+.public-session-journey-stage-icon svg {
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--journey-accent) 36%, transparent));
+}
+
+.public-session-journey-stage-copy {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.public-session-journey-stage-copy strong,
+.public-session-journey-stage-copy p,
+.public-session-journey-stage-copy > span {
   display: block;
   margin: 0;
 }
 
-.public-session-journey-step strong {
-  color: var(--ink);
-  font-size: 0.9rem;
-  line-height: 1.2;
+.public-session-journey-stage-copy strong {
+  color: #f7fbf3;
+  font-size: clamp(1.05rem, 1.6vw, 1.34rem);
+  line-height: 1.15;
 }
 
-.public-session-journey-step p {
-  margin-top: 3px;
-  color: rgba(88, 101, 88, 0.9);
-  font-size: 0.78rem;
-  font-weight: 720;
+.public-session-journey-stage-copy p {
+  color: rgba(226, 234, 220, 0.82);
+  font-size: 0.94rem;
+  line-height: 1.3;
+}
+
+.public-session-journey-stage-copy > span {
+  color: rgba(201, 213, 200, 0.72);
+  font-size: 0.88rem;
   line-height: 1.35;
 }
 
-.public-session-journey-step > div > span {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.35;
+.public-session-journey-duration {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 116px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--journey-accent) 34%, transparent);
+  border-radius: 999px;
+  color: var(--journey-accent);
+  background: color-mix(in srgb, var(--journey-accent) 12%, rgba(6, 12, 10, 0.72));
+  font-size: 0.94rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--journey-accent) 14%, transparent);
+}
+
+.public-session-journey-stage-side {
+  display: grid;
+  justify-items: end;
+  gap: 12px;
+}
+
+.public-session-journey-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid color-mix(in srgb, var(--journey-accent) 36%, transparent);
+  border-radius: 999px;
+  color: var(--journey-accent);
+  background: color-mix(in srgb, var(--journey-accent) 13%, rgba(6, 12, 10, 0.72));
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--journey-accent) 14%, transparent);
+}
+
+.public-session-journey-status svg {
+  width: 16px;
+  height: 16px;
+}
+
+.public-session-journey-duration svg {
+  width: 18px;
+  height: 18px;
+}
+
+.public-session-journey-step--completed .public-session-journey-duration {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--journey-accent);
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+}
+
+.public-session-journey-step--completed .public-session-journey-status {
+  color: #d3a172;
+  border-color: rgba(184, 134, 92, 0.36);
+  background: rgba(184, 134, 92, 0.12);
+}
+
+.public-session-journey-step--completed .public-session-journey-duration svg {
+  display: none;
+}
+
+.public-session-journey-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 0 -86px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 16px;
+  color: rgba(205, 216, 204, 0.78);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.public-session-journey-footer svg {
+  width: 22px;
+  height: 22px;
+  color: var(--public-session-green);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .public-session-timeline-section {
+    padding: 22px 18px;
+  }
+
+  .public-session-journey-heading {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .public-session-journey-heading-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+  }
+
+  .public-session-journey-heading-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .public-session-journey {
+    --journey-rail-left: 20px;
+    gap: 14px;
+    padding-left: 54px;
+  }
+
+  .public-session-journey::before {
+    top: 24px;
+    bottom: 76px;
+    width: 3px;
+  }
+
+  .public-session-journey-marker {
+    top: 28px;
+    left: calc(-54px + var(--journey-rail-left) - 16px);
+    width: 34px;
+    height: 34px;
+  }
+
+  .public-session-journey-card {
+    min-height: 0;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 13px;
+    padding: 16px;
+  }
+
+  .public-session-journey-stage-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .public-session-journey-stage-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .public-session-journey-stage-side {
+    grid-column: 2;
+    justify-self: start;
+    justify-items: start;
+    gap: 8px;
+  }
+
+  .public-session-journey-duration {
+    min-width: 0;
+    margin-top: 4px;
+  }
+
+  .public-session-journey-step--completed .public-session-journey-duration {
+    font-size: 1.28rem;
+  }
+
+  .public-session-journey-footer {
+    margin-left: -54px;
+  }
 }
 
 .public-session-example-selector {
@@ -49947,12 +50235,15 @@ body.theme-dark .public-session-summary-item.is-featured {
 }
 
 body.theme-dark .public-session-journey::before {
-  background: linear-gradient(180deg, rgba(127, 184, 255, 0.34), rgba(217, 122, 74, 0.32), rgba(148, 209, 89, 0.34), rgba(138, 103, 72, 0.36));
+  background: linear-gradient(180deg, #94d159 0%, #62b3ff 30%, #f58b36 55%, #94d159 78%, #b8865c 100%);
 }
 
 body.theme-dark .public-session-journey-marker {
-  background: rgba(19, 24, 20, 0.94);
-  box-shadow: 0 0 0 4px rgba(10, 15, 12, 0.68);
+  background:
+    radial-gradient(circle at 50% 42%, #f7fff0 0 18%, var(--journey-accent) 20% 52%, rgba(6, 14, 10, 0.96) 54%);
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--journey-accent) 15%, transparent),
+    0 0 26px color-mix(in srgb, var(--journey-accent) 48%, transparent);
 }
 
 body.theme-dark .public-session-journey-step p {
@@ -49989,13 +50280,15 @@ body.theme-dark .community-grow-report .public-session-example-selector {
 }
 
 body.theme-dark .community-grow-report .public-session-journey::before {
-  background: linear-gradient(180deg, rgba(155, 108, 255, 0.48), rgba(148, 209, 89, 0.42));
+  background: linear-gradient(180deg, #94d159 0%, #62b3ff 30%, #f58b36 55%, #94d159 78%, #b8865c 100%);
 }
 
-body.theme-dark .community-grow-report .public-session-journey-step > div,
+body.theme-dark .community-grow-report .public-session-journey-card,
 body.theme-dark .community-grow-report .public-session-result-card {
   border-color: rgba(148, 209, 89, 0.14);
-  background: rgba(255, 255, 255, 0.035);
+  background:
+    radial-gradient(circle at 8% 40%, var(--journey-accent-soft), transparent 34%),
+    linear-gradient(135deg, rgba(12, 22, 18, 0.9), rgba(7, 14, 12, 0.84));
 }
 
 body.theme-dark .community-grow-report .public-session-hero-like {
