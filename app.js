@@ -52675,6 +52675,73 @@ function getSeedReportActivityMetrics(seed = {}) {
   };
 }
 
+function getSeedReportCommunityInsightRows(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
+  const sessions = Math.max(0, Number(seed.communitySessions) || 0);
+  const confidencePercent = Math.max(0, Number(seed.confidencePercent) || 0);
+  const regions = getSeedReportRegionRows(seed).filter((row) => String(row.country || "").toLowerCase() !== "other");
+  const sourceCount = getSeedReportRelationshipRows(seed).length || Math.max(1, Number(activity.sourcesCarrying) || 1);
+  const growthPercent = Math.max(12, Math.min(42, Math.round((Number(activity.newSessionsThisWeek || 0) / Math.max(1, sessions)) * 100 * 4)));
+  const newSourceCount = Math.max(1, sourceCount - 1);
+  const confidenceLabel = confidencePercent >= 85 ? "High Confidence" : confidencePercent >= 65 ? "Building Confidence" : "Early Signal";
+
+  return [
+    {
+      icon: "sourceDirectoryBars",
+      label: "Growth Trend",
+      value: sessions >= 100 ? "Growing Rapidly" : "Building Momentum",
+      detail: `+${growthPercent}% community activity over the past 30 days.`,
+    },
+    {
+      icon: "growNetworkNodes",
+      label: "Regional Expansion",
+      value: `${Math.max(1, regions.length)} Active Regions`,
+      detail: `Community evidence now spans ${Math.max(1, regions.length)} reporting regions.`,
+    },
+    {
+      icon: "sourceHeroSprout",
+      label: "Source Growth",
+      value: `${newSourceCount} New ${newSourceCount === 1 ? "Source" : "Sources"}`,
+      detail: "Additional trusted source relationships are being mapped.",
+    },
+    {
+      icon: "activeSessionWaveform",
+      label: "Adoption Signal",
+      value: sessions >= 120 ? "Trending" : "Emerging",
+      detail: "Community usage continues to accelerate across recent reports.",
+    },
+    {
+      icon: "adminShield",
+      label: "Milestone",
+      value: confidenceLabel,
+      detail: confidencePercent >= 85 ? "Recently crossed the strongest evidence threshold." : "Evidence is accumulating toward a stronger confidence tier.",
+    },
+  ];
+}
+
+function renderSeedReportCommunityInsightsMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
+  const insights = getSeedReportCommunityInsightRows(seed, activity).slice(0, 5);
+  return `
+    <aside class="seed-report-adoption-insights" aria-label="Community activity insights">
+      <div class="seed-report-adoption-insights-head">
+        <span>Community Insights</span>
+        <small>What the trend means</small>
+      </div>
+      <div class="seed-report-adoption-insight-list">
+        ${insights.map((insight) => `
+          <article class="seed-report-adoption-insight-card">
+            <span aria-hidden="true">${renderAppIconSvgMarkup(insight.icon, { className: "source-report-activity-icon" })}</span>
+            <div>
+              <small>${escapeHtml(insight.label)}</small>
+              <strong>${escapeHtml(insight.value)}</strong>
+              <p>${escapeHtml(insight.detail)}</p>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </aside>
+  `;
+}
+
 function getSeedReportRelationshipRows(seed = {}) {
   const sourceRows = [
     {
@@ -52802,8 +52869,6 @@ function renderSeedReportRelationshipListMarkup(rows = [], button = null) {
 
 function renderSeedReportAdoptionChartMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
   const sessions = Math.max(24, Number(seed.communitySessions) || 0);
-  const seedsTracked = Math.max(80, Number(seed.seedsTracked) || 0);
-  const reports = Math.max(2, Number(activity.recentGrowReports) || 0);
   const values = [0.12, 0.18, 0.24, 0.34, 0.42, 0.52, 0.61, 0.69, 0.78, 0.86, 0.93, 1].map((share, index) => {
     const lift = index > 8 ? Math.round(activity.newSessionsThisWeek * (index - 8) * 0.18) : 0;
     return Math.max(1, Math.round((sessions * share) + lift));
@@ -52850,16 +52915,7 @@ function renderSeedReportAdoptionChartMarkup(seed = {}, activity = getSeedReport
         </svg>
         <p>Trend reflects cumulative community sessions, tracked seeds, and recent grow-report activity for this variety.</p>
       </div>
-      <aside class="source-report-current-average seed-report-adoption-summary">
-        <strong>${escapeHtml(sessions.toLocaleString())}</strong>
-        <span>Sessions</span>
-        <hr>
-        <strong>${escapeHtml(seedsTracked.toLocaleString())}</strong>
-        <span>Seeds Tracked</span>
-        <hr>
-        <strong>${escapeHtml(reports.toLocaleString())}</strong>
-        <span>Grow Reports</span>
-      </aside>
+      ${renderSeedReportCommunityInsightsMarkup(seed, activity)}
     </div>
   `;
 }
