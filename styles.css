@@ -32486,11 +32486,12 @@ textarea::placeholder {
 }
 
 .seed-report-hero-card .source-report-hero-logo.seed-report-hero-image {
-  width: 176px;
-  height: 176px;
-  flex: 0 0 176px;
+  width: 140px;
+  height: 140px;
+  flex: 0 0 140px;
   align-self: flex-start;
   margin-top: 4px;
+  margin-right: 36px;
   border-radius: 18px;
   background:
     linear-gradient(160deg, rgba(181, 232, 111, 0.13), rgba(148, 209, 89, 0.055)),
@@ -33157,6 +33158,7 @@ textarea::placeholder {
     height: 118px;
     flex: 0 0 118px;
     margin-top: 0;
+    margin-right: 0;
     border-radius: 18px;
   }
 
