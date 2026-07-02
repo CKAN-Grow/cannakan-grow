@@ -32363,6 +32363,7 @@ textarea::placeholder {
 .public-session-individual-results,
 .public-session-details-card,
 .public-session-evidence-gallery,
+.public-session-method-overview,
 .community-grow-report .public-session-timeline-section,
 .public-session-example-selector {
   border: 1px solid var(--public-session-border);
@@ -32543,7 +32544,42 @@ textarea::placeholder {
   text-decoration: none;
 }
 
-.public-session-report-grid {
+.public-session-method-overview {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 22px;
+  padding: 26px;
+}
+
+.public-session-method-overview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 4%, rgba(148, 209, 89, 0.16), transparent 32%),
+    radial-gradient(circle at 92% 16%, rgba(155, 108, 255, 0.12), transparent 30%);
+}
+
+.public-session-method-overview-heading,
+.public-session-method-overview-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.public-session-method-overview-heading .eyebrow,
+.public-session-method-overview-heading h2 {
+  margin: 0;
+}
+
+.public-session-method-overview-heading h2 {
+  color: #f5fbf1;
+  font-size: clamp(1.45rem, 2.4vw, 2.1rem);
+  line-height: 1.15;
+}
+
+.public-session-method-overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.82fr);
   gap: 22px;
@@ -32554,8 +32590,20 @@ textarea::placeholder {
 .public-session-details-card,
 .public-session-custom-method-card {
   margin: 0;
+  min-width: 0;
   padding: 22px;
   border-radius: 22px;
+}
+
+.public-session-method-overview .public-session-timeline-section,
+.public-session-method-overview .public-session-details-card {
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(148, 209, 89, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(9, 18, 15, 0.92), rgba(5, 12, 10, 0.94));
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
 }
 
 .public-session-details-card {
@@ -32835,8 +32883,14 @@ textarea::placeholder {
   }
 
   .public-session-result-card,
-  .public-session-report-grid {
+  .public-session-method-overview-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-session-method-overview,
+  .public-session-individual-results,
+  .public-session-evidence-gallery {
+    padding: 20px;
   }
 
   .public-session-result-support {
@@ -50270,6 +50324,7 @@ body.theme-dark .community-grow-report .public-session-timeline-section,
 body.theme-dark .community-grow-report .public-session-details-card,
 body.theme-dark .community-grow-report .public-session-evidence-gallery,
 body.theme-dark .community-grow-report .public-session-individual-results,
+body.theme-dark .community-grow-report .public-session-method-overview,
 body.theme-dark .community-grow-report .public-session-example-selector {
   border-color: var(--public-session-border);
   background:
@@ -50277,6 +50332,17 @@ body.theme-dark .community-grow-report .public-session-example-selector {
     radial-gradient(circle at 100% 0%, rgba(155, 108, 255, 0.12), transparent 32%),
     linear-gradient(180deg, rgba(12, 25, 19, 0.94), rgba(7, 14, 12, 0.96));
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .community-grow-report .public-session-method-overview .public-session-timeline-section,
+body.theme-dark .community-grow-report .public-session-method-overview .public-session-details-card {
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(148, 209, 89, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(9, 18, 15, 0.92), rgba(5, 12, 10, 0.94));
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
 }
 
 body.theme-dark .community-grow-report .public-session-journey::before {

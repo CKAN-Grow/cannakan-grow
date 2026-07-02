@@ -91845,14 +91845,16 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
     Array.isArray(summary?.varietyGroups) ? summary.varietyGroups.length : 0,
     new Set(countedResults.map((partition) => partition.varietyKey || normalizeSeedVarietyNameForMatching(partition.varietyLabel || partition.seedVariety || "")).filter(Boolean)).size,
   );
+  const optionalDetails = getPublicSessionOptionalOverviewRows(snapshot, publicDetails);
   const rows = [
     { label: "Method", value: publicDetails.systemLabel || method.name, icon: "sourceHeroSprout", isMethod: true },
-    { label: "Session Duration", value: durationLabel, icon: "clock" },
     { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared", icon: "calendar" },
+    { label: "Duration", value: durationLabel, icon: "clock" },
     { label: method.isStandardized ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared", icon: method.isStandardized ? "sourceDirectoryBars" : "seedVault" },
     { label: "Varieties Represented", value: representedVarietyCount ? String(representedVarietyCount) : "Not shared", icon: "seedVault" },
     { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "Not shared", icon: "sourceHeroShieldCheck" },
-  ];
+    ...optionalDetails,
+  ].filter((row) => row.value && row.value !== "Not shared");
 
   return `
     <section class="public-session-details-card" aria-labelledby="public-session-details-title">
@@ -91861,8 +91863,8 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
           ${renderAppIconMarkup("reportDocument", { variant: "plain" })}
         </span>
         <span>
-          <h3 id="public-session-details-title">Report Details</h3>
-          <p>Key information about this Community Grow Report.</p>
+          <h3 id="public-session-details-title">Report Overview</h3>
+          <p>Key context and report signals for this Community Grow Report.</p>
         </span>
       </div>
       <div class="public-session-details-list">
@@ -91880,27 +91882,90 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
   `;
 }
 
+function getPublicSessionOptionalOverviewRows(snapshot = null, publicDetails = {}) {
+  const linkedSession = getGallerySnapshotSession(snapshot) || {};
+  const readFirst = (...values) => values
+    .map((value) => String(value || "").trim())
+    .find(Boolean) || "";
+  const locationLabel = readFirst(
+    snapshot?.locationLabel,
+    snapshot?.location,
+    snapshot?.region,
+    snapshot?.countryLabel,
+    snapshot?.country,
+    linkedSession.locationLabel,
+    linkedSession.location,
+    linkedSession.region,
+    linkedSession.country,
+    publicDetails.locationLabel,
+  );
+  const waterLabel = readFirst(
+    snapshot?.waterLabel,
+    snapshot?.waterDetails,
+    snapshot?.water,
+    linkedSession.waterLabel,
+    linkedSession.waterDetails,
+    linkedSession.water,
+    linkedSession.waterSource,
+  );
+  const environmentLabel = readFirst(
+    snapshot?.environmentLabel,
+    snapshot?.environmentDetails,
+    snapshot?.environment,
+    linkedSession.environmentLabel,
+    linkedSession.environmentDetails,
+    linkedSession.environment,
+    linkedSession.growEnvironment,
+  );
+  const heatPadLabel = readFirst(
+    snapshot?.heatPadLabel,
+    snapshot?.heatPad,
+    snapshot?.heat_pad,
+    linkedSession.heatPadLabel,
+    linkedSession.heatPad,
+    linkedSession.heat_pad,
+    linkedSession.usesHeatPad === true ? "Used" : "",
+  );
+  return [
+    locationLabel ? { label: "Location", value: locationLabel, icon: "growNetworkNodes" } : null,
+    waterLabel ? { label: "Water", value: waterLabel, icon: "waterDrop" } : null,
+    environmentLabel ? { label: "Environment", value: environmentLabel, icon: "activeSessionWaveform" } : null,
+    heatPadLabel ? { label: "Heat Pad", value: heatPadLabel, icon: "sourceTrustStar" } : null,
+  ].filter(Boolean);
+}
+
 function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDetails = {}) {
   const summary = publicDetails?.resultSummary || null;
   const method = getPublicSessionMethodConfig(snapshot, publicDetails);
+  const rowCount = Array.isArray(summary?.partitions)
+    ? summary.partitions.filter((partition) => partition.hasSeeds).length
+    : 0;
   const rows = [
-    { label: "Method Type", value: method.name },
-    { label: "Workflow", value: "Flexible custom method" },
-    { label: "Result Labels", value: "V1, V2, V3 by variety" },
-    { label: "Status", value: normalizeSessionStatus(getGallerySnapshotSession(snapshot)?.sessionStatus || "completed") === "completed" ? "Completed" : "Active" },
+    { label: "Method Type", value: method.name, icon: "sourceHeroSprout", isMethod: true },
+    { label: "Workflow", value: "Flexible custom method", icon: "journeyFlag" },
+    { label: "Result Labels", value: "V1, V2, V3 by variety", icon: "seedVault" },
+    { label: "Varieties Shared", value: rowCount ? String(rowCount) : "Not shared", icon: "seedVault" },
+    { label: "Status", value: normalizeSessionStatus(getGallerySnapshotSession(snapshot)?.sessionStatus || "completed") === "completed" ? "Completed" : "Active", icon: "sourceHeroShieldCheck" },
   ];
 
   return `
     <section class="public-session-details-card public-session-custom-method-card" aria-labelledby="public-session-custom-method-title">
-      <div class="public-session-panel-heading">
-        <p class="eyebrow">Custom Method Details</p>
-        <h3 id="public-session-custom-method-title">Flexible Method Report</h3>
-        <p>This report uses variety-based evidence instead of a guided KAN/TRā partition journey.</p>
+      <div class="public-session-details-heading">
+        <span class="public-session-details-heading-icon" aria-hidden="true">
+          ${renderAppIconMarkup("journeyFlag", { variant: "plain" })}
+        </span>
+        <span>
+          <h3 id="public-session-custom-method-title">Custom Method Summary</h3>
+          <p>Flexible variety-based evidence without a guided KAN/TRā timeline.</p>
+        </span>
       </div>
       <div class="public-session-details-list">
-        ${rows.map((row) => `
-          <div>
-            <span>${escapeHtml(row.label)}</span>
+        ${rows.filter((row) => row.value && row.value !== "Not shared").map((row) => `
+          <div class="public-session-details-row${row.isMethod ? " public-session-details-row--method" : ""}">
+            <span class="public-session-details-row-icon" aria-hidden="true">
+              ${renderAppIconMarkup(row.icon, { variant: "plain" })}
+            </span>
+            <span class="public-session-details-row-label">${escapeHtml(row.label)}</span>
             <strong>${escapeHtml(row.value)}</strong>
           </div>
         `).join("")}
@@ -91912,10 +91977,16 @@ function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDet
 function renderPublicSessionJourneyAndDetailsMarkup(snapshot = null, publicDetails = {}) {
   const method = getPublicSessionMethodConfig(snapshot, publicDetails);
   return `
-    <div class="public-session-report-grid">
-      ${method.isStandardized ? renderPublicSessionTimelineSection(snapshot) : renderPublicSessionCustomMethodDetailsMarkup(snapshot, publicDetails)}
-      ${renderPublicSessionDetailsCardMarkup(snapshot, publicDetails)}
-    </div>
+    <section class="public-session-method-overview" aria-labelledby="public-session-method-overview-title">
+      <div class="public-session-method-overview-heading">
+        <p class="eyebrow">Method Overview</p>
+        <h2 id="public-session-method-overview-title">Method Overview</h2>
+      </div>
+      <div class="public-session-method-overview-grid">
+        ${method.isStandardized ? renderPublicSessionTimelineSection(snapshot) : renderPublicSessionCustomMethodDetailsMarkup(snapshot, publicDetails)}
+        ${renderPublicSessionDetailsCardMarkup(snapshot, publicDetails)}
+      </div>
+    </section>
   `;
 }
 
