@@ -91831,24 +91831,32 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
     new Set(countedResults.map((partition) => partition.varietyKey || normalizeSeedVarietyNameForMatching(partition.varietyLabel || partition.seedVariety || "")).filter(Boolean)).size,
   );
   const rows = [
-    { label: "Method", value: publicDetails.systemLabel || method.name },
-    { label: "Session Duration", value: durationLabel },
-    { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared" },
-    { label: method.isStandardized ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared" },
-    { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "Not shared" },
-    { label: "Varieties Represented", value: representedVarietyCount ? String(representedVarietyCount) : "Not shared" },
+    { label: "Method", value: publicDetails.systemLabel || method.name, icon: "sourceHeroSprout", isMethod: true },
+    { label: "Session Duration", value: durationLabel, icon: "clock" },
+    { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared", icon: "calendar" },
+    { label: method.isStandardized ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared", icon: method.isStandardized ? "sourceDirectoryBars" : "seedVault" },
+    { label: "Varieties Represented", value: representedVarietyCount ? String(representedVarietyCount) : "Not shared", icon: "seedVault" },
+    { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "Not shared", icon: "sourceHeroShieldCheck" },
   ];
 
   return `
     <section class="public-session-details-card" aria-labelledby="public-session-details-title">
-      <div class="public-session-panel-heading">
-        <p class="eyebrow">Report Details</p>
-        <h3 id="public-session-details-title">Report Details</h3>
+      <div class="public-session-details-heading">
+        <span class="public-session-details-heading-icon" aria-hidden="true">
+          ${renderAppIconMarkup("reportDocument", { variant: "plain" })}
+        </span>
+        <span>
+          <h3 id="public-session-details-title">Report Details</h3>
+          <p>Key information about this Community Grow Report.</p>
+        </span>
       </div>
       <div class="public-session-details-list">
         ${rows.map((row) => `
-          <div>
-            <span>${escapeHtml(row.label)}</span>
+          <div class="public-session-details-row${row.isMethod ? " public-session-details-row--method" : ""}">
+            <span class="public-session-details-row-icon" aria-hidden="true">
+              ${renderAppIconMarkup(row.icon, { variant: "plain" })}
+            </span>
+            <span class="public-session-details-row-label">${escapeHtml(row.label)}</span>
             <strong>${escapeHtml(row.value)}</strong>
           </div>
         `).join("")}
