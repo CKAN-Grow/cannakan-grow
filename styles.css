@@ -38714,6 +38714,681 @@ textarea::placeholder {
     radial-gradient(circle at 100% 100%, rgba(148, 209, 89, 0.06), transparent 30%);
 }
 
+.grower-report-hero,
+.grower-report-overview,
+.grower-report-grow-card-panel,
+.grower-report-modules,
+.grower-report-connections {
+  position: relative;
+  z-index: 1;
+}
+
+.grower-report-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 380px;
+  display: grid;
+  align-content: space-between;
+  gap: 26px;
+  padding: clamp(24px, 4vw, 42px);
+  border-radius: 30px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  background:
+    radial-gradient(circle at 78% 26%, rgba(148, 209, 89, 0.2), transparent 30%),
+    linear-gradient(135deg, rgba(9, 18, 12, 0.98) 0%, rgba(7, 12, 10, 0.92) 52%, rgba(20, 34, 18, 0.72) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 28px 70px rgba(0, 0, 0, 0.42),
+    0 0 36px rgba(148, 209, 89, 0.12);
+}
+
+.grower-report-hero::before,
+.grower-report-hero::after,
+.grower-report-hero-cover {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.grower-report-hero-cover {
+  opacity: 0.9;
+  background:
+    linear-gradient(90deg, rgba(4, 8, 7, 0.98) 0%, rgba(6, 11, 9, 0.88) 34%, rgba(6, 11, 9, 0.42) 66%, rgba(7, 12, 10, 0.72) 100%),
+    radial-gradient(circle at 78% 30%, rgba(148, 209, 89, 0.28), transparent 27%),
+    repeating-linear-gradient(120deg, rgba(148, 209, 89, 0.07) 0 1px, transparent 1px 15px),
+    radial-gradient(circle at 70% 70%, rgba(85, 216, 164, 0.12), transparent 34%);
+}
+
+.grower-report-hero::before {
+  background-image:
+    linear-gradient(rgba(148, 209, 89, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 209, 89, 0.055) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.78) 52%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.grower-report-hero::after {
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.09), transparent 16%),
+    radial-gradient(circle at 82% 86%, rgba(148, 209, 89, 0.11), transparent 18%);
+}
+
+.grower-report-hero-main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: clamp(22px, 5vw, 60px);
+  align-items: center;
+}
+
+.grower-report-identity {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.8vw, 28px);
+  min-width: 0;
+}
+
+.grower-report-avatar-shell {
+  width: clamp(108px, 12vw, 146px);
+  height: clamp(108px, 12vw, 146px);
+  flex: 0 0 clamp(108px, 12vw, 146px);
+  overflow: hidden;
+  border-radius: 30px;
+  border: 1px solid rgba(148, 209, 89, 0.5);
+  background:
+    radial-gradient(circle at 35% 24%, rgba(148, 209, 89, 0.28), transparent 50%),
+    rgba(8, 14, 11, 0.78);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 20px 44px rgba(0, 0, 0, 0.36),
+    0 0 34px rgba(148, 209, 89, 0.24);
+}
+
+.grower-report-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.grower-report-identity-copy {
+  min-width: 0;
+  max-width: 760px;
+}
+
+.grower-report-identity-copy h3,
+.grower-report-identity-copy p {
+  margin: 0;
+}
+
+.grower-report-identity-copy h3 {
+  color: #ffffff;
+  font-size: clamp(2.55rem, 7vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: 0;
+  text-shadow: 0 18px 32px rgba(0, 0, 0, 0.42);
+}
+
+.grower-report-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px 14px;
+  margin-top: 14px;
+  color: rgba(244, 247, 242, 0.82);
+  font-weight: 750;
+}
+
+.grower-report-meta-line span + span::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 14px;
+  border-radius: 999px;
+  background: #94d159;
+  box-shadow: 0 0 12px rgba(148, 209, 89, 0.5);
+  vertical-align: middle;
+}
+
+.grower-report-hero-summary {
+  max-width: 58ch;
+  margin-top: 18px !important;
+  color: rgba(229, 237, 226, 0.88);
+  font-size: clamp(1rem, 1.5vw, 1.14rem);
+  line-height: 1.55;
+}
+
+.grower-report-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.grower-report-badge-row span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  background: rgba(8, 16, 12, 0.62);
+  color: #c8f497;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.grower-report-score-card {
+  justify-self: end;
+  width: min(100%, 280px);
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  background:
+    radial-gradient(circle at 50% 8%, rgba(148, 209, 89, 0.18), transparent 46%),
+    rgba(5, 10, 8, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 22px 48px rgba(0, 0, 0, 0.36),
+    0 0 28px rgba(148, 209, 89, 0.16);
+  backdrop-filter: blur(14px);
+  text-align: center;
+}
+
+.grower-report-score-ring {
+  width: 138px;
+  height: 138px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(5, 11, 8, 0.95) 0 55%, transparent 57%),
+    conic-gradient(#94d159 0 var(--grower-report-score), rgba(148, 209, 89, 0.14) var(--grower-report-score) 100%);
+  box-shadow:
+    inset 0 0 20px rgba(148, 209, 89, 0.14),
+    0 0 28px rgba(148, 209, 89, 0.2);
+}
+
+.grower-report-score-ring strong {
+  color: #ffffff;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.grower-report-score-card span:not(.grower-report-score-ring) {
+  color: #f8fff2;
+  font-weight: 900;
+}
+
+.grower-report-score-card p {
+  margin: 6px 0 0;
+  color: rgba(223, 231, 222, 0.74);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.grower-report-hero-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.grower-report-card-action {
+  border-color: rgba(217, 180, 91, 0.34) !important;
+  color: #f8e3a0 !important;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(217, 180, 91, 0.18), transparent 44%),
+    rgba(255, 255, 255, 0.035) !important;
+}
+
+.grower-report-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.grower-report-stat-card {
+  --grower-report-stat-accent: #94d159;
+  position: relative;
+  overflow: hidden;
+  min-height: 178px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--grower-report-stat-accent) 24%, transparent);
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--grower-report-stat-accent) 15%, transparent), transparent 44%),
+    linear-gradient(180deg, rgba(18, 30, 22, 0.92) 0%, rgba(8, 14, 11, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 36px rgba(0, 0, 0, 0.26);
+}
+
+.grower-report-stat-card.is-blue { --grower-report-stat-accent: #7fb8ff; }
+.grower-report-stat-card.is-cyan { --grower-report-stat-accent: #74d7d8; }
+.grower-report-stat-card.is-emerald { --grower-report-stat-accent: #50d990; }
+.grower-report-stat-card.is-gold { --grower-report-stat-accent: #d9b45b; }
+.grower-report-stat-card.is-lime { --grower-report-stat-accent: #b5e86f; }
+.grower-report-stat-card.is-rose { --grower-report-stat-accent: #e26e9b; }
+
+.grower-report-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--grower-report-stat-accent) 10%, transparent),
+    inset 0 -34px 60px rgba(0, 0, 0, 0.18);
+}
+
+.grower-report-stat-card-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.grower-report-stat-icon {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 46px;
+  border-radius: 16px;
+  color: var(--grower-report-stat-accent);
+  border: 1px solid color-mix(in srgb, var(--grower-report-stat-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--grower-report-stat-accent) 10%, rgba(8, 14, 11, 0.88));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--grower-report-stat-accent) 14%, transparent);
+}
+
+.grower-report-stat-icon svg {
+  width: 25px;
+  height: 25px;
+}
+
+.grower-report-stat-card strong,
+.grower-report-stat-card span,
+.grower-report-stat-card p {
+  position: relative;
+  z-index: 1;
+}
+
+.grower-report-stat-card strong {
+  display: block;
+  color: #ffffff;
+  font-size: clamp(1.55rem, 2.6vw, 2.2rem);
+  line-height: 1;
+}
+
+.grower-report-stat-card span {
+  color: rgba(244, 247, 242, 0.82);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.grower-report-stat-card p {
+  margin: 0;
+  color: rgba(222, 230, 221, 0.7);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.grower-report-stat-progress {
+  position: relative;
+  z-index: 1;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.grower-report-stat-progress i {
+  display: block;
+  width: var(--grower-report-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--grower-report-stat-accent) 72%, #ffffff 8%), var(--grower-report-stat-accent));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--grower-report-stat-accent) 28%, transparent);
+}
+
+.grower-report-stat-sparkline {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 34px;
+  color: var(--grower-report-stat-accent);
+}
+
+.grower-report-stat-sparkline polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grower-report-stat-sparkline circle {
+  fill: currentColor;
+  filter: drop-shadow(0 0 7px currentColor);
+}
+
+.grower-report-stat-sparkline-fill {
+  fill: currentColor;
+  opacity: 0.13;
+}
+
+.grower-report-grow-card-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 28px;
+  border: 1px solid rgba(217, 180, 91, 0.2);
+  background:
+    radial-gradient(circle at 8% 20%, rgba(217, 180, 91, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(18, 24, 18, 0.92), rgba(8, 14, 11, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 20px 42px rgba(0, 0, 0, 0.24);
+}
+
+.grower-report-grow-card-preview {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.grower-report-grow-card-orb {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 70px;
+  border-radius: 24px;
+  color: #d9b45b;
+  border: 1px solid rgba(217, 180, 91, 0.34);
+  background:
+    radial-gradient(circle at 35% 20%, rgba(255, 222, 126, 0.22), transparent 52%),
+    rgba(17, 14, 7, 0.76);
+  box-shadow: 0 0 24px rgba(217, 180, 91, 0.18);
+}
+
+.grower-report-grow-card-orb svg {
+  width: 38px;
+  height: 38px;
+}
+
+.grower-report-grow-card-preview h3,
+.grower-report-grow-card-preview p {
+  margin: 0;
+}
+
+.grower-report-grow-card-preview h3 {
+  color: #ffffff;
+}
+
+.grower-report-grow-card-preview p:not(.eyebrow) {
+  color: rgba(226, 235, 224, 0.74);
+}
+
+.grower-report-grow-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.grower-report-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.grower-report-section-head h3,
+.grower-report-section-head p {
+  margin: 0;
+}
+
+.grower-report-section-head h3 {
+  color: #ffffff;
+}
+
+.grower-report-modules,
+.grower-report-connections {
+  display: grid;
+  gap: 16px;
+}
+
+.grower-report-module-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.grower-report-module {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(15, 25, 18, 0.92), rgba(8, 14, 11, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 16px 30px rgba(0, 0, 0, 0.2);
+}
+
+.grower-report-module summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.grower-report-module summary::-webkit-details-marker {
+  display: none;
+}
+
+.grower-report-module-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #94d159;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.08);
+}
+
+.grower-report-module-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.grower-report-module summary span:nth-child(2) {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.grower-report-module summary em {
+  color: #94d159;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.grower-report-module summary strong {
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+.grower-report-module summary small {
+  color: rgba(223, 231, 222, 0.68);
+  line-height: 1.35;
+}
+
+.grower-report-module summary > i {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #94d159;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  font-style: normal;
+}
+
+.grower-report-module[open] summary > i {
+  transform: rotate(45deg);
+}
+
+.grower-report-module-body {
+  padding: 0 16px 16px 71px;
+}
+
+.grower-report-module-metrics,
+.grower-report-theme-grid,
+.grower-report-privacy-grid,
+.grower-report-pill-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.grower-report-theme-grid,
+.grower-report-privacy-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.grower-report-module-metrics span,
+.grower-report-theme-grid span,
+.grower-report-privacy-grid span,
+.grower-report-pill-list span {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.grower-report-module-metrics strong,
+.grower-report-theme-grid strong,
+.grower-report-privacy-grid strong {
+  display: block;
+  color: #ffffff;
+  font-size: 1.18rem;
+}
+
+.grower-report-module-metrics small,
+.grower-report-theme-grid small,
+.grower-report-privacy-grid small {
+  color: rgba(223, 231, 222, 0.66);
+}
+
+.grower-report-pill-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grower-report-pill-list span {
+  color: #d7f8b2;
+  font-weight: 800;
+  text-align: center;
+}
+
+.grower-report-mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.grower-report-mini-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(234, 241, 232, 0.78);
+  text-decoration: none;
+}
+
+.grower-report-mini-row.is-link {
+  transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.grower-report-mini-row.is-link:hover,
+.grower-report-mini-row.is-link:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(148, 209, 89, 0.22);
+  background: rgba(148, 209, 89, 0.07);
+}
+
+.grower-report-mini-row strong {
+  color: #ffffff;
+}
+
+.grower-report-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.grower-report-timeline span {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 10px;
+  padding-left: 4px;
+}
+
+.grower-report-timeline i {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  grid-row: span 2;
+  border-radius: 999px;
+  background: #94d159;
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.38);
+}
+
+.grower-report-timeline strong {
+  color: #ffffff;
+}
+
+.grower-report-timeline small,
+.grower-report-module-empty {
+  margin: 0;
+  color: rgba(223, 231, 222, 0.68);
+  line-height: 1.45;
+}
+
 .grow-network-page-heading,
 .grow-network-layout,
 .grow-network-stats-strip {
@@ -40715,6 +41390,32 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 @media (max-width: 1100px) {
+  .grower-report-hero-main,
+  .grower-report-overview,
+  .grower-report-module-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grower-report-score-card {
+    justify-self: stretch;
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    text-align: left;
+  }
+
+  .grower-report-score-ring {
+    width: 104px;
+    height: 104px;
+  }
+
+  .grower-report-score-ring strong {
+    font-size: 2.3rem;
+  }
+
+  .grower-report-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .grow-network-page-heading {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 18px;
@@ -40761,6 +41462,78 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 @media (max-width: 720px) {
+  .grower-report-hero {
+    min-height: auto;
+    padding: 20px;
+    border-radius: 24px;
+  }
+
+  .grower-report-identity {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .grower-report-avatar-shell {
+    width: 104px;
+    height: 104px;
+    flex-basis: 104px;
+    border-radius: 22px;
+  }
+
+  .grower-report-identity-copy h3 {
+    font-size: clamp(2.4rem, 13vw, 3.55rem);
+  }
+
+  .grower-report-meta-line {
+    display: grid;
+    gap: 8px;
+  }
+
+  .grower-report-meta-line span + span::before {
+    display: none;
+  }
+
+  .grower-report-score-card {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    text-align: center;
+  }
+
+  .grower-report-hero-actions,
+  .grower-report-grow-card-panel,
+  .grower-report-grow-card-preview,
+  .grower-report-grow-card-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .grower-report-hero-actions .button,
+  .grower-report-grow-card-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .grower-report-overview,
+  .grower-report-module-metrics,
+  .grower-report-theme-grid,
+  .grower-report-privacy-grid,
+  .grower-report-pill-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grower-report-module summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .grower-report-module summary > i {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .grower-report-module-body {
+    padding-left: 16px;
+  }
+
   .public-session-layout {
     grid-template-columns: minmax(0, 1fr);
   }

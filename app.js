@@ -655,7 +655,7 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     id: "mock-activity-mo-follow",
     memberId: "mock-good-genetix",
     activityType: "approved-snapshot",
-    typeLabel: "Grow Network update",
+    typeLabel: "Profile update",
     typeMeta: "Community connection",
     title: "Good Genetix Lab followed Seedsman Lab",
     summary: "Added a high-performing Seedsman benchmark grower to the network.",
@@ -694,7 +694,7 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     id: "mock-activity-seedvault-source",
     memberId: "mock-seedsman-lab",
     activityType: "approved-snapshot",
-    typeLabel: "Grow Network update",
+    typeLabel: "Profile update",
     typeMeta: "Community insights highlight",
     title: "Seedsman added the strongest source signal this month",
     summary: "Fresh Seedsman lots are posting repeated 98-100% KAN outcomes.",
@@ -720,9 +720,9 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     id: "mock-activity-kan-joined",
     memberId: "mock-atlas-breeding",
     activityType: "shared-session",
-    typeLabel: "Grow Network update",
+    typeLabel: "Profile update",
     typeMeta: "New member",
-    title: "Atlas Breeding Labs joined the Grow Network",
+    title: "Atlas Breeding Labs joined Grow",
     summary: "Started sharing limited mixed-age comparison runs.",
     germinationRateLabel: "90%",
     sourceLabel: "Atlas Breeding Labs",
@@ -1358,7 +1358,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
   {
     id: "mock-notification-network-trending",
     type: "system",
-    displayName: "Grow Network",
+    displayName: "Grow",
     avatarUrl: "",
     occurredAt: "2026-05-02T09:00:00.000Z",
     isUnseen: true,
@@ -2662,7 +2662,7 @@ function syncGrowNetworkNavigationVisibility() {
     link.classList.toggle("has-unseen-notifications", shouldShowNetworkNav && hasUnseenNotifications);
     if (shouldShowNetworkNav && hasUnseenNotifications) {
       link.setAttribute("data-unseen-notifications", "true");
-      link.setAttribute("aria-label", `Network (${unseenNotificationCount} unseen notification${unseenNotificationCount === 1 ? "" : "s"})`);
+      link.setAttribute("aria-label", `Profile (${unseenNotificationCount} unseen notification${unseenNotificationCount === 1 ? "" : "s"})`);
       if (badge instanceof HTMLSpanElement) {
         badge.textContent = badgeLabel;
       }
@@ -4571,8 +4571,8 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community</a>
       <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Explore</a>
-      ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Network${growNetworkBadge}</a>` : ""}
-      ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
+      ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Profile${growNetworkBadge}</a>` : ""}
+      ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Account Settings</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
     </nav>
   `;
@@ -8304,8 +8304,8 @@ function markGrowNetworkUnlocked(options = {}) {
   addAppNotification({
     eventKey: "unlock:grow-network",
     category: "system-notice",
-    title: "Grow Network unlocked",
-    message: "Insights, analytics, rankings, and source discovery are now available.",
+    title: "Profile unlocked",
+    message: "Your Grower Report, identity, connections, and community signals are now available.",
     actions: [
       { kind: "route", label: "Explore Home", route: "#home", variant: "primary" },
     ],
@@ -8425,7 +8425,7 @@ function getNavigationLockStateForHash(hash = "#home") {
       return {
         locked: true,
         mode: "grow-network",
-        message: "Start your first soaking session to begin unlocking the Grow Network.",
+        message: "Start your first soaking session to begin unlocking your Profile.",
         ctaLabel: "Start First Session",
         ctaHref: "#new",
       };
@@ -8453,7 +8453,7 @@ function getNavigationLockStateForHash(hash = "#home") {
     return {
       locked: true,
       mode: "grow-network",
-      message: "Start your first soaking session to begin unlocking the Grow Network.",
+      message: "Start your first soaking session to begin unlocking your Profile.",
       ctaLabel: "Start First Session",
       ctaHref: "#new",
     };
@@ -8551,7 +8551,7 @@ function getNavigationLockTitle(mode = "") {
       return "Grow Experience";
     case "grow-network":
     default:
-      return "Grow Network";
+      return "Profile";
   }
 }
 
@@ -8568,7 +8568,7 @@ function ensureNavigationLockToast() {
   toast.innerHTML = `
     <div class="navigation-lock-toast__shell">
       <div class="navigation-lock-toast__copy">
-        <strong class="navigation-lock-toast__title">Grow Network</strong>
+        <strong class="navigation-lock-toast__title">Profile</strong>
         <p class="navigation-lock-toast__message"></p>
       </div>
       <div class="navigation-lock-toast__actions">
@@ -8589,8 +8589,8 @@ function ensureNavigationLockToast() {
 
 function showNavigationLockToast(config = {}) {
   const toast = ensureNavigationLockToast();
-  const title = String(config.title || "Grow Network").trim() || "Grow Network";
-  const message = String(config.message || "Start your first soaking session to begin unlocking the Grow Network.").trim();
+  const title = String(config.title || "Profile").trim() || "Profile";
+  const message = String(config.message || "Start your first soaking session to begin unlocking your Profile.").trim();
   const ctaLabel = String(config.ctaLabel || "").trim();
   const ctaHref = String(config.ctaHref || "").trim();
   const titleNode = toast.querySelector(".navigation-lock-toast__title");
@@ -11181,7 +11181,7 @@ function buildMaryJaneDemoGrowNetworkActivities() {
         activityType: isShare ? "shared-session" : (isFollow ? "follow" : "approved-snapshot"),
         typeLabel: isShare
           ? "Public session shared"
-          : (isFollow ? "Grow Network follow" : "New approved Community Grow snapshot"),
+          : (isFollow ? "Profile follow" : "New approved Community Grow snapshot"),
         typeMeta: isShare
           ? "Public session now visible"
           : (isFollow ? "Community connection" : "Approved in Community Grow"),
@@ -14575,17 +14575,17 @@ function getCurrentSiteAnalyticsPageContext() {
   }
   if (route === "network") {
     return buildSiteAnalyticsPageContext({
-      pageGroup: "gallery",
-      pageKey: "grow-network",
-      pageLabel: "Grow Network",
+      pageGroup: "profile",
+      pageKey: "grower-report",
+      pageLabel: "Profile",
       pagePath: rawRoute ? `#${rawRoute}` : "#network",
     });
   }
   if (route === "profile") {
     return buildSiteAnalyticsPageContext({
       pageGroup: "profile",
-      pageKey: "profile",
-      pageLabel: "Profile",
+      pageKey: "account-settings",
+      pageLabel: "Account Settings",
       pagePath: isUsingPathRoute("profile") ? "/profile" : "#profile",
     });
   }
@@ -21827,7 +21827,7 @@ function getMockGrowNetworkNotifications() {
     type: ["follow", "like", "system"].includes(String(notification.type || "").trim().toLowerCase())
       ? String(notification.type || "").trim().toLowerCase()
       : "system",
-    displayName: String(notification.displayName || "").trim() || "Grow Network",
+    displayName: String(notification.displayName || "").trim() || "Grow",
     avatarUrl: getSafeAvatarImageUrl(notification.avatarUrl || ""),
     actionText: String(notification.actionText || "").trim(),
     occurredAt: String(notification.occurredAt || "").trim() || GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT,
@@ -21884,7 +21884,7 @@ function formatGrowNetworkNotificationActorText(notifications = [], type = "") {
     .map((notification) => String(notification?.displayName || "").trim())
     .filter(Boolean);
   if (!names.length) {
-    return "Grow Network";
+    return "Grow";
   }
 
   if (type === "follow") {
@@ -21947,7 +21947,7 @@ function buildGrowNetworkNotificationFeedGroup(notifications = []) {
       ? "Followers"
       : normalizedType === "like"
         ? `Likes on your ${String(primaryNotification.targetLabel || "activity").trim()}`
-        : "Grow Network notification",
+        : "Profile notification",
   };
 }
 
@@ -22066,7 +22066,7 @@ function ensureGrowNetworkNotificationGroupModal() {
   modal.innerHTML = `
     <form method="dialog" class="snapshot-modal-card grow-network-notification-group-modal-card">
       <div class="snapshot-modal-copy">
-        <p class="eyebrow">Grow Network</p>
+        <p class="eyebrow">Profile</p>
         <h3 id="grow-network-notification-group-modal-title">Notification details</h3>
         <p id="grow-network-notification-group-modal-copy"></p>
       </div>
@@ -22229,7 +22229,7 @@ function ensurePublicMemberConnectionsModal() {
     <div class="snapshot-modal-card public-member-connections-modal-card" role="document" aria-labelledby="public-member-connections-modal-title">
       <button type="button" class="modal-close" data-public-member-connections-close aria-label="Close connections">×</button>
       <div class="snapshot-modal-copy public-member-connections-modal-copy">
-        <p class="eyebrow">Grow Network</p>
+        <p class="eyebrow">Profile</p>
         <h3 id="public-member-connections-modal-title">Followers and following</h3>
         <p id="public-member-connections-modal-subtitle">Explore this member's public social graph.</p>
       </div>
@@ -39680,9 +39680,9 @@ function render() {
     }
     renderGrowNetworkPage();
     finalizeRender(buildSiteAnalyticsPageContext({
-      pageGroup: "gallery",
-      pageKey: "grow-network",
-      pageLabel: "Grow Network",
+      pageGroup: "profile",
+      pageKey: "grower-report",
+      pageLabel: "Profile",
       pagePath: "#network",
     }));
     void refreshGallerySnapshots("route:grow-network");
@@ -39694,8 +39694,8 @@ function render() {
     renderProfilePage();
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "profile",
-      pageKey: "profile",
-      pageLabel: "Profile",
+      pageKey: "account-settings",
+      pageLabel: "Account Settings",
       pagePath: pathRoute === "profile" && isUsingPathRoute("profile") ? "/profile" : "#profile",
     }));
     return;
@@ -46191,7 +46191,7 @@ function renderProfilePage() {
   const usesNotificationFallback = Boolean(appState.notificationPreferencesTableUnavailable);
 
   app.innerHTML = `
-    <section class="card profile-page" aria-label="Profile and settings">
+    <section class="card profile-page" aria-label="Account settings">
       <div class="profile-page-glow" aria-hidden="true"></div>
       <header class="profile-page-header">
         <div class="profile-page-hero">
@@ -46202,8 +46202,8 @@ function renderProfilePage() {
             fallbackClassName: "profile-page-avatar is-fallback",
           })}
           <div class="profile-page-copy">
-            <p class="eyebrow">Control Center</p>
-            <h2>${escapeHtml(getProfileDisplayName())}</h2>
+            <p class="eyebrow">Account Settings</p>
+            <h2>Account Settings</h2>
             <p class="profile-page-email">${escapeHtml(email)}</p>
           </div>
         </div>
@@ -46220,7 +46220,7 @@ function renderProfilePage() {
               <div>
                 <p class="eyebrow">Account Info</p>
                 <h3>Account Info</h3>
-                <p class="profile-section-subtitle">Your ${BRAND_APP_NAME} identity details.</p>
+                <p class="profile-section-subtitle">Your account details and public identity controls.</p>
               </div>
               <span class="profile-status-badge ${profileSetupComplete ? "is-complete" : "is-pending"}">${escapeHtml(profileSetupComplete ? "Profile ready" : "Setup incomplete")}</span>
             </div>
@@ -46365,7 +46365,7 @@ function renderProfilePage() {
                 checked: profilePageSettings.showGrowStatsPublicly !== false,
               })}
             </div>
-            <p class="profile-section-note">These community preferences save to your Grow Network profile when available, with a safe local fallback if needed.</p>
+            <p class="profile-section-note">These community preferences save to your public profile when available, with a safe local fallback if needed.</p>
           </article>`}
           <article class="profile-section-card">
             <div class="profile-section-heading">
@@ -48150,7 +48150,7 @@ function renderHomeGrowNetworkUnlockBannerMarkup() {
             className: "home-grow-network-unlock-banner-icon",
           })}
           <div>
-            <p class="eyebrow">Grow Network</p>
+            <p class="eyebrow">Profile</p>
             <h3 id="home-grow-network-unlock-title">Start your first session to unlock the full Grow experience.</h3>
             <p>Community Grow, insights, source discovery, Seed Vault, and advanced analytics unlock after your first saved grow session.</p>
           </div>
@@ -48395,8 +48395,8 @@ function renderHomeGrowNetworkUnlockedNoticeMarkup() {
         ${renderMySessionsInlineIconMarkup("check", "home-grow-network-unlocked-notice__icon-glyph")}
       </span>
       <div class="home-grow-network-unlocked-notice__copy">
-        <strong>Grow Network Unlocked</strong>
-        <span>Community insights, rankings, source tracking, and advanced analytics are now active.</span>
+        <strong>Profile Unlocked</strong>
+        <span>Your Grower Report, community insights, source tracking, and advanced analytics are now active.</span>
       </div>
     </section>
   `;
@@ -85647,7 +85647,7 @@ function renderGrowNetworkPage() {
       return {
         eyebrow: "Followers",
         title: "Members Following You",
-        subtitle: "See who's following you in the Grow Network and how they are performing.",
+        subtitle: "See who's following your profile and how they are performing.",
       };
     }
 
@@ -85701,7 +85701,7 @@ function renderGrowNetworkPage() {
     ];
 
     return `
-      <div class="grow-network-tabs" role="tablist" aria-label="Grow Network views">
+      <div class="grow-network-tabs" role="tablist" aria-label="Profile connection views">
         ${tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return `
@@ -85719,7 +85719,7 @@ function renderGrowNetworkPage() {
   };
 
   const renderMemberMetaMarkup = (member) => `
-    <p class="grow-network-member-caption">${escapeHtml(`${member.averageGermination}% avg germination · ${member.favoriteSeedType} · ${member.favoriteSource || "Grow Network"}`)}</p>
+    <p class="grow-network-member-caption">${escapeHtml(`${member.averageGermination}% avg germination · ${member.favoriteSeedType} · ${member.favoriteSource || "Grow community"}`)}</p>
     <div class="grow-network-member-stats" aria-label="${escapeHtml(`${member.displayName} performance`)}">
       <span class="grow-network-member-stat-chip">${escapeHtml(`${member.approvedSnapshots} approved`)}</span>
       <span class="grow-network-member-stat-chip">${escapeHtml(`${member.likes} likes`)}</span>
@@ -85862,11 +85862,376 @@ function renderGrowNetworkPage() {
     },
   ];
 
+  const currentProfileSettings = getCurrentProfilePageSettings();
+  const currentPublicProfile = currentUserId
+    ? (getPublicMemberProfile(currentUserId) || buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, currentProfileSettings))
+    : null;
+  const ownerSessions = getSessions();
+  const ownerAnalytics = calculateProfileAnalyticsFromOwnerSessions(ownerSessions);
+  const ownerCompletedSessions = getProfileEligibleCompletedSessions(ownerSessions, {
+    includeMock: isMockDataEnabled(),
+  });
+  const publicContributionCount = currentUserPublicSnapshots.length;
+  const followingCount = followingEntries.length;
+  const followerCount = Math.max(0, Number(currentUserFollowSummary?.followerCount || totalFollowersCount) || 0);
+  const growScoreBase = (
+    (Math.min(ownerAnalytics.completedSessions, 18) * 3.4)
+    + (Math.min(ownerAnalytics.totalSeedsTested, 240) * 0.08)
+    + (Math.min(Number(ownerAnalytics.averageGerminationRate) || 0, 100) * 0.26)
+    + (Math.min(publicContributionCount, 18) * 1.8)
+    + (Math.min(followerCount, 160) * 0.04)
+  );
+  const growScore = Math.max(12, Math.min(99, Math.round(growScoreBase || (ownerAnalytics.completedSessions ? 42 : 18))));
+  const growTitle = growScore >= 88
+    ? "Elite Grower"
+    : (growScore >= 74 ? "Expert Grower" : (growScore >= 42 ? "Grower" : "Seedling"));
+  const communityRankLabel = growScore >= 88
+    ? "Top 5%"
+    : (growScore >= 74 ? "Top 15%" : (growScore >= 42 ? "Rising" : "New"));
+  const memberSinceLabel = formatPublicMemberJoinedDateLabel(
+    currentPublicProfile?.joinedAt || currentPublicProfile?.createdAt || appState.profile?.createdAt || appState.user?.created_at || "",
+  );
+  const locationLabel = [
+    currentPublicProfile?.locationRegion || "",
+    currentPublicProfile?.countryCode ? getCountryName(currentPublicProfile.countryCode) : "",
+  ].map((value) => String(value || "").trim()).filter(Boolean).join(", ") || "Location private";
+  const growerDisplayName = currentPublicProfile?.displayName
+    || getDisplayName({ id: currentUserId, username: appState.profile?.username || "" }, { fallbackLabel: "Grower" });
+  const growerAvatarUrl = currentPublicProfile?.avatarUrl || appState.profile?.avatarUrl || "";
+  const averageGerminationLabel = getProfileAnalyticsRateLabel(ownerAnalytics.averageGerminationRate, "Pending");
+  const totalSeedsStarted = Math.max(0, Number(ownerAnalytics.totalSeedsTested) || 0);
+  const totalCommunityContributions = publicContributionCount;
+  const growerReportOverviewStats = [
+    {
+      icon: "chart",
+      value: `${growScore}`,
+      label: "Grow Score",
+      detail: "evidence-weighted identity score",
+      progress: growScore,
+      tone: "green",
+    },
+    {
+      icon: "check",
+      value: getProfileAnalyticsCountLabel(ownerAnalytics.completedSessions),
+      label: "Sessions Completed",
+      detail: `${getProfileAnalyticsCountLabel(ownerAnalytics.activeSessions)} active right now`,
+      progress: Math.min(100, ownerAnalytics.completedSessions * 10),
+      tone: "emerald",
+    },
+    {
+      icon: "seedGermination",
+      value: averageGerminationLabel,
+      label: "Germination Success",
+      detail: `${getProfileAnalyticsCountLabel(ownerAnalytics.totalSeedsGerminated)} seeds germinated`,
+      progress: Number(ownerAnalytics.averageGerminationRate) || 0,
+      tone: "lime",
+    },
+    {
+      icon: "seedSprout",
+      value: getProfileAnalyticsCountLabel(totalSeedsStarted),
+      label: "Seeds Started",
+      detail: "across eligible sessions",
+      progress: Math.min(100, totalSeedsStarted / 2),
+      tone: "cyan",
+    },
+    {
+      icon: "communityGroup",
+      value: getProfileAnalyticsCountLabel(totalCommunityContributions),
+      label: "Community Contributions",
+      detail: "public grow evidence shared",
+      progress: Math.min(100, totalCommunityContributions * 12),
+      tone: "green",
+    },
+    {
+      icon: "leaderboard",
+      value: communityRankLabel,
+      label: "Community Rank",
+      detail: "future reputation signal",
+      progress: growScore,
+      tone: "gold",
+    },
+    {
+      icon: "heartLike",
+      value: getProfileAnalyticsCountLabel(followerCount),
+      label: "Followers",
+      detail: "future Grow Card collectors",
+      progress: Math.min(100, followerCount),
+      tone: "rose",
+    },
+    {
+      icon: "growNetworkNodes",
+      value: getProfileAnalyticsCountLabel(followingCount),
+      label: "Following",
+      detail: "future collected growers",
+      progress: Math.min(100, followingCount * 8),
+      tone: "blue",
+    },
+  ];
+
+  const getGrowerReportTopValues = (fieldResolver) => {
+    const valueCounts = new Map();
+    ownerCompletedSessions.forEach((session) => {
+      normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
+        const value = String(fieldResolver(partition) || "").trim();
+        if (!value) {
+          return;
+        }
+        valueCounts.set(value, (valueCounts.get(value) || 0) + 1);
+      });
+    });
+    return [...valueCounts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 4);
+  };
+
+  const favoriteSources = getGrowerReportTopValues((partition) => partition.sourceDisplayName || partition.source);
+  const favoriteVarieties = getGrowerReportTopValues((partition) => partition.seedVarietyDisplayName || partition.seedVariety);
+  const latestSession = ownerCompletedSessions[0] || null;
+  const latestPublicSnapshot = currentUserPublicSnapshots[0] || null;
+  const publicVisibilityLabel = currentProfileSettings.showProfileInCommunityGrow !== false ? "Public" : "Private";
+  const statsVisibilityLabel = currentProfileSettings.showGrowStatsPublicly !== false ? "Public" : "Private";
+  const followerVisibilityLabel = currentProfileSettings.allowFollowers !== false ? "Followers enabled" : "Private";
+
+  const renderGrowerReportSparklineMarkup = (tone = "green") => `
+    <svg class="grower-report-stat-sparkline is-${escapeHtml(tone)}" viewBox="0 0 120 34" aria-hidden="true" focusable="false">
+      <path class="grower-report-stat-sparkline-fill" d="M4 28 L18 26 L32 20 L46 22 L60 15 L74 17 L88 11 L104 8 L116 5 L116 34 L4 34 Z"></path>
+      <polyline points="4,28 18,26 32,20 46,22 60,15 74,17 88,11 104,8 116,5"></polyline>
+      <circle cx="116" cy="5" r="3.2"></circle>
+    </svg>
+  `;
+
+  const renderGrowerReportMetricCardMarkup = (stat) => `
+    <article class="grower-report-stat-card is-${escapeHtml(stat.tone || "green")}" style="--grower-report-progress: ${Math.max(0, Math.min(100, Number(stat.progress) || 0))}%">
+      <div class="grower-report-stat-card-head">
+        <span class="grower-report-stat-icon" aria-hidden="true">
+          ${renderAppIconSvgMarkup(stat.icon || "chart")}
+        </span>
+        <div>
+          <strong>${escapeHtml(stat.value)}</strong>
+          <span>${escapeHtml(stat.label)}</span>
+        </div>
+      </div>
+      <p>${escapeHtml(stat.detail)}</p>
+      <div class="grower-report-stat-progress" aria-hidden="true"><i></i></div>
+      ${renderGrowerReportSparklineMarkup(stat.tone || "green")}
+    </article>
+  `;
+
+  const renderGrowerReportValueRowsMarkup = (rows = [], fallback = "More data appears as sessions are completed.") => {
+    if (!rows.length) {
+      return `<p class="grower-report-module-empty">${escapeHtml(fallback)}</p>`;
+    }
+    return `
+      <div class="grower-report-mini-list">
+        ${rows.map(([label, count]) => `
+          <div class="grower-report-mini-row">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(getProfileAnalyticsCountLabel(count))}</strong>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  };
+
+  const renderGrowerReportSessionRowsMarkup = (sessions = []) => {
+    const visibleSessions = sessions.slice(0, 4);
+    if (!visibleSessions.length) {
+      return `<p class="grower-report-module-empty">Complete a session to begin building your Grower Report history.</p>`;
+    }
+    return `
+      <div class="grower-report-mini-list">
+        ${visibleSessions.map((session) => {
+          const totals = getSessionSeedTotals(session);
+          const sessionRate = getProfileAnalyticsSessionRate(session);
+          const sessionTitle = String(session?.name || session?.sessionName || session?.source || "Grow Session").trim();
+          return `
+            <a class="grower-report-mini-row is-link" href="${escapeHtml(buildNotificationSessionActionRoute(session?.id || ""))}">
+              <span>${escapeHtml(sessionTitle)}</span>
+              <strong>${escapeHtml(getProfileAnalyticsRateLabel(sessionRate, `${getProfileAnalyticsCountLabel(totals.totalPlanted)}/${getProfileAnalyticsCountLabel(totals.totalSeeds)}`))}</strong>
+            </a>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
+
+  const renderGrowerReportModuleMarkup = ({
+    title = "",
+    eyebrow = "",
+    icon = "chart",
+    description = "",
+    body = "",
+    open = false,
+  } = {}) => `
+    <details class="grower-report-module" ${open ? "open" : ""}>
+      <summary>
+        <span class="grower-report-module-icon" aria-hidden="true">${renderAppIconSvgMarkup(icon)}</span>
+        <span>
+          ${eyebrow ? `<em>${escapeHtml(eyebrow)}</em>` : ""}
+          <strong>${escapeHtml(title)}</strong>
+          ${description ? `<small>${escapeHtml(description)}</small>` : ""}
+        </span>
+        <i aria-hidden="true">+</i>
+      </summary>
+      <div class="grower-report-module-body">
+        ${body}
+      </div>
+    </details>
+  `;
+
+  const growerReportModules = [
+    renderGrowerReportModuleMarkup({
+      title: "Performance",
+      eyebrow: "Report Module",
+      icon: "chart",
+      description: "Completed sessions, germination evidence, and consistency signals.",
+      open: true,
+      body: `
+        <div class="grower-report-module-metrics">
+          <span><strong>${escapeHtml(averageGerminationLabel)}</strong><small>Average success</small></span>
+          <span><strong>${escapeHtml(getProfileAnalyticsRateLabel(ownerAnalytics.bestGerminationRate, "Pending"))}</strong><small>Best result</small></span>
+          <span><strong>${escapeHtml(formatDurationMsShort(ownerAnalytics.averageSessionDurationMs) || "Pending")}</strong><small>Average duration</small></span>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Activity Timeline",
+      eyebrow: "Report Module",
+      icon: "activeSessionWaveform",
+      description: "A compact history of session and contribution milestones.",
+      body: `
+        <div class="grower-report-timeline">
+          <span><i></i><strong>Member since</strong><small>${escapeHtml(memberSinceLabel)}</small></span>
+          <span><i></i><strong>First completed session</strong><small>${escapeHtml(ownerCompletedSessions.length ? formatProfileActivityDateLabel(ownerCompletedSessions[ownerCompletedSessions.length - 1]?.completedAt || ownerCompletedSessions[ownerCompletedSessions.length - 1]?.createdAt || "") : "Not available yet")}</small></span>
+          <span><i></i><strong>Latest public contribution</strong><small>${escapeHtml(latestPublicSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(latestPublicSnapshot)) : "No public contributions yet")}</small></span>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Favorite Sources",
+      eyebrow: "Report Module",
+      icon: "sourceDirectoryBars",
+      description: "Sources appearing most often in completed sessions.",
+      body: renderGrowerReportValueRowsMarkup(favoriteSources, "Favorite sources appear after completed sessions are recorded."),
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Favorite Varieties",
+      eyebrow: "Report Module",
+      icon: "seedSprout",
+      description: "Varieties appearing most often in completed sessions.",
+      body: renderGrowerReportValueRowsMarkup(favoriteVarieties, "Favorite varieties appear after completed sessions are recorded."),
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Session Statistics",
+      eyebrow: "Report Module",
+      icon: "leaderboard",
+      description: "Private analytics that can power future public report modules.",
+      body: `
+        <div class="grower-report-module-metrics">
+          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(ownerAnalytics.totalSessions))}</strong><small>Total sessions</small></span>
+          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(ownerAnalytics.activeSessions))}</strong><small>Active sessions</small></span>
+          <span><strong>${escapeHtml(getProfileAnalyticsRateLabel(ownerAnalytics.completionRate, "Pending"))}</strong><small>Completion rate</small></span>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Community Contributions",
+      eyebrow: "Report Module",
+      icon: "communityGroup",
+      description: "Public evidence shared with the Grow community.",
+      body: `
+        <div class="grower-report-module-metrics">
+          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(totalCommunityContributions))}</strong><small>Public reports</small></span>
+          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(likesReceivedCount))}</strong><small>Likes received</small></span>
+          <span><strong>${escapeHtml(publicVisibilityLabel)}</strong><small>Profile visibility</small></span>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Achievements",
+      eyebrow: "Future Ready",
+      icon: "sourceTrustStar",
+      description: "Recognition badges will attach to profiles and Grow Cards.",
+      body: `
+        <div class="grower-report-pill-list">
+          <span>${ownerAnalytics.completedSessions ? "First Session Completed" : "First Session Pending"}</span>
+          <span>${Number(ownerAnalytics.averageGerminationRate) >= 90 ? "Reliable Results" : "Reliable Results Preview"}</span>
+          <span>${totalCommunityContributions ? "Community Contributor" : "Community Contributor Preview"}</span>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Gallery",
+      eyebrow: "Report Module",
+      icon: "uploadImage",
+      description: "Public grow evidence and profile media will live here.",
+      body: latestPublicSnapshot
+        ? `<p class="grower-report-module-empty">Latest public contribution: ${escapeHtml(latestPublicSnapshot.title || latestPublicSnapshot.name || "Community Grow report")}</p>`
+        : `<p class="grower-report-module-empty">Publish a Community Grow report to start building your gallery.</p>`,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Vault Summary",
+      eyebrow: "Private Module",
+      icon: "seedVault",
+      description: "Future public-safe seed vault summaries without exposing inventory details.",
+      body: `<p class="grower-report-module-empty">Vault summaries will surface aggregate seed intelligence while keeping private storage data protected.</p>`,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Grow Map",
+      eyebrow: "Future Ready",
+      icon: "growNetworkNodes",
+      description: "Regional evidence and optional public location signals.",
+      body: `<p class="grower-report-module-empty">Location visibility: ${escapeHtml(locationLabel)}. Future maps will respect Public, Followers, and Private controls.</p>`,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Recent Sessions",
+      eyebrow: "Report Module",
+      icon: "reportDocument",
+      description: "Recent completed sessions that power this report.",
+      body: renderGrowerReportSessionRowsMarkup(ownerCompletedSessions),
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Theme Studio",
+      eyebrow: "Architecture",
+      icon: "settingsGear",
+      description: "Profile themes are prepared for color, pattern, texture, and intensity.",
+      body: `
+        <div class="grower-report-theme-grid">
+          <span><strong>Color</strong><small>${escapeHtml(normalizeSeedVaultTheme(currentProfileSettings.vaultTheme))}</small></span>
+          <span><strong>Pattern</strong><small>Minimal</small></span>
+          <span><strong>Texture</strong><small>Dark glass</small></span>
+          <span><strong>Intensity</strong><small>Balanced</small></span>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Public Profile & Visibility",
+      eyebrow: "Architecture",
+      icon: "profileUser",
+      description: "Identity is separate from account settings, with no email or password exposed.",
+      body: `
+        <div class="grower-report-privacy-grid">
+          <span><strong>Profile</strong><small>${escapeHtml(publicVisibilityLabel)}</small></span>
+          <span><strong>Stats</strong><small>${escapeHtml(statsVisibilityLabel)}</small></span>
+          <span><strong>Connections</strong><small>${escapeHtml(followerVisibilityLabel)}</small></span>
+        </div>
+        <p class="grower-report-module-empty">Allowed social links: Instagram, TikTok, YouTube, Facebook, Discord, Threads, X, and LinkedIn. Website and shop links remain reserved for verified Source Profiles.</p>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Collections & Official Profiles",
+      eyebrow: "Future Architecture",
+      icon: "growNetworkNodes",
+      description: "Grow Cards, source claims, and managed redirects can build on this identity layer.",
+      body: `<p class="grower-report-module-empty">Future collections can support Growers, Sources, Varieties, Methods, and Achievements. Official Source Profiles will use administrator-managed website and shop redirects.</p>`,
+    }),
+  ].join("");
+
   const renderFollowingListMarkup = () => {
     if (isLoadingFollowing) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>Loading your Grow Network...</p>
+          <p>Loading your profile network...</p>
         </div>
       `;
     }
@@ -85874,7 +86239,7 @@ function renderGrowNetworkPage() {
     if (appState.growNetworkFollowingError) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>Follow members to build your Grow Network.</p>
+          <p>Follow members to build your community connections.</p>
         </div>
       `;
     }
@@ -85883,7 +86248,7 @@ function renderGrowNetworkPage() {
       if (!mockMembers.length) {
         return `
           <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-            <p>Follow members to build your Grow Network.</p>
+            <p>Follow members to build your community connections.</p>
           </div>
         `;
       }
@@ -85923,7 +86288,7 @@ function renderGrowNetworkPage() {
     if (!followingEntries.length) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>Follow members to build your Grow Network.</p>
+          <p>Follow members to build your community connections.</p>
         </div>
       `;
     }
@@ -85991,7 +86356,7 @@ function renderGrowNetworkPage() {
     if (hasNoFollows) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>Follow members to build your Grow Network.</p>
+          <p>Follow members to build your community connections.</p>
         </div>
       `;
     }
@@ -85999,7 +86364,7 @@ function renderGrowNetworkPage() {
     if (appState.growNetworkActivityError) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>No public activity from your Grow Network yet.</p>
+          <p>No public activity from your community connections yet.</p>
         </div>
       `;
     }
@@ -86007,7 +86372,7 @@ function renderGrowNetworkPage() {
     if (isLoadingNetworkActivity) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>Loading public activity from your Grow Network...</p>
+          <p>Loading public activity from your community connections...</p>
         </div>
       `;
     }
@@ -86015,7 +86380,7 @@ function renderGrowNetworkPage() {
     if (!activities.length) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
-          <p>No public activity from your Grow Network yet.</p>
+          <p>No public activity from your community connections yet.</p>
         </div>
       `;
     }
@@ -86068,7 +86433,7 @@ function renderGrowNetworkPage() {
     }
 
     return `
-      <div class="grow-network-notification-list" aria-label="Mock Grow Network notifications">
+      <div class="grow-network-notification-list" aria-label="Profile notifications">
         ${mockNotificationGroups.map((notificationGroup) => `
           <${notificationGroup.isGrouped ? "button" : "article"}
             ${notificationGroup.isGrouped ? 'type="button"' : ""}
@@ -86116,18 +86481,19 @@ function renderGrowNetworkPage() {
       <div class="grow-network-page-heading">
         <div class="grow-network-page-header">
           <div class="grow-network-page-header-main">
-            ${renderAppSectionHeaderIcon("community")}
+            ${renderAppSectionHeaderIcon("members")}
             <div class="grow-network-page-copy">
-              <p class="eyebrow">Community</p>
-              <h2>Grow Network</h2>
-              <p class="muted">Follow members and see public grow activity from your network.</p>
+              <p class="eyebrow">Identity</p>
+              <h2>Profile</h2>
+              <p class="muted">Your Grower Report: performance, contribution, reputation, and community evidence.</p>
             </div>
           </div>
           <div class="grow-network-page-actions">
+            <a class="button button-secondary grow-network-hero-button" href="#profile">Account Settings</a>
             <a class="button button-secondary grow-network-hero-button" href="#gallery">Browse Community Grow</a>
           </div>
         </div>
-        <div class="grow-network-header-stats" aria-label="Grow Network quick stats">
+        <div class="grow-network-header-stats" aria-label="Profile quick stats">
           ${headerStats.map((stat) => `
             <article class="grow-network-header-stat">
               <strong>${escapeHtml(stat.value)}</strong>
@@ -86136,53 +86502,129 @@ function renderGrowNetworkPage() {
           `).join("")}
         </div>
       </div>
-      <div class="grow-network-layout">
-        <section class="grow-network-panel grow-network-panel--members grow-network-section">
-          ${renderMockTabsMarkup()}
-          <div class="grow-network-section-heading">
-            <div class="grow-network-panel-header">
-              <div class="grow-network-panel-icon" aria-hidden="true">
-                ${renderAppSectionHeaderIcon("following")}
+      <section class="grower-report-hero" aria-label="Grower Report hero">
+        <div class="grower-report-hero-cover" aria-hidden="true"></div>
+        <div class="grower-report-hero-main">
+          <div class="grower-report-identity">
+            <span class="grower-report-avatar-shell">
+              ${renderPublicMemberAvatarMarkup(growerDisplayName, growerAvatarUrl, "grower-report-avatar")}
+            </span>
+            <div class="grower-report-identity-copy">
+              <p class="eyebrow">Grower Report</p>
+              <h3>${escapeHtml(growerDisplayName)}</h3>
+              <div class="grower-report-meta-line">
+                <span>${escapeHtml(growTitle)}</span>
+                <span>Member since ${escapeHtml(memberSinceLabel)}</span>
+                <span>${escapeHtml(locationLabel)}</span>
               </div>
-              <div>
-                <p class="eyebrow">${escapeHtml(memberPanelCopy.eyebrow)}</p>
-                <h3>${escapeHtml(memberPanelCopy.title)}</h3>
-                <p class="muted grow-network-section-subtitle">${escapeHtml(memberPanelCopy.subtitle)}</p>
+              <p class="grower-report-hero-summary">A premium identity report built from sessions, seeds, community contributions, and future Grow Card collections.</p>
+              <div class="grower-report-badge-row">
+                <span>Public profile: ${escapeHtml(publicVisibilityLabel)}</span>
+                <span>Stats: ${escapeHtml(statsVisibilityLabel)}</span>
+                <span>${escapeHtml(growTitle)}</span>
               </div>
             </div>
           </div>
-          ${renderFollowingListMarkup()}
-          ${renderMembersFooterMarkup()}
-        </section>
-        <section class="grow-network-panel grow-network-panel--notifications grow-network-section">
-          <div class="grow-network-section-heading grow-network-section-heading--featured">
-            <div class="grow-network-panel-header">
-              <div class="grow-network-panel-icon" aria-hidden="true">
-                ${renderAppSectionHeaderIcon("activity")}
-              </div>
-              <div>
-                <p class="eyebrow">${escapeHtml(notificationPanelCopy.eyebrow)}</p>
-                <h3>${escapeHtml(notificationPanelCopy.title)}</h3>
-                <p class="muted grow-network-section-subtitle">${escapeHtml(notificationPanelCopy.subtitle)}</p>
+          <aside class="grower-report-score-card" aria-label="Overall Grow Score">
+            <span class="grower-report-score-ring" style="--grower-report-score: ${growScore}%">
+              <strong>${escapeHtml(String(growScore))}</strong>
+            </span>
+            <div>
+              <span>Overall Grow Score</span>
+              <p>Evidence-weighted signal from completed sessions and community contributions.</p>
+            </div>
+          </aside>
+        </div>
+        <div class="grower-report-hero-actions">
+          <button type="button" class="button button-secondary grower-report-card-action">Collect Grow Card</button>
+          <a class="button button-primary" href="#profile">Edit Public Profile</a>
+        </div>
+      </section>
+      <section class="grower-report-overview" aria-label="Grower Report overview">
+        ${growerReportOverviewStats.map(renderGrowerReportMetricCardMarkup).join("")}
+      </section>
+      <section class="grower-report-grow-card-panel" aria-label="Grow Card preview">
+        <div class="grower-report-grow-card-preview">
+          <span class="grower-report-grow-card-orb" aria-hidden="true">${renderAppIconSvgMarkup("sourceTrustStar")}</span>
+          <div>
+            <p class="eyebrow">Grow Card Preview</p>
+            <h3>${escapeHtml(growerDisplayName)}</h3>
+            <p>${escapeHtml(`${growTitle} · Score ${growScore} · ${getProfileAnalyticsCountLabel(ownerAnalytics.completedSessions)} completed sessions`)}</p>
+          </div>
+        </div>
+        <div class="grower-report-grow-card-actions">
+          <button type="button" class="button button-secondary">View Full Card</button>
+          <button type="button" class="button button-secondary grower-report-card-action">Collect Card</button>
+        </div>
+      </section>
+      <section class="grower-report-modules" aria-label="Grower Report modules">
+        <div class="grower-report-section-head">
+          <div>
+            <p class="eyebrow">Report Modules</p>
+            <h3>Grower Intelligence</h3>
+            <p class="muted">Expandable identity modules designed for performance, contribution, reputation, privacy, themes, and future collections.</p>
+          </div>
+        </div>
+        <div class="grower-report-module-grid">
+          ${growerReportModules}
+        </div>
+      </section>
+      <section class="grower-report-connections" aria-label="Community connections">
+        <div class="grower-report-section-head">
+          <div>
+            <p class="eyebrow">Community</p>
+            <h3>Community Connections</h3>
+            <p class="muted">Existing following, discovery, notifications, and activity remain available while Profile becomes the identity experience.</p>
+          </div>
+        </div>
+        <div class="grow-network-layout">
+          <section class="grow-network-panel grow-network-panel--members grow-network-section">
+            ${renderMockTabsMarkup()}
+            <div class="grow-network-section-heading">
+              <div class="grow-network-panel-header">
+                <div class="grow-network-panel-icon" aria-hidden="true">
+                  ${renderAppSectionHeaderIcon("following")}
+                </div>
+                <div>
+                  <p class="eyebrow">${escapeHtml(memberPanelCopy.eyebrow)}</p>
+                  <h3>${escapeHtml(memberPanelCopy.title)}</h3>
+                  <p class="muted grow-network-section-subtitle">${escapeHtml(memberPanelCopy.subtitle)}</p>
+                </div>
               </div>
             </div>
-            ${useMockNotifications ? `
-              <button
-                type="button"
-                class="button button-secondary grow-network-mark-read-button"
-                data-grow-network-mark-all-read="true"
-                ${unseenNotificationCount ? "" : "disabled"}
-              >
-                <span aria-hidden="true">✓</span>
-                <span>Mark all as read</span>
-              </button>
-            ` : ""}
-          </div>
-          ${useMockNotifications ? renderMockNotificationFeedMarkup() : renderActivityFeedMarkup()}
-          ${renderNotificationFooterMarkup()}
-        </section>
-      </div>
-      <div class="grow-network-stats-strip" aria-label="Grow Network highlights">
+            ${renderFollowingListMarkup()}
+            ${renderMembersFooterMarkup()}
+          </section>
+          <section class="grow-network-panel grow-network-panel--notifications grow-network-section">
+            <div class="grow-network-section-heading grow-network-section-heading--featured">
+              <div class="grow-network-panel-header">
+                <div class="grow-network-panel-icon" aria-hidden="true">
+                  ${renderAppSectionHeaderIcon("activity")}
+                </div>
+                <div>
+                  <p class="eyebrow">${escapeHtml(notificationPanelCopy.eyebrow)}</p>
+                  <h3>${escapeHtml(notificationPanelCopy.title)}</h3>
+                  <p class="muted grow-network-section-subtitle">${escapeHtml(notificationPanelCopy.subtitle)}</p>
+                </div>
+              </div>
+              ${useMockNotifications ? `
+                <button
+                  type="button"
+                  class="button button-secondary grow-network-mark-read-button"
+                  data-grow-network-mark-all-read="true"
+                  ${unseenNotificationCount ? "" : "disabled"}
+                >
+                  <span aria-hidden="true">✓</span>
+                  <span>Mark all as read</span>
+                </button>
+              ` : ""}
+            </div>
+            ${useMockNotifications ? renderMockNotificationFeedMarkup() : renderActivityFeedMarkup()}
+            ${renderNotificationFooterMarkup()}
+          </section>
+        </div>
+      </section>
+      <div class="grow-network-stats-strip" aria-label="Profile connection signals">
         ${growNetworkStats.map((stat) => `
           <article class="grow-network-stat-card">
             <div class="grow-network-stat-icon icon-${escapeHtml(stat.tone || "green")}" aria-hidden="true">
