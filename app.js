@@ -1451,7 +1451,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: true,
     supportsTimeline: true,
     supportsStageTracking: true,
+    supportsProgress: true,
     supportsFilterInventory: true,
+    defaultSessionStatus: "",
     defaultRowCount: 8,
     rowLabel: "Partition",
     chartEyebrow: "Partitions",
@@ -1468,7 +1470,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: true,
     supportsTimeline: true,
     supportsStageTracking: true,
+    supportsProgress: true,
     supportsFilterInventory: false,
+    defaultSessionStatus: "",
     defaultRowCount: 16,
     rowLabel: "Partition",
     chartEyebrow: "Partitions",
@@ -1485,7 +1489,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: false,
     supportsTimeline: false,
     supportsStageTracking: false,
+    supportsProgress: true,
     supportsFilterInventory: false,
+    defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
@@ -1502,7 +1508,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: false,
     supportsTimeline: false,
     supportsStageTracking: false,
+    supportsProgress: true,
     supportsFilterInventory: false,
+    defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
@@ -1519,7 +1527,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: false,
     supportsTimeline: false,
     supportsStageTracking: false,
+    supportsProgress: true,
     supportsFilterInventory: false,
+    defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
@@ -1536,7 +1546,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: false,
     supportsTimeline: false,
     supportsStageTracking: false,
+    supportsProgress: true,
     supportsFilterInventory: false,
+    defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
@@ -1553,7 +1565,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsPartitions: false,
     supportsTimeline: false,
     supportsStageTracking: false,
+    supportsProgress: true,
     supportsFilterInventory: false,
+    defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
     chartEyebrow: "Custom Method",
@@ -1612,6 +1626,11 @@ function getMethodConfig(value = "") {
   return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
 }
 
+function getMethodDefaultSessionStatus(methodType = "") {
+  const method = getMethodConfig(methodType);
+  return method.defaultSessionStatus || "";
+}
+
 function getSessionMethodType(session = null) {
   return normalizeMethodType(
     session?.methodType
@@ -1620,6 +1639,15 @@ function getSessionMethodType(session = null) {
     || session?.system_type
     || "KAN",
   );
+}
+
+function getMethodSessionStatusLabel(status = "", methodType = "") {
+  const method = getMethodConfig(methodType);
+  const normalizedStatus = normalizeSessionStatus(status);
+  if (!method.supportsStageTracking) {
+    return normalizedStatus === "completed" ? "Completed" : "Active";
+  }
+  return capitalize(normalizedStatus).replace("Unselected", "Not started");
 }
 
 function formatMethodTypeLabel(value = "") {
@@ -81151,6 +81179,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   };
   renderFormSuppliesCard();
   updateMethodTypeLayout(form, systemTypeField.value);
+  updateMethodTypeLayout(app, systemTypeField.value);
   updateSessionStatusReminder(
     reminder,
     form.elements.date.value,
@@ -81417,6 +81446,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         setFeedbackMessage(notesMessage, "");
       }
       updateMethodTypeLayout(form, nextMethod);
+      updateMethodTypeLayout(app, nextMethod);
       renderSystemLayoutReference(layoutReference, nextMethod);
       if (partitionWorkTitle) {
         updatePartitionWorkHeading(partitionWorkTitle, nextMethod);
@@ -81643,8 +81673,13 @@ function renderSessionForm(initialSystemType = "KAN") {
     }
     const createdAt = new Date().toISOString();
     const sessionStartedAt = parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString() || createdAt;
-    const normalizedInitialStatus = normalizeSessionStatus(formData.get("sessionStatus"));
-    const soakStartedAt = getInitialSoakStartedAt(sessionStartedAt, createdAt, normalizedInitialStatus);
+    const selectedMethod = getMethodConfig(formData.get("systemType"));
+    const normalizedInitialStatus = selectedMethod.supportsStageTracking
+      ? normalizeSessionStatus(formData.get("sessionStatus"))
+      : getMethodDefaultSessionStatus(selectedMethod.id);
+    const soakStartedAt = selectedMethod.supportsStageTracking
+      ? getInitialSoakStartedAt(sessionStartedAt, createdAt, normalizedInitialStatus)
+      : "";
     const rawUnitId = String(formData.get("unitId") || "").trim();
     const normalizedUnitId = normalizeUnitIdValue(formData.get("unitId"));
     const session = {
@@ -81670,14 +81705,14 @@ function renderSessionForm(initialSystemType = "KAN") {
       sessionNotes: String(formData.get("sessionNotes") || "").trim(),
       sessionImages: [],
       snapshotState: normalizePersistedSessionSnapshotState(snapshotSection?.__snapshotState?.pendingSnapshotState),
-      sessionStatus: formData.get("sessionStatus") || "soaking",
+      sessionStatus: normalizedInitialStatus || "soaking",
       germinationStartedAt:
         normalizedInitialStatus === "germinating"
           ? form.dataset.germinationStartedAt || new Date().toISOString()
           : "",
       firstPlantedAt: form.dataset.firstPlantedAt || "",
       completedAt:
-        formData.get("sessionStatus") === "completed"
+        normalizedInitialStatus === "completed"
           ? form.dataset.completedAt || new Date().toISOString()
           : form.dataset.completedAt || "",
       seedAgeTrackingEnabled: seedAgeState.trackingEnabled,
@@ -81688,7 +81723,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       createdAt,
       sessionStartedAt,
       soakStartedAt,
-      timerStartAt: soakStartedAt,
+      timerStartAt: selectedMethod.supportsStageTracking ? soakStartedAt : "",
     };
     const requestedCompleted = normalizeSessionStatus(session.sessionStatus || "") === "completed";
     if (requestedCompleted && !areSessionSeedResultsFullyAccountedFor(session)) {
@@ -81704,6 +81739,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       completedAt: session.completedAt,
     }, {
       requireCompleted: normalizeSessionStatus(session.sessionStatus || "") === "completed",
+      requireSoakStarted: selectedMethod.supportsStageTracking,
     });
     if (!timelineValidation.isValid) {
       formMessage.textContent = timelineValidation.message;
@@ -82999,7 +83035,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
       showSeedAgeField,
       seedAgeReadOnly,
       shouldShowSeedAgeInput: (partition) => shouldShowPartitionSeedAgeFieldForPartition(partition),
-      includeGerminationFields: method.supportsStageTracking,
+      includeGerminationFields: method.supportsProgress !== false,
       rowLabel: method.rowLabel,
     });
   } else {
@@ -83008,7 +83044,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
         showSeedAgeField,
         showSeedAgeInput: showSeedAgeField && shouldShowPartitionSeedAgeFieldForPartition(partition),
         seedAgeReadOnly,
-        includeGerminationFields: method.supportsStageTracking,
+        includeGerminationFields: method.supportsProgress !== false,
         rowLabel: method.rowLabel,
       }));
       hydratePartitionRow(partitionFields.lastElementChild, partition);
@@ -83066,9 +83102,9 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   const selectedMethod = getMethodConfig(selectedMethodType);
   const usesCustomMethodWorkflow = selectedMethod && selectedMethod.isStandardized === false;
   const isUnselected = normalizedStatus === "unselected";
-  const allowFullEditing = usesCustomMethodWorkflow || normalizedStatus === "soaking" || isUnselected;
+  const isCompleted = normalizedStatus === "completed";
+  const allowFullEditing = (usesCustomMethodWorkflow && !isCompleted) || normalizedStatus === "soaking" || isUnselected;
   const allowGerminationOnlyEditing = !usesCustomMethodWorkflow && normalizedStatus === "germinating";
-  const isCompleted = !usesCustomMethodWorkflow && normalizedStatus === "completed";
   const allowAnyEditing = allowFullEditing || allowGerminationOnlyEditing;
 
   const saveButtons = [
@@ -83443,6 +83479,16 @@ function getSessionStatusVisualState(control) {
   };
 
   switch (effectiveStage) {
+    case "active":
+      return {
+        normalizedStatus,
+        progressKey,
+        tone: "active",
+        label: "Active",
+        helperText: "Custom method session in progress",
+        iconKey: "",
+        timestampLabel: "",
+      };
     case "soaking":
       {
         const startedAtValue = control?.dataset?.[timestampKeyByStage.soaking] || "";
@@ -83565,6 +83611,23 @@ function updatePartitionWorkHeading(titleElement, systemType) {
   }
 }
 
+function updateMethodProgressHeading(scope, method) {
+  if (!scope || !method) {
+    return;
+  }
+
+  const headingText = method.isStandardized
+    ? "Germination progress by partition"
+    : "Germination progress by seed row";
+  const selectors = [
+    "#partition-progress-title span",
+    "#detail-progress-title",
+  ];
+  scope.querySelectorAll(selectors.join(", ")).forEach((element) => {
+    element.textContent = headingText;
+  });
+}
+
 function syncMethodChartHeader(chartHeader, methodType = "") {
   if (!chartHeader) {
     return;
@@ -83597,8 +83660,11 @@ function updateMethodTypeLayout(scope, methodType = "") {
   }
 
   const statusField = scope.elements?.sessionStatus || scope.querySelector("#session-status-control, #detail-session-status-control");
-  if (!method.supportsStageTracking && statusField && !String(statusField.value || "").trim()) {
-    statusField.value = "custom";
+  if (!method.supportsStageTracking && statusField) {
+    const currentStatus = normalizeSessionStatus(statusField.value || "");
+    if (currentStatus !== "completed") {
+      statusField.value = getMethodDefaultSessionStatus(method.id);
+    }
   }
 
   scope.querySelectorAll(".system-layout-block").forEach((element) => {
@@ -83611,7 +83677,7 @@ function updateMethodTypeLayout(scope, methodType = "") {
     element.hidden = !method.supportsTimeline;
   });
   scope.querySelectorAll("#partition-progress-section, #detail-progress-section, #run-progress-section, #detail-run-progress-section").forEach((element) => {
-    element.hidden = !method.supportsStageTracking;
+    element.hidden = method.supportsProgress === false;
   });
   scope.querySelectorAll("#session-lifecycle-supplies-anchor, #detail-supplies-anchor").forEach((element) => {
     element.hidden = !method.supportsFilterInventory;
@@ -83635,6 +83701,7 @@ function updateMethodTypeLayout(scope, methodType = "") {
   });
   syncMethodChartHeader(scope.querySelector("#partition-chart-header, #detail-chart-header"), method.id);
   updatePartitionWorkHeading(scope.querySelector("#partition-work-title, #detail-partition-work-title"), method.id);
+  updateMethodProgressHeading(scope, method);
 }
 
 function openGrowthStageModal({ stageField, stageTrigger, message = "", focusStageOptions = false } = {}) {
@@ -85548,6 +85615,8 @@ function getSessionDetailElements(scope = document) {
     publicGrowNoteModeInputs: [...scope.querySelectorAll('input[name="detailPublicGrowNoteMode"]')],
     saveShortcutButton: scope.querySelector("#detail-save-shortcut"),
     actionStageTrigger: scope.querySelector("[data-detail-stage-progress-trigger]"),
+    customCompletionActions: scope.querySelector("[data-custom-method-completion-actions]"),
+    customCompleteButton: scope.querySelector("#detail-mark-custom-complete"),
     saveButton: scope.querySelector("#detail-save-session"),
     saveMessage: scope.querySelector("#detail-save-message"),
     imageSection: scope.querySelector(".session-images-section"),
@@ -85685,7 +85754,7 @@ function buildSessionDetailMetaCards(session = null) {
   const seedAgeMetadata = getSessionSeedAgeMetadata(session);
   const method = getMethodConfig(getSessionMethodType(session));
   const cards = [
-    { label: "Status", value: capitalize(normalizeSessionStatus(session?.sessionStatus || "")).replace("Unselected", "Not started") },
+    { label: "Status", value: getMethodSessionStatusLabel(session?.sessionStatus || "", method.id) },
     { label: "Method Type", value: session ? method.name : "Not set" },
     { label: "Date", value: session?.date || "Not set" },
     { label: "Time", value: formatStoredTime(session?.time || "") || "Not set" },
@@ -86125,7 +86194,7 @@ function renderSessionDetail(sessionId) {
       detail.sessionSequenceLabel.hidden = true;
     }
   }
-  detail.statusField.value = session.sessionStatus || (sessionMethod.supportsStageTracking ? "soaking" : "custom");
+  detail.statusField.value = session.sessionStatus || (sessionMethod.supportsStageTracking ? "soaking" : getMethodDefaultSessionStatus(sessionMethod.id));
   syncSessionStatusControlDatasets(detail.statusField, {
     startedAt: getSessionStatusStartedAtValue(session),
     germinationStartedAt: session.germinationStartedAt || "",
@@ -86147,6 +86216,17 @@ function renderSessionDetail(sessionId) {
     });
     detail.seedAgeForm.hidden = !visible;
     return visible;
+  };
+  const syncCustomCompletionAction = () => {
+    if (!detail.customCompletionActions) {
+      return;
+    }
+    const isCustomMethod = !sessionMethod.supportsStageTracking;
+    const isCompleted = normalizeSessionStatus(detail.statusField?.value || session.sessionStatus || "") === "completed";
+    detail.customCompletionActions.hidden = !isCustomMethod || isCompleted;
+    if (detail.customCompleteButton) {
+      detail.customCompleteButton.disabled = !isCustomMethod || isCompleted;
+    }
   };
   initializeSessionImageState(detail.imageSection, {
     input: detail.imageInput,
@@ -86206,6 +86286,7 @@ function renderSessionDetail(sessionId) {
   });
   updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
   syncDetailSeedAgeVisibility();
+  syncCustomCompletionAction();
   updateSessionStatusReminder(
     detail.statusReminder,
     session.date,
@@ -86237,7 +86318,7 @@ function renderSessionDetail(sessionId) {
           displayIndex: partition.displayIndex,
           showSeedAgeField: currentSeedAgeMetadata.trackingEnabled,
           session,
-          includeGerminationFields: sessionMethod.supportsStageTracking,
+          includeGerminationFields: sessionMethod.supportsProgress !== false,
           rowLabel: sessionMethod.rowLabel,
         }));
       });
@@ -86247,7 +86328,7 @@ function renderSessionDetail(sessionId) {
           showSeedAgeField: currentSeedAgeMetadata.trackingEnabled,
           showSeedAgeInput: currentSeedAgeMetadata.trackingEnabled && shouldShowPartitionSeedAgeFieldForPartition(partition),
           seedAgeReadOnly: currentSeedAgeMetadata.mode === "same",
-          includeGerminationFields: sessionMethod.supportsStageTracking,
+          includeGerminationFields: sessionMethod.supportsProgress !== false,
           rowLabel: sessionMethod.rowLabel,
         }));
         hydratePartitionRow(partitions.lastElementChild, partition);
@@ -86277,7 +86358,9 @@ function renderSessionDetail(sessionId) {
           validatePartitionRow(row);
           applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
           syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
-          captureFirstPlantedEventForSession(session);
+          if (sessionMethod.supportsStageTracking) {
+            captureFirstPlantedEventForSession(session);
+          }
           syncSessionStatusControlDatasets(detail.statusField, {
             startedAt: getSessionStatusStartedAtValue(session),
             germinationStartedAt: session.germinationStartedAt || "",
@@ -86295,7 +86378,9 @@ function renderSessionDetail(sessionId) {
           validatePartitionRow(row);
           applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
           syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
-          captureFirstPlantedEventForSession(session);
+          if (sessionMethod.supportsStageTracking) {
+            captureFirstPlantedEventForSession(session);
+          }
           syncSessionStatusControlDatasets(detail.statusField, {
             startedAt: getSessionStatusStartedAtValue(session),
             germinationStartedAt: session.germinationStartedAt || "",
@@ -86330,7 +86415,7 @@ function renderSessionDetail(sessionId) {
   const refreshDetailDerivedViews = () => {
     const progressPartitions = normalizeSessionStatus(detail.statusField.value) === "completed"
       ? getCompletedSessionDisplayPartitions(session.partitions, session).map((partition) => ({
-        id: partition.displayIndex,
+        id: Number(partition.id) || partition.displayIndex,
         seedCount: Number(partition.seedCount) || 0,
         plantedCount: Number(partition.plantedCount) || 0,
       }))
@@ -86343,6 +86428,7 @@ function renderSessionDetail(sessionId) {
       progressPartitions,
       detail.progressChart,
       detail.progressSection,
+      { methodType: sessionMethod.id },
     );
     updateSessionTimingSummary(
       detail.timingSummary,
@@ -86384,6 +86470,7 @@ function renderSessionDetail(sessionId) {
     );
     renderDetailSuppliesCard();
     updateMethodTypeLayout(app, sessionMethod.id);
+    syncCustomCompletionAction();
   };
   const refreshDetailUnsavedChanges = () => {
     refreshUnsavedChangesState();
@@ -86602,7 +86689,11 @@ function renderSessionDetail(sessionId) {
     }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
-    captureFirstPlantedEventForSession(session);
+    if (sessionMethod.supportsStageTracking) {
+      captureFirstPlantedEventForSession(session);
+    } else if (normalizeSessionStatus(session.sessionStatus || "") !== "completed") {
+      session.sessionStatus = getMethodDefaultSessionStatus(sessionMethod.id);
+    }
     session.sessionNotes = detail.notesField.value.trim();
     session.snapshotState = normalizePersistedSessionSnapshotState(detail.snapshotSection?.__snapshotState?.pendingSnapshotState);
     setFeedbackMessage(detail.saveMessage, "");
@@ -86644,7 +86735,7 @@ function renderSessionDetail(sessionId) {
         persist: normalizeSessionStatus(savedSession.sessionStatus || "") === "completed",
       });
       await refreshUserSessionsAfterSave("session-detail:save");
-      detail.statusField.value = session.sessionStatus || "soaking";
+      detail.statusField.value = session.sessionStatus || (sessionMethod.supportsStageTracking ? "soaking" : getMethodDefaultSessionStatus(sessionMethod.id));
       syncSessionStatusControlDatasets(detail.statusField, {
         startedAt: getSessionStatusStartedAtValue(session),
         germinationStartedAt: session.germinationStartedAt || "",
@@ -86668,6 +86759,60 @@ function renderSessionDetail(sessionId) {
     return savedSession;
   };
 
+  const completeCustomMethodSession = async () => {
+    if (sessionMethod.supportsStageTracking || normalizeSessionStatus(session.sessionStatus || "") === "completed") {
+      return null;
+    }
+
+    const previousStatus = session.sessionStatus || getMethodDefaultSessionStatus(sessionMethod.id);
+    const previousCompletedAt = session.completedAt || "";
+    applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
+    syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
+    if (!areSessionSeedResultsFullyAccountedFor(session)) {
+      showSessionCompletionResultsWarning(detail.saveMessage);
+      return null;
+    }
+
+    const completedAt = new Date().toISOString();
+    session.sessionStatus = "completed";
+    session.completedAt = completedAt;
+    detail.statusField.value = "completed";
+    syncSessionStatusControlDatasets(detail.statusField, {
+      startedAt: getSessionStatusStartedAtValue(session),
+      germinationStartedAt: "",
+      firstPlantedAt: "",
+      completedAt,
+    });
+    updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+    syncSessionDetailHeaderMeta(detail, session);
+    renderDetailPartitions();
+    bindDetailPartitionInputListeners();
+    applyStageEditingMode(app, detail.statusField.value);
+    refreshDetailDerivedViews();
+
+    const savedSession = await persistDetailSession();
+    if (!savedSession) {
+      session.sessionStatus = previousStatus;
+      session.completedAt = previousCompletedAt;
+      detail.statusField.value = previousStatus;
+      syncSessionStatusControlDatasets(detail.statusField, {
+        startedAt: getSessionStatusStartedAtValue(session),
+        germinationStartedAt: session.germinationStartedAt || "",
+        firstPlantedAt: session.firstPlantedAt || "",
+        completedAt: session.completedAt || "",
+      });
+      renderDetailPartitions();
+      bindDetailPartitionInputListeners();
+      applyStageEditingMode(app, detail.statusField.value);
+      refreshDetailDerivedViews();
+      syncSessionDetailHeaderMeta(detail, session);
+      return null;
+    }
+
+    setFeedbackMessage(detail.saveMessage, "Session completed.", "success");
+    return savedSession;
+  };
+
   registerUnsavedChangesContext({
     pageHash: appState.currentRouteHash,
     contextType: "session",
@@ -86684,6 +86829,7 @@ function renderSessionDetail(sessionId) {
 
   detail.saveShortcutButton?.addEventListener("click", persistDetailSession);
   detail.saveButton?.addEventListener("click", persistDetailSession);
+  detail.customCompleteButton?.addEventListener("click", completeCustomMethodSession);
   detail.detailsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     await persistDetailSession();
@@ -86879,7 +87025,7 @@ function renderSessionCollection(container, sessions, options) {
   sessions.forEach((session) => {
     const resultSummary = getSessionResultSummary(session);
     const successLabel = formatSessionSuccessLabel(session);
-    const stageLabel = capitalize(normalizeSessionStatus(session.sessionStatus)).replace("Unselected", "Not started");
+    const stageLabel = getMethodSessionStatusLabel(session.sessionStatus, getSessionMethodType(session));
     const mixedResultContext = resultSummary.mixedContext.isMixedSession
       ? resultSummary.sourceGroups.slice(0, 3).map((group) => `${group.label}: ${group.percentageLabel}`).join(" / ")
       : "";
@@ -87264,8 +87410,9 @@ function addPartitionResultToGroup(group, partitionResult) {
   group.percentageLabel = group.percentage === null ? "N/A" : `${group.percentage}%`;
 }
 
-function getSessionResultSummary(session = null) {
+function getSessionResultSummary(session = null, options = {}) {
   const normalizedSession = normalizeStoredSession(session) || session || {};
+  const method = getMethodConfig(options.methodType || getSessionMethodType(normalizedSession));
   const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
   const sourceGroups = new Map();
   const varietyGroups = new Map();
@@ -87313,11 +87460,12 @@ function getSessionResultSummary(session = null) {
       varietyKeys.add(varietyKey);
     }
 
+    const partitionNumber = Number(partition.id) || index + 1;
     const result = {
-      id: Number(partition.id) || index + 1,
+      id: partitionNumber,
       index,
-      label: `P${Number(partition.id) || index + 1}`,
-      displayLabel: `Partition ${Number(partition.id) || index + 1}`,
+      label: method.isStandardized ? `P${partitionNumber}` : `Row ${partitionNumber}`,
+      displayLabel: method.isStandardized ? `Partition ${partitionNumber}` : `Seed Row ${partitionNumber}`,
       source: sourceLabel,
       sourceLabel: sourceLabel || "Not shared",
       sourceKey,
@@ -87423,6 +87571,9 @@ function areSessionSeedResultsFullyAccountedFor(session = null) {
 
 function autoCompleteSessionWhenResultsAccounted(session = null, referenceDate = new Date()) {
   if (!session || normalizeSessionStatus(session.sessionStatus || "") === "completed") {
+    return false;
+  }
+  if (!getMethodConfig(getSessionMethodType(session)).supportsStageTracking) {
     return false;
   }
   if (!areSessionSeedResultsFullyAccountedFor(session)) {
@@ -88636,6 +88787,9 @@ function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionS
 
 function normalizeSessionStatus(sessionStatus) {
   const normalizedStatus = String(sessionStatus || "").trim().toLowerCase();
+  if (normalizedStatus === "custom") {
+    return "active";
+  }
   return normalizedStatus || "unselected";
 }
 
@@ -89623,16 +89777,20 @@ function getPartitionProgressDataFromForm(form) {
   return [...form.querySelectorAll(".partition-row")].map((row, index) => ({
     id: Number(row.dataset.partitionId) || index + 1,
     seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
-    plantedCount: Number(row.querySelector('input[name="plantedCount"]')?.value) || 0,
+    plantedCount: row.querySelector('input[name="plantedCount"]')?.value ?? "",
   }));
 }
 
-function updatePartitionProgressChart(partitions, chartElement, sectionElement) {
+function updatePartitionProgressChart(partitions, chartElement, sectionElement, options = {}) {
   if (!chartElement || !sectionElement) {
     return;
   }
 
-  const items = getSessionResultSummary({ partitions }).partitions.filter((partition) => partition.hasSeeds || partition.hasResultValue);
+  const methodType = options.methodType
+    || sectionElement.closest?.("[data-method-type]")?.dataset?.methodType
+    || chartElement.closest?.("[data-method-type]")?.dataset?.methodType
+    || "";
+  const items = getSessionResultSummary({ partitions, methodType }).partitions.filter((partition) => partition.hasSeeds || partition.hasResultValue);
 
   if (!items.length) {
     chartElement.innerHTML = "";
@@ -89662,6 +89820,11 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
 
 function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = "", timerStartAt = "", options = {}) {
   if (!summaryElement || !sectionElement) {
+    return;
+  }
+  if (sectionElement.closest('[data-method-standardized="false"]')) {
+    summaryElement.innerHTML = "";
+    sectionElement.hidden = true;
     return;
   }
 
@@ -89747,6 +89910,11 @@ function getRunProgressGradient(progressPercent) {
 
 function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
   if (!summaryElement || !sectionElement) {
+    return;
+  }
+  if (sectionElement.closest('[data-method-standardized="false"]')) {
+    summaryElement.innerHTML = "";
+    sectionElement.hidden = true;
     return;
   }
 

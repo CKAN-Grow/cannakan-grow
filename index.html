@@ -728,8 +728,8 @@
               <span>Sex</span>
               <span data-partition-header="seeds"># of Seeds</span>
               <span data-partition-header="age" data-seed-age-header hidden>Age</span>
-              <span data-partition-header="germinated" data-standardized-method-only># Germinated</span>
-              <span data-partition-header="success" data-standardized-method-only>Success %</span>
+              <span data-partition-header="germinated"># Germinated</span>
+              <span data-partition-header="success">Success %</span>
             </div>
             <div id="partition-fields" class="partition-table"></div>
           </div>
@@ -1270,12 +1270,20 @@
             <span>Sex</span>
             <span data-partition-header="seeds"># of Seeds</span>
             <span data-partition-header="age" data-seed-age-header hidden>Age</span>
-            <span data-partition-header="germinated" data-standardized-method-only># Germinated</span>
-            <span data-partition-header="success" data-standardized-method-only>Success %</span>
+            <span data-partition-header="germinated"># Germinated</span>
+            <span data-partition-header="success">Success %</span>
           </div>
           <div id="detail-partitions" class="partition-table"></div>
         </div>
-        <div class="timeline-save-shortcut session-glass-panel detail-session-action-bar">
+        <div class="custom-method-completion-actions session-glass-panel" data-custom-method-completion-actions hidden>
+          <div>
+            <p class="eyebrow">Custom Method</p>
+            <h4>Ready to finalize results?</h4>
+            <p class="muted">Review the Custom Seed Chart, then complete the session when final germination results are entered.</p>
+          </div>
+          <button id="detail-mark-custom-complete" type="button" class="button button-primary">Mark Session Complete</button>
+        </div>
+        <div class="timeline-save-shortcut session-glass-panel detail-session-action-bar" data-standardized-method-only>
           <div class="detail-stage-progress-card" data-detail-stage-progress-card>
             <span class="detail-stage-progress-step" data-stage-role="current">
               <span class="detail-stage-progress-icon-slot" data-detail-action-current-icon aria-hidden="true"></span>
