@@ -32361,10 +32361,8 @@ textarea::placeholder {
 }
 
 .public-session-individual-results,
-.public-session-details-card,
 .public-session-evidence-gallery,
 .public-session-method-overview,
-.community-grow-report .public-session-timeline-section,
 .public-session-example-selector {
   border: 1px solid var(--public-session-border);
   border-radius: 20px;
@@ -32550,6 +32548,7 @@ textarea::placeholder {
   display: grid;
   gap: 22px;
   padding: 26px;
+  border-radius: 26px;
 }
 
 .public-session-method-overview::before {
@@ -32569,7 +32568,8 @@ textarea::placeholder {
 }
 
 .public-session-method-overview-heading .eyebrow,
-.public-session-method-overview-heading h2 {
+.public-session-method-overview-heading h2,
+.public-session-method-overview-heading p {
   margin: 0;
 }
 
@@ -32579,6 +32579,13 @@ textarea::placeholder {
   line-height: 1.15;
 }
 
+.public-session-method-overview-heading p:not(.eyebrow) {
+  margin-top: 5px;
+  color: rgba(205, 216, 204, 0.76);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
 .public-session-method-overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.82fr);
@@ -32586,17 +32593,15 @@ textarea::placeholder {
   align-items: stretch;
 }
 
-.community-grow-report .public-session-timeline-section,
-.public-session-details-card,
-.public-session-custom-method-card {
+.public-session-method-panel {
   margin: 0;
   min-width: 0;
   padding: 22px;
   border-radius: 22px;
 }
 
-.public-session-method-overview .public-session-timeline-section,
-.public-session-method-overview .public-session-details-card {
+.public-session-method-overview .public-session-method-panel {
+  border: 1px solid rgba(148, 209, 89, 0.18);
   border-color: rgba(148, 209, 89, 0.18);
   background:
     radial-gradient(circle at 0% 0%, rgba(148, 209, 89, 0.1), transparent 34%),
@@ -50239,7 +50244,6 @@ body.theme-dark .session-result-partition-chip.partition-success-card {
 }
 
 body.theme-dark .public-session-summary-card,
-body.theme-dark .public-session-timeline-section,
 body.theme-dark .public-session-example-selector,
 body.theme-dark .public-session-partition-results {
   border-color: rgba(148, 209, 89, 0.14);
@@ -50320,8 +50324,6 @@ body.theme-dark .public-session-partition-results-empty {
   background: rgba(255, 255, 255, 0.03);
 }
 
-body.theme-dark .community-grow-report .public-session-timeline-section,
-body.theme-dark .community-grow-report .public-session-details-card,
 body.theme-dark .community-grow-report .public-session-evidence-gallery,
 body.theme-dark .community-grow-report .public-session-individual-results,
 body.theme-dark .community-grow-report .public-session-method-overview,
@@ -50334,8 +50336,7 @@ body.theme-dark .community-grow-report .public-session-example-selector {
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-body.theme-dark .community-grow-report .public-session-method-overview .public-session-timeline-section,
-body.theme-dark .community-grow-report .public-session-method-overview .public-session-details-card {
+body.theme-dark .community-grow-report .public-session-method-overview .public-session-method-panel {
   border-color: rgba(148, 209, 89, 0.18);
   background:
     radial-gradient(circle at 0% 0%, rgba(148, 209, 89, 0.1), transparent 34%),

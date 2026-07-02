@@ -91860,7 +91860,7 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
   ].filter((row) => row.value && row.value !== "Not shared");
 
   return `
-    <section class="public-session-details-card" aria-labelledby="public-session-details-title">
+    <section class="public-session-method-panel public-session-method-panel--report public-session-details-card" aria-labelledby="public-session-details-title">
       <div class="public-session-details-heading">
         <span class="public-session-details-heading-icon" aria-hidden="true">
           ${renderAppIconMarkup("reportDocument", { variant: "plain" })}
@@ -91980,7 +91980,7 @@ function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDet
   ].filter((row) => row.value && row.value !== "Not shared");
 
   return `
-    <section class="public-session-details-card public-session-custom-method-card" aria-labelledby="public-session-custom-method-title">
+    <section class="public-session-method-panel public-session-method-panel--custom public-session-details-card public-session-custom-method-card" aria-labelledby="public-session-custom-method-title">
       <div class="public-session-details-heading">
         <span class="public-session-details-heading-icon" aria-hidden="true">
           ${renderAppIconMarkup("journeyFlag", { variant: "plain" })}
@@ -92013,8 +92013,11 @@ function renderPublicSessionJourneyAndDetailsMarkup(snapshot = null, publicDetai
   return `
     <section class="public-session-method-overview" aria-labelledby="public-session-method-overview-title">
       <div class="public-session-method-overview-heading">
-        <p class="eyebrow">Method Overview</p>
-        <h2 id="public-session-method-overview-title">Method Overview</h2>
+        <span>
+          <p class="eyebrow">Method Overview</p>
+          <h2 id="public-session-method-overview-title">Method Overview</h2>
+          <p>How this grow was performed and documented.</p>
+        </span>
       </div>
       <div class="public-session-method-overview-grid">
         ${primaryPanelMarkup}
@@ -92381,7 +92384,7 @@ function renderPublicSessionTimelineSection(snapshot) {
     : '<p class="public-session-timeline-empty">Timeline not shared.</p>';
 
   return `
-    <section class="session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
+    <section class="public-session-method-panel public-session-method-panel--journey session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
       <div class="public-session-journey-heading">
         <span class="public-session-journey-heading-icon" aria-hidden="true">
           ${renderAppIconMarkup("journeyFlag", { variant: "plain" })}
