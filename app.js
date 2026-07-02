@@ -2337,6 +2337,7 @@ const appState = {
   newSessionSystemModalOpen: false,
   newSessionReturnHash: "#home",
   currentRouteHash: "#home",
+  lastRenderedRawRoute: "",
   customSelectPositionFrame: 0,
   unsavedChanges: {
     active: false,
@@ -3099,12 +3100,92 @@ function installRuntimeErrorGuards() {
 installRuntimeErrorGuards();
 
 function safeRender() {
+  const previousRawRoute = String(appState.lastRenderedRawRoute || "").trim();
   try {
     stopAdminAnnouncementPreviewRotation();
     render();
+    const nextRawRoute = getCurrentAppRawRoute();
+    requestNavigationScrollSync(previousRawRoute, nextRawRoute);
+    appState.lastRenderedRawRoute = nextRawRoute;
   } catch (error) {
     reportAppError(error, "Render failed");
   }
+}
+
+function getNavigationScrollRouteKey(rawRoute = "") {
+  return String(rawRoute || "home").trim().replace(/^#/, "") || "home";
+}
+
+function getNavigationScrollPageKey(rawRoute = "") {
+  return getNavigationScrollRouteKey(rawRoute).split("/")[0] || "home";
+}
+
+function isInPageSectionNavigationRoute(rawRoute = "") {
+  const normalizedRoute = getNavigationScrollRouteKey(rawRoute);
+  return [
+    "gallery/community-insights",
+    "gallery/community-insights-seed-age",
+  ].includes(normalizedRoute);
+}
+
+function shouldPreserveScrollForNavigation(previousRawRoute = "", nextRawRoute = "") {
+  if (appState.sessionDashboardScrollTarget) {
+    return true;
+  }
+
+  if (isInPageSectionNavigationRoute(nextRawRoute)) {
+    return getNavigationScrollPageKey(previousRawRoute) === getNavigationScrollPageKey(nextRawRoute)
+      || getNavigationScrollPageKey(nextRawRoute) === "gallery";
+  }
+
+  return false;
+}
+
+function shouldScrollToTopForNavigation(previousRawRoute = "", nextRawRoute = "") {
+  const previousRoute = getNavigationScrollRouteKey(previousRawRoute);
+  const nextRoute = getNavigationScrollRouteKey(nextRawRoute);
+  if (!previousRawRoute || previousRoute === nextRoute) {
+    return false;
+  }
+  return !shouldPreserveScrollForNavigation(previousRoute, nextRoute);
+}
+
+function scrollAppToTopForNavigation() {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  } catch (error) {
+    window.scrollTo(0, 0);
+  }
+
+  getBackToTopScrollContainerCandidates().forEach((candidate) => {
+    if (!candidate || candidate === document.body || candidate === document.documentElement) {
+      return;
+    }
+
+    if (typeof candidate.scrollTo === "function") {
+      try {
+        candidate.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } catch (error) {
+        candidate.scrollTop = 0;
+        candidate.scrollLeft = 0;
+      }
+    } else {
+      candidate.scrollTop = 0;
+      candidate.scrollLeft = 0;
+    }
+  });
+
+  requestBackToTopButtonVisibilitySync();
+}
+
+function requestNavigationScrollSync(previousRawRoute = "", nextRawRoute = "") {
+  if (!shouldScrollToTopForNavigation(previousRawRoute, nextRawRoute)) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    scrollAppToTopForNavigation();
+  });
 }
 
 function handleHashChange() {
