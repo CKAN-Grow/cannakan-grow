@@ -91673,6 +91673,7 @@ function renderPublicSessionHeroMarkup(snapshot = null, publicDetails = {}) {
           ${renderPublicSessionHeroRecognitionSeal(snapshot, publicDetails)}
         </div>
       </div>
+      ${renderPublicSessionHeroLikeMarkup(snapshot)}
     </section>
   `;
 }
@@ -91710,27 +91711,25 @@ function renderPublicSessionQuickStatsMarkup(snapshot = null, publicDetails = {}
           <span>${escapeHtml(stat.label)}</span>
         </article>
       `).join("")}
-      ${renderPublicSessionLikeStatMarkup(snapshot)}
     </section>
   `;
 }
 
-function renderPublicSessionLikeStatMarkup(snapshot = null) {
+function renderPublicSessionHeroLikeMarkup(snapshot = null) {
   const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
   const isLiked = Boolean(snapshot?.likedByCurrentUser);
   return `
     <button
       type="button"
-      class="public-session-quick-stat public-session-quick-stat--like gallery-like-button${isLiked ? " is-liked" : ""}"
+      class="public-session-hero-like gallery-like-button${isLiked ? " is-liked" : ""}"
       data-gallery-like="${escapeHtml(snapshot?.id || "")}"
       aria-pressed="${isLiked ? "true" : "false"}"
       aria-label="${isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report"}"
     >
-      <span class="public-session-like-icon" aria-hidden="true">
+      <span class="public-session-hero-like-icon" aria-hidden="true">
         ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true })}
       </span>
-      <span class="gallery-like-count public-session-like-count">${escapeHtml(String(likeCount))}</span>
-      <span class="public-session-like-label">Likes</span>
+      <span class="gallery-like-count public-session-hero-like-count">${escapeHtml(String(likeCount))}</span>
     </button>
   `;
 }
