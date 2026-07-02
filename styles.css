@@ -32535,7 +32535,7 @@ textarea::placeholder {
 
 .seed-report-hero-card .source-report-hero-main {
   align-items: flex-start;
-  gap: clamp(4px, 0.55vw, 6px);
+  gap: clamp(28px, 2.2vw, 32px);
 }
 
 .seed-report-hero-card .source-report-hero-copy {
@@ -32580,6 +32580,14 @@ textarea::placeholder {
   border-radius: 999px;
   font-size: 0.78rem;
   letter-spacing: 0.045em;
+}
+
+@media (min-width: 761px) {
+  .seed-report-hero-card .source-report-hero-copy p,
+  .seed-report-hero-card .source-report-established-line,
+  .seed-report-hero-card .source-report-hero-actions {
+    margin-left: clamp(-32px, -2.2vw, -24px);
+  }
 }
 
 .seed-report-hero-card .source-report-hero-note-row {
