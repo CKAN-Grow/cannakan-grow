@@ -91710,11 +91710,28 @@ function renderPublicSessionQuickStatsMarkup(snapshot = null, publicDetails = {}
           <span>${escapeHtml(stat.label)}</span>
         </article>
       `).join("")}
-      <article class="public-session-quick-stat public-session-quick-stat--like">
-        ${renderGalleryLikeButtonMarkup(snapshot)}
-        <span>Likes</span>
-      </article>
+      ${renderPublicSessionLikeStatMarkup(snapshot)}
     </section>
+  `;
+}
+
+function renderPublicSessionLikeStatMarkup(snapshot = null) {
+  const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
+  const isLiked = Boolean(snapshot?.likedByCurrentUser);
+  return `
+    <button
+      type="button"
+      class="public-session-quick-stat public-session-quick-stat--like gallery-like-button${isLiked ? " is-liked" : ""}"
+      data-gallery-like="${escapeHtml(snapshot?.id || "")}"
+      aria-pressed="${isLiked ? "true" : "false"}"
+      aria-label="${isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report"}"
+    >
+      <span class="public-session-like-icon" aria-hidden="true">
+        ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true })}
+      </span>
+      <span class="gallery-like-count public-session-like-count">${escapeHtml(String(likeCount))}</span>
+      <span class="public-session-like-label">Likes</span>
+    </button>
   `;
 }
 
@@ -91882,6 +91899,11 @@ function renderPublicSessionJourneyAndDetailsMarkup(snapshot = null, publicDetai
 
 function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
   const images = getPublicSessionEvidenceImages(snapshot);
+  const imageCountLabel = images.length === 0
+    ? "No images submitted"
+    : images.length === 1
+    ? "1 / 3 images"
+    : `${images.length} images submitted`;
   return `
     <section class="public-session-evidence-gallery" aria-labelledby="public-session-evidence-gallery-title">
       <div class="public-session-section-head">
@@ -91890,7 +91912,7 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
           <h2 id="public-session-evidence-gallery-title">Evidence</h2>
           <p>Session images shared with this public Community Grow Report.</p>
         </div>
-        <span>${escapeHtml(`${images.length} / 3 images`)}</span>
+        <span>${escapeHtml(imageCountLabel)}</span>
       </div>
       ${images.length ? `
         <div class="public-session-evidence-grid public-session-evidence-grid--${escapeHtml(String(images.length))}">
