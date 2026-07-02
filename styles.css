@@ -32486,12 +32486,12 @@ textarea::placeholder {
 }
 
 .seed-report-hero-card .source-report-hero-logo.seed-report-hero-image {
-  width: 140px;
-  height: 140px;
-  flex: 0 0 140px;
+  width: 112px;
+  height: 112px;
+  flex: 0 0 112px;
   align-self: flex-start;
   margin-top: 4px;
-  margin-right: 36px;
+  margin-right: 0;
   border-radius: 18px;
   background:
     linear-gradient(160deg, rgba(181, 232, 111, 0.13), rgba(148, 209, 89, 0.055)),
@@ -32536,7 +32536,7 @@ textarea::placeholder {
 
 .seed-report-hero-card .source-report-hero-main {
   align-items: flex-start;
-  gap: clamp(28px, 2.2vw, 32px);
+  gap: 24px;
 }
 
 .seed-report-hero-card .source-report-hero-copy {
@@ -32581,14 +32581,6 @@ textarea::placeholder {
   border-radius: 999px;
   font-size: 0.78rem;
   letter-spacing: 0.045em;
-}
-
-@media (min-width: 761px) {
-  .seed-report-hero-card .source-report-hero-copy p,
-  .seed-report-hero-card .source-report-established-line,
-  .seed-report-hero-card .source-report-hero-actions {
-    margin-left: clamp(-32px, -2.2vw, -24px);
-  }
 }
 
 .seed-report-hero-card .source-report-hero-note-row {
@@ -33154,9 +33146,9 @@ textarea::placeholder {
 
 @media (max-width: 760px) {
   .seed-report-hero-card .source-report-hero-logo.seed-report-hero-image {
-    width: 118px;
-    height: 118px;
-    flex: 0 0 118px;
+    width: 112px;
+    height: 112px;
+    flex: 0 0 112px;
     margin-top: 0;
     margin-right: 0;
     border-radius: 18px;
@@ -33166,6 +33158,12 @@ textarea::placeholder {
     gap: 20px;
     padding: 22px 18px 18px;
     border-radius: 20px;
+  }
+
+  .seed-report-hero-card .source-report-hero-main {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 16px;
   }
 
   .seed-report-hero-card .seed-report-hero-metrics {
