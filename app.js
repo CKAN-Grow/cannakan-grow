@@ -52630,18 +52630,37 @@ function renderSeedProfileUnavailablePage(seedId = "") {
   `;
 }
 
-function getSeedReportAdoptionRankLabel(seed = {}) {
+function getSeedReportAdoptionRankMeta(seed = {}) {
   const rankedSeeds = getSeedExplorerDemoSeeds()
     .sort((left, right) => (
       (Number(right.communitySessions) || 0) - (Number(left.communitySessions) || 0)
       || (Number(right.seedsTracked) || 0) - (Number(left.seedsTracked) || 0)
       || (Number(right.confidencePercent) || 0) - (Number(left.confidencePercent) || 0)
-    ));
+  ));
   const rankIndex = rankedSeeds.findIndex((candidate) => String(candidate.id || "") === String(seed.id || ""));
   if (rankIndex < 0) {
-    return "Emerging";
+    return {
+      value: "Emerging",
+      detail: "Preview seeds",
+    };
   }
-  return `#${rankIndex + 1}`;
+  const rank = rankIndex + 1;
+  if (rank <= 3) {
+    return {
+      value: `#${rank}`,
+      detail: "Out of preview seeds",
+    };
+  }
+  const total = Math.max(rank, rankedSeeds.length || 0);
+  const percentile = Math.max(1, Math.ceil((rank / total) * 100));
+  return {
+    value: `Top ${percentile}%`,
+    detail: "Of preview seeds",
+  };
+}
+
+function getSeedReportAdoptionRankLabel(seed = {}) {
+  return getSeedReportAdoptionRankMeta(seed).value;
 }
 
 function getSeedReportActivityMetrics(seed = {}) {
@@ -52899,10 +52918,12 @@ function renderSeedReportHeroMetricIconMarkup(icon = "sessions") {
 }
 
 function renderSeedReportHeroMetricMarkup({ icon = "sessions", value = "", label = "", detail = "", tone = "green" } = {}) {
+  const normalizedValue = String(value || "");
+  const valueClassName = normalizedValue.length > 3 ? " is-long-value" : "";
   return `
-    <article class="source-report-hero-metric seed-report-hero-metric is-${escapeHtml(tone)}">
+    <article class="source-report-hero-metric seed-report-hero-metric is-${escapeHtml(tone)}${valueClassName}">
       <span class="source-report-hero-metric-icon seed-report-hero-metric-icon" aria-hidden="true">${renderSeedReportHeroMetricIconMarkup(icon)}</span>
-      <strong>${escapeHtml(String(value))}</strong>
+      <strong>${escapeHtml(normalizedValue)}</strong>
       <span>${escapeHtml(label)}</span>
       ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
     </article>
@@ -52910,6 +52931,7 @@ function renderSeedReportHeroMetricMarkup({ icon = "sessions", value = "", label
 }
 
 function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
+  const adoptionRankMeta = getSeedReportAdoptionRankMeta(seed);
   return `
     <article class="card source-report-hero-card seed-report-hero-card">
       <div class="source-report-hero-bg" aria-hidden="true"></div>
@@ -52931,7 +52953,7 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
       </div>
 
       <div class="source-report-hero-metrics seed-report-hero-metrics" aria-label="Primary seed evidence metrics">
-        ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: getSeedReportAdoptionRankLabel(seed), label: "Popularity Rank", detail: "Out of preview seeds", tone: "gold" })}
+        ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: adoptionRankMeta.value, label: "Popularity Rank", detail: adoptionRankMeta.detail, tone: "gold" })}
       </div>
       <div class="source-report-hero-note-row">
         <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>

@@ -32628,7 +32628,7 @@ textarea::placeholder {
   width: 100%;
   min-height: 100%;
   gap: 10px;
-  padding: 24px 20px;
+  padding: 24px 20px 32px;
 }
 
 .seed-report-hero-card .seed-report-hero-metric + .seed-report-hero-metric {
@@ -32677,6 +32677,12 @@ textarea::placeholder {
   text-shadow: 0 0 18px rgba(148, 209, 89, 0.2);
 }
 
+.seed-report-hero-card .seed-report-hero-metric.is-long-value strong {
+  font-size: clamp(2.25rem, 3.4vw, 3.05rem);
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .seed-report-hero-card .seed-report-hero-metric span:not(.source-report-hero-metric-icon) {
   color: #f7faf4;
   font-size: clamp(0.98rem, 1.08vw, 1.12rem);
@@ -32688,7 +32694,8 @@ textarea::placeholder {
 .seed-report-hero-card .seed-report-hero-metric small {
   color: rgba(231, 238, 226, 0.76);
   font-size: clamp(0.76rem, 0.92vw, 0.88rem);
-  line-height: 1.15;
+  line-height: 1.25;
+  margin-top: 2px;
   white-space: nowrap;
 }
 
