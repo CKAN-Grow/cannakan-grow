@@ -29775,6 +29775,19 @@ const APP_ICON_LIBRARY = Object.freeze({
     <path d="M12 15.1c.3-3.7 2.3-6.2 6-7.3.1 4.1-2 6.5-5.6 7.2"></path>
     <path data-solid="true" d="M8.4 20.2h7.2c.5 0 .9-.4.9-.9s-.4-.9-.9-.9H8.4c-.5 0-.9.4-.9.9s.4.9.9.9Z"></path>
   `,
+  seedSprout: `
+    <path data-solid="true" d="M8.2 16.8c-1.8-1.8-1.6-4.9.5-6.9 2.1-2.1 5.1-2.3 6.9-.5 1.8 1.8 1.6 4.9-.5 6.9-2.1 2.1-5.1 2.3-6.9.5Z"></path>
+    <path d="M13.8 9.8c.2-2.8 1.8-4.6 4.7-5.3.1 3.1-1.5 4.9-4.4 5.6"></path>
+    <path d="M13.2 10.6c-2.2.8-3.8 2.5-4.8 5"></path>
+  `,
+  partitionWheel: `
+    <circle cx="12" cy="12" r="7.4"></circle>
+    <path d="M12 4.6v14.8"></path>
+    <path d="M4.6 12h14.8"></path>
+    <path d="m6.8 6.8 10.4 10.4"></path>
+    <path d="M17.2 6.8 6.8 17.2"></path>
+    <circle cx="12" cy="12" r="2.15"></circle>
+  `,
   sourceHeroShieldCheck: `
     <path d="M12 3.8 5.7 6.4v4.9c0 4.1 2.4 7.5 6.3 8.8 3.9-1.3 6.3-4.7 6.3-8.8V6.4Z"></path>
     <path d="m8.8 12.2 2.1 2.1 4.5-4.7"></path>
@@ -91711,17 +91724,19 @@ function renderPublicSessionQuickStatsMarkup(snapshot = null, publicDetails = {}
   const resultCountLabel = method.supportsPartitions ? "Partitions" : "Varieties";
 
   const stats = [
-    { label: "Success Rate", value: successLabel, icon: "activeSessionWaveform" },
-    { label: "Seeds Germinated", value: totalSeeds ? `${formatPrivateAnalyticsNumber(totalGerminated)} / ${formatPrivateAnalyticsNumber(totalSeeds)}` : "Not shared", icon: "mySessionsSprout" },
-    { label: "Total Time", value: durationLabel, icon: "reportDocument" },
-    { label: resultCountLabel, value: countedResults.length ? String(countedResults.length) : "Not shared", icon: "sourceDirectoryBars" },
+    { label: "Success Rate", value: successLabel, icon: "sourceHeroSprout" },
+    { label: "Seeds Germinated", value: totalSeeds ? `${formatPrivateAnalyticsNumber(totalGerminated)} / ${formatPrivateAnalyticsNumber(totalSeeds)}` : "Not shared", icon: "seedSprout" },
+    { label: "Total Time", value: durationLabel, icon: "clock" },
+    { label: resultCountLabel, value: countedResults.length ? String(countedResults.length) : "Not shared", icon: method.supportsPartitions ? "partitionWheel" : "seedVault" },
   ];
 
   return `
     <section class="public-session-quick-stats" aria-label="Community Grow Report quick stats">
       ${stats.map((stat) => `
         <article class="public-session-quick-stat">
-          ${renderAppIconMarkup(stat.icon, { variant: "plain" })}
+          <span class="public-session-quick-stat-icon" aria-hidden="true">
+            ${renderAppIconMarkup(stat.icon, { variant: "plain" })}
+          </span>
           <strong>${escapeHtml(stat.value)}</strong>
           <span>${escapeHtml(stat.label)}</span>
         </article>
