@@ -52675,73 +52675,6 @@ function getSeedReportActivityMetrics(seed = {}) {
   };
 }
 
-function getSeedReportCommunityInsightRows(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const sessions = Math.max(0, Number(seed.communitySessions) || 0);
-  const confidencePercent = Math.max(0, Number(seed.confidencePercent) || 0);
-  const regions = getSeedReportRegionRows(seed).filter((row) => String(row.country || "").toLowerCase() !== "other");
-  const sourceCount = getSeedReportRelationshipRows(seed).length || Math.max(1, Number(activity.sourcesCarrying) || 1);
-  const growthPercent = Math.max(12, Math.min(42, Math.round((Number(activity.newSessionsThisWeek || 0) / Math.max(1, sessions)) * 100 * 4)));
-  const newSourceCount = Math.max(1, sourceCount - 1);
-  const confidenceLabel = confidencePercent >= 85 ? "High Confidence" : confidencePercent >= 65 ? "Building Confidence" : "Early Signal";
-
-  return [
-    {
-      icon: "sourceDirectoryBars",
-      label: "Growth Trend",
-      value: sessions >= 100 ? "Growing Rapidly" : "Building Momentum",
-      detail: `+${growthPercent}% community activity over the past 30 days.`,
-    },
-    {
-      icon: "growNetworkNodes",
-      label: "Regional Expansion",
-      value: `${Math.max(1, regions.length)} Active Regions`,
-      detail: `Community evidence now spans ${Math.max(1, regions.length)} reporting regions.`,
-    },
-    {
-      icon: "sourceHeroSprout",
-      label: "Source Growth",
-      value: `${newSourceCount} New ${newSourceCount === 1 ? "Source" : "Sources"}`,
-      detail: "Additional trusted source relationships are being mapped.",
-    },
-    {
-      icon: "activeSessionWaveform",
-      label: "Adoption Signal",
-      value: sessions >= 120 ? "Trending" : "Emerging",
-      detail: "Community usage continues to accelerate across recent reports.",
-    },
-    {
-      icon: "adminShield",
-      label: "Milestone",
-      value: confidenceLabel,
-      detail: confidencePercent >= 85 ? "Recently crossed the strongest evidence threshold." : "Evidence is accumulating toward a stronger confidence tier.",
-    },
-  ];
-}
-
-function renderSeedReportCommunityInsightsMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const insights = getSeedReportCommunityInsightRows(seed, activity).slice(0, 5);
-  return `
-    <aside class="seed-report-adoption-insights" aria-label="Community activity insights">
-      <div class="seed-report-adoption-insights-head">
-        <span>Community Insights</span>
-        <small>What the trend means</small>
-      </div>
-      <div class="seed-report-adoption-insight-list">
-        ${insights.map((insight) => `
-          <article class="seed-report-adoption-insight-card">
-            <span aria-hidden="true">${renderAppIconSvgMarkup(insight.icon, { className: "source-report-activity-icon" })}</span>
-            <div>
-              <small>${escapeHtml(insight.label)}</small>
-              <strong>${escapeHtml(insight.value)}</strong>
-              <p>${escapeHtml(insight.detail)}</p>
-            </div>
-          </article>
-        `).join("")}
-      </div>
-    </aside>
-  `;
-}
-
 function getSeedReportRelationshipRows(seed = {}) {
   const sourceRows = [
     {
@@ -52873,12 +52806,12 @@ function renderSeedReportAdoptionChartMarkup(seed = {}, activity = getSeedReport
     const lift = index > 8 ? Math.round(activity.newSessionsThisWeek * (index - 8) * 0.18) : 0;
     return Math.max(1, Math.round((sessions * share) + lift));
   });
-  const width = 720;
+  const width = 960;
   const height = 220;
   const chartTop = 24;
   const chartBottom = 178;
   const chartLeft = 48;
-  const chartRight = 690;
+  const chartRight = 930;
   const maxValue = Math.max(...values, sessions);
   const points = values.map((value, index) => {
     const x = chartLeft + ((chartRight - chartLeft) * index) / Math.max(1, values.length - 1);
@@ -52911,11 +52844,10 @@ function renderSeedReportAdoptionChartMarkup(seed = {}, activity = getSeedReport
             const x = chartLeft + ((chartRight - chartLeft) * index) / 5;
             return `<text class="source-report-chart-x-label" x="${x.toFixed(1)}" y="207">${label}</text>`;
           }).join("")}
-          <text class="source-report-chart-axis-label" x="360" y="220">Community activity</text>
+          <text class="source-report-chart-axis-label" x="480" y="220">Community activity</text>
         </svg>
         <p>Trend reflects cumulative community sessions, tracked seeds, and recent grow-report activity for this variety.</p>
       </div>
-      ${renderSeedReportCommunityInsightsMarkup(seed, activity)}
     </div>
   `;
 }
