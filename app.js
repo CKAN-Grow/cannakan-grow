@@ -52355,6 +52355,10 @@ function renderSeedExplorerListRowsMarkup(records = []) {
           <strong>${Number(seed.communitySessions || 0).toLocaleString()}</strong>
         </div>
         <div class="seed-explorer-list-cell seed-explorer-list-type" role="cell">${escapeHtml(seed.seedType || "Seed")}</div>
+        <div class="seed-explorer-list-cell seed-explorer-list-action" role="cell" aria-hidden="true">
+          <span>View Report</span>
+          <b>&rarr;</b>
+        </div>
       </a>
     `;
   }).join("");
@@ -52368,6 +52372,7 @@ function renderSeedExplorerListRowsMarkup(records = []) {
           <span role="columnheader">Confidence</span>
           <span role="columnheader">Sessions</span>
           <span role="columnheader">Seed Type</span>
+          <span role="columnheader">Report</span>
         </div>
         ${rowsMarkup}
       </div>
