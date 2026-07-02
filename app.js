@@ -53148,29 +53148,6 @@ function renderSeedReportInsightsMarkup(seed = {}) {
   `;
 }
 
-function renderSeedReportEvidenceMarkup(seed = {}) {
-  const rows = [
-    { label: "Report Type", value: "Community Preview" },
-    { label: "Evidence Model", value: "Community Sessions" },
-    { label: "Seed Lot Context", value: seed.batchAge || "Preview lot" },
-    { label: "Primary Source", value: seed.source || "Unknown Source" },
-  ];
-  return `
-    <article class="card source-report-section-card seed-report-evidence-card">
-      ${renderSourceReportSectionTitle(10, "Evidence")}
-      <div class="source-profile-detail-grid source-profile-detail-grid--verification source-report-cstp-detail-grid seed-report-evidence-grid">
-        ${rows.map((row) => `
-          <article class="meta-card source-profile-detail-card source-report-cstp-detail-card">
-            <span class="stat-label">${escapeHtml(row.label)}</span>
-            <strong>${escapeHtml(row.value)}</strong>
-          </article>
-        `).join("")}
-      </div>
-      <p class="source-profile-cstp-trust-note source-report-cstp-trust-note">Seed Report evidence is preview-only in this sprint and remains separate from production Source Report business logic.</p>
-    </article>
-  `;
-}
-
 function renderSeedProfilePage(seedId = "") {
   const seed = getSeedExplorerSeedById(seedId);
   if (!seed) {
@@ -53257,8 +53234,6 @@ function renderSeedProfilePage(seedId = "") {
           ${renderSeedReportRelationshipListMarkup(similarRows)}
         </article>
       </div>
-
-      ${renderSeedReportEvidenceMarkup(seed)}
 
       <article class="card source-report-actions-card seed-report-actions-card">
         <div>

@@ -32835,10 +32835,6 @@ textarea::placeholder {
   }
 }
 
-.seed-report-evidence-grid {
-  margin-top: 0;
-}
-
 .seed-report-page .seed-report-confidence-badge,
 .seed-report-page .source-directory-evidence-badge.is-high {
   border-color: rgba(148, 209, 89, 0.38);
@@ -33335,9 +33331,6 @@ textarea::placeholder {
     grid-template-columns: 1fr;
   }
 
-  .seed-report-evidence-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .source-directory-page {
@@ -62735,12 +62728,6 @@ a.source-directory-variety-chip:focus-visible {
 
 @media (max-width: 360px) {
   .source-report-cstp-detail-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 720px) {
-  .seed-report-page .seed-report-evidence-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
