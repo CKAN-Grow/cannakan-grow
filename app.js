@@ -1621,6 +1621,18 @@ function getMethodConfig(value = "") {
   return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
 }
 
+function getMethodHeaderIconConfig(value = "") {
+  const method = getMethodConfig(value);
+  return {
+    src: method.isStandardized
+      ? method.headerIconSrc || PARTITION_HEADER_ICON_ASSETS[method.id] || ""
+      : CUSTOM_METHOD_HEADER_ICON_ASSET,
+    alt: method.isStandardized
+      ? method.iconAlt || `${method.name} partition icon`
+      : "Grow App icon",
+  };
+}
+
 function getMethodDefaultSessionStatus(methodType = "") {
   const method = getMethodConfig(methodType);
   return method.defaultSessionStatus || "";
@@ -83623,12 +83635,14 @@ function updatePartitionWorkHeading(titleElement, systemType) {
   }
 
   if (titleIcon) {
-    const iconAsset = method.headerIconSrc || PARTITION_HEADER_ICON_ASSETS[method.id] || "";
-    if (iconAsset) {
-      titleIcon.src = iconAsset;
+    const iconConfig = getMethodHeaderIconConfig(method.id);
+    if (iconConfig.src) {
+      titleIcon.src = iconConfig.src;
+      titleIcon.setAttribute("src", iconConfig.src);
     }
-    titleIcon.alt = method.iconAlt;
+    titleIcon.alt = iconConfig.alt;
     titleIcon.dataset.systemType = method.id;
+    titleIcon.dataset.methodType = method.id;
   }
 }
 
@@ -83720,8 +83734,12 @@ function updateMethodTypeLayout(scope, methodType = "") {
     element.dataset.methodType = method.id;
     element.dataset.methodStandardized = String(method.isStandardized);
   });
-  syncMethodChartHeader(scope.querySelector("#partition-chart-header, #detail-chart-header"), method.id);
-  updatePartitionWorkHeading(scope.querySelector("#partition-work-title, #detail-partition-work-title"), method.id);
+  scope.querySelectorAll("#partition-chart-header, #detail-chart-header").forEach((chartHeader) => {
+    syncMethodChartHeader(chartHeader, method.id);
+  });
+  scope.querySelectorAll("#partition-work-title, #detail-partition-work-title").forEach((titleElement) => {
+    updatePartitionWorkHeading(titleElement, method.id);
+  });
   updateMethodProgressHeading(scope, method);
 }
 
