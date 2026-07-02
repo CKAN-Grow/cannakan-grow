@@ -385,27 +385,28 @@
             <p class="eyebrow">Explore Community Grows</p>
             <h3>Explore Community Grows</h3>
             <p class="muted">Browse public grow reports from growers around the world.</p>
+            <p id="gallery-explore-helper" class="gallery-explore-helper muted">Showing standardized Grow methods. Switch to All Methods to explore every community session.</p>
             <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Date · Newest to Oldest</p>
             <p id="gallery-count-state" class="gallery-count-state muted">Showing 0 of 0 reports</p>
           </div>
         </div>
         <div class="gallery-sort-controls">
-          <label class="session-history-sort-control" for="gallery-certification-filter">
-            <span>VIEW</span>
-            <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-certification-filter">
-              <select id="gallery-certification-filter" name="galleryCertificationFilter" class="custom-select-native" data-custom-select="true">
-                <option value="all">All Community Grows</option>
-                <option value="cstp-tested">CSTP Tested</option>
-                <option value="recognition-all" disabled>All Recognition</option>
-                <option value="recognition-featured" disabled>Featured Community Grow</option>
-                <option value="recognition-reliable" disabled>Reliable Results</option>
-                <option value="recognition-pick" disabled>Community Pick</option>
-                <option value="recognition-documented" disabled>Best Documented Session</option>
-                <option value="recognition-rare" disabled>Rare Variety Spotlight</option>
-                <option value="recognition-international" disabled>International Grow Highlight</option>
+          <label class="session-history-sort-control" for="gallery-explore-filter">
+            <span>EXPLORE</span>
+            <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-explore-filter">
+              <select id="gallery-explore-filter" name="galleryExploreFilter" class="custom-select-native" data-custom-select="true">
+                <option value="standardized">Standardized Methods</option>
+                <option value="kan">KAN</option>
+                <option value="tra">TRā</option>
+                <option value="all">All Methods</option>
+                <option value="paper-towel">Paper Towel</option>
+                <option value="rockwool">Rockwool</option>
+                <option value="water-soak">Water Soak</option>
+                <option value="direct-sow">Direct Sow</option>
+                <option value="other">Other</option>
               </select>
               <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="custom-select-value">All Community Grows</span>
+                <span class="custom-select-value">Standardized Methods</span>
                 <span class="custom-select-chevron" aria-hidden="true"></span>
               </button>
               <div class="custom-select-menu" role="listbox" hidden></div>

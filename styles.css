@@ -8012,6 +8012,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.76rem;
 }
 
+.gallery-explore-helper {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+}
+
 .gallery-count-state {
   margin: 4px 0 0;
   font-size: 0.76rem;

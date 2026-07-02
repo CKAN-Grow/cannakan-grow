@@ -784,9 +784,16 @@ const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "auto-results", label: "Auto Results" }),
   Object.freeze({ key: "photo-results", label: "Photo Results" }),
 ]);
-const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
-  Object.freeze({ key: "all", label: "All Community Grows" }),
-  Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
+const GALLERY_EXPLORE_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ key: "standardized", label: "Standardized Methods" }),
+  Object.freeze({ key: "kan", label: "KAN" }),
+  Object.freeze({ key: "tra", label: "TRā" }),
+  Object.freeze({ key: "all", label: "All Methods" }),
+  Object.freeze({ key: "paper-towel", label: "Paper Towel" }),
+  Object.freeze({ key: "rockwool", label: "Rockwool" }),
+  Object.freeze({ key: "water-soak", label: "Water Soak" }),
+  Object.freeze({ key: "direct-sow", label: "Direct Sow" }),
+  Object.freeze({ key: "other", label: "Other" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: "most-trusted", label: "Highest Confidence" }),
@@ -2301,7 +2308,7 @@ const appState = {
   installPromptFeedbackMessage: "",
   gallerySort: "date",
   gallerySortOrder: "desc",
-  galleryCertificationFilter: "all",
+  galleryExploreFilter: "standardized",
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
   communityGrowReturnContext: null,
   communityInsightsDrilldownSystemFilter: "all",
@@ -27859,15 +27866,54 @@ function normalizeGallerySort(sortBy = "date") {
   return "date";
 }
 
-function normalizeGalleryCertificationFilter(filterKey = "all") {
-  return String(filterKey || "").trim().toLowerCase() === "cstp-tested"
-    ? "cstp-tested"
-    : "all";
+function normalizeGalleryExploreFilter(filterKey = "standardized") {
+  const normalizedKey = String(filterKey || "").trim().toLowerCase();
+  return GALLERY_EXPLORE_FILTER_OPTIONS.some((option) => option.key === normalizedKey)
+    ? normalizedKey
+    : "standardized";
 }
 
-function getGalleryCertificationFilterLabel(filterKey = "all") {
-  return GALLERY_CERTIFICATION_FILTER_OPTIONS.find((option) => option.key === normalizeGalleryCertificationFilter(filterKey))?.label
-    || GALLERY_CERTIFICATION_FILTER_OPTIONS[0].label;
+function getGalleryExploreFilterLabel(filterKey = "standardized") {
+  return GALLERY_EXPLORE_FILTER_OPTIONS.find((option) => option.key === normalizeGalleryExploreFilter(filterKey))?.label
+    || GALLERY_EXPLORE_FILTER_OPTIONS[0].label;
+}
+
+function getGalleryExploreFilterSentenceLabel(filterKey = "standardized") {
+  const label = getGalleryExploreFilterLabel(filterKey);
+  return label === "KAN" || label === "TRā" ? label : label.toLowerCase();
+}
+
+function getGallerySnapshotMethodId(snapshot = null) {
+  return normalizeMethodType(
+    snapshot?.methodType
+    || snapshot?.method_type
+    || snapshot?.systemType
+    || snapshot?.system_type
+    || "KAN",
+  );
+}
+
+function isGallerySnapshotIncludedByExploreFilter(snapshot = null, filterKey = "standardized") {
+  const normalizedFilter = normalizeGalleryExploreFilter(filterKey);
+  const methodId = getGallerySnapshotMethodId(snapshot);
+  if (normalizedFilter === "all") {
+    return true;
+  }
+  if (normalizedFilter === "standardized") {
+    return methodId === "KAN" || methodId === "TRA";
+  }
+  return methodId === normalizeMethodType(normalizedFilter);
+}
+
+function getGalleryExploreFilterHelperLabel(filterKey = "standardized") {
+  const normalizedFilter = normalizeGalleryExploreFilter(filterKey);
+  if (normalizedFilter === "standardized") {
+    return "Showing standardized Grow methods. Switch to All Methods to explore every community session.";
+  }
+  if (normalizedFilter === "all") {
+    return "Showing every community session, including standardized and custom methods.";
+  }
+  return `Showing ${getGalleryExploreFilterLabel(normalizedFilter)} community sessions. Switch to All Methods to explore every method.`;
 }
 
 function getGallerySortOrderOptions(sortBy = "date") {
@@ -28534,7 +28580,7 @@ function captureCommunityGrowReturnContext(snapshotId = "") {
     scrollY: window.scrollY,
     gallerySort: normalizeGallerySort(appState.gallerySort),
     gallerySortOrder: normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder),
-    galleryCertificationFilter: normalizeGalleryCertificationFilter(appState.galleryCertificationFilter),
+    galleryExploreFilter: normalizeGalleryExploreFilter(appState.galleryExploreFilter),
     galleryVisibleSnapshotCount: Math.max(
       GALLERY_SNAPSHOT_PAGE_SIZE,
       Number.parseInt(appState.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
@@ -28556,7 +28602,7 @@ function applyCommunityGrowReturnContextState(context = null) {
 
   appState.gallerySort = normalizeGallerySort(context.gallerySort);
   appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, context.gallerySortOrder);
-  appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(context.galleryCertificationFilter);
+  appState.galleryExploreFilter = normalizeGalleryExploreFilter(context.galleryExploreFilter || context.galleryCertificationFilter);
   appState.galleryVisibleSnapshotCount = Math.max(
     GALLERY_SNAPSHOT_PAGE_SIZE,
     Number.parseInt(context.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
@@ -73939,7 +73985,8 @@ function renderGallery(targetSnapshotId = "") {
   const galleryGrid = document.querySelector("#gallery-grid");
   const gallerySortControl = document.querySelector("#gallery-sort");
   const gallerySortOrderControl = document.querySelector("#gallery-sort-order");
-  const galleryCertificationFilterControl = document.querySelector("#gallery-certification-filter");
+  const galleryExploreFilterControl = document.querySelector("#gallery-explore-filter");
+  const galleryExploreHelper = document.querySelector("#gallery-explore-helper");
   const gallerySortState = document.querySelector("#gallery-sort-state");
   const galleryCountState = document.querySelector("#gallery-count-state");
   const galleryLoadMoreShell = document.querySelector("#gallery-load-more-shell");
@@ -73956,13 +74003,16 @@ function renderGallery(targetSnapshotId = "") {
 
   appState.gallerySort = normalizeGallerySort(appState.gallerySort);
   appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder);
-  appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(appState.galleryCertificationFilter);
+  appState.galleryExploreFilter = normalizeGalleryExploreFilter(appState.galleryExploreFilter);
   appState.galleryVisibleSnapshotCount = Math.max(
     GALLERY_SNAPSHOT_PAGE_SIZE,
     Number.parseInt(appState.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
   );
   if (gallerySortState) {
-    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
+    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
+  }
+  if (galleryExploreHelper) {
+    galleryExploreHelper.textContent = getGalleryExploreFilterHelperLabel(appState.galleryExploreFilter);
   }
 
   const leaderboardProfileIds = [...new Set(getApprovedPublicGallerySnapshots()
@@ -74170,10 +74220,7 @@ function renderGallery(targetSnapshotId = "") {
       if (!isGallerySnapshotAnalyticsEligible(snapshot)) {
         return false;
       }
-      if (appState.galleryCertificationFilter !== "cstp-tested") {
-        return true;
-      }
-      return Boolean(getPublishedAdminCstpCertificationForSnapshot(snapshot));
+      return isGallerySnapshotIncludedByExploreFilter(snapshot, appState.galleryExploreFilter);
     });
     const approvedSnapshots = sortVisibleGallerySnapshots(
       filteredApprovedSnapshots,
@@ -74181,9 +74228,10 @@ function renderGallery(targetSnapshotId = "") {
       appState.gallerySortOrder,
     );
     const nonApprovedSnapshots = sortGallerySnapshotsNewestFirst(
-      appState.galleryCertificationFilter === "cstp-tested"
-        ? []
-        : gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) !== "approved"),
+      gallerySnapshots.filter((snapshot) => (
+        getGallerySnapshotDisplayStatus(snapshot) !== "approved"
+        && isGallerySnapshotIncludedByExploreFilter(snapshot, appState.galleryExploreFilter)
+      )),
     );
     const targetApprovedIndex = effectiveTargetSnapshotId
       ? approvedSnapshots.findIndex((snapshot) => snapshot.id === effectiveTargetSnapshotId)
@@ -74197,9 +74245,7 @@ function renderGallery(targetSnapshotId = "") {
       ...nonApprovedSnapshots,
     ];
     if (galleryCountState) {
-      const countLabel = appState.galleryCertificationFilter === "cstp-tested"
-        ? "CSTP-tested reports"
-        : "reports";
+      const countLabel = `${getGalleryExploreFilterSentenceLabel(appState.galleryExploreFilter)} reports`;
       galleryCountState.textContent = `Showing ${visibleApprovedSnapshots.length.toLocaleString()} of ${approvedSnapshots.length.toLocaleString()} ${countLabel}`;
     }
     if (galleryLoadMoreShell) {
@@ -74237,9 +74283,9 @@ function renderGallery(targetSnapshotId = "") {
               <path d="m20.5 15-4.5-4.5L11 16l-2.5-2.5L3.5 18"></path>
             </svg>
           </div>
-          <p>${appState.galleryCertificationFilter === "cstp-tested"
-            ? "No published Gold or Silver CSTP-certified Community Grow reports are available yet."
-            : "No Community Grow reports yet. Publish one from your Share Snapshot section."}</p>
+          <p>${appState.galleryExploreFilter === "standardized"
+            ? "No standardized KAN or TRā Community Grow reports are available yet."
+            : `No ${getGalleryExploreFilterSentenceLabel(appState.galleryExploreFilter)} Community Grow reports are available yet.`}</p>
           ${renderLearnEmptyStateCtaMarkup("community-grow-basics", "Community Grow Basics")}
         </div>
       `;
@@ -74315,7 +74361,7 @@ function renderGallery(targetSnapshotId = "") {
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       syncGallerySortOrderControl(true);
       if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
       }
       renderVisibleGallerySnapshots();
     });
@@ -74327,19 +74373,22 @@ function renderGallery(targetSnapshotId = "") {
       appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, gallerySortOrderControl.value);
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
       }
       renderVisibleGallerySnapshots();
     });
   }
 
-  if (galleryCertificationFilterControl) {
-    galleryCertificationFilterControl.value = normalizeGalleryCertificationFilter(appState.galleryCertificationFilter);
-    galleryCertificationFilterControl.addEventListener("change", () => {
-      appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(galleryCertificationFilterControl.value);
+  if (galleryExploreFilterControl) {
+    galleryExploreFilterControl.value = normalizeGalleryExploreFilter(appState.galleryExploreFilter);
+    galleryExploreFilterControl.addEventListener("change", () => {
+      appState.galleryExploreFilter = normalizeGalleryExploreFilter(galleryExploreFilterControl.value);
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
+      }
+      if (galleryExploreHelper) {
+        galleryExploreHelper.textContent = getGalleryExploreFilterHelperLabel(appState.galleryExploreFilter);
       }
       renderVisibleGallerySnapshots();
     });
