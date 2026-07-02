@@ -73255,8 +73255,20 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
   const snapshot = data.spotlightSnapshot;
   if (!snapshot) {
     return `
-      <section id="community-spotlight" class="card gallery-section community-intelligence-panel community-intelligence-spotlight" data-community-intelligence-section="spotlight">
-        <div class="community-intelligence-empty"><p>Featured grow results will appear after Community Grow reports are published.</p></div>
+      <section id="community-spotlight" class="card gallery-section community-intelligence-panel community-featured-grow" data-community-intelligence-section="spotlight" aria-labelledby="community-spotlight-title">
+        <div class="community-featured-grow-header">
+          <div>
+            <p class="eyebrow">${renderAppIconMarkup("mySessionsSprout", { variant: "plain", className: "community-featured-grow-heading-icon" })} Featured Community Grow</p>
+            <h3 id="community-spotlight-title">Featured Community Grow</h3>
+            <p>Celebrating outstanding grows that inspire and educate our community.</p>
+          </div>
+        </div>
+        <div class="community-featured-grow-empty">
+          ${renderAppIconMarkup("reportDocument", { variant: "plate", className: "community-featured-grow-empty-icon" })}
+          <strong>No featured grow yet</strong>
+          <p>Complete and publish a public Community Grow report to become eligible for future recognition.</p>
+          <a class="button button-primary" href="#new">Share Your Grow</a>
+        </div>
       </section>
     `;
   }
@@ -73265,73 +73277,105 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
   const feedDetails = getGallerySnapshotFeedDetails(snapshot);
   const member = getGallerySnapshotCardMemberProfile(snapshot);
   const durationLabel = formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) || "Not shared";
+  const sessionTitle = publicDetails.seedVarietyLabel && publicDetails.seedVarietyLabel !== "Not shared"
+    ? publicDetails.seedVarietyLabel
+    : (snapshot.title || "Featured grow result");
+  const sessionDescription = snapshot.caption
+    || snapshot.summary
+    || "A public Community Grow result with shared session evidence and complete documentation.";
+  const awardedDate = publicDetails.sessionDateLabel && publicDetails.sessionDateLabel !== "Not shared"
+    ? publicDetails.sessionDateLabel
+    : getGallerySnapshotSubmittedDateLabel(snapshot);
+  const likeCount = Math.max(0, Number(snapshot.likeCount) || 0);
+  const recognitionCategories = [
+    { label: "Featured Community Grow", icon: "mySessionsSprout" },
+    { label: "Best First-Time Grow", icon: "mySessionsSprout" },
+    { label: "Best Documented Session", icon: "reportDocument" },
+    { label: "Rare Variety Spotlight", icon: "seedVault" },
+    { label: "International Grow Highlight", icon: "growNetworkNodes" },
+    { label: "Community Pick", icon: "heartLike" },
+    { label: "Most Improved Grow", icon: "activeSessionWaveform" },
+    { label: "Best Educational Report", icon: "reportDocument" },
+    { label: "Reliable Results / Consistent Grower", icon: "certificationShield" },
+  ];
   const imageMarkup = hasGallerySnapshotImage(snapshot)
-    ? `<img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(publicDetails.seedVarietyLabel || snapshot.title || "Featured grow")}" loading="lazy" decoding="async">`
-    : `<div class="community-intelligence-spotlight-placeholder">${renderAppIconMarkup("mySessionsSprout", { variant: "plate" })}</div>`;
+    ? `<img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(sessionTitle)}" loading="lazy" decoding="async">`
+    : `<div class="community-featured-grow-placeholder">${renderAppIconMarkup("mySessionsSprout", { variant: "plate" })}</div>`;
   return `
-    <section id="community-spotlight" class="card gallery-section community-intelligence-panel community-intelligence-spotlight" data-community-intelligence-section="spotlight" aria-labelledby="community-spotlight-title">
-      <div class="community-intelligence-section-head community-intelligence-section-head--inline">
+    <section id="community-spotlight" class="card gallery-section community-intelligence-panel community-featured-grow" data-community-intelligence-section="spotlight" aria-labelledby="community-spotlight-title">
+      <div class="community-featured-grow-header">
         <div>
-          <p class="eyebrow">Community Spotlight <span class="community-intelligence-live-badge">Featured Grow</span></p>
-          <h3 id="community-spotlight-title">${escapeHtml(publicDetails.seedVarietyLabel && publicDetails.seedVarietyLabel !== "Not shared" ? publicDetails.seedVarietyLabel : (snapshot.title || "Featured grow result"))}</h3>
+          <p class="eyebrow">${renderAppIconMarkup("mySessionsSprout", { variant: "plain", className: "community-featured-grow-heading-icon" })} Featured Community Grow</p>
+          <h3 id="community-spotlight-title">Featured Community Grow</h3>
+          <p>Celebrating outstanding grows that inspire and educate our community.</p>
         </div>
-        <a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Grow Report</a>
+        <div class="community-featured-grow-header-actions">
+          <span class="community-featured-grow-rotation">${renderAppIconMarkup("activeSessionWaveform", { variant: "plain" })} Rotates daily</span>
+          <a class="button button-secondary" href="#community-spotlight">View All Featured</a>
+        </div>
       </div>
-      <div class="community-intelligence-spotlight-layout">
-        <a class="community-intelligence-spotlight-media" href="#sessions/public/${escapeHtml(snapshot.id)}">
+      <div class="community-featured-grow-card">
+        <a class="community-featured-grow-media" href="#sessions/public/${escapeHtml(snapshot.id)}">
+          <span class="community-featured-grow-top-badge">${renderAppIconMarkup("reportDocument", { variant: "plain" })} Featured Today</span>
           ${imageMarkup}
         </a>
-        <div class="community-intelligence-spotlight-copy">
-          <p>${escapeHtml(snapshot.caption || snapshot.summary || "A public Community Grow result with shared session evidence.")}</p>
-          <div class="community-intelligence-spotlight-meta">
-            <span>by ${member.profileRoute ? `<a href="${escapeHtml(member.profileRoute)}">${escapeHtml(member.displayName)}</a>` : escapeHtml(member.displayName)}</span>
-            <span>${escapeHtml(publicDetails.sourceLabel)}</span>
-            <span>${escapeHtml(publicDetails.sessionDateLabel)}</span>
+        <div class="community-featured-grow-copy">
+          <div class="community-featured-grow-title-block">
+            <h4>${escapeHtml(sessionTitle)}</h4>
+            <div class="community-featured-grow-meta">
+              <span>${renderAppIconMarkup("profileUser", { variant: "plain" })} by ${member.profileRoute ? `<a href="${escapeHtml(member.profileRoute)}">${escapeHtml(member.displayName)}</a>` : escapeHtml(member.displayName)}</span>
+              <span>${renderAppIconMarkup("sourceDirectoryBars", { variant: "plain" })} ${escapeHtml(publicDetails.sourceLabel || "Source not shared")}</span>
+              <span>${renderAppIconMarkup("calendar", { variant: "plain" })} ${escapeHtml(awardedDate || "Date not shared")}</span>
+            </div>
+            <p>${escapeHtml(sessionDescription)}</p>
           </div>
-          <div class="community-intelligence-spotlight-stats">
-            ${renderPerformanceCardMarkup({ className: "community-intelligence-mini-stat", label: "Result", value: publicDetails.germinationRateLabel })}
-            ${renderPerformanceCardMarkup({ className: "community-intelligence-mini-stat", label: "Seeds", value: feedDetails.seedCountLabel || publicDetails.seedCountLabel })}
-            ${renderPerformanceCardMarkup({ className: "community-intelligence-mini-stat", label: "Total Time", value: durationLabel })}
-            ${renderPerformanceCardMarkup({ className: "community-intelligence-mini-stat", label: "Likes", value: formatPrivateAnalyticsNumber(snapshot.likeCount || 0) })}
+          <div class="community-featured-grow-recognition">
+            <div class="community-featured-grow-award-icon">${renderAppIconMarkup("certificationShield", { variant: "plain" })}</div>
+            <div>
+              <span>Recognized As</span>
+              <strong>Featured Community Grow</strong>
+              <p>Selected for exceptional documentation, results, and community value.</p>
+              <small>Awarded ${escapeHtml(awardedDate || "recently")}</small>
+            </div>
           </div>
+          <div class="community-featured-grow-stats">
+            <article>
+              <strong>${escapeHtml(publicDetails.germinationRateLabel || "Result unavailable")}</strong>
+              <span>Result</span>
+            </article>
+            <article>
+              <strong>${escapeHtml(feedDetails.seedCountLabel || publicDetails.seedCountLabel || "Not shared")}</strong>
+              <span>Seeds</span>
+            </article>
+            <article>
+              <strong>${escapeHtml(durationLabel)}</strong>
+              <span>Total Time</span>
+            </article>
+            <article>
+              <strong>${escapeHtml(formatPrivateAnalyticsNumber(likeCount))}</strong>
+              <span>Likes</span>
+            </article>
+          </div>
+          <a class="button button-primary community-featured-grow-cta" href="#sessions/public/${escapeHtml(snapshot.id)}">View Grow Report</a>
+          <p class="community-featured-grow-note">Growers are notified when their grow is featured.</p>
         </div>
       </div>
-    </section>
-  `;
-}
-
-function renderCommunityIntelligenceInsightsSection(data = getCommunityIntelligenceDashboardData()) {
-  const stats = [
-    { label: "Total sessions", value: data.factStats.totalSessions },
-    { label: "Total seeds tested", value: data.factStats.totalSeedsTested },
-    { label: "Sources tracked", value: data.factStats.sourcesTracked },
-    { label: "Varieties tracked", value: data.factStats.varietiesTracked },
-    { label: "Registered growers", value: data.factStats.registeredGrowers },
-    { label: "Countries represented", value: data.factStats.countriesRepresented },
-    { label: "Reports published", value: data.factStats.reportsPublished },
-    { label: "Community photos", value: data.factStats.communityPhotos },
-    { label: "High confidence reports", value: data.factStats.highConfidenceReports },
-    { label: "CSTP verified sources", value: data.factStats.cstpVerifiedSources },
-  ];
-  return `
-    <section id="community-insights" class="card gallery-section community-intelligence-panel community-intelligence-facts" data-community-intelligence-section="facts" aria-labelledby="community-facts-title">
-      <span id="community-insights-seed-age" class="community-intelligence-anchor" aria-hidden="true"></span>
-      <div class="community-intelligence-section-head community-intelligence-section-head--inline">
-        <div>
-          <p class="eyebrow">Community Insights</p>
-          <h3 id="community-facts-title">Knowledge base scale</h3>
-          <p>Factual platform intelligence from public community reports and verified source signals.</p>
+      <div class="community-recognition-strip" aria-label="Recent recognition categories">
+        <div class="community-recognition-strip-head">
+          ${renderAppIconMarkup("certificationShield", { variant: "plain", className: "community-recognition-strip-icon" })}
+          <span>
+            <strong>Recent Recognition</strong>
+            <small>Different ways our community celebrates excellence.</small>
+          </span>
         </div>
-        <a class="community-insights-view-all-link" href="#community-insights">Open Insights</a>
-      </div>
-      <div class="community-intelligence-fact-grid">
-        ${stats.map((stat) => `
-          <article class="community-intelligence-fact-card grow-kpi-card">
-            ${renderGrowKpiWatermarkMarkup(stat.label)}
-            <strong>${escapeHtml(formatPrivateAnalyticsNumber(stat.value))}</strong>
-            <span>${escapeHtml(stat.label)}</span>
-          </article>
-        `).join("")}
+        <div class="community-recognition-list">
+          ${recognitionCategories.map((category) => `
+            <span class="community-recognition-pill">
+              ${renderAppIconMarkup(category.icon, { variant: "plain" })}
+              ${escapeHtml(category.label)}
+            </span>
+          `).join("")}
+        </div>
       </div>
     </section>
   `;
@@ -73459,7 +73503,6 @@ function renderCommunityIntelligenceDashboardMarkup() {
     ${renderCommunityIntelligenceTrendingSection(data)}
     <section class="community-intelligence-mid-grid" data-community-intelligence-section="mid-dashboard">
       ${renderCommunityIntelligenceSpotlightSection(data)}
-      ${renderCommunityIntelligenceInsightsSection(data)}
     </section>
     ${renderCommunityIntelligenceLowerDashboardSection(data)}
   `;
