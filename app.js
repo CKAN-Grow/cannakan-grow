@@ -25354,8 +25354,7 @@ async function deleteCloudSession(sessionId) {
       updated_at: deletedAt,
     })
     .eq("id", sessionId)
-    .select()
-    .single();
+    .select("*");
 
   if (error) {
     saveSessions(getSessions().map((item) => (item.id === sessionId ? existingSession : item)));
@@ -25366,7 +25365,9 @@ async function deleteCloudSession(sessionId) {
     throw error;
   }
 
-  const savedSession = mapRowToSession(data);
+  const rows = Array.isArray(data) ? data : (data ? [data] : []);
+  const savedRow = rows.find((row) => String(row?.id || "").trim() === sessionId) || rows[0] || null;
+  const savedSession = savedRow ? mapRowToSession(savedRow) : archivedSession;
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(existingSession || { id: sessionId });
   saveHiddenSession(savedSession, "remote-delete-saved");
   await forceRefreshUserSessionsAfterDelete("session-user-delete");
@@ -25456,6 +25457,28 @@ async function performSessionDeleteAction(session, deleteAction = null) {
   }
 
   return null;
+}
+
+function showSessionDeleteSuccessFeedback(deleteResult = null) {
+  const action = String(deleteResult?.action || "").trim();
+  const deletedCount = Math.max(0, Number(deleteResult?.deletedCount) || 0);
+  const message = action === "founder-cleanup-complete" || action === "founder-cleanup"
+    ? `Test session cleanup complete. Removed ${deletedCount} session${deletedCount === 1 ? "" : "s"} and related session records.`
+    : "Session removed from My Sessions.";
+  showNavigationLockToast({
+    title: action === "founder-cleanup-complete" || action === "founder-cleanup"
+      ? "Test Session Cleaned Up"
+      : "Session Removed",
+    message,
+  });
+}
+
+function showSessionDeleteFailureFeedback(error = null) {
+  const details = getReadableErrorDetails(error) || String(error?.message || "").trim();
+  showNavigationLockToast({
+    title: "Could Not Remove Session",
+    message: details || "The session could not be removed right now. Please try again.",
+  });
 }
 
 async function uploadSessionImageFile(sessionId, file) {
@@ -84433,8 +84456,9 @@ function renderSessionsList() {
         appState.sessionHistoryFilter = "all";
         appState.sessionHistoryExpanded = true;
         renderSessionsList();
+        showSessionDeleteSuccessFeedback(deleteResult);
       } catch (error) {
-        window.alert(error.message || "Could not delete session.");
+        showSessionDeleteFailureFeedback(error);
       }
     });
 
@@ -86984,9 +87008,10 @@ function renderSessionDetail(sessionId) {
       appState.sessionHistoryFocusSessionId = sessionId;
       appState.sessionHistoryFilter = "all";
       appState.sessionHistoryExpanded = true;
+      showSessionDeleteSuccessFeedback(deleteResult);
       navigateWithUnsavedChangesBypass("#sessions");
     } catch (error) {
-      window.alert(error.message || "Could not delete session.");
+      showSessionDeleteFailureFeedback(error);
     }
   });
   applyPendingSessionDetailNotificationFocus(session, detail);
@@ -87092,8 +87117,9 @@ function renderSessionCollection(container, sessions, options) {
         appState.sessionHistoryFilter = "all";
         appState.sessionHistoryExpanded = true;
         renderSessionsList();
+        showSessionDeleteSuccessFeedback(deleteResult);
       } catch (error) {
-        window.alert(error.message || "Could not delete session.");
+        showSessionDeleteFailureFeedback(error);
       }
     });
     container.appendChild(row);
