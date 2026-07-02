@@ -32533,7 +32533,7 @@ textarea::placeholder {
 
 .seed-report-hero-card .source-report-hero-main {
   align-items: flex-start;
-  gap: clamp(22px, 3vw, 34px);
+  gap: clamp(12px, 1.5vw, 18px);
 }
 
 .seed-report-hero-card .source-report-hero-copy {
