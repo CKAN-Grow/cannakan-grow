@@ -34561,7 +34561,9 @@ function getApprovedPublicGallerySnapshotById(snapshotId) {
   return getGallerySnapshotsForDisplay().find((snapshot) => (
     snapshot?.id === normalizedId
     && isGallerySnapshotAnalyticsEligible(snapshot)
-  )) || null;
+  )) || (normalizedId.startsWith("mock-gallery-")
+    ? (MOCK_GALLERY_SNAPSHOTS || []).find((snapshot) => snapshot?.id === normalizedId && isGallerySnapshotAnalyticsEligible(snapshot))
+    : null) || null;
 }
 
 function getViewablePublicSessionSnapshotById(snapshotId) {
@@ -34574,7 +34576,9 @@ function getViewablePublicSessionSnapshotById(snapshotId) {
   return getGallerySnapshotsForDisplay().find((snapshot) => (
     String(snapshot?.id || "").trim() === normalizedId
     && canCurrentViewerSeeGallerySnapshot(snapshot, { isAdminView })
-  )) || null;
+  )) || (normalizedId.startsWith("mock-gallery-")
+    ? (MOCK_GALLERY_SNAPSHOTS || []).find((snapshot) => String(snapshot?.id || "").trim() === normalizedId)
+    : null) || null;
 }
 
 function getGallerySnapshotFeedDetails(snapshot) {
@@ -53063,20 +53067,105 @@ function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedRep
   `;
 }
 
+function getSeedReportGallerySessionRows(seed = {}) {
+  const varietyName = String(seed.varietyName || "").trim();
+  const varietyKey = normalizeSourceNameForMatching(varietyName);
+  const sourceName = String(seed.source || "").trim();
+  const shortVarietyName = sourceName && varietyName.toLowerCase().startsWith(`${sourceName.toLowerCase()} `)
+    ? varietyName.slice(sourceName.length).trim()
+    : varietyName;
+  const shortVarietyKey = normalizeSourceNameForMatching(shortVarietyName);
+  const sourcedVarietyKey = normalizeSourceNameForMatching(`${sourceName} ${shortVarietyName}`.trim());
+  const varietyMatchKeys = new Set([varietyKey, shortVarietyKey, sourcedVarietyKey].filter(Boolean));
+  const publicSnapshots = getGallerySnapshotsForDisplay();
+  const candidateSnapshots = publicSnapshots.length ? publicSnapshots : (MOCK_GALLERY_SNAPSHOTS || []);
+  const snapshots = candidateSnapshots
+    .filter((snapshot) => {
+      const snapshotVarietyKey = normalizeSourceNameForMatching(snapshot.seedVarietyName || snapshot.seedVariety || "");
+      const partitions = Array.isArray(snapshot.partitions) ? snapshot.partitions : [];
+      return varietyMatchKeys.has(snapshotVarietyKey)
+        || partitions.some((partition) => {
+          const partitionVarietyKey = normalizeSourceNameForMatching(partition.seedVariety || partition.seedVarietyName || "");
+          return varietyMatchKeys.has(partitionVarietyKey);
+        });
+    })
+    .slice(0, 3);
+
+  const fallbackImages = Array.isArray(seed.gallery) && seed.gallery.length ? seed.gallery : DEMO_SNAPSHOT_IMAGE_URLS;
+  const rows = snapshots.length ? snapshots : fallbackImages.slice(0, 3).map((imagePath, index) => ({
+    id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
+    imageUrl: imagePath,
+    imagePath,
+    countryCode: ["DE", "US", "CA"][index] || "",
+    sessionStatus: index === 1 ? "Germination" : "Completed",
+    totalSeeds: Math.max(2, Math.round((Number(seed.seedsTracked || 0) || 12) * (0.014 + (index * 0.004)))),
+    totalPlanted: Math.max(1, Math.round((Number(seed.seedsTracked || 0) || 12) * (0.013 + (index * 0.003)))),
+  }));
+
+  return rows.map((snapshot, index) => {
+    const partitions = Array.isArray(snapshot.partitions) ? snapshot.partitions : [];
+    const matchingPartitions = partitions.filter((partition) => {
+      const partitionVarietyKey = normalizeSourceNameForMatching(partition.seedVariety || partition.seedVarietyName || "");
+      return varietyMatchKeys.has(partitionVarietyKey);
+    });
+    const evidencePartitions = matchingPartitions.length ? matchingPartitions : partitions;
+    const seedCount = evidencePartitions.reduce((total, partition) => total + (Number(partition.seedCount) || 0), 0)
+      || Number(snapshot.totalSeeds || snapshot.seedCount || 0);
+    const germinatedCount = evidencePartitions.reduce((total, partition) => total + (Number(partition.plantedCount ?? partition.germinatedCount) || 0), 0)
+      || Number(snapshot.totalPlanted || snapshot.germinatedCount || 0);
+    const countryCode = normalizeCountryCode(snapshot.countryCode || snapshot.country_code || "") || ["DE", "US", "CA"][index] || "";
+    const sessionStatus = snapshot.completedAt || snapshot.completed_at || snapshot.successPercent || snapshot.germinationRate
+      ? "Completed"
+      : "Germination";
+    const durationLabel = snapshot.germinationStartedAt && snapshot.completedAt
+      ? formatPublicTimelineElapsedDuration(new Date(snapshot.germinationStartedAt), new Date(snapshot.completedAt), { includeDays: false })
+      : (snapshot.sessionDate ? "42h" : "24h");
+    const countryName = getCountryName(countryCode) || ["Germany", "USA", "Canada"][index] || "Community";
+    return {
+      id: snapshot.id || `mock-gallery-${String(index + 1).padStart(2, "0")}`,
+      href: snapshot.id ? `#sessions/public/${encodeURIComponent(snapshot.id)}` : "#gallery",
+      imageUrl: snapshot.imageUrl || snapshot.imagePath || fallbackImages[index % Math.max(1, fallbackImages.length)] || DEMO_SNAPSHOT_IMAGE_URLS[0],
+      countryLabel: `${getCountryFlagEmoji(countryCode) || ""} ${countryName}`.trim(),
+      status: sessionStatus,
+      duration: durationLabel || "42h",
+      seedCount,
+      germinatedCount,
+      germinationLabel: germinatedCount && seedCount
+        ? `${germinatedCount} / ${seedCount} Germinated`
+        : `${seedCount || "3"} Seeds`,
+    };
+  });
+}
+
 function renderSeedReportGalleryMarkup(seed = {}, renderSectionTitle = (title) => renderSourceReportSectionTitle(6, title)) {
-  const galleryItems = (Array.isArray(seed.gallery) ? seed.gallery : []).slice(0, 3);
+  const galleryItems = getSeedReportGallerySessionRows(seed);
   return `
     <article class="card source-report-section-card seed-report-gallery-card">
       ${renderSectionTitle("Community Gallery")}
       <div class="seed-profile-gallery-grid seed-report-gallery-grid">
-        ${galleryItems.map((imagePath, index) => `
-          <article class="card seed-profile-gallery-card">
-            <img src="${escapeHtml(imagePath)}" alt="${escapeHtml(`${seed.varietyName || "Seed"} community preview snapshot ${index + 1}`)}" loading="lazy" decoding="async">
+        ${galleryItems.map((item, index) => `
+          <a class="card seed-profile-gallery-card seed-report-session-gallery-card" href="${escapeHtml(item.href)}" aria-label="View Community Session Report for ${escapeHtml(seed.varietyName || "this variety")} snapshot ${index + 1}">
+            <img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(`${seed.varietyName || "Seed"} community session snapshot ${index + 1}`)}" loading="lazy" decoding="async">
             <div>
-              <span>${escapeHtml(seed.seedType || "Seed")}</span>
-              <strong>${escapeHtml(index === 0 ? "Community snapshot" : "Preview grow evidence")}</strong>
+              <span>${escapeHtml(item.countryLabel || "Community Session")}</span>
+              <strong>${escapeHtml(item.status || "Completed")}</strong>
+              <dl class="seed-report-session-gallery-meta">
+                <div>
+                  <dt>Duration</dt>
+                  <dd>${escapeHtml(item.duration || "42h")}</dd>
+                </div>
+                <div>
+                  <dt>Seeds</dt>
+                  <dd>${escapeHtml(`${Number(item.seedCount || 0).toLocaleString()} Seeds`)}</dd>
+                </div>
+                <div>
+                  <dt>Result</dt>
+                  <dd>${escapeHtml(item.germinationLabel || "Result pending")}</dd>
+                </div>
+              </dl>
+              <em>View Community Session <b aria-hidden="true">&rarr;</b></em>
             </div>
-          </article>
+          </a>
         `).join("")}
       </div>
     </article>
