@@ -546,15 +546,20 @@
                 <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
               </label>
               <label class="system-type-field">
-                <span>System Type</span>
+                <span>Method Type</span>
                 <select name="systemType" required>
-                  <option value="KAN">KAN</option>
-                  <option value="TRA">TRA</option>
+                  <option value="KAN">KAN ⭐ Recommended</option>
+                  <option value="TRA">TRā</option>
+                  <option value="PAPER_TOWEL">Paper Towel</option>
+                  <option value="ROCKWOOL">Rockwool</option>
+                  <option value="WATER_SOAK">Water Soak</option>
+                  <option value="DIRECT_SOW">Direct Sow</option>
+                  <option value="OTHER">Other</option>
                 </select>
                 <span class="system-type-chevron" aria-hidden="true"></span>
               </label>
               <label class="system-id-field">
-                <span>System ID (if using multiple)</span>
+                <span>Method ID (if using multiple)</span>
                 <select name="unitId">
                   <option value="">Not selected</option>
                   <option value="A">A</option>
@@ -574,7 +579,7 @@
           </section>
 
           <section class="system-layout-block session-glass-panel" aria-labelledby="system-layout-label">
-            <p id="system-layout-label" class="system-layout-label">System Layout</p>
+            <p id="system-layout-label" class="system-layout-label">Method Layout</p>
             <div id="system-layout-reference" class="system-layout-visual"></div>
           </section>
 
@@ -694,8 +699,8 @@
                     <label class="session-seed-age-mode-card" data-seed-age-mode-card="mixed">
                       <input type="radio" name="seedAgeMode" value="mixed">
                       <span class="session-seed-age-mode-copy">
-                        <strong>Mixed ages by partition</strong>
-                        <span>Enter seed age separately for each partition.</span>
+                        <strong>Mixed ages by row</strong>
+                        <span>Enter seed age separately for each seed row.</span>
                       </span>
                     </label>
                   </fieldset>
@@ -723,10 +728,13 @@
               <span>Sex</span>
               <span data-partition-header="seeds"># of Seeds</span>
               <span data-partition-header="age" data-seed-age-header hidden>Age</span>
-              <span data-partition-header="germinated"># Germinated</span>
-              <span data-partition-header="success">Success %</span>
+              <span data-partition-header="germinated" data-standardized-method-only># Germinated</span>
+              <span data-partition-header="success" data-standardized-method-only>Success %</span>
             </div>
             <div id="partition-fields" class="partition-table"></div>
+          </div>
+          <div class="custom-seed-row-actions session-glass-panel" data-custom-method-actions hidden>
+            <button type="button" id="add-seed-row" class="button button-secondary">+ Add Seed Row</button>
           </div>
           <div class="timeline-save-shortcut session-glass-panel">
             <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
@@ -1119,7 +1127,7 @@
           </div>
         </section>
         <section class="system-layout-block session-glass-panel" aria-labelledby="detail-system-layout-label">
-          <p id="detail-system-layout-label" class="system-layout-label">System Layout</p>
+          <p id="detail-system-layout-label" class="system-layout-label">Method Layout</p>
           <div id="detail-layout-reference" class="system-layout-visual"></div>
         </section>
         <section id="detail-lifecycle-section" class="session-lifecycle-section session-glass-panel" aria-labelledby="detail-lifecycle-title">
@@ -1234,8 +1242,8 @@
                   <label class="session-seed-age-mode-card" data-seed-age-mode-card="mixed">
                     <input type="radio" name="seedAgeMode" value="mixed">
                     <span class="session-seed-age-mode-copy">
-                      <strong>Mixed ages by partition</strong>
-                      <span>Enter seed age separately for each partition.</span>
+                      <strong>Mixed ages by row</strong>
+                      <span>Enter seed age separately for each seed row.</span>
                     </span>
                   </label>
                 </fieldset>
@@ -1262,8 +1270,8 @@
             <span>Sex</span>
             <span data-partition-header="seeds"># of Seeds</span>
             <span data-partition-header="age" data-seed-age-header hidden>Age</span>
-            <span data-partition-header="germinated"># Germinated</span>
-            <span data-partition-header="success">Success %</span>
+            <span data-partition-header="germinated" data-standardized-method-only># Germinated</span>
+            <span data-partition-header="success" data-standardized-method-only>Success %</span>
           </div>
           <div id="detail-partitions" class="partition-table"></div>
         </div>

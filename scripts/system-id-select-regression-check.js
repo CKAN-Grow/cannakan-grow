@@ -41,7 +41,7 @@ if (!appSource.includes('unit_id: normalizeUnitIdValue(session.unitId)')) {
 
 const stageEditingMatch = appSource.match(/function applyStageEditingMode[\s\S]*?function closeGrowthStageModal/);
 if (!stageEditingMatch || !stageEditingMatch[0].includes('select[name="systemType"]')) {
-  throw new Error("Stage edit mode must continue guarding System Type edits.");
+  throw new Error("Stage edit mode must continue guarding Method Type edits.");
 }
 
 if (stageEditingMatch[0].includes('select[name="systemType"], select[name="unitId"]')) {

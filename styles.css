@@ -46117,9 +46117,19 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   align-items: center;
 }
 
+.chart-shell[data-method-standardized="false"] .chart-row,
+.partition-table[data-method-standardized="false"] .chart-row {
+  grid-template-columns: 72px minmax(140px, 0.58fr) minmax(320px, 1.28fr) minmax(132px, 156px) minmax(132px, 156px) 96px;
+}
+
 .chart-shell[data-seed-age-mode="mixed"] .chart-row,
 .partition-table[data-seed-age-mode="mixed"] .chart-row {
   grid-template-columns: 72px minmax(112px, 0.42fr) minmax(250px, 1.06fr) minmax(124px, 142px) minmax(124px, 142px) 84px minmax(118px, 128px) minmax(122px, 132px) minmax(104px, 112px);
+}
+
+.chart-shell[data-method-standardized="false"][data-seed-age-mode="mixed"] .chart-row,
+.partition-table[data-method-standardized="false"][data-seed-age-mode="mixed"] .chart-row {
+  grid-template-columns: 72px minmax(132px, 0.52fr) minmax(300px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px);
 }
 
 .chart-shell[data-session-status="unselected"] .chart-row,
@@ -46134,6 +46144,21 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 .chart-shell[data-seed-age-mode="mixed"][data-session-status="soaking"] .chart-row,
 .partition-table[data-seed-age-mode="mixed"][data-session-status="soaking"] .chart-row {
   grid-template-columns: 72px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px);
+}
+
+[data-method-standardized="false"] #session-lifecycle-section,
+[data-method-standardized="false"] #detail-lifecycle-section,
+[data-method-standardized="false"] #session-timing-section,
+[data-method-standardized="false"] #detail-timing-section,
+[data-method-standardized="false"] #partition-progress-section,
+[data-method-standardized="false"] #detail-progress-section,
+[data-method-standardized="false"] #run-progress-section,
+[data-method-standardized="false"] #detail-run-progress-section,
+[data-method-standardized="false"] .system-layout-block,
+[data-method-standardized="false"] .timeline-debug-panel,
+[data-method-standardized="false"] .system-id-field,
+[data-method-standardized="false"] [data-standardized-method-only] {
+  display: none !important;
 }
 
 .chart-header {
@@ -46192,6 +46217,22 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 
 .partition-table {
   display: grid;
+}
+
+.custom-seed-row-actions {
+  display: flex;
+  justify-content: flex-start;
+  padding: 14px 16px;
+}
+
+.custom-seed-row-actions[hidden] {
+  display: none !important;
+}
+
+.custom-seed-row-actions .button {
+  min-height: 42px;
+  border-color: rgba(148, 209, 89, 0.38);
+  color: var(--accent-strong, #94d159);
 }
 
 .tra-section {

@@ -1427,6 +1427,141 @@ const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "/src/assets/kan-partition-icon-v2.png",
   TRA: "/src/assets/tra-partition-icon.png",
 };
+const CUSTOM_METHOD_SEED_ICON_ASSET = `data:image/svg+xml,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="seedGlow" x1="14" y1="54" x2="50" y2="8" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5da837"/>
+      <stop offset="1" stop-color="#c6ff6f"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#102012"/>
+  <path d="M32 10c9.5 8.7 15 18 15 27 0 9.4-6.2 16-15 16S17 46.4 17 37c0-9 5.5-18.3 15-27Z" fill="url(#seedGlow)" opacity=".95"/>
+  <path d="M32 17c2.2 9.6 1 20.7-4.6 29.5" fill="none" stroke="#0f2d13" stroke-width="3.2" stroke-linecap="round"/>
+</svg>
+`)}`;
+const METHOD_TYPE_CONFIG = Object.freeze({
+  KAN: Object.freeze({
+    id: "KAN",
+    name: "KAN",
+    optionLabel: "KAN ⭐ Recommended",
+    modalDescription: "Standardized 8-part KAN workflow",
+    isStandardized: true,
+    supportsLayoutImage: true,
+    supportsPartitions: true,
+    supportsTimeline: true,
+    supportsStageTracking: true,
+    supportsFilterInventory: true,
+    defaultRowCount: 8,
+    rowLabel: "Partition",
+    chartEyebrow: "Partitions",
+    chartTitle: "KAN® Partition Chart",
+    iconAlt: "KAN partition icon",
+  }),
+  TRA: Object.freeze({
+    id: "TRA",
+    name: "TRā",
+    optionLabel: "TRā",
+    modalDescription: "Standardized 16-part TRā workflow",
+    isStandardized: true,
+    supportsLayoutImage: true,
+    supportsPartitions: true,
+    supportsTimeline: true,
+    supportsStageTracking: true,
+    supportsFilterInventory: false,
+    defaultRowCount: 16,
+    rowLabel: "Partition",
+    chartEyebrow: "Partitions",
+    chartTitle: "TRā™ Partition Chart",
+    iconAlt: "TRā partition icon",
+  }),
+  PAPER_TOWEL: Object.freeze({
+    id: "PAPER_TOWEL",
+    name: "Paper Towel",
+    optionLabel: "Paper Towel",
+    modalDescription: "Lightweight custom seed chart",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: false,
+    supportsStageTracking: false,
+    supportsFilterInventory: false,
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Custom Method",
+    chartTitle: "Custom Seed Chart",
+    iconAlt: "Custom seed chart icon",
+  }),
+  ROCKWOOL: Object.freeze({
+    id: "ROCKWOOL",
+    name: "Rockwool",
+    optionLabel: "Rockwool",
+    modalDescription: "Lightweight custom seed chart",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: false,
+    supportsStageTracking: false,
+    supportsFilterInventory: false,
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Custom Method",
+    chartTitle: "Custom Seed Chart",
+    iconAlt: "Custom seed chart icon",
+  }),
+  WATER_SOAK: Object.freeze({
+    id: "WATER_SOAK",
+    name: "Water Soak",
+    optionLabel: "Water Soak",
+    modalDescription: "Lightweight custom seed chart",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: false,
+    supportsStageTracking: false,
+    supportsFilterInventory: false,
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Custom Method",
+    chartTitle: "Custom Seed Chart",
+    iconAlt: "Custom seed chart icon",
+  }),
+  DIRECT_SOW: Object.freeze({
+    id: "DIRECT_SOW",
+    name: "Direct Sow",
+    optionLabel: "Direct Sow",
+    modalDescription: "Lightweight custom seed chart",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: false,
+    supportsStageTracking: false,
+    supportsFilterInventory: false,
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Custom Method",
+    chartTitle: "Custom Seed Chart",
+    iconAlt: "Custom seed chart icon",
+  }),
+  OTHER: Object.freeze({
+    id: "OTHER",
+    name: "Other",
+    optionLabel: "Other",
+    modalDescription: "Flexible custom method",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: false,
+    supportsStageTracking: false,
+    supportsFilterInventory: false,
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Custom Method",
+    chartTitle: "Custom Seed Chart",
+    iconAlt: "Custom seed chart icon",
+  }),
+});
+const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
 const TIMELINE_STAGE_ICON_ASSETS = Object.freeze({
   "stage-soaking": "/src/assets/icons/timeline-icons-soaking.png",
   "stage-germination": "/src/assets/icons/timeline-icons-germination.png",
@@ -1447,6 +1582,62 @@ const ADMIN_CSTP_STAGE_OPTIONS = [
   { value: "completed", progressKey: "completed", label: "Completed", modalLabel: "Completed", tone: "is-completed" },
 ];
 const inlineSvgCache = {};
+
+function normalizeMethodType(value = "") {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_")
+    .replace(/[Āā]/g, "A");
+
+  if (normalizedValue === "TR" || normalizedValue === "TRA") {
+    return "TRA";
+  }
+  if (normalizedValue === "PAPER" || normalizedValue === "PAPER_TOWELS" || normalizedValue === "PAPER_TOWEL") {
+    return "PAPER_TOWEL";
+  }
+  if (normalizedValue === "WATER" || normalizedValue === "SOAK" || normalizedValue === "WATER_SOAK") {
+    return "WATER_SOAK";
+  }
+  if (normalizedValue === "DIRECT" || normalizedValue === "DIRECT_SOW") {
+    return "DIRECT_SOW";
+  }
+  if (Object.prototype.hasOwnProperty.call(METHOD_TYPE_CONFIG, normalizedValue)) {
+    return normalizedValue;
+  }
+  return "KAN";
+}
+
+function getMethodConfig(value = "") {
+  return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
+}
+
+function getSessionMethodType(session = null) {
+  return normalizeMethodType(
+    session?.methodType
+    || session?.method_type
+    || session?.systemType
+    || session?.system_type
+    || "KAN",
+  );
+}
+
+function formatMethodTypeLabel(value = "") {
+  return getMethodConfig(value).name;
+}
+
+function syncMethodTypeSelectOptions(selectElement, selectedMethod = "") {
+  if (!(selectElement instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const nextMethod = normalizeMethodType(selectedMethod || selectElement.value || "KAN");
+  selectElement.innerHTML = METHOD_TYPE_ORDER.map((methodId) => {
+    const method = METHOD_TYPE_CONFIG[methodId];
+    return `<option value="${escapeHtml(method.id)}">${escapeHtml(method.optionLabel)}</option>`;
+  }).join("");
+  selectElement.value = nextMethod;
+}
 const ACTIVE_PARTITION_STYLE = {
   fill: "#f2ff4d",
   stroke: "#0d5b1f",
@@ -5803,9 +5994,14 @@ function normalizeStoredSession(session) {
   const sessionSeedAgeYears = seedAgeTrackingEnabled && seedAgeMode === "same"
     ? normalizeSeedAgeYears(session.sessionSeedAgeYears ?? session.session_seed_age_years)
     : null;
+  const methodType = getSessionMethodType(session);
 
   return {
     ...session,
+    methodType,
+    method_type: methodType,
+    systemType: methodType,
+    system_type: methodType,
     customSessionName: String(session.customSessionName || "").trim(),
     sessionNotes: String(session.sessionNotes || "").trim(),
     sessionImages: normalizePersistedSessionImages(session.sessionImages),
@@ -27088,7 +27284,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     snapshot_image_path: upload.path,
     image_hash: imageHash || null,
     session_date: session.date || null,
-    system_type: session.systemType || "KAN",
+    system_type: getSessionMethodType(session),
     unit_id: normalizeUnitIdValue(session.unitId),
     total_seeds: Math.max(0, Number(snapshotData?.totalSeeds) || 0),
     total_planted: Math.max(0, Number(snapshotData?.totalPlanted) || 0),
@@ -28428,7 +28624,7 @@ function openGallerySnapshotOverview(snapshotId) {
     : "";
   const publicCstpPresence = getPublicCstpPresence(snapshot);
   const facts = [
-    { label: "System / Partition", value: publicDetails.systemLabel },
+    { label: "Method / Row", value: publicDetails.systemLabel },
     { label: "Source / Company", value: publicDetails.sourceLabel },
     { label: "Breeder", value: breederLabel },
     { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
@@ -34866,7 +35062,7 @@ function mapSessionToRecord(session, userId, options = {}) {
     user_id: userId,
     date: session.date,
     time: session.time,
-    system_type: session.systemType,
+    system_type: getSessionMethodType(session),
     unit_id: normalizeUnitIdValue(session.unitId),
     session_name: session.sessionName,
     custom_session_name: session.customSessionName || "",
@@ -37374,7 +37570,7 @@ function getSessionSnapshotData(session) {
     germinationStartedAt: session.germinationStartedAt || "",
     firstPlantedAt: session.firstPlantedAt || "",
     completedAt: session.completedAt || "",
-    systemType: session.systemType,
+    systemType: getSessionMethodType(session),
     seedAgeTrackingEnabled: session.seedAgeTrackingEnabled,
     seedAgeMode: session.seedAgeMode,
     sessionSeedAgeYears: session.sessionSeedAgeYears,
@@ -37604,11 +37800,15 @@ function buildSnapshotRenderKey(state, data, selectedImage) {
 }
 
 function formatSnapshotSystemLabel(systemType) {
-  if (systemType === "TRA") {
+  const method = getMethodConfig(systemType);
+  if (method.id === "TRA") {
     return "TRā™";
   }
+  if (method.id === "KAN") {
+    return "KAN®";
+  }
 
-  return "KAN®";
+  return method.name;
 }
 
 async function buildSessionSnapshotBlob(data, imageSource = "") {
@@ -39197,9 +39397,10 @@ function render() {
   }
 
   if (route === "new") {
-    if (id === "KAN" || id === "TRA") {
-      appState.newSessionSystemType = id;
-      renderSessionForm(id);
+    const requestedMethodType = normalizeMethodType(id || "");
+    if (id && METHOD_TYPE_CONFIG[requestedMethodType]) {
+      appState.newSessionSystemType = requestedMethodType;
+      renderSessionForm(requestedMethodType);
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "sessions",
         pageKey: "new-session",
@@ -39329,7 +39530,7 @@ function closeNewSessionSystemModal({ navigateBack = false } = {}) {
 }
 
 function selectNewSessionSystemType(systemType) {
-  const normalizedSystemType = systemType === "TRA" ? "TRA" : "KAN";
+  const normalizedSystemType = normalizeMethodType(systemType);
   appState.newSessionSystemType = normalizedSystemType;
   closeNewSessionSystemModal();
   window.location.hash = `#new/${normalizedSystemType}`;
@@ -39346,21 +39547,23 @@ function ensureNewSessionSystemModal() {
   overlay.className = "new-session-system-modal-overlay";
   overlay.hidden = false;
   overlay.dataset.closing = "false";
+  const methodOptionsMarkup = METHOD_TYPE_ORDER.map((methodId) => {
+    const method = METHOD_TYPE_CONFIG[methodId];
+    return `
+      <button type="button" class="new-session-system-option" data-system-type="${escapeHtml(method.id)}">
+        <strong>${escapeHtml(method.optionLabel)}</strong>
+        <span>${escapeHtml(method.modalDescription)}</span>
+      </button>
+    `;
+  }).join("");
   overlay.innerHTML = `
     <div class="new-session-system-modal" role="dialog" aria-modal="true" aria-labelledby="new-session-system-modal-title">
       <button type="button" class="modal-close" aria-label="Close">×</button>
       <div class="new-session-system-modal-copy">
-        <h2 id="new-session-system-modal-title">Choose System Type</h2>
+        <h2 id="new-session-system-modal-title">Choose Method Type</h2>
       </div>
       <div class="new-session-system-options">
-        <button type="button" class="new-session-system-option" data-system-type="KAN">
-          <strong>KAN</strong>
-          <span>8-part radial system</span>
-        </button>
-        <button type="button" class="new-session-system-option" data-system-type="TRA">
-          <strong>TRa</strong>
-          <span>16-part tray system</span>
-        </button>
+        ${methodOptionsMarkup}
       </div>
     </div>
   `;
@@ -79179,9 +79382,12 @@ function buildSeedVaultEntrySessionSnapshot(entry = {}) {
 }
 
 function getNewSessionSeedVaultPartitionLabel(systemType = "KAN", partitionId = 1) {
-  const normalizedSystemType = String(systemType || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
+  const method = getMethodConfig(systemType);
   const numericId = Math.max(1, Number(partitionId) || 1);
-  if (normalizedSystemType !== "TRA") {
+  if (!method.isStandardized) {
+    return `Seed Row ${numericId}`;
+  }
+  if (method.id !== "TRA") {
     return `P${numericId}`;
   }
   const sectionIndex = Math.floor((numericId - 1) / 4);
@@ -79335,7 +79541,9 @@ function renderNewSessionSeedVaultPartitionAssignmentCard({
   const seedCountValue = current.seedCount > 0 ? String(current.seedCount) : "";
   const label = getNewSessionSeedVaultPartitionLabel(systemType, partitionId);
   const statusClass = current.entry ? "is-assigned" : "is-empty";
-  const buttonLabel = current.entry ? "Update Partition" : "Apply to Partition";
+  const method = getMethodConfig(systemType);
+  const rowLabel = method.isStandardized ? "Partition" : "Seed Row";
+  const buttonLabel = current.entry ? `Update ${rowLabel}` : `Apply to ${rowLabel}`;
   const statusLabel = current.entry
     ? current.label
     : (selectedEntry
@@ -79431,7 +79639,10 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
 
   section.hidden = false;
   section.classList.remove("is-empty");
-  const partitionCount = getPartitionCountForSystem(systemType);
+  const method = getMethodConfig(systemType);
+  const partitionCount = method.isStandardized
+    ? getPartitionCountForSystem(method.id)
+    : Math.max(method.defaultRowCount, getNewSessionSeedVaultPartitionRows(form).length || method.defaultRowCount);
   const activePartitionId = Math.min(
     partitionCount,
     Math.max(1, Number(appState.newSessionSeedVaultActivePartitionId) || 1),
@@ -79457,7 +79668,7 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
       <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
       <span class="session-seed-age-toggle-text">
         <span id="new-session-seed-vault-title" class="session-seed-age-toggle-copy">Add from My Seed Vault</span>
-        <span class="session-seed-age-toggle-helper">Select seeds from your collection to auto-fill partition details.</span>
+        <span class="session-seed-age-toggle-helper">Select seeds from your collection to auto-fill ${method.isStandardized ? "partition" : "seed row"} details.</span>
       </span>
     </label>
     <div class="new-session-seed-vault-panel" data-seed-vault-session-panel ${expanded ? "" : "hidden"}>
@@ -79859,12 +80070,14 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
       const partitionId = Math.max(1, Number(clearButton.getAttribute("data-seed-vault-clear-partition")) || 1);
       const message = section.querySelector("[data-seed-vault-session-message]");
       const row = getNewSessionSeedVaultPartitionRow(form, partitionId);
+      const method = getMethodConfig(getSystemType());
+      const rowLabel = method.isStandardized ? "partition" : "seed row";
       if (!(row instanceof Element)) {
-        setFeedbackMessage(message, "Selected partition is unavailable for this system.", "error");
+        setFeedbackMessage(message, `Selected ${rowLabel} is unavailable for this method.`, "error");
         return;
       }
       if (isPartitionRowPopulatedForVaultApply(row)) {
-        const confirmed = window.confirm("Clear this partition's Vault Entry assignment and copied fields?");
+        const confirmed = window.confirm(`Clear this ${rowLabel}'s Vault Entry assignment and copied fields?`);
         if (!confirmed) {
           return;
         }
@@ -79891,6 +80104,8 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
 
     const partitionId = Math.max(1, Number(button.getAttribute("data-seed-vault-apply-partition")) || 1);
     const message = section.querySelector("[data-seed-vault-session-message]");
+    const method = getMethodConfig(getSystemType());
+    const rowLabel = method.isStandardized ? "partition" : "seed row";
     const entry = getSelectedSeedVaultEntryForSession(section, partitionId);
     const countInput = section.querySelector(`[data-seed-vault-partition-count="${CSS.escape(String(partitionId))}"]`);
     const seedCount = Math.floor(Number(countInput?.value) || 0);
@@ -79918,13 +80133,13 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
 
     const initialRow = getNewSessionSeedVaultPartitionRow(form, partitionId);
     if (!(initialRow instanceof Element)) {
-      setFeedbackMessage(message, "Selected partition is unavailable for this system.", "error");
+      setFeedbackMessage(message, `Selected ${rowLabel} is unavailable for this method.`, "error");
       return;
     }
 
     const existingVaultEntryId = String(initialRow.dataset.seedVaultEntryId || "").trim();
     if (isPartitionRowPopulatedForVaultApply(initialRow) && existingVaultEntryId !== entry.id) {
-      const confirmed = window.confirm("Apply this Vault Entry and overwrite details in this populated partition?");
+      const confirmed = window.confirm(`Apply this Vault Entry and overwrite details in this populated ${rowLabel}?`);
       if (!confirmed) {
         return;
       }
@@ -80047,7 +80262,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                 )
                   ? " session-history-germination-rate--success"
                   : "";
-                const strainLabel = getSessionCommandCenterPrimaryStrain(session) || session.systemType || "Not set";
+                const strainLabel = getSessionCommandCenterPrimaryStrain(session) || formatMethodTypeLabel(getSessionMethodType(session)) || "Not set";
                 const dateContext = isDeleted
                   ? "Created"
                   : (getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started");
@@ -80750,6 +80965,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
   const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
+  const addSeedRowButton = document.querySelector("#add-seed-row");
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
   const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
   const seedAgeSameInput = form.elements.sessionSeedAgeYears;
@@ -80761,7 +80977,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const notesSaveButton = document.querySelector("#session-notes-save");
   const notesMessage = document.querySelector("#session-notes-message");
   const today = new Date();
-  const normalizedSystemType = initialSystemType === "TRA" ? "TRA" : "KAN";
+  const normalizedSystemType = normalizeMethodType(initialSystemType);
   const notesDraft = loadNewSessionNotesDraft();
   const pendingSeedVaultStarterIntent = getPendingNewSessionSeedVaultStarterIntent();
   const starterSeedVaultEntry = getSeedVaultEntryForSessionStart(pendingSeedVaultStarterIntent?.entryId || "");
@@ -80791,14 +81007,16 @@ function renderSessionForm(initialSystemType = "KAN") {
   form.elements.date.value = formatDateInputValueFromDate(today);
   initializeTimeFormatField(form, formatTimeInputValueFromDate(today));
   applyNewSessionTimestampEditAccess(form);
+  syncMethodTypeSelectOptions(systemTypeField, normalizedSystemType);
   systemTypeField.value = normalizedSystemType;
-  if (notesField && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
+  updateMethodTypeLayout(form, normalizedSystemType);
+  if (notesField && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
     notesField.value = notesDraft.sessionNotes || "";
   }
-  if (publicGrowNoteField && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
+  if (publicGrowNoteField && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
     publicGrowNoteField.value = normalizePublicGrowNote(notesDraft.publicGrowNote || "");
   }
-  if (publicGrowNoteToggle && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
+  if (publicGrowNoteToggle && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
     publicGrowNoteToggle.checked = Boolean(notesDraft.includePublicGrowNote);
   }
   initializeSessionImageState(form, {
@@ -80816,7 +81034,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     },
   });
   initializeSnapshotSection(snapshotSection, {
-    initialSnapshotState: notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType
+    initialSnapshotState: notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType
       ? {
           publicGrowNote: normalizePublicGrowNote(notesDraft.publicGrowNote || ""),
           includePublicGrowNote: Boolean(notesDraft.includePublicGrowNote),
@@ -80920,7 +81138,10 @@ function renderSessionForm(initialSystemType = "KAN") {
   applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
   applyStageEditingMode(form, sessionStatusField.value);
   const renderFormSuppliesCard = () => {
-    if (!suppliesAnchor) {
+    if (!suppliesAnchor || !getMethodConfig(systemTypeField.value).supportsFilterInventory) {
+      if (suppliesAnchor) {
+        suppliesAnchor.innerHTML = "";
+      }
       return;
     }
     suppliesAnchor.innerHTML = renderActiveSessionFilterPaperCardMarkup();
@@ -80929,6 +81150,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     });
   };
   renderFormSuppliesCard();
+  updateMethodTypeLayout(form, systemTypeField.value);
   updateSessionStatusReminder(
     reminder,
     form.elements.date.value,
@@ -81158,21 +81380,27 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
     });
     systemTypeField.addEventListener("change", () => {
+      const nextMethod = normalizeMethodType(systemTypeField.value);
+      systemTypeField.value = nextMethod;
+      appState.newSessionSystemType = nextMethod;
+      form.__customMethodRowCount = getMethodConfig(nextMethod).isStandardized
+        ? 0
+        : getMethodConfig(nextMethod).defaultRowCount;
       const nextNotesDraft = loadNewSessionNotesDraft();
       if (notesField) {
         notesField.value =
-          nextNotesDraft && (nextNotesDraft.systemType || "KAN") === systemTypeField.value
+          nextNotesDraft && normalizeMethodType(nextNotesDraft.systemType || "KAN") === nextMethod
             ? nextNotesDraft.sessionNotes || ""
             : "";
       }
       if (publicGrowNoteField) {
         publicGrowNoteField.value =
-          nextNotesDraft && (nextNotesDraft.systemType || "KAN") === systemTypeField.value
+          nextNotesDraft && normalizeMethodType(nextNotesDraft.systemType || "KAN") === nextMethod
             ? normalizePublicGrowNote(nextNotesDraft.publicGrowNote || "")
             : "";
       }
       if (snapshotSection?.__snapshotState) {
-        const nextDraftSnapshotState = nextNotesDraft && (nextNotesDraft.systemType || "KAN") === systemTypeField.value
+        const nextDraftSnapshotState = nextNotesDraft && normalizeMethodType(nextNotesDraft.systemType || "KAN") === nextMethod
           ? {
               publicGrowNote: normalizePublicGrowNote(nextNotesDraft.publicGrowNote || ""),
               includePublicGrowNote: Boolean(nextNotesDraft.includePublicGrowNote),
@@ -81188,11 +81416,12 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (notesMessage?.textContent) {
         setFeedbackMessage(notesMessage, "");
       }
-      renderSystemLayoutReference(layoutReference, systemTypeField.value);
+      updateMethodTypeLayout(form, nextMethod);
+      renderSystemLayoutReference(layoutReference, nextMethod);
       if (partitionWorkTitle) {
-        updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
+        updatePartitionWorkHeading(partitionWorkTitle, nextMethod);
       }
-      renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+      renderPartitionRows(form, nextMethod, sessionStatusField.value);
       refreshNewSessionSeedVaultPicker();
       updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
@@ -81216,7 +81445,23 @@ function renderSessionForm(initialSystemType = "KAN") {
       lifecycleSection,
       buildFormLifecycleState(form),
     );
+    renderFormSuppliesCard();
+    updateMethodTypeLayout(form, nextMethod);
   });
+    addSeedRowButton?.addEventListener("click", () => {
+      const method = getMethodConfig(systemTypeField.value);
+      if (method.isStandardized) {
+        return;
+      }
+
+      const currentRows = Math.max(method.defaultRowCount, form.querySelectorAll("#partition-fields .partition-row").length);
+      form.__customMethodRowCount = currentRows + 1;
+      renderPartitionRows(form, method.id, sessionStatusField.value);
+      refreshNewSessionSeedVaultPicker();
+      updateMethodTypeLayout(form, method.id);
+      updateNewSessionNameDefaultSuggestion(form);
+      refreshUnsavedChangesState();
+    });
     sessionStatusField.addEventListener("change", () => {
       const previousStatus = form.dataset.currentStage || "unselected";
       const nextStatus = normalizeSessionStatus(sessionStatusField.value);
@@ -81382,27 +81627,13 @@ function renderSessionForm(initialSystemType = "KAN") {
 
     const formData = new FormData(form);
     const seedAgeState = getSeedAgeSettingsFromForm(form);
-    const partitionRows = [...form.querySelectorAll(".partition-row")];
-    const partitionEntries = createPartitionsForSystem(formData.get("systemType")).map((partition, index) => {
-      const row = partitionRows[index];
-      const varietyFields = buildPartitionVarietyDirectoryFields(
-        row,
-        String(formData.get(`seedVariety-${index}`) || "").trim(),
-      );
-      return {
-        id: partition.id,
-        source: String(formData.get(`source-${index}`) || "").trim(),
-        ...varietyFields,
-        breeder: "",
-        seedType: normalizeSeedTypeId(formData.get(`seedType-${index}`)),
-        feminized: formData.get(`feminized-${index}`),
-        seedCount: Number(formData.get(`seedCount-${index}`)) || 0,
-        plantedCount: row?.querySelector('input[name="plantedCount"]')?.value.trim() || "",
-        seedAgeYears: getEffectivePartitionSeedAgeFromRow(row, seedAgeState),
-        seedVaultEntryId: String(row?.dataset.seedVaultEntryId || "").trim(),
-        seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
-      };
-    });
+    const partitionEntries = buildPartitionDraftValuesFromContainer(partitionFields).map((partition, index) => ({
+      ...partition,
+      id: index + 1,
+      breeder: "",
+      seedCount: Number(partition.seedCount) || 0,
+      seedAgeYears: getEffectivePartitionSeedAgeFromRow(partitionFields.querySelectorAll(".partition-row")[index], seedAgeState),
+    }));
     const seedVaultUsageValidation = validateSeedVaultSessionUsage(partitionEntries);
     if (!seedVaultUsageValidation.isValid) {
       formMessage.textContent = seedVaultUsageValidation.message;
@@ -81420,7 +81651,10 @@ function renderSessionForm(initialSystemType = "KAN") {
       id: crypto.randomUUID(),
       date: formData.get("date"),
       time: formData.get("time"),
-      systemType: formData.get("systemType"),
+      methodType: normalizeMethodType(formData.get("systemType")),
+      method_type: normalizeMethodType(formData.get("systemType")),
+      systemType: normalizeMethodType(formData.get("systemType")),
+      system_type: normalizeMethodType(formData.get("systemType")),
       unitId: normalizedUnitId,
       sessionName: buildFinalSessionName(
         formData.get("sessionName"),
@@ -81553,28 +81787,31 @@ function buildPartitionFormCard(partition, index, options = {}) {
   const showSeedAgeField = Boolean(options.showSeedAgeField);
   const showSeedAgeInput = Boolean(options.showSeedAgeInput);
   const seedAgeReadOnly = Boolean(options.seedAgeReadOnly);
+  const includeGerminationFields = options.includeGerminationFields !== false;
+  const rowLabel = options.rowLabel || "Partition";
   const row = document.createElement("article");
   row.className = "chart-row partition-row";
+  row.classList.toggle("custom-method-row", !includeGerminationFields);
   row.dataset.partitionRow = "true";
   row.dataset.partitionId = String(partition.id);
   row.tabIndex = -1;
   row.innerHTML = `
-    <div class="partition-number partition-btn" aria-label="Partition ${partition.id}">${partition.id}</div>
+    <div class="partition-number partition-btn" aria-label="${escapeHtml(rowLabel)} ${partition.id}">${partition.id}</div>
     <label class="partition-identity-field" data-source-directory-autocomplete="true">
       <span class="mobile-field-label">Source</span>
-        <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source" aria-autocomplete="list">
+        <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-label="${escapeHtml(rowLabel)} ${partition.id} source" aria-autocomplete="list">
         <div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div>
     </label>
     <label class="partition-identity-field" data-variety-directory-autocomplete="true">
       <span class="mobile-field-label">Seed Variety</span>
-        <input type="text" name="seedVariety-${index}" class="partition-input" autocomplete="off" data-variety-directory-input="true" placeholder="Blue Dream" aria-label="Partition ${partition.id} seed variety" aria-autocomplete="list">
+        <input type="text" name="seedVariety-${index}" class="partition-input" autocomplete="off" data-variety-directory-input="true" placeholder="Blue Dream" aria-label="${escapeHtml(rowLabel)} ${partition.id} seed variety" aria-autocomplete="list">
         <div class="partition-identity-suggestions" data-variety-directory-suggestions hidden></div>
       <span class="field-warning" aria-live="polite">Please enter seed variety</span>
     </label>
     <label>
       <span class="mobile-field-label">Type</span>
       <div class="custom-select" data-dropdown-key="partition-${partition.id}-type-${index}">
-        <select name="seedType-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} type">
+        <select name="seedType-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="${escapeHtml(rowLabel)} ${partition.id} type">
           ${renderSeedTypeSelectOptions()}
         </select>
         <button type="button" class="custom-select-trigger partition-input" aria-haspopup="listbox" aria-expanded="false">
@@ -81588,7 +81825,7 @@ function buildPartitionFormCard(partition, index, options = {}) {
     <label>
       <span class="mobile-field-label">Sex</span>
       <div class="custom-select" data-dropdown-key="partition-${partition.id}-sex-${index}">
-        <select name="feminized-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} sex">
+        <select name="feminized-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="${escapeHtml(rowLabel)} ${partition.id} sex">
           <option value="" selected>Select Sex</option>
           <option value="feminized">Feminized</option>
           <option value="regular">Regular</option>
@@ -81604,28 +81841,30 @@ function buildPartitionFormCard(partition, index, options = {}) {
     </label>
     <label>
       <span class="mobile-field-label">Seeds</span>
-        <input type="number" name="seedCount-${index}" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number of seeds">
+        <input type="number" name="seedCount-${index}" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number of seeds">
       <span class="field-warning" aria-live="polite">Enter a seed count greater than zero.</span>
     </label>
     ${showSeedAgeField ? `
     <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
       <span class="mobile-field-label">Age</span>
       <span class="partition-seed-age-input-wrap">
-        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="#" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="#" aria-label="${escapeHtml(rowLabel)} ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
         <span class="partition-seed-age-input-unit" aria-hidden="true">years</span>
       </span>
       <span class="field-warning" aria-live="polite">${SEED_AGE_INPUT_HELPER_TEXT}</span>
     </label>
     ` : ""}
+    ${includeGerminationFields ? `
     <label>
       <span class="mobile-field-label"># Germinated</span>
-        <input type="number" name="plantedCount" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number germinated">
+        <input type="number" name="plantedCount" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number germinated">
       <span class="field-warning" aria-live="polite"># Germinated cannot exceed # Seeds.</span>
     </label>
     <div class="detail-cell success-cell" aria-live="polite">
       <span class="mobile-field-label">Success %</span>
       <p data-success-output></p>
     </div>
+    ` : ""}
   `;
   return row;
 }
@@ -82717,6 +82956,7 @@ function initializeSessionSourceAndVarietyAutocompletes(scope) {
 function renderPartitionRows(form, systemType, sessionStatus) {
   const partitionFields = form.querySelector("#partition-fields");
   const formMessage = form.querySelector("#form-message");
+  const method = getMethodConfig(systemType);
   const seedAgeState = getSeedAgeSettingsFromForm(form);
   const showSeedAgeField = seedAgeState.trackingEnabled;
   const seedAgeReadOnly = seedAgeState.mode === "same";
@@ -82732,9 +82972,16 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   const sessionSeedAgeAutofillValue = showSeedAgeField
     ? getSessionSeedAgeValueForForm(form)
     : null;
-  const partitions = createPartitionsForSystem(systemType).map((partition, index) => ({
+  const customMethodPartitions = method.isStandardized
+    ? existingPartitions
+    : existingPartitions.filter((partition) => hasPartitionContent(partition));
+  const rowCount = method.isStandardized
+    ? method.defaultRowCount
+    : Math.max(method.defaultRowCount, Number(form.__customMethodRowCount) || 0, customMethodPartitions.length);
+  const sourcePartitions = method.isStandardized ? existingPartitions : customMethodPartitions;
+  const partitions = createPartitionsForSystem(method.id, rowCount).map((partition, index) => ({
     ...partition,
-    ...existingPartitions[index],
+    ...sourcePartitions[index],
     id: partition.id,
   }));
   applySeedAgeValuesToPartitions(partitions, {
@@ -82745,11 +82992,15 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   });
 
   partitionFields.innerHTML = "";
-  if (systemType === "TRA") {
+  partitionFields.dataset.methodType = method.id;
+  partitionFields.dataset.methodStandardized = String(method.isStandardized);
+  if (method.id === "TRA") {
     renderTraPartitionSections(partitionFields, partitions, {
       showSeedAgeField,
       seedAgeReadOnly,
       shouldShowSeedAgeInput: (partition) => shouldShowPartitionSeedAgeFieldForPartition(partition),
+      includeGerminationFields: method.supportsStageTracking,
+      rowLabel: method.rowLabel,
     });
   } else {
     partitions.forEach((partition, index) => {
@@ -82757,6 +83008,8 @@ function renderPartitionRows(form, systemType, sessionStatus) {
         showSeedAgeField,
         showSeedAgeInput: showSeedAgeField && shouldShowPartitionSeedAgeFieldForPartition(partition),
         seedAgeReadOnly,
+        includeGerminationFields: method.supportsStageTracking,
+        rowLabel: method.rowLabel,
       }));
       hydratePartitionRow(partitionFields.lastElementChild, partition);
     });
@@ -82773,6 +83026,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     partitionFields,
     sessionStatus,
   );
+  updateMethodTypeLayout(form, method.id);
   applyPartitionSeedAgeLayout(
     form.querySelector("#partition-chart-shell"),
     form.querySelector("#partition-chart-header"),
@@ -82805,10 +83059,16 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   }
 
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const selectedMethodType = scope.dataset?.methodType
+    || scope.querySelector?.('[data-method-type]')?.dataset?.methodType
+    || scope.querySelector?.('select[name="systemType"]')?.value
+    || "";
+  const selectedMethod = getMethodConfig(selectedMethodType);
+  const usesCustomMethodWorkflow = selectedMethod && selectedMethod.isStandardized === false;
   const isUnselected = normalizedStatus === "unselected";
-  const allowFullEditing = normalizedStatus === "soaking" || isUnselected;
-  const allowGerminationOnlyEditing = normalizedStatus === "germinating";
-  const isCompleted = normalizedStatus === "completed";
+  const allowFullEditing = usesCustomMethodWorkflow || normalizedStatus === "soaking" || isUnselected;
+  const allowGerminationOnlyEditing = !usesCustomMethodWorkflow && normalizedStatus === "germinating";
+  const isCompleted = !usesCustomMethodWorkflow && normalizedStatus === "completed";
   const allowAnyEditing = allowFullEditing || allowGerminationOnlyEditing;
 
   const saveButtons = [
@@ -83269,7 +83529,7 @@ function renderSessionStatusStageIconMarkup(stageIconKey = "", variant = "pill")
 }
 
 function getPartitionChartTitle(systemType) {
-  return systemType === "TRA" ? "TRā™ Partition Chart" : "KAN® Partition Chart";
+  return getMethodConfig(systemType).chartTitle;
 }
 
 function updatePartitionWorkHeading(titleElement, systemType) {
@@ -83277,24 +83537,104 @@ function updatePartitionWorkHeading(titleElement, systemType) {
     return;
   }
 
-  const normalizedSystemType = systemType === "TRA" ? "TRA" : "KAN";
+  const method = getMethodConfig(systemType);
   const titleText = titleElement.querySelector("[data-partition-title-text]");
   const titleIcon = titleElement.querySelector("[data-partition-title-icon]");
+  const heading = titleElement.closest(".partition-work-heading");
+  const eyebrow = heading?.querySelector(".eyebrow");
 
   if (titleText) {
-    titleText.textContent = getPartitionChartTitle(normalizedSystemType);
+    titleText.textContent = method.chartTitle;
   } else {
-    titleElement.textContent = getPartitionChartTitle(normalizedSystemType);
+    titleElement.textContent = method.chartTitle;
+  }
+
+  if (eyebrow) {
+    eyebrow.textContent = method.chartEyebrow;
   }
 
   if (titleIcon) {
-    const iconAsset = PARTITION_HEADER_ICON_ASSETS[normalizedSystemType] || "";
+    const iconAsset = method.isStandardized
+      ? PARTITION_HEADER_ICON_ASSETS[method.id] || ""
+      : CUSTOM_METHOD_SEED_ICON_ASSET;
     if (iconAsset) {
       titleIcon.src = iconAsset;
     }
-    titleIcon.alt = normalizedSystemType === "TRA" ? "TRA partition icon" : "KAN partition icon";
-    titleIcon.dataset.systemType = normalizedSystemType;
+    titleIcon.alt = method.iconAlt;
+    titleIcon.dataset.systemType = method.id;
   }
+}
+
+function syncMethodChartHeader(chartHeader, methodType = "") {
+  if (!chartHeader) {
+    return;
+  }
+
+  const method = getMethodConfig(methodType);
+  const firstHeader = chartHeader.querySelector("span:first-child");
+  if (firstHeader) {
+    firstHeader.textContent = method.rowLabel;
+  }
+  chartHeader.querySelectorAll("[data-standardized-method-only]").forEach((element) => {
+    element.hidden = !method.isStandardized;
+  });
+  chartHeader.dataset.methodType = method.id;
+  chartHeader.dataset.methodStandardized = String(method.isStandardized);
+}
+
+function updateMethodTypeLayout(scope, methodType = "") {
+  if (!scope) {
+    return;
+  }
+
+  const method = getMethodConfig(methodType);
+  scope.dataset.methodType = method.id;
+  scope.dataset.methodStandardized = String(method.isStandardized);
+
+  const systemTypeField = scope.elements?.systemType;
+  if (systemTypeField instanceof HTMLSelectElement) {
+    syncMethodTypeSelectOptions(systemTypeField, method.id);
+  }
+
+  const statusField = scope.elements?.sessionStatus || scope.querySelector("#session-status-control, #detail-session-status-control");
+  if (!method.supportsStageTracking && statusField && !String(statusField.value || "").trim()) {
+    statusField.value = "custom";
+  }
+
+  scope.querySelectorAll(".system-layout-block").forEach((element) => {
+    element.hidden = !method.supportsLayoutImage;
+  });
+  scope.querySelectorAll("#session-lifecycle-section, #detail-lifecycle-section, .timeline-debug-panel").forEach((element) => {
+    element.hidden = !method.supportsTimeline && !method.supportsStageTracking;
+  });
+  scope.querySelectorAll("#session-timing-section, #detail-timing-section").forEach((element) => {
+    element.hidden = !method.supportsTimeline;
+  });
+  scope.querySelectorAll("#partition-progress-section, #detail-progress-section, #run-progress-section, #detail-run-progress-section").forEach((element) => {
+    element.hidden = !method.supportsStageTracking;
+  });
+  scope.querySelectorAll("#session-lifecycle-supplies-anchor, #detail-supplies-anchor").forEach((element) => {
+    element.hidden = !method.supportsFilterInventory;
+    if (!method.supportsFilterInventory) {
+      element.innerHTML = "";
+    }
+  });
+  scope.querySelectorAll(".system-id-field").forEach((element) => {
+    element.hidden = !method.isStandardized;
+  });
+  scope.querySelectorAll("[data-custom-method-actions]").forEach((element) => {
+    element.hidden = method.isStandardized;
+  });
+  scope.querySelectorAll(".partition-table").forEach((element) => {
+    element.dataset.methodType = method.id;
+    element.dataset.methodStandardized = String(method.isStandardized);
+  });
+  scope.querySelectorAll(".chart-shell").forEach((element) => {
+    element.dataset.methodType = method.id;
+    element.dataset.methodStandardized = String(method.isStandardized);
+  });
+  syncMethodChartHeader(scope.querySelector("#partition-chart-header, #detail-chart-header"), method.id);
+  updatePartitionWorkHeading(scope.querySelector("#partition-work-title, #detail-partition-work-title"), method.id);
 }
 
 function openGrowthStageModal({ stageField, stageTrigger, message = "", focusStageOptions = false } = {}) {
@@ -83454,7 +83794,10 @@ function hydratePartitionRow(row, partition) {
       delete seedAgeField.dataset.seedAgeAutofillApplied;
     }
   }
-  row.querySelector('input[name="plantedCount"]').value = partition.plantedCount || "";
+  const plantedInput = row.querySelector('input[name="plantedCount"]');
+  if (plantedInput) {
+    plantedInput.value = partition.plantedCount || "";
+  }
   if (partition.seedVaultEntryId) {
     row.dataset.seedVaultEntryId = partition.seedVaultEntryId;
   }
@@ -85340,13 +85683,17 @@ function getSessionDetailEditableName(session = null) {
 
 function buildSessionDetailMetaCards(session = null) {
   const seedAgeMetadata = getSessionSeedAgeMetadata(session);
+  const method = getMethodConfig(getSessionMethodType(session));
   const cards = [
     { label: "Status", value: capitalize(normalizeSessionStatus(session?.sessionStatus || "")).replace("Unselected", "Not started") },
-    { label: "System Type", value: session?.systemType || "Not set" },
-    { label: "Unit ID", value: normalizeUnitIdValue(session?.unitId) },
+    { label: "Method Type", value: session ? method.name : "Not set" },
     { label: "Date", value: session?.date || "Not set" },
     { label: "Time", value: formatStoredTime(session?.time || "") || "Not set" },
   ];
+
+  if (method.isStandardized) {
+    cards.splice(2, 0, { label: "Unit ID", value: normalizeUnitIdValue(session?.unitId) });
+  }
 
   if (seedAgeMetadata.trackingEnabled) {
     cards.push({
@@ -85728,6 +86075,7 @@ function renderSessionDetail(sessionId) {
   app.replaceChildren(cloneTemplate(templates.detail));
   const detail = getSessionDetailElements(app);
   const isCreateMode = isSessionCreateMode(session);
+  const sessionMethod = getMethodConfig(getSessionMethodType(session));
 
   syncSessionDetailHeaderMeta(detail, session);
   populateSessionDetailEditorForm(detail.detailsForm, session);
@@ -85745,13 +86093,14 @@ function renderSessionDetail(sessionId) {
     value: session.sessionNotes || "",
   });
   if (isCreateMode && detail.layoutReference) {
-    renderSystemLayoutReference(detail.layoutReference, session.systemType);
+    renderSystemLayoutReference(detail.layoutReference, sessionMethod.id);
   } else {
     removeSessionLayoutPreview(detail);
   }
   if (detail.partitionWorkTitle) {
-    updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
+    updatePartitionWorkHeading(detail.partitionWorkTitle, sessionMethod.id);
   }
+  updateMethodTypeLayout(app, sessionMethod.id);
   if (detail.sessionSequenceLabel) {
     const sessionSequenceNumber = getSessionSequenceNumber(session);
     if (sessionSequenceNumber) {
@@ -85776,7 +86125,7 @@ function renderSessionDetail(sessionId) {
       detail.sessionSequenceLabel.hidden = true;
     }
   }
-  detail.statusField.value = session.sessionStatus || "soaking";
+  detail.statusField.value = session.sessionStatus || (sessionMethod.supportsStageTracking ? "soaking" : "custom");
   syncSessionStatusControlDatasets(detail.statusField, {
     startedAt: getSessionStatusStartedAtValue(session),
     germinationStartedAt: session.germinationStartedAt || "",
@@ -85888,6 +86237,8 @@ function renderSessionDetail(sessionId) {
           displayIndex: partition.displayIndex,
           showSeedAgeField: currentSeedAgeMetadata.trackingEnabled,
           session,
+          includeGerminationFields: sessionMethod.supportsStageTracking,
+          rowLabel: sessionMethod.rowLabel,
         }));
       });
     } else {
@@ -85896,6 +86247,8 @@ function renderSessionDetail(sessionId) {
           showSeedAgeField: currentSeedAgeMetadata.trackingEnabled,
           showSeedAgeInput: currentSeedAgeMetadata.trackingEnabled && shouldShowPartitionSeedAgeFieldForPartition(partition),
           seedAgeReadOnly: currentSeedAgeMetadata.mode === "same",
+          includeGerminationFields: sessionMethod.supportsStageTracking,
+          rowLabel: sessionMethod.rowLabel,
         }));
         hydratePartitionRow(partitions.lastElementChild, partition);
       });
@@ -85907,6 +86260,7 @@ function renderSessionDetail(sessionId) {
     bindPartitionRowVisualState(partitions);
     applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
     applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, partitions, currentSeedAgeMetadata.mode);
+    updateMethodTypeLayout(app, sessionMethod.id);
     syncPartitionButtonStates(partitions, detail.statusField.value);
     syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
     return completedDisplayPartitions;
@@ -85961,7 +86315,10 @@ function renderSessionDetail(sessionId) {
   bindDetailPartitionInputListeners();
   applyStageEditingMode(app, detail.statusField.value);
   const renderDetailSuppliesCard = () => {
-    if (!detail.suppliesAnchor) {
+    if (!detail.suppliesAnchor || !sessionMethod.supportsFilterInventory) {
+      if (detail.suppliesAnchor) {
+        detail.suppliesAnchor.innerHTML = "";
+      }
       return;
     }
 
@@ -86026,6 +86383,7 @@ function renderSessionDetail(sessionId) {
       buildSessionLifecycleState(session),
     );
     renderDetailSuppliesCard();
+    updateMethodTypeLayout(app, sessionMethod.id);
   };
   const refreshDetailUnsavedChanges = () => {
     refreshUnsavedChangesState();
@@ -86251,10 +86609,10 @@ function renderSessionDetail(sessionId) {
     setSessionDetailSaveButtonState(detail, "default");
     syncSessionDetailHeaderMeta(detail, session);
     if (detail.layoutReference && detail.layoutSection) {
-      void renderSystemLayoutReference(detail.layoutReference, session.systemType);
+      void renderSystemLayoutReference(detail.layoutReference, sessionMethod.id);
     }
     if (detail.partitionWorkTitle) {
-      updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
+      updatePartitionWorkHeading(detail.partitionWorkTitle, sessionMethod.id);
     }
     syncSessionStatusControlDatasets(detail.statusField, {
       startedAt: getSessionStatusStartedAtValue(session),
@@ -86542,7 +86900,7 @@ function renderSessionCollection(container, sessions, options) {
             <p>${escapeHtml(formatSessionNameDate(session.date))}</p>
           </div>
           <div class="session-history-meta-item">
-            <span>System</span>
+            <span>Method</span>
             <p>${escapeHtml(getSessionSystemSummary(session))}</p>
           </div>
           <div class="session-history-meta-item">
@@ -86567,7 +86925,7 @@ function renderSessionCollection(container, sessions, options) {
         </div>
         <div class="session-row-bottom">
           <p>${escapeHtml(formatSessionNameDate(session.date))}</p>
-          <p>${session.systemType}</p>
+          <p>${escapeHtml(formatMethodTypeLabel(getSessionMethodType(session)))}</p>
           <p>${escapeHtml(stageLabel)}</p>
         </div>
       `;
@@ -86632,14 +86990,14 @@ function getSessionSuccessRate(session) {
 }
 
 function getSessionSystemSummary(session) {
-  const systemType = String(session.systemType || "").trim();
+  const method = getMethodConfig(getSessionMethodType(session));
   const unitId = normalizeUnitIdValue(session.unitId);
 
-  if (systemType && unitId) {
-    return `${systemType} / ${unitId}`;
+  if (method.isStandardized && method.name && unitId) {
+    return `${method.name} / ${unitId}`;
   }
 
-  return systemType || unitId || "Not provided";
+  return method.name || unitId || "Not provided";
 }
 
 function formatSessionRateBadgeLabel(session) {
@@ -87116,8 +87474,8 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
   const summary = sessionOrSummary?.overall && Array.isArray(sessionOrSummary?.partitions)
     ? sessionOrSummary
     : getSessionResultSummary(sessionOrSummary);
-  const systemType = String(options.systemType || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
-  const maxPartitions = systemType === "TRA" ? 16 : 8;
+  const method = getMethodConfig(options.systemType || sessionOrSummary?.systemType || sessionOrSummary?.system_type || "KAN");
+  const maxPartitions = method.isStandardized ? method.defaultRowCount : Math.max(summary?.partitions?.length || 0, method.defaultRowCount);
   const partitions = Array.isArray(summary?.partitions)
     ? summary.partitions.slice(0, maxPartitions)
     : [];
@@ -87131,15 +87489,15 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
         summary.mixedContext.hasMultipleSources ? `${summary.mixedContext.sourceCount} sources` : "",
         summary.mixedContext.hasMultipleVarieties ? `${summary.mixedContext.varietyCount} varieties` : "",
       ].filter(Boolean).join(" / ")
-    : "Seed count and germination result by partition.";
+    : `Seed count${method.isStandardized ? " and germination result" : ""} by ${method.rowLabel.toLowerCase()}.`;
 
   return `
     <section class="public-session-partition-results" aria-label="Public session partition results">
       <div class="public-session-partition-results-head">
         <div>
           <p class="eyebrow">Public Session</p>
-          <h3>Partition Results</h3>
-          <p>${escapeHtml(contextText || "Seed count and germination result by partition.")}${summary?.mixedContext?.isMixedSession ? " shown independently for fair source context." : ""}</p>
+          <h3>${escapeHtml(method.isStandardized ? "Partition Results" : "Seed Row Results")}</h3>
+          <p>${escapeHtml(contextText || `Seed count by ${method.rowLabel.toLowerCase()}.`)}${summary?.mixedContext?.isMixedSession ? " shown independently for fair source context." : ""}</p>
         </div>
         <span>${escapeHtml(overallLabel)}</span>
       </div>
@@ -87148,7 +87506,9 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
           ${partitions.map((partition, index) => {
           const hasSeeds = Boolean(partition.hasSeeds);
           const partitionId = Number(partition.id) || index + 1;
-          const partitionLabel = getNewSessionSeedVaultPartitionLabel(systemType, partitionId);
+          const partitionLabel = method.isStandardized
+            ? getNewSessionSeedVaultPartitionLabel(method.id, partitionId)
+            : `${method.rowLabel} ${partitionId}`;
           const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "Not shared") : "Not shared";
           const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "Not shared") : "Not shared";
           const seedAgeLabel = getPublicSessionPartitionAgeLabel(partition, hasSeeds);
@@ -87477,6 +87837,8 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const options = arguments[2] && typeof arguments[2] === "object" ? arguments[2] : {};
   const displayIndex = Number(options.displayIndex) || Number(partition?.id) || 0;
   const showSeedAgeField = Boolean(options.showSeedAgeField);
+  const includeGerminationFields = options.includeGerminationFields !== false;
+  const rowLabel = options.rowLabel || "Partition";
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
   const seedAgeValue = getEffectivePartitionSeedAgeYears(partition, options.session || null);
@@ -87498,6 +87860,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const partitionState = getPartitionRowStateFromPartition(partition, sessionStatus);
   const row = document.createElement("article");
   row.className = "chart-row partition-row detail-row";
+  row.classList.toggle("custom-method-row", !includeGerminationFields);
   row.dataset.partitionRow = "true";
   row.dataset.partitionId = String(partition?.id || displayIndex);
   row.dataset.partitionBaseState = basePartitionState;
@@ -87509,7 +87872,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   row.dataset.partitionSeedAgeYears = seedAgeValue === null ? "" : String(seedAgeValue);
   row.dataset.partitionPlantedCount = String(partition?.plantedCount ?? "");
   row.innerHTML = `
-    <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="Partition ${displayIndex}">${displayIndex}</div>
+    <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="${escapeHtml(rowLabel)} ${displayIndex}">${displayIndex}</div>
     <div class="detail-cell">
       <span class="mobile-field-label">Source</span>
       <p>${escapeHtml(sourceLabel)}</p>
@@ -87536,6 +87899,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
       <p>${escapeHtml(seedAgeLabel)}</p>
     </div>
     ` : ""}
+    ${includeGerminationFields ? `
     <div class="detail-cell">
       <span class="mobile-field-label">Germinated</span>
       <p class="${germinationStatus.className}">${escapeHtml(germinationStatus.label)}</p>
@@ -87544,6 +87908,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
       <span class="mobile-field-label">Success %</span>
       <p class="${successDisplay.className}">${escapeHtml(successDisplay.label)}</p>
     </div>
+    ` : ""}
   `;
   return row;
 }
@@ -88144,19 +88509,25 @@ async function renderSystemLayoutReference(container, systemType) {
     return;
   }
 
-  container.dataset.pendingSystem = systemType;
+  const method = getMethodConfig(systemType);
+  container.dataset.pendingSystem = method.id;
 
-  if (SYSTEM_LAYOUT_ASSETS[systemType]) {
-    const markup = await buildSystemLayoutImage(systemType);
-    if (container.dataset.pendingSystem === systemType) {
-      container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(systemType);
+  if (!method.supportsLayoutImage) {
+    container.innerHTML = "";
+    return;
+  }
+
+  if (SYSTEM_LAYOUT_ASSETS[method.id]) {
+    const markup = await buildSystemLayoutImage(method.id);
+    if (container.dataset.pendingSystem === method.id) {
+      container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(method.id);
       attachSystemLayoutReady(container);
     }
     return;
   }
 
-  if (container.dataset.pendingSystem === systemType) {
-    container.innerHTML = buildSystemLayoutUnavailableMarkup(systemType);
+  if (container.dataset.pendingSystem === method.id) {
+    container.innerHTML = buildSystemLayoutUnavailableMarkup(method.id);
   }
 }
 
@@ -88174,15 +88545,12 @@ async function buildSystemLayoutImage(systemType) {
 }
 
 function getPartitionCountForSystem(systemType) {
-  if (systemType === "TRA") {
-    return 16;
-  }
-
-  return 8;
+  return getMethodConfig(systemType).defaultRowCount;
 }
 
-function createPartitionsForSystem(systemType) {
-  return Array.from({ length: getPartitionCountForSystem(systemType) }, (_, index) => ({
+function createPartitionsForSystem(systemType, rowCount = null) {
+  const count = Math.max(1, Number(rowCount) || getPartitionCountForSystem(systemType));
+  return Array.from({ length: count }, (_, index) => ({
     id: index + 1,
     seedVariety: "",
     source: "",
@@ -88858,24 +89226,26 @@ function formatSessionNameDate(sessionDate) {
 }
 
 function buildSystemLayoutPlaceholder(systemType) {
-  const label = systemType === "TRA" ? "TRA layout reference coming next" : "Choose a system type";
+  const method = getMethodConfig(systemType);
+  const label = method.id === "TRA" ? "TRā layout reference coming next" : "Choose a method type";
   return `
     <div class="layout-reference-copy">
       <p>${label}</p>
     </div>
     <div class="layout-placeholder" aria-label="${label}">
-      <span>${systemType || "System"}</span>
+      <span>${method.name || "Method"}</span>
     </div>
   `;
 }
 
 function buildSystemLayoutUnavailableMarkup(systemType) {
+  const method = getMethodConfig(systemType);
   return `
     <div class="layout-reference-copy">
       <p>Layout image unavailable</p>
     </div>
-    <div class="layout-placeholder" aria-label="${systemType || "System"} layout image unavailable">
-      <span>${systemType || "System"}</span>
+    <div class="layout-placeholder" aria-label="${method.name || "Method"} layout image unavailable">
+      <span>${method.name || "Method"}</span>
     </div>
   `;
 }
@@ -89118,7 +89488,7 @@ function validatePartitionRow(row) {
   const sexLabel = sexSelect.closest("label");
   const seedLabel = seedInput.closest("label");
   const seedAgeLabel = seedAgeInput?.closest("label") || null;
-  const plantedLabel = plantedInput.closest("label");
+  const plantedLabel = plantedInput?.closest("label") || null;
 
   const sourceValue = sourceInput.value.trim();
   const varietyValue = varietyInput.value.trim();
@@ -89126,7 +89496,7 @@ function validatePartitionRow(row) {
   const sexValue = sexSelect.value;
   const seedValue = seedInput.value.trim();
   const seedAgeValue = seedAgeInput?.value.trim() || "";
-  const plantedValue = plantedInput.value.trim();
+  const plantedValue = plantedInput?.value.trim() || "";
   const successOutput = row.querySelector("[data-success-output]");
   const hasSeedCount = seedValue !== "";
   const hasSeedAge = seedAgeValue !== "";
@@ -89166,14 +89536,14 @@ function validatePartitionRow(row) {
   sexLabel.classList.toggle("field-has-warning", rowInvalid && !sexValue);
   seedLabel.classList.toggle("field-has-warning", rowInvalid && !seedCountValid);
   seedAgeLabel?.classList.toggle("field-has-warning", !seedAgeValid);
-  plantedLabel.classList.toggle("field-has-warning", !plantedCountValid);
+  plantedLabel?.classList.toggle("field-has-warning", !plantedCountValid);
 
   typeSelect.classList.toggle("is-missing", rowInvalid && !typeValue);
   sexSelect.classList.toggle("is-missing", rowInvalid && !sexValue);
   varietyInput.classList.toggle("is-missing", rowInvalid && !varietyValue);
   seedInput.classList.toggle("is-missing", rowInvalid && !seedCountValid);
   seedAgeInput?.classList.toggle("is-missing", !seedAgeValid);
-  plantedInput.classList.toggle("is-missing", !plantedCountValid);
+  plantedInput?.classList.toggle("is-missing", !plantedCountValid);
   syncCustomSelect(typeSelect);
   syncCustomSelect(sexSelect);
   if (successOutput) {
@@ -89198,7 +89568,7 @@ function validatePartitionRow(row) {
     if (!firstInvalidField && !seedAgeValid) {
       firstInvalidField = seedAgeInput;
     }
-    if (!firstInvalidField && !plantedCountValid) {
+    if (!firstInvalidField && plantedInput && !plantedCountValid) {
       firstInvalidField = plantedInput;
     }
   }
@@ -89226,6 +89596,11 @@ function formatSuccessPercent(seedCount, plantedCount) {
 
 function updateSessionSuccessSummary(form, summaryElement) {
   if (!form || !summaryElement) {
+    return;
+  }
+  if (!getMethodConfig(form.elements?.systemType?.value || form.dataset.methodType || "").supportsStageTracking) {
+    summaryElement.textContent = "";
+    summaryElement.hidden = true;
     return;
   }
 
@@ -90413,19 +90788,20 @@ function getPublicSessionSummaryRows(snapshot = null, publicDetails = {}) {
   const countedPartitions = Array.isArray(summary?.partitions)
     ? summary.partitions.filter((partition) => partition.hasSeeds)
     : [];
+  const method = getMethodConfig(snapshot?.systemType || snapshot?.system_type || publicDetails.systemType || "KAN");
   const lifecycleState = buildPublicSessionLifecycleState(snapshot);
   const sessionDuration = lifecycleState?.startedAt && lifecycleState?.completedAt
     ? formatPublicTimelineElapsedDuration(lifecycleState.startedAt, lifecycleState.completedAt)
     : "";
   const mixedContext = publicDetails?.mixedSessionContext || summary?.mixedContext || {};
   const rows = [
-    { label: "System", value: publicDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN") },
+    { label: "Method", value: publicDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN") },
     { label: "Total Seed Count", value: publicDetails.seedCountLabel || "Not shared" },
     { label: "Total Germinated", value: publicDetails.germinatedLabel || "Not shared" },
     { label: "Success Rate", value: publicDetails.germinationRateLabel || "Not shared", featured: true },
     { label: "Session Duration", value: sessionDuration || "Not shared" },
     { label: "Published Date", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared" },
-    { label: "Partition Count", value: countedPartitions.length ? String(countedPartitions.length) : "Not shared" },
+    { label: method.isStandardized ? "Partition Count" : "Seed Row Count", value: countedPartitions.length ? String(countedPartitions.length) : "Not shared" },
   ];
 
   if (mixedContext.sourceCount || summary?.sourceGroups?.length) {
