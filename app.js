@@ -73381,90 +73381,199 @@ function renderCommunityIntelligenceSpotlightSection(data = getCommunityIntellig
   `;
 }
 
-function renderCommunityIntelligenceRegionSection(data = getCommunityIntelligenceDashboardData()) {
-  return `
-    <section id="community-regions" class="card gallery-section community-intelligence-panel community-intelligence-regions" data-community-intelligence-section="regions" aria-labelledby="community-regions-title">
-      <div class="community-intelligence-card-head">
-        <h3 id="community-regions-title">Grow Activity by Region</h3>
-        <a href="#community-live-network">View map</a>
-      </div>
-      <div class="community-intelligence-region-list">
-        ${data.regionRows.map((row, index) => `
-          <article class="community-intelligence-region-row" style="--community-region-share:${escapeHtml(String(row.share))}%;">
-            <span class="source-report-region-flag-emoji" aria-hidden="true">${escapeHtml(row.flag)}</span>
-            <span>
-              <strong>${escapeHtml(row.region)}</strong>
-              <small>${escapeHtml(`${formatPrivateAnalyticsNumber(row.adoptionCount)} accounts · ${formatPrivateAnalyticsNumber(row.knowledgeSignals)} reports`)}</small>
-            </span>
-            ${renderCommunityIntelligenceSparklineMarkup(index)}
-            <em>${row.hasLiveActivity ? `+${escapeHtml(String(row.liveSignals))}` : escapeHtml(formatPrivateAnalyticsNumber(row.countriesRepresented || 1))}</em>
-          </article>
-        `).join("")}
-      </div>
-    </section>
-  `;
+function formatCommunityPulseRelativeTime(occurredAt = "", fallbackLabel = "Just now") {
+  const label = formatGrowNetworkNotificationRelativeTime(occurredAt);
+  if (!label || label === "now") {
+    return fallbackLabel;
+  }
+  return `${label} ago`;
 }
 
-function renderCommunityIntelligenceMostCompletedSection(data = getCommunityIntelligenceDashboardData()) {
-  const rows = [...(data.insightsState.repeatTestedVarieties || []), ...(data.insightsState.mostTestedVarieties || []), ...(data.varietyLeaderboard || [])]
-    .filter((row, index, source) => source.findIndex((candidate) => candidate.key === row.key) === index)
-    .sort((left, right) => (right.snapshotCount - left.snapshotCount) || (right.totalSeeds - left.totalSeeds))
-    .slice(0, 5);
-  return `
-    <section class="card gallery-section community-intelligence-panel community-intelligence-most-completed" data-community-intelligence-section="most-completed" aria-labelledby="community-most-completed-title">
-      <div class="community-intelligence-card-head">
-        <h3 id="community-most-completed-title">Most Completed</h3>
-        <a href="#community-insights/varieties">View all</a>
-      </div>
-      ${rows.length ? `
-        <ol class="community-intelligence-simple-list">
-          ${rows.map((row, index) => `
-            <li>
-              <span>${escapeHtml(String(index + 1))}</span>
-              <a href="${escapeHtml(getSeedExplorerReportHrefForVariety(row.label || row.name || ""))}">${escapeHtml(row.label || row.name || "Variety")}</a>
-              <strong>${escapeHtml(formatPrivateAnalyticsNumber(row.snapshotCount || row.sessionCount || 0))}</strong>
-            </li>
-          `).join("")}
-        </ol>
-      ` : `<div class="community-intelligence-empty"><p>Most-completed varieties will appear as reports are published.</p></div>`}
-    </section>
-  `;
-}
+function buildCommunityPulseActivityRows(data = getCommunityIntelligenceDashboardData()) {
+  const rows = [];
+  const spotlight = data.spotlightSnapshot;
+  if (spotlight) {
+    const details = getGallerySnapshotPublicSessionDetails(spotlight);
+    const title = details.seedVarietyLabel && details.seedVarietyLabel !== "Not shared"
+      ? details.seedVarietyLabel
+      : (spotlight.title || "Featured community grow");
+    rows.push({
+      title,
+      description: "was featured as Featured Community Grow",
+      occurredAt: spotlight.publishedAt || spotlight.createdAt || "",
+      href: `#sessions/public/${spotlight.id}`,
+      icon: "certificationShield",
+      tone: "award",
+    });
+  }
 
-function renderCommunityIntelligenceLiveFeedSection(data = getCommunityIntelligenceDashboardData()) {
-  const activityRows = getGrowNetworkActivityEntries()
+  getGrowNetworkActivityEntries()
     .map((activity) => buildCommunityActivityFeedEntry(activity) || activity)
     .filter(Boolean)
-    .slice(0, 4);
-  const fallbackRows = (data.approvedSnapshots.length ? data.approvedSnapshots : data.dashboardSnapshots).slice(0, 4).map((snapshot) => {
-    const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+    .forEach((row) => {
+      rows.push({
+        title: row.displayName || row.title || "Community grower",
+        description: row.title && row.displayName ? row.title : (row.summary || row.typeLabel || "shared a public community update"),
+        occurredAt: row.occurredAt || "",
+        href: row.sessionRoute || row.profileRoute || "#gallery",
+        avatarUrl: row.avatarUrl || "",
+        icon: row.avatarUrl ? "" : "profileUser",
+        tone: "activity",
+      });
+    });
+
+  (data.approvedSnapshots.length ? data.approvedSnapshots : data.dashboardSnapshots).forEach((snapshot) => {
+    const details = getGallerySnapshotPublicSessionDetails(snapshot);
     const member = getGallerySnapshotCardMemberProfile(snapshot);
-    return {
-      title: `${member.displayName} shared ${publicDetails.seedVarietyLabel && publicDetails.seedVarietyLabel !== "Not shared" ? publicDetails.seedVarietyLabel : "a grow report"}`,
-      sessionRoute: `#sessions/public/${snapshot.id}`,
+    const varietyLabel = details.seedVarietyLabel && details.seedVarietyLabel !== "Not shared" ? details.seedVarietyLabel : "Public grow";
+    rows.push({
+      title: varietyLabel,
+      description: `${member.displayName || "A grower"} published a new public grow report`,
       occurredAt: snapshot.publishedAt || snapshot.createdAt || "",
-      typeLabel: "Grow report",
-    };
+      href: `#sessions/public/${snapshot.id}`,
+      avatarUrl: member.avatarUrl || "",
+      icon: member.avatarUrl ? "" : "reportDocument",
+      tone: "report",
+    });
   });
-  const rows = activityRows.length ? activityRows : fallbackRows;
+
+  return rows
+    .filter((row, index, source) => source.findIndex((candidate) => `${candidate.title}:${candidate.description}:${candidate.href}` === `${row.title}:${row.description}:${row.href}`) === index)
+    .sort((left, right) => (parseCompletedAtValue(right.occurredAt)?.getTime() || 0) - (parseCompletedAtValue(left.occurredAt)?.getTime() || 0))
+    .slice(0, 7);
+}
+
+function buildCommunityDiscoveryRows(data = getCommunityIntelligenceDashboardData()) {
+  const rows = [];
+  const topVariety = data.varietyLeaderboard?.[0];
+  if (topVariety) {
+    rows.push({
+      type: "Trending Variety",
+      title: topVariety.name || "Community variety",
+      description: `${formatPublicAnalyticsSampleSummary(topVariety, { includeZeroSeeds: true, includeZeroSessions: true })} with rising report activity.`,
+      href: getSeedExplorerReportHrefForVariety(topVariety.name || ""),
+      icon: "activeSessionWaveform",
+      tone: "growth",
+    });
+  }
+
+  const topSource = data.sourceLeaderboard?.[0];
+  if (topSource) {
+    rows.push({
+      type: "Fastest Growing Source",
+      title: topSource.name || "Community source",
+      description: "More tracked seeds and source relationships are appearing this week.",
+      href: `#sources/${encodeURIComponent(normalizeSourceNameForMatching(topSource.name || ""))}`,
+      icon: "mySessionsSprout",
+      tone: "source",
+    });
+  }
+
+  const topRegion = [...(data.regionRows || [])].sort((left, right) => (right.knowledgeSignals - left.knowledgeSignals) || (right.adoptionCount - left.adoptionCount))[0];
+  if (topRegion) {
+    rows.push({
+      type: "Most Active Region",
+      title: topRegion.region || "Community region",
+      description: `${formatPrivateAnalyticsNumber(topRegion.knowledgeSignals || 0)} public reports and ${formatPrivateAnalyticsNumber(topRegion.adoptionCount || 0)} accounts represented.`,
+      href: "#community-live-network",
+      icon: "growNetworkNodes",
+      tone: "region",
+    });
+  }
+
+  const spotlight = data.spotlightSnapshot;
+  if (spotlight) {
+    const details = getGallerySnapshotPublicSessionDetails(spotlight);
+    rows.push({
+      type: "Best Documented Session",
+      title: details.seedVarietyLabel && details.seedVarietyLabel !== "Not shared" ? details.seedVarietyLabel : (spotlight.title || "Featured grow"),
+      description: "Complete session evidence, notes, and community photos made this report stand out.",
+      href: `#sessions/public/${spotlight.id}`,
+      icon: "reportDocument",
+      tone: "documented",
+    });
+  }
+
+  const communityPickSource = data.approvedSnapshots?.length ? data.approvedSnapshots : (data.dashboardSnapshots || []);
+  const communityPick = [...communityPickSource]
+    .sort((left, right) => (Number(right.likeCount) || 0) - (Number(left.likeCount) || 0))[0];
+  if (communityPick) {
+    const details = getGallerySnapshotPublicSessionDetails(communityPick);
+    const member = getGallerySnapshotCardMemberProfile(communityPick);
+    rows.push({
+      type: "Community Pick",
+      title: member.displayName || "Community grower",
+      description: `${details.seedVarietyLabel && details.seedVarietyLabel !== "Not shared" ? details.seedVarietyLabel : "A public grow"} is drawing strong community attention.`,
+      href: `#sessions/public/${communityPick.id}`,
+      icon: "heartLike",
+      tone: "pick",
+    });
+  }
+
+  return rows.slice(0, 5);
+}
+
+function renderCommunityPulseActivitySection(data = getCommunityIntelligenceDashboardData()) {
+  const rows = buildCommunityPulseActivityRows(data);
   return `
-    <section class="card gallery-section community-intelligence-panel community-intelligence-live-feed" data-community-intelligence-section="live-feed" aria-labelledby="community-live-feed-title">
-      <div class="community-intelligence-card-head">
-        <h3 id="community-live-feed-title">Live Community Feed</h3>
-        <a href="#latest-grow-reports">View all</a>
+    <section class="card gallery-section community-intelligence-panel community-pulse-card community-pulse-activity" data-community-intelligence-section="recent-activity" aria-labelledby="community-pulse-activity-title">
+      <div class="community-pulse-card-head">
+        <div>
+          <h3 id="community-pulse-activity-title">Recent Community Activity</h3>
+          <p>Latest meaningful updates from growers across Grow.</p>
+        </div>
+        <a href="#latest-grow-reports">View All</a>
       </div>
       ${rows.length ? `
-        <div class="community-intelligence-feed-list">
+        <div class="community-pulse-activity-list">
           ${rows.map((row) => `
-            <a class="community-intelligence-feed-row" href="${escapeHtml(row.sessionRoute || "#gallery")}">
-              <span>${renderPublicMemberAvatarMarkup(row.displayName || "Grower", row.avatarUrl || "", "community-intelligence-feed-avatar")}</span>
-              <strong>${escapeHtml(row.title || "Community activity")}</strong>
-              <small>${escapeHtml(row.typeLabel || "Activity")}</small>
-              <time>${escapeHtml(getGallerySnapshotSubmittedDateTimeLabel({ publishedAt: row.occurredAt, createdAt: row.occurredAt }))}</time>
+            <a class="community-pulse-activity-row" href="${escapeHtml(row.href || "#gallery")}">
+              <span class="community-pulse-activity-marker community-pulse-activity-marker--${escapeHtml(row.tone || "activity")}">
+                ${row.avatarUrl
+                  ? renderPublicMemberAvatarMarkup(row.title || "Grower", row.avatarUrl, "community-pulse-avatar")
+                  : renderAppIconMarkup(row.icon || "activeSessionWaveform", { variant: "plain" })}
+              </span>
+              <span class="community-pulse-activity-copy">
+                <strong>${escapeHtml(row.title || "Community activity")}</strong>
+                <small>${escapeHtml(row.description || "New public community signal")}</small>
+              </span>
+              <time>${escapeHtml(formatCommunityPulseRelativeTime(row.occurredAt))}</time>
             </a>
           `).join("")}
         </div>
-      ` : `<div class="community-intelligence-empty"><p>Live activity will appear as public grow reports are shared.</p></div>`}
+      ` : `<div class="community-intelligence-empty"><p>Recent activity will appear as public grow reports are shared.</p></div>`}
+      <a class="community-pulse-footer-link" href="#latest-grow-reports">View Full Activity Feed</a>
+    </section>
+  `;
+}
+
+function renderCommunityDiscoveriesSection(data = getCommunityIntelligenceDashboardData()) {
+  const rows = buildCommunityDiscoveryRows(data);
+  return `
+    <section class="card gallery-section community-intelligence-panel community-pulse-card community-discoveries" data-community-intelligence-section="community-discoveries" aria-labelledby="community-discoveries-title">
+      <div class="community-pulse-card-head">
+        <div>
+          <h3 id="community-discoveries-title">Community Discoveries</h3>
+          <p>What growers are discovering right now.</p>
+        </div>
+        <a href="#community-insights">View All</a>
+      </div>
+      ${rows.length ? `
+        <div class="community-discovery-list">
+          ${rows.map((row) => `
+            <a class="community-discovery-row community-discovery-row--${escapeHtml(row.tone || "signal")}" href="${escapeHtml(row.href || "#community-insights")}">
+              <span class="community-discovery-icon">${renderAppIconMarkup(row.icon || "activeSessionWaveform", { variant: "plain" })}</span>
+              <span class="community-discovery-copy">
+                <small>${escapeHtml(row.type || "Community Discovery")}</small>
+                <strong>${escapeHtml(row.title || "Community signal")}</strong>
+                <em>${escapeHtml(row.description || "A useful community signal is emerging.")}</em>
+              </span>
+              <span class="community-discovery-arrow" aria-hidden="true">&rsaquo;</span>
+            </a>
+          `).join("")}
+        </div>
+      ` : `<div class="community-intelligence-empty"><p>Community discoveries will appear as reports, recognitions, and source signals accumulate.</p></div>`}
+      <a class="community-pulse-footer-link" href="#community-insights">Explore More Discoveries</a>
     </section>
   `;
 }
@@ -73472,9 +73581,8 @@ function renderCommunityIntelligenceLiveFeedSection(data = getCommunityIntellige
 function renderCommunityIntelligenceLowerDashboardSection(data = getCommunityIntelligenceDashboardData()) {
   return `
     <section class="community-intelligence-lower-grid" data-community-intelligence-section="lower-dashboard">
-      ${renderCommunityIntelligenceRegionSection(data)}
-      ${renderCommunityIntelligenceMostCompletedSection(data)}
-      ${renderCommunityIntelligenceLiveFeedSection(data)}
+      ${renderCommunityPulseActivitySection(data)}
+      ${renderCommunityDiscoveriesSection(data)}
     </section>
   `;
 }
