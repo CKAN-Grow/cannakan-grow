@@ -73513,6 +73513,105 @@ function buildCommunityDiscoveryRows(data = getCommunityIntelligenceDashboardDat
   return rows.slice(0, 5);
 }
 
+function renderCommunityDiscoveryIconMarkup(row = {}) {
+  const normalizedTone = String(row.tone || "").trim().toLowerCase();
+  const normalizedType = String(row.type || "").trim().toLowerCase();
+  const iconKey = normalizedTone || normalizedType;
+  const icons = {
+    growth: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M13 32c8-1 13-6 15-15 8 2 11 8 8 16-3 8-13 9-20 4" />
+        <path d="M17 36c5-8 10-13 18-17" />
+        <path class="community-discovery-svg-accent" d="M28 12h8v8" />
+        <path class="community-discovery-svg-accent" d="M22 26l14-14" />
+      </svg>
+    `,
+    source: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M15 14h18v6a9 9 0 0 1-18 0v-6Z" />
+        <path d="M20 35h8" />
+        <path d="M24 29v6" />
+        <path d="M15 17h-5v3a6 6 0 0 0 6 6" />
+        <path d="M33 17h5v3a6 6 0 0 1-6 6" />
+        <path class="community-discovery-svg-accent" d="M24 18l2 4 4 .5-3 2.8.8 4.2-3.8-2.1-3.8 2.1.8-4.2-3-2.8 4-.5 2-4Z" />
+      </svg>
+    `,
+    region: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <circle cx="24" cy="24" r="15" />
+        <path d="M9 24h30" />
+        <path d="M24 9c5 4 7 9 7 15s-2 11-7 15c-5-4-7-9-7-15s2-11 7-15Z" />
+        <path class="community-discovery-svg-accent" d="M15 15c5 3 13 3 18 0" />
+        <path class="community-discovery-svg-accent" d="M15 33c5-3 13-3 18 0" />
+      </svg>
+    `,
+    documented: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M13 17h7l3-4h8l3 4h1a5 5 0 0 1 5 5v12a5 5 0 0 1-5 5H13a5 5 0 0 1-5-5V22a5 5 0 0 1 5-5Z" />
+        <circle cx="24" cy="28" r="7" />
+        <path class="community-discovery-svg-accent" d="M21 28l2 2 5-5" />
+      </svg>
+    `,
+    pick: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <circle cx="18" cy="19" r="5" />
+        <circle cx="30" cy="19" r="5" />
+        <path d="M9 36c2-6 6-9 12-9" />
+        <path d="M39 36c-2-6-6-9-12-9" />
+        <path class="community-discovery-svg-accent" d="M24 28l1.8 3.7 4.1.6-3 2.9.7 4.1-3.6-1.9-3.6 1.9.7-4.1-3-2.9 4.1-.6L24 28Z" />
+      </svg>
+    `,
+    rare: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M17 9c10 6 14 14 14 30" />
+        <path d="M31 9c-10 6-14 14-14 30" />
+        <path d="M19 16h10" />
+        <path d="M17 24h14" />
+        <path d="M19 32h10" />
+        <path class="community-discovery-svg-accent" d="M36 12l1.2 2.6 2.8.4-2 2 .5 2.8-2.5-1.4-2.5 1.4.5-2.8-2-2 2.8-.4L36 12Z" />
+      </svg>
+    `,
+    reliable: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M24 7l15 6v10c0 10-6 16-15 19-9-3-15-9-15-19V13l15-6Z" />
+        <path class="community-discovery-svg-accent" d="M17 25l5 5 10-12" />
+      </svg>
+    `,
+    international: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <circle cx="24" cy="24" r="14" />
+        <path d="M10 24h28" />
+        <path d="M24 10c5 5 7 9 7 14s-2 9-7 14c-5-5-7-9-7-14s2-9 7-14Z" />
+        <path class="community-discovery-svg-accent" d="M14 14l20 20" />
+        <path class="community-discovery-svg-accent" d="M34 14L14 34" />
+      </svg>
+    `,
+    education: `
+      <svg class="community-discovery-svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M12 10h18a6 6 0 0 1 6 6v22H18a6 6 0 0 0-6 6V10Z" />
+        <path d="M18 16h10" />
+        <path d="M18 22h12" />
+        <path class="community-discovery-svg-accent" d="M32 27l5 9" />
+        <path class="community-discovery-svg-accent" d="M42 27l-5 9" />
+        <path class="community-discovery-svg-accent" d="M34 27h6" />
+      </svg>
+    `,
+  };
+  if (normalizedType.includes("rare")) {
+    return icons.rare;
+  }
+  if (normalizedType.includes("reliable") || normalizedType.includes("consistent")) {
+    return icons.reliable;
+  }
+  if (normalizedType.includes("international")) {
+    return icons.international;
+  }
+  if (normalizedType.includes("educational")) {
+    return icons.education;
+  }
+  return icons[iconKey] || icons.growth;
+}
+
 function renderCommunityPulseActivitySection(data = getCommunityIntelligenceDashboardData()) {
   const rows = buildCommunityPulseActivityRows(data);
   return `
@@ -73562,7 +73661,7 @@ function renderCommunityDiscoveriesSection(data = getCommunityIntelligenceDashbo
         <div class="community-discovery-list">
           ${rows.map((row) => `
             <a class="community-discovery-row community-discovery-row--${escapeHtml(row.tone || "signal")}" href="${escapeHtml(row.href || "#community-insights")}">
-              <span class="community-discovery-icon">${renderAppIconMarkup(row.icon || "activeSessionWaveform", { variant: "plain" })}</span>
+              <span class="community-discovery-icon">${renderCommunityDiscoveryIconMarkup(row)}</span>
               <span class="community-discovery-copy">
                 <small>${escapeHtml(row.type || "Community Discovery")}</small>
                 <strong>${escapeHtml(row.title || "Community signal")}</strong>

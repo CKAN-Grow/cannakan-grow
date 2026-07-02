@@ -10266,21 +10266,77 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .community-discovery-icon {
   width: 58px;
   height: 58px;
+  position: relative;
+  color: var(--community-discovery-accent, #94d159);
+  border-color: color-mix(in srgb, var(--community-discovery-accent, #94d159) 42%, transparent);
+  background:
+    radial-gradient(circle at 35% 26%, color-mix(in srgb, var(--community-discovery-accent, #94d159) 28%, transparent), transparent 58%),
+    rgba(7, 19, 13, 0.9);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--community-discovery-accent, #94d159) 14%, transparent),
+    0 0 24px color-mix(in srgb, var(--community-discovery-accent, #94d159) 18%, transparent);
+}
+
+.community-discovery-icon::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: radial-gradient(circle, color-mix(in srgb, var(--community-discovery-accent, #94d159) 16%, transparent), transparent 68%);
+  pointer-events: none;
+}
+
+.community-discovery-svg {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--community-discovery-accent, #94d159) 38%, transparent));
+}
+
+.community-discovery-svg-accent {
+  stroke: color-mix(in srgb, var(--community-discovery-accent, #94d159) 74%, #ffffff);
 }
 
 .community-discovery-row--documented .community-discovery-icon {
-  color: #c184ff;
-  border-color: rgba(193, 132, 255, 0.28);
+  --community-discovery-accent: #c184ff;
 }
 
 .community-discovery-row--region .community-discovery-icon {
-  color: #47d8ff;
-  border-color: rgba(71, 216, 255, 0.28);
+  --community-discovery-accent: #47d8ff;
 }
 
 .community-discovery-row--pick .community-discovery-icon {
-  color: #ffd34d;
-  border-color: rgba(255, 211, 77, 0.34);
+  --community-discovery-accent: #ff6bd6;
+}
+
+.community-discovery-row--source .community-discovery-icon {
+  --community-discovery-accent: #ffc857;
+}
+
+.community-discovery-row--growth .community-discovery-icon {
+  --community-discovery-accent: #94d159;
+}
+
+.community-discovery-row--rare .community-discovery-icon {
+  --community-discovery-accent: #a78bfa;
+}
+
+.community-discovery-row--reliable .community-discovery-icon {
+  --community-discovery-accent: #ffd34d;
+}
+
+.community-discovery-row--international .community-discovery-icon {
+  --community-discovery-accent: #38d9ff;
+}
+
+.community-discovery-row--education .community-discovery-icon {
+  --community-discovery-accent: #6bb8ff;
 }
 
 .community-discovery-copy small {
