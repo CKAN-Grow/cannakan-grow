@@ -85922,9 +85922,6 @@ function renderGrowNetworkPage() {
   const growTitle = growScore >= 88
     ? "Elite Grower"
     : (growScore >= 74 ? "Expert Grower" : (growScore >= 42 ? "Grower" : "Seedling"));
-  const communityRankLabel = growScore >= 88
-    ? "Top 5%"
-    : (growScore >= 74 ? "Top 15%" : (growScore >= 42 ? "Rising" : "New"));
   const memberSinceLabel = formatPublicMemberJoinedDateLabel(
     currentPublicProfile?.joinedAt || currentPublicProfile?.createdAt || appState.profile?.createdAt || appState.user?.created_at || "",
   );
@@ -85938,73 +85935,6 @@ function renderGrowNetworkPage() {
   const averageGerminationLabel = getProfileAnalyticsRateLabel(ownerAnalytics.averageGerminationRate, "Pending");
   const totalSeedsStarted = Math.max(0, Number(ownerAnalytics.totalSeedsTested) || 0);
   const totalCommunityContributions = publicContributionCount;
-  const growerReportOverviewStats = [
-    {
-      icon: "chart",
-      value: `${growScore}`,
-      label: "Grow Score",
-      detail: "evidence-weighted identity score",
-      progress: growScore,
-      tone: "green",
-    },
-    {
-      icon: "check",
-      value: getProfileAnalyticsCountLabel(ownerAnalytics.completedSessions),
-      label: "Sessions Completed",
-      detail: `${getProfileAnalyticsCountLabel(ownerAnalytics.activeSessions)} active right now`,
-      progress: Math.min(100, ownerAnalytics.completedSessions * 10),
-      tone: "emerald",
-    },
-    {
-      icon: "seedGermination",
-      value: averageGerminationLabel,
-      label: "Germination Success",
-      detail: `${getProfileAnalyticsCountLabel(ownerAnalytics.totalSeedsGerminated)} seeds germinated`,
-      progress: Number(ownerAnalytics.averageGerminationRate) || 0,
-      tone: "lime",
-    },
-    {
-      icon: "seedSprout",
-      value: getProfileAnalyticsCountLabel(totalSeedsStarted),
-      label: "Seeds Started",
-      detail: "across eligible sessions",
-      progress: Math.min(100, totalSeedsStarted / 2),
-      tone: "cyan",
-    },
-    {
-      icon: "communityGroup",
-      value: getProfileAnalyticsCountLabel(totalCommunityContributions),
-      label: "Community Contributions",
-      detail: "public grow evidence shared",
-      progress: Math.min(100, totalCommunityContributions * 12),
-      tone: "green",
-    },
-    {
-      icon: "leaderboard",
-      value: communityRankLabel,
-      label: "Community Rank",
-      detail: "future reputation signal",
-      progress: growScore,
-      tone: "gold",
-    },
-    {
-      icon: "heartLike",
-      value: getProfileAnalyticsCountLabel(followerCount),
-      label: "Followers",
-      detail: "future Grow Card collectors",
-      progress: Math.min(100, followerCount),
-      tone: "rose",
-    },
-    {
-      icon: "growNetworkNodes",
-      value: getProfileAnalyticsCountLabel(followingCount),
-      label: "Following",
-      detail: "future collected growers",
-      progress: Math.min(100, followingCount * 8),
-      tone: "blue",
-    },
-  ];
-
   const getGrowerReportTopValues = (fieldResolver) => {
     const valueCounts = new Map();
     ownerCompletedSessions.forEach((session) => {
@@ -86028,29 +85958,70 @@ function renderGrowNetworkPage() {
   const publicVisibilityLabel = currentProfileSettings.showProfileInCommunityGrow !== false ? "Public" : "Private";
   const statsVisibilityLabel = currentProfileSettings.showGrowStatsPublicly !== false ? "Public" : "Private";
   const followerVisibilityLabel = currentProfileSettings.allowFollowers !== false ? "Followers enabled" : "Private";
+  const profileTagline = String(currentPublicProfile?.bio || "").trim()
+    || "Building a personal germination record from sessions, seed evidence, and community contributions.";
+  const achievementItems = [
+    {
+      label: "First Session",
+      detail: "Started your Grow record",
+      earned: ownerAnalytics.totalSessions > 0,
+    },
+    {
+      label: "Session Completed",
+      detail: "Completed a tracked grow session",
+      earned: ownerAnalytics.completedSessions > 0,
+    },
+    {
+      label: "Reliable Results",
+      detail: "Strong germination consistency",
+      earned: Number(ownerAnalytics.averageGerminationRate) >= 90,
+    },
+    {
+      label: "Community Contributor",
+      detail: "Shared public evidence",
+      earned: totalCommunityContributions > 0,
+    },
+    {
+      label: "Grow Card Ready",
+      detail: "Identity foundation active",
+      earned: true,
+    },
+  ];
+  const achievementsEarnedCount = achievementItems.filter((item) => item.earned).length;
+  const growCardsCollectedCount = followingCount;
+  const heroStatStrip = [
+    {
+      icon: "check",
+      value: getProfileAnalyticsCountLabel(ownerAnalytics.completedSessions),
+      label: "Sessions Completed",
+    },
+    {
+      icon: "seedGermination",
+      value: averageGerminationLabel,
+      label: "Avg Germination",
+    },
+    {
+      icon: "seedSprout",
+      value: getProfileAnalyticsCountLabel(totalSeedsStarted),
+      label: "Seeds Started",
+    },
+    {
+      icon: "heartLike",
+      value: getProfileAnalyticsCountLabel(likesReceivedCount),
+      label: "Likes Received",
+    },
+    {
+      icon: "sourceTrustStar",
+      value: getProfileAnalyticsCountLabel(achievementsEarnedCount),
+      label: "Achievements Earned",
+    },
+  ];
 
-  const renderGrowerReportSparklineMarkup = (tone = "green") => `
-    <svg class="grower-report-stat-sparkline is-${escapeHtml(tone)}" viewBox="0 0 120 34" aria-hidden="true" focusable="false">
-      <path class="grower-report-stat-sparkline-fill" d="M4 28 L18 26 L32 20 L46 22 L60 15 L74 17 L88 11 L104 8 L116 5 L116 34 L4 34 Z"></path>
-      <polyline points="4,28 18,26 32,20 46,22 60,15 74,17 88,11 104,8 116,5"></polyline>
-      <circle cx="116" cy="5" r="3.2"></circle>
-    </svg>
-  `;
-
-  const renderGrowerReportMetricCardMarkup = (stat) => `
-    <article class="grower-report-stat-card is-${escapeHtml(stat.tone || "green")}" style="--grower-report-progress: ${Math.max(0, Math.min(100, Number(stat.progress) || 0))}%">
-      <div class="grower-report-stat-card-head">
-        <span class="grower-report-stat-icon" aria-hidden="true">
-          ${renderAppIconSvgMarkup(stat.icon || "chart")}
-        </span>
-        <div>
-          <strong>${escapeHtml(stat.value)}</strong>
-          <span>${escapeHtml(stat.label)}</span>
-        </div>
-      </div>
-      <p>${escapeHtml(stat.detail)}</p>
-      <div class="grower-report-stat-progress" aria-hidden="true"><i></i></div>
-      ${renderGrowerReportSparklineMarkup(stat.tone || "green")}
+  const renderGrowerHeroStatMarkup = (stat) => `
+    <article class="grower-report-hero-stat">
+      <span aria-hidden="true">${renderAppIconSvgMarkup(stat.icon || "chart")}</span>
+      <strong>${escapeHtml(stat.value)}</strong>
+      <small>${escapeHtml(stat.label)}</small>
     </article>
   `;
 
@@ -86116,9 +86087,88 @@ function renderGrowNetworkPage() {
     </details>
   `;
 
+  const renderCollectionItemCardsMarkup = (items = []) => `
+    <div class="grower-report-collection-items">
+      ${(items.length ? items : [{ label: "Coming Soon", detail: "Collection cards will appear here" }]).slice(0, 3).map((item) => `
+        <article class="grower-report-collection-item">
+          <strong>${escapeHtml(item.label)}</strong>
+          <small>${escapeHtml(item.detail || "Future Grow Card")}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+
+  const collectedGrowerItems = (useMockPresentation ? mockMembers : followingEntries).slice(0, 3).map((entry) => {
+    const memberId = entry.memberId || entry.id || "";
+    const profile = getPublicMemberProfile(memberId);
+    const label = entry.displayName || profile?.displayName || "Community Grower";
+    const detail = entry.averageGermination
+      ? `${entry.averageGermination}% avg germination`
+      : "Collected grower card";
+    return { label, detail };
+  });
+  const collectedSourceItems = favoriteSources.length
+    ? favoriteSources.map(([label, count]) => ({ label, detail: `${getProfileAnalyticsCountLabel(count)} session signal${count === 1 ? "" : "s"}` }))
+    : [
+      { label: "Seedsman", detail: "Source card placeholder" },
+      { label: "Poppin Fire", detail: "Source card placeholder" },
+      { label: "Good Genetix", detail: "Source card placeholder" },
+    ];
+  const collectedVarietyItems = favoriteVarieties.length
+    ? favoriteVarieties.map(([label, count]) => ({ label, detail: `${getProfileAnalyticsCountLabel(count)} session signal${count === 1 ? "" : "s"}` }))
+    : [
+      { label: "Banana Jealousy", detail: "Variety card placeholder" },
+      { label: "Permanent Marker", detail: "Variety card placeholder" },
+      { label: "Wedding Cake", detail: "Variety card placeholder" },
+    ];
+  const collectionGroups = [
+    {
+      key: "growers",
+      label: "Growers",
+      icon: "profileUser",
+      count: growCardsCollectedCount,
+      items: collectedGrowerItems,
+    },
+    {
+      key: "sources",
+      label: "Sources",
+      icon: "sourceDirectoryBars",
+      count: collectedSourceItems.length,
+      items: collectedSourceItems,
+    },
+    {
+      key: "varieties",
+      label: "Varieties",
+      icon: "seedSprout",
+      count: collectedVarietyItems.length,
+      items: collectedVarietyItems,
+    },
+    {
+      key: "methods",
+      label: "Methods",
+      icon: "partitionWheel",
+      count: 2,
+      items: [
+        { label: "KAN", detail: "Standardized method card" },
+        { label: "TRā", detail: "Standardized method card" },
+        { label: "Custom Methods", detail: "Future collection category" },
+      ],
+    },
+    {
+      key: "achievements",
+      label: "Achievements",
+      icon: "sourceTrustStar",
+      count: achievementsEarnedCount,
+      items: achievementItems.slice(0, 3).map((item) => ({
+        label: item.label,
+        detail: item.earned ? "Earned" : "Preview",
+      })),
+    },
+  ];
+
   const growerReportModules = [
     renderGrowerReportModuleMarkup({
-      title: "Performance",
+      title: "Performance Overview",
       eyebrow: "Report Module",
       icon: "chart",
       description: "Completed sessions, germination evidence, and consistency signals.",
@@ -86132,7 +86182,7 @@ function renderGrowNetworkPage() {
       `,
     }),
     renderGrowerReportModuleMarkup({
-      title: "Activity Timeline",
+      title: "Activity Summary",
       eyebrow: "Report Module",
       icon: "activeSessionWaveform",
       description: "A compact history of session and contribution milestones.",
@@ -86145,44 +86195,11 @@ function renderGrowNetworkPage() {
       `,
     }),
     renderGrowerReportModuleMarkup({
-      title: "Favorite Sources",
+      title: "Recent Completed Sessions",
       eyebrow: "Report Module",
-      icon: "sourceDirectoryBars",
-      description: "Sources appearing most often in completed sessions.",
-      body: renderGrowerReportValueRowsMarkup(favoriteSources, "Favorite sources appear after completed sessions are recorded."),
-    }),
-    renderGrowerReportModuleMarkup({
-      title: "Favorite Varieties",
-      eyebrow: "Report Module",
-      icon: "seedSprout",
-      description: "Varieties appearing most often in completed sessions.",
-      body: renderGrowerReportValueRowsMarkup(favoriteVarieties, "Favorite varieties appear after completed sessions are recorded."),
-    }),
-    renderGrowerReportModuleMarkup({
-      title: "Session Statistics",
-      eyebrow: "Report Module",
-      icon: "leaderboard",
-      description: "Private analytics that can power future public report modules.",
-      body: `
-        <div class="grower-report-module-metrics">
-          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(ownerAnalytics.totalSessions))}</strong><small>Total sessions</small></span>
-          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(ownerAnalytics.activeSessions))}</strong><small>Active sessions</small></span>
-          <span><strong>${escapeHtml(getProfileAnalyticsRateLabel(ownerAnalytics.completionRate, "Pending"))}</strong><small>Completion rate</small></span>
-        </div>
-      `,
-    }),
-    renderGrowerReportModuleMarkup({
-      title: "Community Contributions",
-      eyebrow: "Report Module",
-      icon: "communityGroup",
-      description: "Public evidence shared with the Grow community.",
-      body: `
-        <div class="grower-report-module-metrics">
-          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(totalCommunityContributions))}</strong><small>Public reports</small></span>
-          <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(likesReceivedCount))}</strong><small>Likes received</small></span>
-          <span><strong>${escapeHtml(publicVisibilityLabel)}</strong><small>Profile visibility</small></span>
-        </div>
-      `,
+      icon: "reportDocument",
+      description: "Recent completed sessions that power this profile.",
+      body: renderGrowerReportSessionRowsMarkup(ownerCompletedSessions),
     }),
     renderGrowerReportModuleMarkup({
       title: "Achievements",
@@ -86191,41 +86208,49 @@ function renderGrowNetworkPage() {
       description: "Recognition badges will attach to profiles and Grow Cards.",
       body: `
         <div class="grower-report-pill-list">
-          <span>${ownerAnalytics.completedSessions ? "First Session Completed" : "First Session Pending"}</span>
-          <span>${Number(ownerAnalytics.averageGerminationRate) >= 90 ? "Reliable Results" : "Reliable Results Preview"}</span>
-          <span>${totalCommunityContributions ? "Community Contributor" : "Community Contributor Preview"}</span>
+          ${achievementItems.slice(0, 5).map((item) => `<span>${escapeHtml(`${item.label}: ${item.earned ? "Earned" : "Preview"}`)}</span>`).join("")}
         </div>
       `,
     }),
     renderGrowerReportModuleMarkup({
-      title: "Gallery",
+      title: "Favorites",
+      eyebrow: "Report Module",
+      icon: "sourceDirectoryBars",
+      description: "Favorite sources and varieties from completed session evidence.",
+      body: `
+        <div class="grower-report-favorites-grid">
+          <div>
+            <strong>Favorite Sources</strong>
+            ${renderGrowerReportValueRowsMarkup(favoriteSources, "Favorite sources appear after completed sessions are recorded.")}
+          </div>
+          <div>
+            <strong>Favorite Varieties</strong>
+            ${renderGrowerReportValueRowsMarkup(favoriteVarieties, "Favorite varieties appear after completed sessions are recorded.")}
+          </div>
+        </div>
+      `,
+    }),
+    renderGrowerReportModuleMarkup({
+      title: "Gallery Highlights",
       eyebrow: "Report Module",
       icon: "uploadImage",
-      description: "Public grow evidence and profile media will live here.",
+      description: "Public grow evidence and profile media highlights.",
       body: latestPublicSnapshot
         ? `<p class="grower-report-module-empty">Latest public contribution: ${escapeHtml(latestPublicSnapshot.title || latestPublicSnapshot.name || "Community Grow report")}</p>`
-        : `<p class="grower-report-module-empty">Publish a Community Grow report to start building your gallery.</p>`,
+        : `<p class="grower-report-module-empty">Publish a Community Grow report to start building gallery highlights.</p>`,
     }),
     renderGrowerReportModuleMarkup({
-      title: "Vault Summary",
-      eyebrow: "Private Module",
-      icon: "seedVault",
-      description: "Future public-safe seed vault summaries without exposing inventory details.",
-      body: `<p class="grower-report-module-empty">Vault summaries will surface aggregate seed intelligence while keeping private storage data protected.</p>`,
-    }),
-    renderGrowerReportModuleMarkup({
-      title: "Grow Map",
-      eyebrow: "Future Ready",
-      icon: "growNetworkNodes",
-      description: "Regional evidence and optional public location signals.",
-      body: `<p class="grower-report-module-empty">Location visibility: ${escapeHtml(locationLabel)}. Future maps will respect Public, Followers, and Private controls.</p>`,
-    }),
-    renderGrowerReportModuleMarkup({
-      title: "Recent Sessions",
+      title: "Recent Activity",
       eyebrow: "Report Module",
-      icon: "reportDocument",
-      description: "Recent completed sessions that power this report.",
-      body: renderGrowerReportSessionRowsMarkup(ownerCompletedSessions),
+      icon: "activeSessionWaveform",
+      description: "Recent profile, session, and community signals.",
+      body: `
+        <div class="grower-report-mini-list">
+          <div class="grower-report-mini-row"><span>Latest completed session</span><strong>${escapeHtml(latestSession ? formatProfileActivityDateLabel(latestSession.completedAt || latestSession.createdAt || "") : "Pending")}</strong></div>
+          <div class="grower-report-mini-row"><span>Latest public contribution</span><strong>${escapeHtml(latestPublicSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(latestPublicSnapshot)) : "Pending")}</strong></div>
+          <div class="grower-report-mini-row"><span>Profile visibility</span><strong>${escapeHtml(publicVisibilityLabel)}</strong></div>
+        </div>
+      `,
     }),
     renderGrowerReportModuleMarkup({
       title: "Theme Studio",
@@ -86242,25 +86267,25 @@ function renderGrowNetworkPage() {
       `,
     }),
     renderGrowerReportModuleMarkup({
-      title: "Public Profile & Visibility",
+      title: "Share Your Profile",
       eyebrow: "Architecture",
-      icon: "profileUser",
-      description: "Identity is separate from account settings, with no email or password exposed.",
+      icon: "externalLink",
+      description: "Share profile and QR foundations for future Grow Cards.",
       body: `
+        <div class="grower-report-share-grid">
+          <div class="grower-report-qr-placeholder" aria-hidden="true">${renderAppIconSvgMarkup("partitionWheel")}</div>
+          <div>
+            <strong>Profile QR Preview</strong>
+            <p class="grower-report-module-empty">Future QR sharing will point to your public Grower Report while respecting profile visibility settings.</p>
+          </div>
+        </div>
         <div class="grower-report-privacy-grid">
           <span><strong>Profile</strong><small>${escapeHtml(publicVisibilityLabel)}</small></span>
           <span><strong>Stats</strong><small>${escapeHtml(statsVisibilityLabel)}</small></span>
-          <span><strong>Connections</strong><small>${escapeHtml(followerVisibilityLabel)}</small></span>
+          <span><strong>Collections</strong><small>${escapeHtml(followerVisibilityLabel)}</small></span>
         </div>
         <p class="grower-report-module-empty">Allowed social links: Instagram, TikTok, YouTube, Facebook, Discord, Threads, X, and LinkedIn. Website and shop links remain reserved for verified Source Profiles.</p>
       `,
-    }),
-    renderGrowerReportModuleMarkup({
-      title: "Collections & Official Profiles",
-      eyebrow: "Future Architecture",
-      icon: "growNetworkNodes",
-      description: "Grow Cards, source claims, and managed redirects can build on this identity layer.",
-      body: `<p class="grower-report-module-empty">Future collections can support Growers, Sources, Varieties, Methods, and Achievements. Official Source Profiles will use administrator-managed website and shop redirects.</p>`,
     }),
   ].join("");
 
@@ -86554,7 +86579,7 @@ function renderGrowNetworkPage() {
                 <span>Member since ${escapeHtml(memberSinceLabel)}</span>
                 <span>${escapeHtml(locationLabel)}</span>
               </div>
-              <p class="grower-report-hero-summary">A premium identity report built from sessions, seeds, community contributions, and future Grow Card collections.</p>
+              <p class="grower-report-hero-summary">${escapeHtml(profileTagline)}</p>
               <div class="grower-report-badge-row">
                 <span>Public profile: ${escapeHtml(publicVisibilityLabel)}</span>
                 <span>Stats: ${escapeHtml(statsVisibilityLabel)}</span>
@@ -86562,36 +86587,73 @@ function renderGrowNetworkPage() {
               </div>
             </div>
           </div>
-          <aside class="grower-report-score-card" aria-label="Overall Grow Score">
-            <span class="grower-report-score-ring" style="--grower-report-score: ${growScore}%">
-              <strong>${escapeHtml(String(growScore))}</strong>
-            </span>
-            <div>
-              <span>Overall Grow Score</span>
-              <p>Evidence-weighted signal from completed sessions and community contributions.</p>
-            </div>
-          </aside>
-        </div>
-        <div class="grower-report-hero-actions">
-          <button type="button" class="button button-secondary grower-report-card-action">Collect Grow Card</button>
-          <a class="button button-primary" href="#profile">Edit Profile</a>
-        </div>
-      </section>
-      <section class="grower-report-overview" aria-label="Grower Report overview">
-        ${growerReportOverviewStats.map(renderGrowerReportMetricCardMarkup).join("")}
-      </section>
-      <section class="grower-report-grow-card-panel" aria-label="Grow Card preview">
-        <div class="grower-report-grow-card-preview">
-          <span class="grower-report-grow-card-orb" aria-hidden="true">${renderAppIconSvgMarkup("sourceTrustStar")}</span>
-          <div>
-            <p class="eyebrow">Grow Card Preview</p>
-            <h3>${escapeHtml(growerDisplayName)}</h3>
-            <p>${escapeHtml(`${growTitle} · Score ${growScore} · ${getProfileAnalyticsCountLabel(ownerAnalytics.completedSessions)} completed sessions`)}</p>
+          <div class="grower-report-hero-rail">
+            <aside class="grower-report-score-card" aria-label="Overall Grow Score">
+              <span class="grower-report-score-ring" style="--grower-report-score: ${growScore}%">
+                <strong>${escapeHtml(String(growScore))}</strong>
+              </span>
+              <div>
+                <span>Grow Score</span>
+                <p>Evidence-weighted signal from sessions, seeds, and community contribution.</p>
+              </div>
+            </aside>
+            <aside class="grower-report-card-preview-panel" aria-label="Your Grow Card preview">
+              <div class="grower-report-card-preview-art" aria-hidden="true">
+                ${renderAppIconSvgMarkup("sourceTrustStar")}
+              </div>
+              <div class="grower-report-card-preview-copy">
+                <p class="eyebrow">Your Grow Card</p>
+                <strong>${escapeHtml(growerDisplayName)}</strong>
+                <span>${escapeHtml(`${growTitle} · Score ${growScore}`)}</span>
+                <small>${escapeHtml(`${getProfileAnalyticsCountLabel(growCardsCollectedCount)} Grow Cards collected`)}</small>
+              </div>
+              <div class="grower-report-card-preview-actions">
+                <button type="button" class="button button-secondary">View Full Card</button>
+                <button type="button" class="button button-secondary">Share Card</button>
+                <button type="button" class="button button-secondary">QR Code</button>
+              </div>
+            </aside>
           </div>
         </div>
-        <div class="grower-report-grow-card-actions">
-          <button type="button" class="button button-secondary">View Full Card</button>
-          <button type="button" class="button button-secondary grower-report-card-action">Collect Card</button>
+        <div class="grower-report-hero-stat-strip" aria-label="Profile summary">
+          ${heroStatStrip.map(renderGrowerHeroStatMarkup).join("")}
+        </div>
+        <div class="grower-report-hero-actions">
+          <a class="button button-primary" href="#profile">Edit Profile</a>
+          <button type="button" class="button button-secondary grower-report-card-action">Theme Studio</button>
+          <a class="button button-secondary" href="#profile">Account Settings</a>
+        </div>
+      </section>
+      <section class="grower-report-collections" aria-label="Follow and Collections">
+        <div class="grower-report-section-head">
+          <div>
+            <p class="eyebrow">Collections</p>
+            <h3>Follow & Collections</h3>
+            <p class="muted">Future collected Grow Cards for growers, sources, varieties, methods, and achievements.</p>
+          </div>
+          <button type="button" class="button button-secondary grower-report-card-action">View All Collected Cards</button>
+        </div>
+        <div class="grower-report-collection-tabs" role="tablist" aria-label="Collection categories">
+          ${collectionGroups.map((group, index) => `
+            <button type="button" class="grower-report-collection-tab${index === 0 ? " is-active" : ""}" aria-selected="${index === 0 ? "true" : "false"}">
+              ${escapeHtml(group.label)}
+              <span>${escapeHtml(getProfileAnalyticsCountLabel(group.count))}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="grower-report-collection-grid">
+          ${collectionGroups.map((group) => `
+            <article class="grower-report-collection-card is-${escapeHtml(group.key)}">
+              <div class="grower-report-collection-card-head">
+                <span aria-hidden="true">${renderAppIconSvgMarkup(group.icon)}</span>
+                <div>
+                  <strong>${escapeHtml(group.label)}</strong>
+                  <small>${escapeHtml(`${getProfileAnalyticsCountLabel(group.count)} saved ${group.count === 1 ? "card" : "cards"}`)}</small>
+                </div>
+              </div>
+              ${renderCollectionItemCardsMarkup(group.items)}
+            </article>
+          `).join("")}
         </div>
       </section>
       <section class="grower-report-modules" aria-label="Grower Report modules">
