@@ -86537,205 +86537,413 @@ function renderGrowNetworkPage() {
     `;
   };
 
-  app.innerHTML = `
-    <section class="card grow-network-page">
-      <div class="grow-network-page-glow" aria-hidden="true"></div>
-      <div class="grow-network-page-heading">
-        <div class="grow-network-page-header">
-          <div class="grow-network-page-header-main">
-            ${renderAppSectionHeaderIcon("members")}
-            <div class="grow-network-page-copy">
-              <p class="eyebrow">Identity</p>
-              <h2>My Profile</h2>
-              <p class="muted">Your Grower Report: performance, contribution, reputation, and community evidence.</p>
-            </div>
-          </div>
-          <div class="grow-network-page-actions">
-            <a class="button button-secondary grow-network-hero-button" href="#profile">Account Settings</a>
-            <a class="button button-secondary grow-network-hero-button" href="#gallery">Browse Community Grow</a>
-          </div>
+  const myGrowSeedVaultEntries = (Array.isArray(appState.seedVaultEntries) ? appState.seedVaultEntries : [])
+    .map(normalizeSeedVaultEntry)
+    .filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
+  const myGrowVaultVarietyCount = new Set(myGrowSeedVaultEntries.map((entry) => entry.seedName).filter(Boolean)).size;
+  const myGrowVaultSourceCount = new Set(myGrowSeedVaultEntries.map((entry) => entry.source).filter(Boolean)).size;
+  const myGrowVaultSeedCount = myGrowSeedVaultEntries.reduce((sum, entry) => (
+    sum + Math.max(0, Number(entry.remainingCount ?? entry.seedCount ?? entry.quantity) || 0)
+  ), 0);
+  const myGrowNewestVaultEntry = myGrowSeedVaultEntries
+    .slice()
+    .sort((left, right) => getSeedVaultEntrySortTimestamp(right) - getSeedVaultEntrySortTimestamp(left))[0] || null;
+  const myGrowGrowLevel = growTitle.replace(/\s+Grower$/i, "") || "Grower";
+  const myGrowSourceCount = Math.max(favoriteSources.length, myGrowVaultSourceCount);
+  const myGrowActiveSession = ownerSessions
+    .map((session) => normalizeStoredSession(session) || session)
+    .filter((session) => normalizeGrowSessionLifecycleState(session) === "active")
+    .sort((left, right) => (
+      (Date.parse(right?.updatedAt || right?.createdAt || right?.date || "") || 0)
+      - (Date.parse(left?.updatedAt || left?.createdAt || left?.date || "") || 0)
+    ))[0] || null;
+  const getMyGrowSessionTitle = (session = null) => String(
+    session?.customSessionName
+    || session?.sessionName
+    || session?.name
+    || session?.source
+    || "Grow Session",
+  ).trim();
+  const getMyGrowSessionMethod = (session = null) => getMethodConfig(getSessionMethodType(session));
+  const getMyGrowActiveSessionRowCount = (session = null) => {
+    const method = getMyGrowSessionMethod(session);
+    const rows = normalizeSessionPartitions(session?.partitions || []).filter((partition) => (
+      String(partition.source || partition.sourceDisplayName || partition.seedVariety || partition.seedVarietyDisplayName || "").trim()
+      || Math.max(0, Number(partition.seedCount) || 0) > 0
+    ));
+    return rows.length || method.defaultRowCount || 0;
+  };
+  const getMyGrowSessionDateValue = (session = null) => (
+    Date.parse(session?.completedAt || session?.updatedAt || session?.createdAt || session?.date || "") || 0
+  );
+  const myGrowRecentSessions = [
+    ...(myGrowActiveSession ? [myGrowActiveSession] : []),
+    ...ownerCompletedSessions,
+    ...ownerSessions
+      .map((session) => normalizeStoredSession(session) || session)
+      .filter((session) => session && normalizeGrowSessionLifecycleState(session) !== "active"),
+  ].filter((session, index, sessions) => (
+    session && sessions.findIndex((candidate) => String(candidate?.id || "") === String(session?.id || "")) === index
+  )).sort((left, right) => getMyGrowSessionDateValue(right) - getMyGrowSessionDateValue(left));
+  const myGrowTrendRates = ownerCompletedSessions
+    .slice()
+    .reverse()
+    .map((session) => getProfileAnalyticsSessionRate(session))
+    .filter((rate) => Number.isFinite(rate))
+    .slice(-9);
+  const myGrowTrendValues = myGrowTrendRates.length >= 2
+    ? myGrowTrendRates
+    : [24, 38, 51, 58, 63, 69, 72, 76, Number(ownerAnalytics.averageGerminationRate) || 82];
+  const renderMyGrowTrendChartMarkup = (values = []) => {
+    const safeValues = (values.length ? values : [0]).map((value) => Math.max(0, Math.min(100, Number(value) || 0)));
+    const width = 760;
+    const height = 220;
+    const left = 44;
+    const right = 22;
+    const top = 20;
+    const bottom = 34;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    const points = safeValues.map((value, index) => {
+      const x = left + ((safeValues.length === 1 ? 1 : index / (safeValues.length - 1)) * plotWidth);
+      const y = top + ((100 - value) / 100) * plotHeight;
+      return [x, y, value];
+    });
+    const polyline = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+    const areaPath = `M ${points[0][0].toFixed(1)} ${height - bottom} L ${points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L ")} L ${points[points.length - 1][0].toFixed(1)} ${height - bottom} Z`;
+    const finalPoint = points[points.length - 1];
+    const finalLabel = `${Math.round(finalPoint[2])}%`;
+    return `
+      <svg class="my-grow-trend-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Germination rate trend">
+        <defs>
+          <linearGradient id="my-grow-trend-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#94d159" stop-opacity="0.42"></stop>
+            <stop offset="100%" stop-color="#94d159" stop-opacity="0.04"></stop>
+          </linearGradient>
+          <filter id="my-grow-trend-glow" x="-20%" y="-60%" width="140%" height="220%">
+            <feGaussianBlur stdDeviation="3.2" result="blur"></feGaussianBlur>
+            <feMerge>
+              <feMergeNode in="blur"></feMergeNode>
+              <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+          </filter>
+        </defs>
+        ${[0, 25, 50, 75, 100].map((tick) => {
+          const y = top + ((100 - tick) / 100) * plotHeight;
+          return `<g><line x1="${left}" y1="${y.toFixed(1)}" x2="${width - right}" y2="${y.toFixed(1)}"></line><text x="8" y="${(y + 4).toFixed(1)}">${tick}%</text></g>`;
+        }).join("")}
+        <path d="${areaPath}" fill="url(#my-grow-trend-fill)"></path>
+        <polyline points="${polyline}" fill="none" filter="url(#my-grow-trend-glow)"></polyline>
+        ${points.map(([x, y], index) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${index === points.length - 1 ? "5" : "3.5"}"></circle>`).join("")}
+        <text class="my-grow-trend-final-label" x="${Math.max(left + 40, finalPoint[0] - 22).toFixed(1)}" y="${Math.max(top + 16, finalPoint[1] - 13).toFixed(1)}">${escapeHtml(finalLabel)}</text>
+        <text class="my-grow-trend-date" x="${left}" y="${height - 5}">First</text>
+        <text class="my-grow-trend-date" x="${width - right - 44}" y="${height - 5}">Latest</text>
+      </svg>
+    `;
+  };
+  const myGrowJourneyImages = [
+    ...currentUserPublicSnapshots.map((snapshot) => String(snapshot?.imageUrl || "").trim()),
+    ...myGrowSeedVaultEntries.map((entry) => String(entry.varietyImageUrl || entry.thumbnailUrl || "").trim()),
+    ...(Array.isArray(DEMO_SNAPSHOT_IMAGE_URLS) ? DEMO_SNAPSHOT_IMAGE_URLS : []),
+  ].filter(Boolean).slice(0, 6);
+  const renderMyGrowJourneyMarkup = () => {
+    if (!myGrowJourneyImages.length) {
+      return `<p class="my-grow-home-empty">Session images and public grow reports will appear here.</p>`;
+    }
+    return `
+      <div class="my-grow-journey-grid">
+        ${myGrowJourneyImages.map((imageUrl, index) => `
+          <span class="my-grow-journey-image">
+            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(`Grow journey image ${index + 1}`)}" loading="lazy" decoding="async">
+          </span>
+        `).join("")}
+      </div>
+    `;
+  };
+  const renderMyGrowRecentSessionRowsMarkup = () => {
+    const rows = myGrowRecentSessions.slice(0, 3);
+    if (!rows.length) {
+      return `<p class="my-grow-home-empty">Start a session to build your grow history.</p>`;
+    }
+    return rows.map((session) => {
+      const lifecycle = normalizeGrowSessionLifecycleState(session);
+      const method = getMyGrowSessionMethod(session);
+      const totals = getSessionSeedTotals(session);
+      const rate = getProfileAnalyticsSessionRate(session);
+      const statusLabel = lifecycle === "active"
+        ? getMethodSessionStatusLabel(session?.sessionStatus || "active", method.id)
+        : (lifecycle === "completed" ? "Completed" : capitalize(lifecycle));
+      return `
+        <a class="my-grow-session-row" href="${escapeHtml(buildNotificationSessionActionRoute(session?.id || ""))}">
+          <span class="my-grow-session-thumb" aria-hidden="true">${renderAppIconSvgMarkup(method.isStandardized ? "partitionWheel" : "seedSprout")}</span>
+          <span class="my-grow-session-copy">
+            <strong>${escapeHtml(getMyGrowSessionTitle(session))}</strong>
+            <small>${escapeHtml(`${method.name} • ${getMyGrowActiveSessionRowCount(session)} ${method.isStandardized ? "Partitions" : "Varieties"}`)}</small>
+          </span>
+          <span class="my-grow-session-meta">
+            <strong>${escapeHtml(statusLabel)}</strong>
+            <small>${escapeHtml(formatProfileActivityDateLabel(session?.completedAt || session?.updatedAt || session?.createdAt || session?.date || ""))}</small>
+          </span>
+          <span class="my-grow-session-rate">${escapeHtml(Number.isFinite(rate) ? getProfileAnalyticsRateLabel(rate, "Pending") : (totals.totalSeeds ? `${totals.totalPlanted}/${totals.totalSeeds}` : "Pending"))}</span>
+        </a>
+      `;
+    }).join("");
+  };
+  const renderMyGrowActiveSessionMarkup = () => {
+    if (!myGrowActiveSession) {
+      return `
+        <p class="my-grow-home-empty">No active session right now. Start a session when you are ready to track your next grow.</p>
+        <a class="button button-secondary my-grow-home-full-button" href="#new">Start Session</a>
+      `;
+    }
+    const method = getMyGrowSessionMethod(myGrowActiveSession);
+    const rowCount = getMyGrowActiveSessionRowCount(myGrowActiveSession);
+    const stageLabel = getMethodSessionStatusLabel(myGrowActiveSession.sessionStatus || "active", method.id);
+    const startedAt = getSessionDurationStartAt(myGrowActiveSession);
+    const activeDurationLabel = startedAt ? formatDurationMsShort(Date.now() - startedAt.getTime()) : "";
+    const totals = getSessionSeedTotals(myGrowActiveSession);
+    const progressValue = totals.totalSeeds > 0 ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100) : 42;
+    return `
+      <div class="my-grow-active-session-layout">
+        <div class="my-grow-progress-ring" style="--my-grow-progress: ${escapeHtml(String(Math.max(0, Math.min(100, progressValue))))}%">
+          <strong>${escapeHtml(activeDurationLabel ? activeDurationLabel.split(" ")[0] : String(progressValue))}</strong>
+          <small>${escapeHtml(activeDurationLabel ? "active" : "progress")}</small>
         </div>
-        <div class="grow-network-header-stats" aria-label="Profile quick stats">
-          ${headerStats.map((stat) => `
-            <article class="grow-network-header-stat">
-              <strong>${escapeHtml(stat.value)}</strong>
-              <span>${escapeHtml(stat.label)}</span>
-            </article>
-          `).join("")}
+        <div class="my-grow-active-session-copy">
+          <div class="my-grow-card-kicker">
+            <span>${escapeHtml(stageLabel)}</span>
+            <span>${escapeHtml(method.name)}</span>
+          </div>
+          <h3>${escapeHtml(getMyGrowSessionTitle(myGrowActiveSession))}</h3>
+          <p>${escapeHtml(`${method.name} • ${rowCount} ${method.isStandardized ? "Partitions" : "Varieties"}`)}</p>
+          <dl class="my-grow-mini-details">
+            <div><dt>Started</dt><dd>${escapeHtml(formatProfileActivityDateLabel(myGrowActiveSession.createdAt || myGrowActiveSession.date || ""))}</dd></div>
+            <div><dt>Stage</dt><dd>${escapeHtml(stageLabel)}</dd></div>
+          </dl>
+          <a class="button button-secondary my-grow-panel-link" href="${escapeHtml(buildNotificationSessionActionRoute(myGrowActiveSession.id || ""))}">Open Session <span aria-hidden="true">→</span></a>
         </div>
       </div>
-      <section class="grower-report-hero" aria-label="Grower Report hero">
-        <div class="grower-report-hero-cover" aria-hidden="true"></div>
-        <div class="grower-report-hero-main">
-          <div class="grower-report-identity">
-            <span class="grower-report-avatar-shell">
-              ${renderPublicMemberAvatarMarkup(growerDisplayName, growerAvatarUrl, "grower-report-avatar")}
+    `;
+  };
+  const myGrowSummaryStats = [
+    { icon: "seedSprout", label: "Grow Level", value: myGrowGrowLevel, detail: growScore >= 80 ? "Top range" : "In progress", tone: "green" },
+    { icon: "reportDocument", label: "Sessions", value: getProfileAnalyticsCountLabel(ownerAnalytics.completedSessions), detail: "Completed", tone: "lime" },
+    { icon: "seedGermination", label: "Germination Rate", value: averageGerminationLabel, detail: Number(ownerAnalytics.averageGerminationRate) >= 90 ? "Above average" : "Tracking", tone: "cyan" },
+    { icon: "seedVault", label: "Seeds Started", value: getProfileAnalyticsCountLabel(totalSeedsStarted), detail: "Total", tone: "orange" },
+    { icon: "sourceTrustStar", label: "Sources", value: getProfileAnalyticsCountLabel(myGrowSourceCount), detail: "Tracked", tone: "gold" },
+  ];
+  const myGrowInsights = [
+    Number(ownerAnalytics.averageGerminationRate) >= 90
+      ? `Your germination rate is ${Math.round(ownerAnalytics.averageGerminationRate)}%, a strong signal across completed sessions.`
+      : "Your germination trend will sharpen as more completed sessions are added.",
+    ownerAnalytics.completedSessions >= 3
+      ? "Your consistency is growing. Recent sessions are building a clearer personal baseline."
+      : "Complete a few more sessions to unlock stronger personal consistency insights.",
+    totalSeedsStarted > 0
+      ? `You have started ${getProfileAnalyticsCountLabel(totalSeedsStarted)} seeds across your Grow record.`
+      : "Your seed history will appear here after your first completed session.",
+  ];
+  const myGrowActivityRows = [
+    {
+      icon: "reportDocument",
+      title: latestSession ? "Latest completed session" : "Session history",
+      detail: latestSession ? getMyGrowSessionTitle(latestSession) : "No completed sessions yet",
+      time: latestSession ? formatProfileActivityDateLabel(latestSession.completedAt || latestSession.createdAt || "") : "Pending",
+    },
+    {
+      icon: "seedVault",
+      title: myGrowNewestVaultEntry ? "Newest vault addition" : "My Seed Vault",
+      detail: myGrowNewestVaultEntry ? `${myGrowNewestVaultEntry.seedName}${myGrowNewestVaultEntry.source ? ` (${myGrowNewestVaultEntry.source})` : ""}` : "No vault additions yet",
+      time: myGrowNewestVaultEntry ? formatProfileActivityDateLabel(myGrowNewestVaultEntry.createdAt || myGrowNewestVaultEntry.updatedAt || "") : "Pending",
+    },
+    {
+      icon: "uploadImage",
+      title: latestPublicSnapshot ? "Latest public report" : "Public reports",
+      detail: latestPublicSnapshot ? (latestPublicSnapshot.title || latestPublicSnapshot.name || "Community Grow report") : "Share a report when you are ready",
+      time: latestPublicSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(latestPublicSnapshot)) : "Pending",
+    },
+  ];
+  const myGrowNetworkCounts = [
+    { icon: "members", label: "Growers", value: followingCount },
+    { icon: "sourceDirectoryBars", label: "Sources", value: myGrowSourceCount },
+    { icon: "seedSprout", label: "Breeders", value: 0 },
+    { icon: "profileUser", label: "Organizations", value: 0 },
+    { icon: "sourceTrustStar", label: "Industry Partners", value: 0 },
+  ];
+
+  app.innerHTML = `
+    <section class="card grow-network-page my-grow-home-page">
+      <div class="grow-network-page-glow" aria-hidden="true"></div>
+      <div class="my-grow-home-shell">
+        <header class="my-grow-home-topline">
+          <div>
+            <h2>My Grow Home</h2>
+            <p>All about you, your data, your progress.</p>
+          </div>
+          <div class="my-grow-home-actions">
+            <button type="button" class="button button-secondary">${renderAppIconSvgMarkup("externalLink")}<span>Share Grow ID</span></button>
+            <a class="button button-secondary" href="#profile">${renderAppIconSvgMarkup("settingsGear")}<span>Edit Profile</span></a>
+            <button type="button" class="button button-secondary my-grow-home-more" aria-label="More profile actions">•••</button>
+          </div>
+        </header>
+
+        <section class="my-grow-home-hero" aria-label="My Grow Home identity">
+          <div class="my-grow-home-identity">
+            <span class="my-grow-home-avatar-shell">
+              ${renderPublicMemberAvatarMarkup(growerDisplayName, growerAvatarUrl, "my-grow-home-avatar")}
+              <span class="my-grow-home-avatar-action" aria-hidden="true">${renderAppIconSvgMarkup("uploadImage")}</span>
             </span>
-            <div class="grower-report-identity-copy">
-              <p class="eyebrow">My Profile</p>
+            <div class="my-grow-home-identity-copy">
               <h3>${escapeHtml(growerDisplayName)}</h3>
-              <div class="grower-report-meta-line">
-                <span>${escapeHtml(growTitle)}</span>
-                <span>Member since ${escapeHtml(memberSinceLabel)}</span>
-                <span>${escapeHtml(locationLabel)}</span>
-              </div>
-              <p class="grower-report-hero-summary">${escapeHtml(profileTagline)}</p>
-              <div class="grower-report-badge-row">
-                <span>Public profile: ${escapeHtml(publicVisibilityLabel)}</span>
-                <span>Stats: ${escapeHtml(statsVisibilityLabel)}</span>
-                <span>${escapeHtml(growTitle)}</span>
-              </div>
+              <span class="my-grow-level-pill">${renderAppIconSvgMarkup("sourceTrustStar")}${escapeHtml(growTitle)}</span>
+              <p class="my-grow-home-meta">Member since ${escapeHtml(memberSinceLabel)} <span aria-hidden="true">•</span> ${escapeHtml(locationLabel)}</p>
+              <blockquote>“${escapeHtml(profileTagline)}”</blockquote>
             </div>
           </div>
-          <div class="grower-report-hero-rail">
-            <aside class="grower-report-score-card" aria-label="Overall Grow Score">
-              <span class="grower-report-score-ring" style="--grower-report-score: ${growScore}%">
-                <strong>${escapeHtml(String(growScore))}</strong>
-              </span>
-              <div>
-                <span>Grow Score</span>
-                <p>Evidence-weighted signal from sessions, seeds, and community contribution.</p>
+          <aside class="my-grow-id-panel" aria-label="My Grow ID">
+            <div>
+              <p class="eyebrow">My Grow ID</p>
+              <div class="my-grow-id-qr" aria-hidden="true">
+                <span>GK</span>
               </div>
-            </aside>
-            <aside class="grower-report-card-preview-panel" aria-label="Your Grow Card preview">
-              <div class="grower-report-card-preview-art" aria-hidden="true">
-                ${renderAppIconSvgMarkup("sourceTrustStar")}
-              </div>
-              <div class="grower-report-card-preview-copy">
-                <p class="eyebrow">Your Grow Card</p>
-                <strong>${escapeHtml(growerDisplayName)}</strong>
-                <span>${escapeHtml(`${growTitle} · Score ${growScore}`)}</span>
-                <small>${escapeHtml(`${getProfileAnalyticsCountLabel(growCardsCollectedCount)} Grow Cards collected`)}</small>
-              </div>
-              <div class="grower-report-card-preview-actions">
-                <button type="button" class="button button-secondary">View Full Card</button>
-                <button type="button" class="button button-secondary">Share Card</button>
-                <button type="button" class="button button-secondary">QR Code</button>
-              </div>
-            </aside>
+            </div>
+            <div>
+              <p>Your identity in the Grow community.</p>
+              <button type="button" class="button button-secondary my-grow-panel-link">View Grow ID <span aria-hidden="true">→</span></button>
+            </div>
+          </aside>
+        </div>
+
+        <section class="my-grow-summary-panel" aria-label="Your Grow Summary">
+          <div class="my-grow-section-head">
+            <h3>Your Grow Summary</h3>
+            <a href="#sessions">View all <span aria-hidden="true">→</span></a>
           </div>
-        </div>
-        <div class="grower-report-hero-stat-strip" aria-label="Profile summary">
-          ${heroStatStrip.map(renderGrowerHeroStatMarkup).join("")}
-        </div>
-        <div class="grower-report-hero-actions">
-          <a class="button button-primary" href="#profile">Edit Profile</a>
-          <button type="button" class="button button-secondary grower-report-card-action">Theme Studio</button>
-          <a class="button button-secondary" href="#profile">Account Settings</a>
-        </div>
-      </section>
-      <section class="grower-report-collections" aria-label="Follow and Collections">
-        <div class="grower-report-section-head">
-          <div>
-            <p class="eyebrow">Collections</p>
-            <h3>Follow & Collections</h3>
-            <p class="muted">Future collected Grow Cards for growers, sources, varieties, methods, and achievements.</p>
-          </div>
-          <button type="button" class="button button-secondary grower-report-card-action">View All Collected Cards</button>
-        </div>
-        <div class="grower-report-collection-tabs" role="tablist" aria-label="Collection categories">
-          ${collectionGroups.map((group, index) => `
-            <button type="button" class="grower-report-collection-tab${index === 0 ? " is-active" : ""}" aria-selected="${index === 0 ? "true" : "false"}">
-              ${escapeHtml(group.label)}
-              <span>${escapeHtml(getProfileAnalyticsCountLabel(group.count))}</span>
-            </button>
-          `).join("")}
-        </div>
-        <div class="grower-report-collection-grid">
-          ${collectionGroups.map((group) => `
-            <article class="grower-report-collection-card is-${escapeHtml(group.key)}">
-              <div class="grower-report-collection-card-head">
-                <span aria-hidden="true">${renderAppIconSvgMarkup(group.icon)}</span>
+          <div class="my-grow-summary-grid">
+            ${myGrowSummaryStats.map((stat) => `
+              <article class="my-grow-summary-card is-${escapeHtml(stat.tone)}">
+                <span aria-hidden="true">${renderAppIconSvgMarkup(stat.icon)}</span>
                 <div>
-                  <strong>${escapeHtml(group.label)}</strong>
-                  <small>${escapeHtml(`${getProfileAnalyticsCountLabel(group.count)} saved ${group.count === 1 ? "card" : "cards"}`)}</small>
+                  <small>${escapeHtml(stat.label)}</small>
+                  <strong>${escapeHtml(stat.value)}</strong>
+                  <em>${escapeHtml(stat.detail)}</em>
                 </div>
-              </div>
-              ${renderCollectionItemCardsMarkup(group.items)}
-            </article>
-          `).join("")}
-        </div>
-      </section>
-      <section class="grower-report-modules" aria-label="Grower Report modules">
-        <div class="grower-report-section-head">
-          <div>
-            <p class="eyebrow">Report Modules</p>
-            <h3>Grower Intelligence</h3>
-            <p class="muted">Expandable identity modules designed for performance, contribution, reputation, privacy, themes, and future collections.</p>
+              </article>
+            `).join("")}
           </div>
-        </div>
-        <div class="grower-report-module-grid">
-          ${growerReportModules}
-        </div>
-      </section>
-      <section class="grower-report-connections" aria-label="Community connections">
-        <div class="grower-report-section-head">
-          <div>
-            <p class="eyebrow">Community</p>
-            <h3>Community Connections</h3>
-            <p class="muted">Existing following, discovery, notifications, and activity remain available while Profile becomes the identity experience.</p>
+        </section>
+
+        <section class="my-grow-home-panel my-grow-trend-panel" aria-label="Growth Trend">
+          <div class="my-grow-section-head">
+            <div>
+              <h3>Growth Trend</h3>
+              <span class="my-grow-metric-select"><i></i> Germination Rate <span aria-hidden="true">⌄</span></span>
+            </div>
+            <div class="my-grow-timeframe-tabs" aria-label="Growth trend timeframe">
+              ${["7D", "30D", "90D", "1Y", "ALL"].map((item) => `<button type="button" class="${item === "30D" ? "is-active" : ""}">${escapeHtml(item)}</button>`).join("")}
+            </div>
           </div>
-        </div>
-        <div class="grow-network-layout">
-          <section class="grow-network-panel grow-network-panel--members grow-network-section">
-            ${renderMockTabsMarkup()}
-            <div class="grow-network-section-heading">
-              <div class="grow-network-panel-header">
-                <div class="grow-network-panel-icon" aria-hidden="true">
-                  ${renderAppSectionHeaderIcon("following")}
-                </div>
-                <div>
-                  <p class="eyebrow">${escapeHtml(memberPanelCopy.eyebrow)}</p>
-                  <h3>${escapeHtml(memberPanelCopy.title)}</h3>
-                  <p class="muted grow-network-section-subtitle">${escapeHtml(memberPanelCopy.subtitle)}</p>
-                </div>
+          ${renderMyGrowTrendChartMarkup(myGrowTrendValues)}
+        </section>
+
+        <section class="my-grow-home-two-col" aria-label="Active session and vault">
+          <article class="my-grow-home-panel my-grow-active-panel">
+            <div class="my-grow-section-head">
+              <h3>Active Session</h3>
+              ${myGrowActiveSession ? `<span class="my-grow-status-dot">Active</span>` : ""}
+            </div>
+            ${renderMyGrowActiveSessionMarkup()}
+          </article>
+          <article class="my-grow-home-panel my-grow-vault-panel">
+            <div class="my-grow-section-head">
+              <h3>My Vault</h3>
+            </div>
+            <div class="my-grow-vault-layout">
+              <span class="my-grow-vault-icon" aria-hidden="true">${renderAppIconSvgMarkup("seedVault")}</span>
+              <div class="my-grow-vault-stats">
+                <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(myGrowVaultVarietyCount))}</strong><small>Varieties</small></span>
+                <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(myGrowVaultSeedCount))}</strong><small>Seeds</small></span>
+                <span><strong>${escapeHtml(getProfileAnalyticsCountLabel(myGrowVaultSourceCount))}</strong><small>Sources</small></span>
               </div>
             </div>
-            ${renderFollowingListMarkup()}
-            ${renderMembersFooterMarkup()}
-          </section>
-          <section class="grow-network-panel grow-network-panel--notifications grow-network-section">
-            <div class="grow-network-section-heading grow-network-section-heading--featured">
-              <div class="grow-network-panel-header">
-                <div class="grow-network-panel-icon" aria-hidden="true">
-                  ${renderAppSectionHeaderIcon("activity")}
-                </div>
-                <div>
-                  <p class="eyebrow">${escapeHtml(notificationPanelCopy.eyebrow)}</p>
-                  <h3>${escapeHtml(notificationPanelCopy.title)}</h3>
-                  <p class="muted grow-network-section-subtitle">${escapeHtml(notificationPanelCopy.subtitle)}</p>
-                </div>
-              </div>
-              ${useMockNotifications ? `
-                <button
-                  type="button"
-                  class="button button-secondary grow-network-mark-read-button"
-                  data-grow-network-mark-all-read="true"
-                  ${unseenNotificationCount ? "" : "disabled"}
-                >
-                  <span aria-hidden="true">✓</span>
-                  <span>Mark all as read</span>
-                </button>
-              ` : ""}
+            <div class="my-grow-vault-newest">
+              <small>Newest Addition</small>
+              <strong>${escapeHtml(myGrowNewestVaultEntry ? `${myGrowNewestVaultEntry.seedName}${myGrowNewestVaultEntry.source ? ` (${myGrowNewestVaultEntry.source})` : ""}` : "No vault additions yet")}</strong>
             </div>
-            ${useMockNotifications ? renderMockNotificationFeedMarkup() : renderActivityFeedMarkup()}
-            ${renderNotificationFooterMarkup()}
-          </section>
-        </div>
-      </section>
-      <div class="grow-network-stats-strip" aria-label="Profile connection signals">
-        ${growNetworkStats.map((stat) => `
-          <article class="grow-network-stat-card">
-            <div class="grow-network-stat-icon icon-${escapeHtml(stat.tone || "green")}" aria-hidden="true">
-              ${renderAppSectionHeaderIcon(stat.icon)}
+            <a class="button button-secondary my-grow-home-full-button" href="#seed-vault">Open Vault <span aria-hidden="true">→</span></a>
+          </article>
+        </section>
+
+        <section class="my-grow-home-two-col" aria-label="Recent sessions and journey">
+          <article class="my-grow-home-panel">
+            <div class="my-grow-section-head">
+              <h3>Recent Sessions</h3>
+              <a href="#sessions">View all <span aria-hidden="true">→</span></a>
             </div>
-            <div class="grow-network-stat-copy">
-              <strong>${escapeHtml(stat.value)}</strong>
-              <span>${escapeHtml(stat.label)}</span>
-              <p>${escapeHtml(stat.detail)}</p>
+            <div class="my-grow-session-list">
+              ${renderMyGrowRecentSessionRowsMarkup()}
             </div>
           </article>
-        `).join("")}
+          <article class="my-grow-home-panel">
+            <div class="my-grow-section-head">
+              <h3>My Journey</h3>
+              <a href="#gallery">View all <span aria-hidden="true">→</span></a>
+            </div>
+            ${renderMyGrowJourneyMarkup()}
+          </article>
+        </section>
+
+        <section class="my-grow-home-two-col" aria-label="Grow insights and recent activity">
+          <article class="my-grow-home-panel">
+            <div class="my-grow-section-head">
+              <h3>Grow Insights</h3>
+            </div>
+            <div class="my-grow-insight-list">
+              ${myGrowInsights.map((insight, index) => `
+                <p><span aria-hidden="true">${renderAppIconSvgMarkup(index === 0 ? "chart" : (index === 1 ? "seedSprout" : "sourceTrustStar"))}</span>${escapeHtml(insight)}</p>
+              `).join("")}
+            </div>
+          </article>
+          <article class="my-grow-home-panel">
+            <div class="my-grow-section-head">
+              <h3>Recent Activity</h3>
+              <a href="#gallery">View all <span aria-hidden="true">→</span></a>
+            </div>
+            <div class="my-grow-activity-list">
+              ${myGrowActivityRows.map((row) => `
+                <article>
+                  <span aria-hidden="true">${renderAppIconSvgMarkup(row.icon)}</span>
+                  <div>
+                    <strong>${escapeHtml(row.title)}</strong>
+                    <small>${escapeHtml(row.detail)}</small>
+                  </div>
+                  <time>${escapeHtml(row.time)}</time>
+                </article>
+              `).join("")}
+            </div>
+          </article>
+        </section>
+
+        <section class="my-grow-home-panel my-grow-network-preview" aria-label="My Grow Network">
+          <div class="my-grow-section-head">
+            <div>
+              <h3>My Grow Network</h3>
+              <p>Your connections. Your community. Your industry.</p>
+            </div>
+            <button type="button" class="button button-secondary">View Network <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="my-grow-network-counts">
+            ${myGrowNetworkCounts.map((item) => `
+              <article>
+                <span aria-hidden="true">${renderAppIconSvgMarkup(item.icon)}</span>
+                <div>
+                  <strong>${escapeHtml(item.label)}</strong>
+                  <small>${escapeHtml(getProfileAnalyticsCountLabel(item.value))}</small>
+                </div>
+              </article>
+            `).join("")}
+          </div>
+        </section>
       </div>
     </section>
   `;
