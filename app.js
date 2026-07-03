@@ -14577,7 +14577,7 @@ function getCurrentSiteAnalyticsPageContext() {
     return buildSiteAnalyticsPageContext({
       pageGroup: "profile",
       pageKey: "grower-report",
-      pageLabel: "Profile",
+      pageLabel: "My Profile",
       pagePath: rawRoute ? `#${rawRoute}` : "#network",
     });
   }
@@ -20737,6 +20737,9 @@ function getPublicMemberProfileRoute(memberIdOrProfile = "") {
     : getPublicMemberProfile(memberIdOrProfile);
   const handle = normalizePublicProfileHandle(profile?.publicHandle || "");
   const normalizedId = String(profile?.id || memberIdOrProfile || "").trim();
+  if (isViewingOwnPublicMemberProfile(normalizedId)) {
+    return "#network";
+  }
   const routeKey = handle || normalizedId;
   return routeKey ? `#members/${encodeURIComponent(routeKey)}` : "#gallery";
 }
@@ -39648,7 +39651,33 @@ function render() {
 
   if (route === "members" && id) {
     const memberId = decodeURIComponent(id);
+    const resolvedMemberId = resolvePublicMemberProfileId(memberId) || (isUuidLike(memberId) ? memberId : "");
+    if (isViewingOwnPublicMemberProfile(resolvedMemberId)) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#network`);
+      appState.currentRouteHash = "#network";
+      renderGrowNetworkPage();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "grower-report",
+        pageLabel: "My Profile",
+        pagePath: "#network",
+      }));
+      void refreshGallerySnapshots("route:own-grower-report");
+      void refreshGrowNetworkFollowing({ force: true, reason: "route:own-grower-report" });
+      return;
+    }
     renderPublicMemberProfile(memberId);
+    if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "grower-report",
+        pageLabel: "My Profile",
+        pagePath: "#network",
+      }));
+      void refreshGallerySnapshots("route:own-grower-report");
+      void refreshGrowNetworkFollowing({ force: true, reason: "route:own-grower-report" });
+      return;
+    }
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
       pageKey: "member-profile",
@@ -39682,7 +39711,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "profile",
       pageKey: "grower-report",
-      pageLabel: "Profile",
+      pageLabel: "My Profile",
       pagePath: "#network",
     }));
     void refreshGallerySnapshots("route:grow-network");
@@ -46209,7 +46238,7 @@ function renderProfilePage() {
         </div>
         <div class="profile-page-header-actions">
           <span class="profile-status-badge is-member">Member</span>
-          ${firstSessionGateActive ? "" : `<a class="button button-secondary profile-page-edit-button" href="${escapeHtml(getPublicMemberProfileRoute(currentPublicProfile || appState.user?.id || ""))}">View Public Profile</a>`}
+          ${firstSessionGateActive ? "" : `<a class="button button-secondary profile-page-edit-button" href="${escapeHtml(getPublicMemberProfileRoute(currentPublicProfile || appState.user?.id || ""))}">View My Profile</a>`}
           <button type="button" class="button button-secondary profile-page-edit-button" data-profile-open-editor="true">Edit Profile</button>
         </div>
       </header>
@@ -85274,6 +85303,14 @@ function renderPublicMemberProfile(memberId) {
   const isLoadingSnapshots = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
   const isLoadingProfile = Boolean(appState.publicMemberProfilesRefreshPromises[normalizedId] || appState.publicMemberProfilesRefreshPromises[normalizedHandle]);
   const isOwnProfile = isViewingOwnPublicMemberProfile(normalizedId);
+  if (isOwnProfile) {
+    if (normalizeNavigationHash(window.location.hash || "#home").startsWith("#members/")) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#network`);
+      appState.currentRouteHash = "#network";
+    }
+    renderGrowNetworkPage();
+    return;
+  }
   const approvedSnapshots = sortGallerySnapshotsNewestFirst(getApprovedPublicSnapshotsForMember(normalizedId));
   const profile = getPublicMemberProfile(normalizedId);
   const canShowPublicProfileData = Boolean(profile && (profile.isPublicVisible !== false || isOwnProfile || isAdminUser()));
@@ -86484,7 +86521,7 @@ function renderGrowNetworkPage() {
             ${renderAppSectionHeaderIcon("members")}
             <div class="grow-network-page-copy">
               <p class="eyebrow">Identity</p>
-              <h2>Profile</h2>
+              <h2>My Profile</h2>
               <p class="muted">Your Grower Report: performance, contribution, reputation, and community evidence.</p>
             </div>
           </div>
@@ -86510,7 +86547,7 @@ function renderGrowNetworkPage() {
               ${renderPublicMemberAvatarMarkup(growerDisplayName, growerAvatarUrl, "grower-report-avatar")}
             </span>
             <div class="grower-report-identity-copy">
-              <p class="eyebrow">Grower Report</p>
+              <p class="eyebrow">My Profile</p>
               <h3>${escapeHtml(growerDisplayName)}</h3>
               <div class="grower-report-meta-line">
                 <span>${escapeHtml(growTitle)}</span>
@@ -86537,7 +86574,7 @@ function renderGrowNetworkPage() {
         </div>
         <div class="grower-report-hero-actions">
           <button type="button" class="button button-secondary grower-report-card-action">Collect Grow Card</button>
-          <a class="button button-primary" href="#profile">Edit Public Profile</a>
+          <a class="button button-primary" href="#profile">Edit Profile</a>
         </div>
       </section>
       <section class="grower-report-overview" aria-label="Grower Report overview">
