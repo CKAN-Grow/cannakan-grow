@@ -92725,6 +92725,9 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
   const overallProgressValue = overallPercentage !== null
     ? Math.max(0, Math.min(100, Math.round(overallPercentage)))
     : 0;
+  const overallSuccessTone = !hasGerminationData
+    ? "empty"
+    : (overallProgressValue >= 85 ? "high" : (overallProgressValue >= 60 ? "mid" : "low"));
 
   return `
     <section class="public-session-method-panel public-session-method-panel--report public-session-details-card" aria-labelledby="public-session-details-title">
@@ -92749,7 +92752,7 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
         `).join("")}
       </div>
       <article
-        class="public-session-overall-success-card${hasGerminationData ? "" : " is-empty"}"
+        class="public-session-overall-success-card is-${escapeHtml(overallSuccessTone)}${hasGerminationData ? "" : " is-empty"}"
         style="--public-session-overall-success:${escapeHtml(String(overallProgressValue))}%"
       >
         ${hasGerminationData ? `

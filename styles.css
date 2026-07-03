@@ -32814,21 +32814,23 @@ textarea::placeholder {
 }
 
 .public-session-overall-success-card {
+  --public-session-overall-success-tone: var(--public-session-green);
+  --public-session-overall-success-tone-soft: rgba(148, 209, 89, 0.18);
   position: relative;
   z-index: 1;
   overflow: hidden;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 18px;
+  justify-items: center;
+  align-content: center;
+  gap: 16px;
   margin-top: 18px;
-  padding: 18px;
-  min-height: 146px;
+  padding: clamp(24px, 3.4vw, 34px) 22px;
+  min-height: 260px;
   border-radius: 20px;
   border: 1px solid rgba(148, 209, 89, 0.2);
   background:
-    radial-gradient(circle at 14% 38%, rgba(148, 209, 89, 0.18), transparent 38%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(255, 255, 255, 0.026)),
+    radial-gradient(circle at 50% 16%, var(--public-session-overall-success-tone-soft), transparent 42%),
+    linear-gradient(135deg, color-mix(in srgb, var(--public-session-overall-success-tone) 9%, transparent), rgba(255, 255, 255, 0.026)),
     rgba(8, 18, 14, 0.66);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
@@ -32843,7 +32845,22 @@ textarea::placeholder {
   pointer-events: none;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.045), transparent 34%),
-    radial-gradient(circle at 88% 0%, rgba(148, 209, 89, 0.12), transparent 38%);
+    radial-gradient(circle at 50% 0%, var(--public-session-overall-success-tone-soft), transparent 42%);
+}
+
+.public-session-overall-success-card.is-high {
+  --public-session-overall-success-tone: #94d159;
+  --public-session-overall-success-tone-soft: rgba(148, 209, 89, 0.2);
+}
+
+.public-session-overall-success-card.is-mid {
+  --public-session-overall-success-tone: #f0b84f;
+  --public-session-overall-success-tone-soft: rgba(240, 184, 79, 0.2);
+}
+
+.public-session-overall-success-card.is-low {
+  --public-session-overall-success-tone: #ef5d55;
+  --public-session-overall-success-tone-soft: rgba(239, 93, 85, 0.18);
 }
 
 .public-session-overall-success-ring,
@@ -32853,38 +32870,41 @@ textarea::placeholder {
 }
 
 .public-session-overall-success-ring {
-  width: 96px;
-  height: 96px;
+  width: clamp(132px, 15vw, 168px);
+  height: clamp(132px, 15vw, 168px);
   display: grid;
   place-items: center;
-  flex: 0 0 96px;
   border-radius: 999px;
-  color: var(--public-session-green);
+  color: var(--public-session-overall-success-tone);
   background:
-    radial-gradient(circle, rgba(7, 14, 11, 0.96) 0 55%, transparent 57%),
-    conic-gradient(var(--public-session-green) 0 var(--public-session-overall-success), rgba(148, 209, 89, 0.14) var(--public-session-overall-success) 100%);
+    radial-gradient(circle, rgba(7, 14, 11, 0.97) 0 57%, transparent 59%),
+    conic-gradient(var(--public-session-overall-success-tone) 0 var(--public-session-overall-success), rgba(148, 209, 89, 0.14) var(--public-session-overall-success) 100%);
   box-shadow:
-    inset 0 0 22px rgba(148, 209, 89, 0.14),
-    0 0 26px rgba(148, 209, 89, 0.2);
+    inset 0 0 24px color-mix(in srgb, var(--public-session-overall-success-tone) 16%, transparent),
+    0 0 30px color-mix(in srgb, var(--public-session-overall-success-tone) 22%, transparent);
 }
 
 .public-session-overall-success-ring strong {
   color: #f7fff0;
-  font-size: clamp(1.55rem, 3vw, 2.12rem);
+  font-size: clamp(2.05rem, 4vw, 3rem);
   line-height: 1;
-  text-shadow: 0 0 18px rgba(148, 209, 89, 0.28);
+  letter-spacing: -0.04em;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--public-session-overall-success-tone) 30%, transparent);
 }
 
 .public-session-overall-success-ring svg {
-  width: 40px;
-  height: 40px;
-  filter: drop-shadow(0 0 12px rgba(148, 209, 89, 0.28));
+  width: 54px;
+  height: 54px;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--public-session-overall-success-tone) 30%, transparent));
 }
 
 .public-session-overall-success-copy {
   display: grid;
-  gap: 7px;
+  justify-items: center;
+  gap: 8px;
   min-width: 0;
+  max-width: 30rem;
+  text-align: center;
 }
 
 .public-session-overall-success-copy h4,
@@ -32894,7 +32914,7 @@ textarea::placeholder {
 
 .public-session-overall-success-copy h4 {
   color: #f6fff0;
-  font-size: clamp(1.08rem, 1.8vw, 1.36rem);
+  font-size: clamp(1.22rem, 2.1vw, 1.55rem);
   line-height: 1.16;
 }
 
@@ -32906,11 +32926,11 @@ textarea::placeholder {
 
 .public-session-overall-success-copy em {
   width: fit-content;
-  margin-top: 3px;
-  padding: 7px 10px;
+  margin-top: 5px;
+  padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 209, 89, 0.18);
-  background: rgba(148, 209, 89, 0.08);
+  border: 1px solid color-mix(in srgb, var(--public-session-overall-success-tone) 22%, transparent);
+  background: color-mix(in srgb, var(--public-session-overall-success-tone) 9%, transparent);
   color: #d8fbb7;
   font-size: 0.82rem;
   font-style: normal;
@@ -32920,7 +32940,7 @@ textarea::placeholder {
 .public-session-overall-success-card.is-empty {
   border-color: rgba(148, 209, 89, 0.13);
   background:
-    radial-gradient(circle at 14% 38%, rgba(148, 209, 89, 0.1), transparent 38%),
+    radial-gradient(circle at 50% 16%, rgba(148, 209, 89, 0.1), transparent 42%),
     rgba(8, 18, 14, 0.56);
 }
 
