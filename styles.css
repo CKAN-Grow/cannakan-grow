@@ -664,19 +664,21 @@ textarea {
 
 .app-footer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
   align-items: center;
-  gap: var(--space-4);
+  gap: 8px;
   margin-top: var(--page-section-gap);
-  padding: var(--space-4) var(--space-2) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  padding: 24px var(--space-2) calc(26px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(148, 209, 89, 0.14);
   background: transparent;
+  text-align: center;
 }
 
 .app-footer-copy {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -688,15 +690,15 @@ textarea {
 }
 
 .app-footer-brand {
-  font-size: 0.84rem;
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 0.02em;
+  color: rgba(239, 248, 232, 0.84);
 }
 
 .app-footer-visit-link {
-  justify-self: center;
   color: #aee77c;
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   font-weight: 800;
   line-height: 1.2;
   text-decoration: none;
@@ -713,8 +715,8 @@ textarea {
 .app-footer-meta {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
+  justify-content: center;
+  gap: 10px;
   flex-wrap: wrap;
   min-width: 0;
   color: var(--muted);
@@ -732,6 +734,29 @@ textarea {
   background: currentColor;
   opacity: 0.65;
   vertical-align: middle;
+}
+
+.app-footer-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.app-footer-legal a {
+  color: rgba(128, 145, 132, 0.74);
+  text-decoration: none;
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.app-footer-legal a:hover,
+.app-footer-legal a:focus-visible {
+  color: rgba(183, 227, 133, 0.92);
+  outline: none;
 }
 
 .install-app-banner {
@@ -882,6 +907,10 @@ body.theme-dark .app-footer-meta {
   color: rgba(189, 204, 192, 0.76);
 }
 
+body.theme-dark .app-footer-brand {
+  color: rgba(239, 248, 232, 0.88);
+}
+
 body.theme-dark .app-footer-visit-link {
   color: #b7e385;
 }
@@ -889,6 +918,15 @@ body.theme-dark .app-footer-visit-link {
 body.theme-dark .app-footer-visit-link:hover,
 body.theme-dark .app-footer-visit-link:focus-visible {
   color: #eef6e8;
+}
+
+body.theme-dark .app-footer-legal a {
+  color: rgba(164, 181, 168, 0.58);
+}
+
+body.theme-dark .app-footer-legal a:hover,
+body.theme-dark .app-footer-legal a:focus-visible {
+  color: rgba(183, 227, 133, 0.9);
 }
 
 .topbar-nav {
