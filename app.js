@@ -86854,6 +86854,199 @@ function renderGrowNetworkPage() {
     { icon: "profileUser", label: "Organizations", value: 0 },
     { icon: "sourceTrustStar", label: "Industry Partners", value: 0 },
   ];
+  const myGrowNetworkConnectionItems = (useMockPresentation ? mockMembers : followingEntries).slice(0, 6).map((entry) => {
+    const memberId = entry.memberId || entry.id || "";
+    const profile = getPublicMemberProfile(memberId);
+    const displayName = entry.displayName || profile?.displayName || "Community Grower";
+    const avatarUrl = entry.avatarUrl || profile?.avatarUrl || "";
+    const detail = entry.averageGermination
+      ? `${entry.averageGermination}% avg germination`
+      : (entry.favoriteSource || "Grow community connection");
+    return {
+      id: memberId,
+      displayName,
+      avatarUrl,
+      detail,
+      href: getPublicMemberProfileRoute(memberId || entry.id || ""),
+    };
+  });
+  const myGrowNetworkSourceItems = favoriteSources.length
+    ? favoriteSources.slice(0, 5).map(([label, count]) => ({
+      label,
+      detail: `${getProfileAnalyticsCountLabel(count)} session signal${count === 1 ? "" : "s"}`,
+    }))
+    : collectedSourceItems.slice(0, 5).map((item) => ({
+      label: item.label,
+      detail: item.detail || "Source relationship",
+    }));
+  const myGrowNetworkCategoryCards = [
+    {
+      key: "growers",
+      icon: "members",
+      label: "Growers",
+      count: followingCount || myGrowNetworkConnectionItems.length,
+      items: myGrowNetworkConnectionItems,
+      placeholder: "Grower",
+    },
+    {
+      key: "sources",
+      icon: "sourceDirectoryBars",
+      label: "Sources",
+      count: myGrowSourceCount,
+      items: myGrowNetworkSourceItems,
+      placeholder: "Source",
+    },
+    {
+      key: "breeders",
+      icon: "seedSprout",
+      label: "Breeders",
+      count: useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0,
+      items: favoriteVarieties.slice(0, 5).map(([label, count]) => ({ label, detail: `${count} variety signal${count === 1 ? "" : "s"}` })),
+      placeholder: "Breeder",
+    },
+    {
+      key: "organizations",
+      icon: "profileUser",
+      label: "Organizations",
+      count: useMockPresentation ? 3 : 0,
+      items: useMockPresentation ? [
+        { label: "Community Lab", detail: "Preview partner" },
+        { label: "Grow Education", detail: "Preview organization" },
+        { label: "Regional Group", detail: "Preview community" },
+      ] : [],
+      placeholder: "Org",
+    },
+    {
+      key: "industry",
+      icon: "sourceTrustStar",
+      label: "Industry Partners",
+      count: useMockPresentation ? 2 : 0,
+      items: useMockPresentation ? [
+        { label: "CSTP Network", detail: "Preview partner" },
+        { label: "Testing Partner", detail: "Preview partner" },
+      ] : [],
+      placeholder: "Partner",
+    },
+    {
+      key: "events",
+      icon: "calendar",
+      label: "Events",
+      count: useMockPresentation ? 4 : 0,
+      items: useMockPresentation ? [
+        { label: "Seed Drop", detail: "Preview event" },
+        { label: "Grow Lab", detail: "Preview event" },
+        { label: "Community Review", detail: "Preview event" },
+      ] : [],
+      placeholder: "Event",
+    },
+  ];
+  const renderMyGrowNetworkMiniStackMarkup = (items = [], fallbackIcon = "members") => {
+    const visibleItems = items.slice(0, 3);
+    const overflowCount = Math.max(0, items.length - visibleItems.length);
+    const stackItems = visibleItems.length
+      ? visibleItems
+      : [{ label: "Preview", displayName: "Preview" }, { label: "Preview", displayName: "Preview" }, { label: "Preview", displayName: "Preview" }];
+    return `
+      <span class="my-grow-network-mini-stack" aria-hidden="true">
+        ${stackItems.map((item) => {
+          const displayName = item.displayName || item.label || "Network";
+          return `
+            <span class="my-grow-network-mini-avatar">
+              ${item.avatarUrl
+                ? `<img src="${escapeHtml(item.avatarUrl)}" alt="" loading="lazy" decoding="async">`
+                : `<span>${visibleItems.length ? escapeHtml(getPublicMemberInitialsLabel(displayName)) : renderAppIconSvgMarkup(fallbackIcon)}</span>`}
+            </span>
+          `;
+        }).join("")}
+        ${overflowCount ? `<span class="my-grow-network-mini-avatar is-overflow">+${escapeHtml(String(overflowCount))}</span>` : ""}
+      </span>
+    `;
+  };
+  const renderMyGrowNetworkCategoryCardsMarkup = () => `
+    <div class="my-grow-network-category-grid" aria-label="Grow Network categories">
+      ${myGrowNetworkCategoryCards.map((card) => `
+        <article class="my-grow-network-category-card is-${escapeHtml(card.key)}">
+          <div>
+            <span class="my-grow-network-category-icon" aria-hidden="true">${renderAppIconSvgMarkup(card.icon)}</span>
+            <strong>${escapeHtml(getProfileAnalyticsCountLabel(card.count))}</strong>
+            <small>${escapeHtml(card.label)}</small>
+          </div>
+          ${renderMyGrowNetworkMiniStackMarkup(card.items, card.icon)}
+        </article>
+      `).join("")}
+    </div>
+  `;
+  const renderMyGrowNetworkRecentConnectionsMarkup = () => {
+    if (!myGrowNetworkConnectionItems.length) {
+      return `<p class="my-grow-home-empty">Connect with growers to start building your Grow Network.</p>`;
+    }
+    return `
+      <div class="my-grow-network-connection-row" aria-label="Recent connections">
+        ${myGrowNetworkConnectionItems.slice(0, 5).map((connection) => `
+          <a class="my-grow-network-connection-card" href="${escapeHtml(connection.href || "#network")}">
+            ${renderPublicMemberAvatarMarkup(connection.displayName, connection.avatarUrl, "my-grow-network-connection-avatar")}
+            <span>
+              <strong>${escapeHtml(connection.displayName)}</strong>
+              <small>${escapeHtml(connection.detail)}</small>
+            </span>
+          </a>
+        `).join("")}
+      </div>
+    `;
+  };
+  const myGrowNetworkInsightRows = [
+    {
+      icon: "members",
+      value: getProfileAnalyticsCountLabel(followingCount || myGrowNetworkConnectionItems.length),
+      label: "Grower connections",
+      detail: "people connected to your Grow identity",
+    },
+    {
+      icon: "sourceDirectoryBars",
+      value: getProfileAnalyticsCountLabel(myGrowSourceCount),
+      label: "Trusted source signals",
+      detail: "sources represented in your sessions and vault",
+    },
+    {
+      icon: "activeSessionWaveform",
+      value: getProfileAnalyticsCountLabel(activeGrowersCount),
+      label: "Active network signals",
+      detail: "recent community activity around your network",
+    },
+  ];
+  const renderMyGrowNetworkInsightsMarkup = () => `
+    <div class="my-grow-network-insight-list">
+      ${myGrowNetworkInsightRows.map((row) => `
+        <article>
+          <span aria-hidden="true">${renderAppIconSvgMarkup(row.icon)}</span>
+          <div>
+            <strong><em>${escapeHtml(row.value)}</em> ${escapeHtml(row.label)}</strong>
+            <small>${escapeHtml(row.detail)}</small>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+  const myGrowNetworkActivityRows = (activities.length ? activities.slice(0, 4).map((activity) => ({
+    icon: activity.type === "session" ? "reportDocument" : "activeSessionWaveform",
+    title: activity.title || "Network activity",
+    detail: activity.displayName ? `${activity.displayName} · ${activity.typeLabel || "Community Grow"}` : (activity.summary || "Community Grow activity"),
+    time: getGallerySnapshotSubmittedDateTimeLabel({ publishedAt: activity.occurredAt, createdAt: activity.occurredAt }),
+  })) : myGrowActivityRows).slice(0, 4);
+  const renderMyGrowNetworkActivityMarkup = () => `
+    <div class="my-grow-network-activity-list">
+      ${myGrowNetworkActivityRows.map((row) => `
+        <article>
+          <span aria-hidden="true">${renderAppIconSvgMarkup(row.icon)}</span>
+          <div>
+            <strong>${escapeHtml(row.title)}</strong>
+            <small>${escapeHtml(row.detail)}</small>
+          </div>
+          <time>${escapeHtml(row.time)}</time>
+        </article>
+      `).join("")}
+    </div>
+  `;
 
   app.innerHTML = `
     <section class="card grow-network-page my-grow-home-page">
@@ -87027,6 +87220,45 @@ function renderGrowNetworkPage() {
                 </div>
               </article>
             `).join("")}
+          </div>
+          <div class="my-grow-network-expanded" aria-label="Expanded Grow Network dashboard">
+            <div class="my-grow-network-overview">
+              <div>
+                <p class="eyebrow">Grow Network Overview</p>
+                <h4>Your Grow Network Overview</h4>
+                <p>You’re connected with amazing people and trusted partners.</p>
+              </div>
+            </div>
+            ${renderMyGrowNetworkCategoryCardsMarkup()}
+            <div class="my-grow-network-detail-grid">
+              <article class="my-grow-network-detail-card my-grow-network-recent-card">
+                <div class="my-grow-network-detail-head">
+                  <div>
+                    <h4>Recent Connections</h4>
+                    <p>People and partners recently connected to your Grow identity.</p>
+                  </div>
+                </div>
+                ${renderMyGrowNetworkRecentConnectionsMarkup()}
+              </article>
+              <article class="my-grow-network-detail-card">
+                <div class="my-grow-network-detail-head">
+                  <div>
+                    <h4>Connection Insights</h4>
+                    <p>Signals from your profile, vault, and community activity.</p>
+                  </div>
+                </div>
+                ${renderMyGrowNetworkInsightsMarkup()}
+              </article>
+              <article class="my-grow-network-detail-card my-grow-network-activity-card">
+                <div class="my-grow-network-detail-head">
+                  <div>
+                    <h4>Network Activity</h4>
+                    <p>Recent movement from your Grow community.</p>
+                  </div>
+                </div>
+                ${renderMyGrowNetworkActivityMarkup()}
+              </article>
+            </div>
           </div>
         </section>
       </div>
