@@ -92703,6 +92703,28 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
     { label: "Sources Represented", value: representedSourceCount ? String(representedSourceCount) : "Not shared", icon: "sourceHeroShieldCheck" },
     ...optionalDetails,
   ].filter((row) => row.value && row.value !== "Not shared");
+  const getOverviewNumber = (...values) => {
+    for (const value of values) {
+      const numericValue = Number(value);
+      if (value !== "" && value !== null && value !== undefined && Number.isFinite(numericValue)) {
+        return Math.max(0, numericValue);
+      }
+    }
+    return null;
+  };
+  const totalSeeds = getOverviewNumber(summary?.overall?.totalSeeds, publicDetails?.seedCountLabel, snapshot?.totalSeeds);
+  const germinatedSeeds = getOverviewNumber(summary?.overall?.totalGerminated, publicDetails?.germinatedLabel, snapshot?.totalPlanted);
+  const calculatedPercentage = totalSeeds !== null && totalSeeds > 0 && germinatedSeeds !== null
+    ? Math.round((germinatedSeeds / totalSeeds) * 100)
+    : null;
+  const overallPercentage = getOverviewNumber(summary?.overall?.percentage, calculatedPercentage);
+  const overallPercentageLabel = summary?.overall?.percentageLabel && summary.overall.percentageLabel !== "N/A"
+    ? summary.overall.percentageLabel
+    : (overallPercentage !== null ? `${Math.round(overallPercentage)}%` : "");
+  const hasGerminationData = totalSeeds !== null && totalSeeds > 0 && germinatedSeeds !== null;
+  const overallProgressValue = overallPercentage !== null
+    ? Math.max(0, Math.min(100, Math.round(overallPercentage)))
+    : 0;
 
   return `
     <section class="public-session-method-panel public-session-method-panel--report public-session-details-card" aria-labelledby="public-session-details-title">
@@ -92726,6 +92748,29 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
           </div>
         `).join("")}
       </div>
+      <article
+        class="public-session-overall-success-card${hasGerminationData ? "" : " is-empty"}"
+        style="--public-session-overall-success:${escapeHtml(String(overallProgressValue))}%"
+      >
+        ${hasGerminationData ? `
+          <span class="public-session-overall-success-ring" aria-hidden="true">
+            <strong>${escapeHtml(overallPercentageLabel)}</strong>
+          </span>
+          <div class="public-session-overall-success-copy">
+            <h4>Overall Germination Success</h4>
+            <p>Across all shared partitions</p>
+            <em>Germinated: ${escapeHtml(formatPrivateAnalyticsNumber(germinatedSeeds))} / ${escapeHtml(formatPrivateAnalyticsNumber(totalSeeds))} Seeds</em>
+          </div>
+        ` : `
+          <span class="public-session-overall-success-ring" aria-hidden="true">
+            ${renderAppIconMarkup("seedSprout", { variant: "plain" })}
+          </span>
+          <div class="public-session-overall-success-copy">
+            <h4>Overall Germination Success</h4>
+            <p>No germination data available.</p>
+          </div>
+        `}
+      </article>
     </section>
   `;
 }
