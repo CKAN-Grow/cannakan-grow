@@ -28283,6 +28283,11 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   font-size: 0.76rem;
 }
 
+.profile-visibility-controls {
+  display: grid;
+  gap: 10px;
+}
+
 .profile-preference-toggle {
   position: relative;
   display: flex;
@@ -28314,6 +28319,18 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   border-color: rgba(115, 170, 55, 0.28);
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(19, 43, 29, 0.08);
+}
+
+.profile-preference-toggle.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.profile-preference-toggle.is-disabled:hover,
+.profile-preference-toggle.is-disabled:focus-within {
+  border-color: rgba(38, 75, 54, 0.12);
+  transform: none;
+  box-shadow: none;
 }
 
 .profile-preference-toggle input {
@@ -39913,6 +39930,49 @@ textarea::placeholder {
 
 .my-grow-home-actions .button {
   gap: 9px;
+}
+
+.my-grow-visibility-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.11);
+  color: #c8f99a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.my-grow-visibility-badge.is-private {
+  border-color: rgba(255, 105, 105, 0.32);
+  background: rgba(255, 77, 77, 0.1);
+  color: #ffb1b1;
+  box-shadow: 0 0 18px rgba(255, 77, 77, 0.1);
+}
+
+.my-grow-share-id-button:disabled,
+.my-grow-share-id-button[aria-disabled="true"],
+.my-grow-share-id-button:disabled:hover,
+.my-grow-share-id-button:disabled:focus-visible,
+.my-grow-share-id-button[aria-disabled="true"]:hover,
+.my-grow-share-id-button[aria-disabled="true"]:focus-visible {
+  cursor: not-allowed;
+  border-color: rgba(226, 235, 224, 0.12);
+  background: rgba(226, 235, 224, 0.04);
+  color: rgba(226, 235, 224, 0.42);
+  box-shadow: none;
+  transform: none;
+}
+
+.my-grow-share-id-button:disabled svg,
+.my-grow-share-id-button[aria-disabled="true"] svg {
+  opacity: 0.55;
 }
 
 .my-grow-home-actions svg {

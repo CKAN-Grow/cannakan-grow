@@ -524,6 +524,7 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
 const DEFAULT_PROFILE_PAGE_SETTINGS = Object.freeze({
   notifyCommunityActivity: true,
   showProfileInCommunityGrow: true,
+  showCountry: true,
   allowFollowers: true,
   showGrowStatsPublicly: true,
   vaultTheme: "green",
@@ -20393,6 +20394,18 @@ function normalizeProfilePageSettings(settings = {}, fallbackSettings = DEFAULT_
     ...DEFAULT_PROFILE_PAGE_SETTINGS,
     ...(fallbackSettings || {}),
   };
+  const showProfileInCommunityGrow = getProfilePageSettingsBooleanValue(
+    settings,
+    ["showProfileInCommunityGrow", "show_profile_in_community_grow"],
+    normalizedFallbackSettings.showProfileInCommunityGrow !== false,
+  );
+  const showCountry = showProfileInCommunityGrow === false
+    ? false
+    : getProfilePageSettingsBooleanValue(
+      settings,
+      ["showCountry", "show_country"],
+      normalizedFallbackSettings.showCountry !== false,
+    );
 
   return {
     notifyCommunityActivity: getProfilePageSettingsBooleanValue(
@@ -20400,11 +20413,8 @@ function normalizeProfilePageSettings(settings = {}, fallbackSettings = DEFAULT_
       ["notifyCommunityActivity", "notify_community_activity"],
       normalizedFallbackSettings.notifyCommunityActivity === true,
     ),
-    showProfileInCommunityGrow: getProfilePageSettingsBooleanValue(
-      settings,
-      ["showProfileInCommunityGrow", "show_profile_in_community_grow"],
-      normalizedFallbackSettings.showProfileInCommunityGrow !== false,
-    ),
+    showProfileInCommunityGrow,
+    showCountry,
     allowFollowers: getProfilePageSettingsBooleanValue(
       settings,
       ["allowFollowers", "allow_followers"],
@@ -20614,8 +20624,11 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     normalizedSettings.showProfileInCommunityGrow,
   );
   const publicHandle = normalizePublicProfileHandle(row.public_handle || row.publicHandle || row.handle || "");
-  const countryCode = normalizeCountryCode(row.country_code || row.countryCode || "")
+  const rawCountryCode = normalizeCountryCode(row.country_code || row.countryCode || "")
     || inferCountryCodeFromLegacyRegion(row.location_region || row.locationRegion || row.region || "");
+  const countryCode = normalizedSettings.showProfileInCommunityGrow !== false && normalizedSettings.showCountry !== false
+    ? rawCountryCode
+    : "";
   return {
     id: String(row.id || "").trim(),
     displayName: getDisplayName(
@@ -21340,6 +21353,8 @@ function buildCurrentUserPublicMemberProfileFallback(
 
   const normalizedSettings = normalizeProfilePageSettings(settings, DEFAULT_PROFILE_PAGE_SETTINGS);
   const existingPublicProfile = normalizedUserId ? appState.publicMemberProfiles[normalizedUserId] || null : null;
+  const rawCountryCode = normalizeCountryCode(existingPublicProfile?.countryCode || existingPublicProfile?.country_code || "")
+    || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || "");
   return {
     id: normalizedUserId,
     displayName: getDisplayName(
@@ -21353,8 +21368,9 @@ function buildCurrentUserPublicMemberProfileFallback(
     bio: normalizePublicProfileTextField(existingPublicProfile?.bio || "", 280),
     publicHandle: normalizePublicProfileHandle(existingPublicProfile?.publicHandle || ""),
     locationRegion: normalizePublicProfileTextField(existingPublicProfile?.locationRegion || "", 80),
-    countryCode: normalizeCountryCode(existingPublicProfile?.countryCode || existingPublicProfile?.country_code || "")
-      || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || ""),
+    countryCode: normalizedSettings.showProfileInCommunityGrow !== false && normalizedSettings.showCountry !== false
+      ? rawCountryCode
+      : "",
     profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
     isPublicVisible: normalizedSettings.showProfileInCommunityGrow !== false,
     hasCustomPublicProfile: true,
@@ -21371,6 +21387,8 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
 
   const fallbackSettings = normalizeProfilePageSettings(fallbackProfile || {}, DEFAULT_PROFILE_PAGE_SETTINGS);
   const resolvedSettings = normalizeProfilePageSettings(primaryProfile || {}, fallbackSettings);
+  const rawCountryCode = normalizeCountryCode(primaryProfile?.countryCode || primaryProfile?.country_code || fallbackProfile?.countryCode || fallbackProfile?.country_code || "")
+    || inferCountryCodeFromLegacyRegion(primaryProfile?.locationRegion || fallbackProfile?.locationRegion || "");
   const resolvedProfile = {
     ...(fallbackProfile || {}),
     ...(primaryProfile || {}),
@@ -21386,8 +21404,9 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     bio: normalizePublicProfileTextField(primaryProfile?.bio || fallbackProfile?.bio || "", 280),
     publicHandle: normalizePublicProfileHandle(primaryProfile?.publicHandle || fallbackProfile?.publicHandle || ""),
     locationRegion: normalizePublicProfileTextField(primaryProfile?.locationRegion || fallbackProfile?.locationRegion || "", 80),
-    countryCode: normalizeCountryCode(primaryProfile?.countryCode || primaryProfile?.country_code || fallbackProfile?.countryCode || fallbackProfile?.country_code || "")
-      || inferCountryCodeFromLegacyRegion(primaryProfile?.locationRegion || fallbackProfile?.locationRegion || ""),
+    countryCode: resolvedSettings.showProfileInCommunityGrow !== false && resolvedSettings.showCountry !== false
+      ? rawCountryCode
+      : "",
     profileVisibility: normalizePublicProfileVisibility(
       primaryProfile?.profileVisibility || fallbackProfile?.profileVisibility || "",
       resolvedSettings.showProfileInCommunityGrow,
@@ -45479,6 +45498,7 @@ function bindProfilePageForm(form) {
   const privacyFieldNames = [
     "notifyCommunityActivity",
     "showProfileInCommunityGrow",
+    "showCountry",
     "allowFollowers",
     "showGrowStatsPublicly",
   ];
@@ -45499,6 +45519,7 @@ function bindProfilePageForm(form) {
     notifyCommunityActivity: getCheckboxState("notifyCommunityActivity", profilePageSettings.notifyCommunityActivity !== false),
     pushNotificationsEnabled: getCheckboxState("pushNotificationsEnabled", notificationPreferences.pushNotificationsEnabled === true),
     showProfileInCommunityGrow: getCheckboxState("showProfileInCommunityGrow", profilePageSettings.showProfileInCommunityGrow !== false),
+    showCountry: getCheckboxState("showCountry", profilePageSettings.showProfileInCommunityGrow !== false && profilePageSettings.showCountry !== false),
     allowFollowers: getCheckboxState("allowFollowers", profilePageSettings.allowFollowers !== false),
     showGrowStatsPublicly: getCheckboxState("showGrowStatsPublicly", profilePageSettings.showGrowStatsPublicly !== false),
   });
@@ -45538,6 +45559,7 @@ function bindProfilePageForm(form) {
     const fieldNames = [
       "notifyCommunityActivity",
       "showProfileInCommunityGrow",
+      "showCountry",
       "allowFollowers",
       "showGrowStatsPublicly",
     ];
@@ -45548,6 +45570,7 @@ function bindProfilePageForm(form) {
       }
     });
     syncGrowReminderToggleAvailability(form);
+    syncProfileVisibilityToggleAvailability(form);
     syncNotificationPermissionStateUi(form);
     syncPushDeliveryStateUi(form);
     syncPushDiagnosticsStateUi(form);
@@ -45566,6 +45589,7 @@ function bindProfilePageForm(form) {
       ...getCurrentProfilePageSettings(),
       notifyCommunityActivity: nextValues.notifyCommunityActivity,
       showProfileInCommunityGrow: nextValues.showProfileInCommunityGrow,
+      showCountry: nextValues.showProfileInCommunityGrow === false ? false : nextValues.showCountry,
       allowFollowers: nextValues.allowFollowers,
       showGrowStatsPublicly: nextValues.showGrowStatsPublicly,
     });
@@ -46041,6 +46065,7 @@ function bindProfilePageForm(form) {
     const profilePageSettingsPayload = {
       notifyCommunityActivity: normalizedPendingValues.notifyCommunityActivity,
       showProfileInCommunityGrow: normalizedPendingValues.showProfileInCommunityGrow,
+      showCountry: normalizedPendingValues.showProfileInCommunityGrow === false ? false : normalizedPendingValues.showCountry,
       allowFollowers: normalizedPendingValues.allowFollowers,
       showGrowStatsPublicly: normalizedPendingValues.showGrowStatsPublicly,
     };
@@ -46105,6 +46130,7 @@ function bindProfilePageForm(form) {
         notifyCommunityActivity: appState.profilePageSettings?.notifyCommunityActivity,
         pushNotificationsEnabled: appState.notificationPreferences?.pushNotificationsEnabled,
         showProfileInCommunityGrow: appState.profilePageSettings?.showProfileInCommunityGrow,
+        showCountry: appState.profilePageSettings?.showCountry,
         allowFollowers: appState.profilePageSettings?.allowFollowers,
         showGrowStatsPublicly: appState.profilePageSettings?.showGrowStatsPublicly,
       });
@@ -46150,6 +46176,7 @@ function bindProfilePageForm(form) {
   form.addEventListener("input", () => {
     syncLocalProfileState();
     syncGrowReminderToggleAvailability(form);
+    syncProfileVisibilityToggleAvailability(form);
     refreshPushPreferenceDependentUi();
     updateUnsavedState();
     if (!state.saving && appState.unsavedChanges.hasUnsavedChanges && !messageElement?.classList.contains("is-error")) {
@@ -46163,6 +46190,7 @@ function bindProfilePageForm(form) {
     }
     syncLocalProfileState();
     syncGrowReminderToggleAvailability(form);
+    syncProfileVisibilityToggleAvailability(form);
     refreshPushPreferenceDependentUi();
     updateUnsavedState();
     void persistProfileSettings({ source: "auto" });
@@ -46177,6 +46205,7 @@ function bindProfilePageForm(form) {
     ...notificationPreferences,
     notifyCommunityActivity: profilePageSettings.notifyCommunityActivity,
     showProfileInCommunityGrow: profilePageSettings.showProfileInCommunityGrow,
+    showCountry: profilePageSettings.showCountry,
     allowFollowers: profilePageSettings.allowFollowers,
     showGrowStatsPublicly: profilePageSettings.showGrowStatsPublicly,
   });
@@ -46264,7 +46293,6 @@ function renderProfilePage() {
             <p class="profile-section-note">${profileSetupComplete
               ? "Update your display name and avatar any time with Edit Profile."
               : "Complete your display name and avatar so your public and community profile can stay consistent."}</p>
-            ${currentPublicProfile?.bio ? `<p class="profile-section-note"><strong>Bio:</strong> ${escapeHtml(currentPublicProfile.bio)}</p>` : ""}
           </article>
           ${firstSessionGateActive ? `
             <article class="profile-section-card">
@@ -46382,6 +46410,12 @@ function renderProfilePage() {
                 checked: profilePageSettings.showProfileInCommunityGrow !== false,
               })}
               ${renderProfileSettingsToggleMarkup({
+                name: "showCountry",
+                title: "Show Country",
+                description: "Display your country on your public profile.",
+                checked: profilePageSettings.showProfileInCommunityGrow !== false && profilePageSettings.showCountry !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
                 name: "allowFollowers",
                 title: "Allow followers",
                 description: "Let other growers follow your public profile.",
@@ -46407,10 +46441,6 @@ function renderProfilePage() {
             <div class="profile-future-list" aria-label="Future settings placeholders">
               <div class="profile-future-item is-disabled">
                 <strong>Avatar Upload</strong>
-                <span>Coming soon</span>
-              </div>
-              <div class="profile-future-item is-disabled">
-                <strong>Bio</strong>
                 <span>Coming soon</span>
               </div>
               <div class="profile-future-item is-disabled">
@@ -46499,7 +46529,7 @@ function openProfileEditor() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Account</p>
           <h3>Edit Profile</h3>
-          <p class="muted">Update the public-safe name, country, bio, and avatar shown in ${BRAND_APP_NAME}.</p>
+          <p class="muted">Update the public-safe name, country, profile visibility, and avatar shown in ${BRAND_APP_NAME}.</p>
         </div>
         <div id="profile-modal-body"></div>
         <div class="snapshot-modal-actions">
@@ -46525,7 +46555,7 @@ function openProfileEditor() {
     title.textContent = "Edit your profile";
   }
   if (copy) {
-    copy.textContent = `Update the public-safe name, country, bio, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
+    copy.textContent = `Update the public-safe name, country, visibility, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile";
@@ -46673,6 +46703,27 @@ function initProfileCountryCombobox(form, selectedCountryCode = "") {
   });
 }
 
+function syncProfileVisibilityToggleAvailability(form) {
+  const publicProfileInput = form?.elements?.showProfileInCommunityGrow;
+  const showCountryInput = form?.elements?.showCountry;
+  if (!(publicProfileInput instanceof HTMLInputElement) || publicProfileInput.type !== "checkbox") {
+    return;
+  }
+  if (!(showCountryInput instanceof HTMLInputElement) || showCountryInput.type !== "checkbox") {
+    return;
+  }
+
+  const isPublicProfile = publicProfileInput.checked;
+  if (!isPublicProfile) {
+    showCountryInput.checked = false;
+  }
+  showCountryInput.disabled = !isPublicProfile;
+  const toggleShell = showCountryInput.closest(".profile-preference-toggle, .profile-toggle-row");
+  if (toggleShell instanceof HTMLElement) {
+    toggleShell.classList.toggle("is-disabled", !isPublicProfile);
+  }
+}
+
 function bindProfileForm(form, options = {}) {
   if (!form) {
     return;
@@ -46681,6 +46732,7 @@ function bindProfileForm(form, options = {}) {
   const profile = options.initialProfile || appState.profile || null;
   const notificationPreferences = options.initialNotificationPreferences || appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
   const existingPublicProfile = appState.publicMemberProfiles[String(appState.user?.id || "").trim()] || null;
+  const profilePageSettings = getCurrentProfilePageSettings();
   const usernameInput = form.elements.username;
   const countryCodeInput = form.elements.countryCode;
   const bioInput = form.elements.bio;
@@ -46726,7 +46778,14 @@ function bindProfileForm(form, options = {}) {
   if (bioInput instanceof HTMLTextAreaElement) {
     bioInput.value = existingPublicProfile?.bio || "";
   }
+  if (form.elements.showProfileInCommunityGrow instanceof HTMLInputElement) {
+    form.elements.showProfileInCommunityGrow.checked = profilePageSettings.showProfileInCommunityGrow !== false;
+  }
+  if (form.elements.showCountry instanceof HTMLInputElement) {
+    form.elements.showCountry.checked = profilePageSettings.showProfileInCommunityGrow !== false && profilePageSettings.showCountry !== false;
+  }
   applyNotificationPreferenceStateToForm(form, notificationPreferences);
+  syncProfileVisibilityToggleAvailability(form);
   syncNotificationPreferenceAvailability();
   bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
@@ -46736,6 +46795,7 @@ function bindProfileForm(form, options = {}) {
     if (!(event.target instanceof HTMLInputElement) || event.target.type !== "checkbox") {
       return;
     }
+    syncProfileVisibilityToggleAvailability(form);
     syncNotificationPreferenceAvailability();
     if (!message?.classList.contains("is-error")) {
       setProfileFormMessage("");
@@ -46820,7 +46880,17 @@ function bindProfileForm(form, options = {}) {
     });
     const username = String(usernameInput.value || "").trim();
     const countryCode = normalizeCountryCode(countryCodeInput?.value || "");
-    const bio = normalizePublicProfileTextField(bioInput?.value || "", 280);
+    const bio = bioInput instanceof HTMLTextAreaElement
+      ? normalizePublicProfileTextField(bioInput.value || "", 280)
+      : undefined;
+    const publicProfileEnabled = form.elements.showProfileInCommunityGrow instanceof HTMLInputElement
+      ? form.elements.showProfileInCommunityGrow.checked
+      : profilePageSettings.showProfileInCommunityGrow !== false;
+    const showCountry = publicProfileEnabled && (
+      form.elements.showCountry instanceof HTMLInputElement
+        ? form.elements.showCountry.checked
+        : profilePageSettings.showCountry !== false
+    );
 
     if (!username) {
       setProfileFormMessage("Please enter a username before saving.", "error");
@@ -46954,6 +47024,8 @@ function bindProfileForm(form, options = {}) {
         });
         appState.profilePageSettings = await savePublicMemberProfileSettings({
           notifyCommunityActivity: notificationPreferencePayload.notifyCommunityActivity,
+          showProfileInCommunityGrow: publicProfileEnabled,
+          showCountry,
           bio,
           countryCode,
         }, {
@@ -46966,6 +47038,14 @@ function bindProfileForm(form, options = {}) {
           saveGrowRemindersPromptState(growRemindersPromptStatusToPersist, appState.user?.id || "");
         }
         applyNotificationPreferenceStateToForm(form, appState.notificationPreferences);
+        if (form.elements.showProfileInCommunityGrow instanceof HTMLInputElement) {
+          form.elements.showProfileInCommunityGrow.checked = appState.profilePageSettings.showProfileInCommunityGrow !== false;
+        }
+        if (form.elements.showCountry instanceof HTMLInputElement) {
+          form.elements.showCountry.checked = appState.profilePageSettings.showProfileInCommunityGrow !== false
+            && appState.profilePageSettings.showCountry !== false;
+        }
+        syncProfileVisibilityToggleAvailability(form);
         syncNotificationPreferenceAvailability();
         if (appState.notificationPreferencesTableUnavailable) {
           warnings.push("Profile saved. Notification preferences are using safe defaults until the backend is available.");
@@ -85925,9 +86005,13 @@ function renderGrowNetworkPage() {
   const memberSinceLabel = formatPublicMemberJoinedDateLabel(
     currentPublicProfile?.joinedAt || currentPublicProfile?.createdAt || appState.profile?.createdAt || appState.user?.created_at || "",
   );
+  const isMyGrowProfilePublic = currentProfileSettings.showProfileInCommunityGrow !== false;
+  const visibleCountryCode = isMyGrowProfilePublic && currentProfileSettings.showCountry !== false
+    ? currentPublicProfile?.countryCode || ""
+    : "";
   const locationLabel = [
     currentPublicProfile?.locationRegion || "",
-    currentPublicProfile?.countryCode ? getCountryName(currentPublicProfile.countryCode) : "",
+    visibleCountryCode ? getCountryName(visibleCountryCode) : "",
   ].map((value) => String(value || "").trim()).filter(Boolean).join(", ") || "Location private";
   const growerDisplayName = currentPublicProfile?.displayName
     || getDisplayName({ id: currentUserId, username: appState.profile?.username || "" }, { fallbackLabel: "Grower" });
@@ -85955,7 +86039,7 @@ function renderGrowNetworkPage() {
   const favoriteVarieties = getGrowerReportTopValues((partition) => partition.seedVarietyDisplayName || partition.seedVariety);
   const latestSession = ownerCompletedSessions[0] || null;
   const latestPublicSnapshot = currentUserPublicSnapshots[0] || null;
-  const publicVisibilityLabel = currentProfileSettings.showProfileInCommunityGrow !== false ? "Public" : "Private";
+  const publicVisibilityLabel = isMyGrowProfilePublic ? "Public" : "Private";
   const statsVisibilityLabel = currentProfileSettings.showGrowStatsPublicly !== false ? "Public" : "Private";
   const followerVisibilityLabel = currentProfileSettings.allowFollowers !== false ? "Followers enabled" : "Private";
   const profileTagline = String(currentPublicProfile?.bio || "").trim()
@@ -86781,7 +86865,8 @@ function renderGrowNetworkPage() {
             <p>All about you, your data, your progress.</p>
           </div>
           <div class="my-grow-home-actions">
-            <button type="button" class="button button-secondary">${renderAppIconSvgMarkup("externalLink")}<span>Share Grow ID</span></button>
+            <span class="my-grow-visibility-badge ${isMyGrowProfilePublic ? "is-public" : "is-private"}">${escapeHtml(publicVisibilityLabel)}</span>
+            <button type="button" class="button button-secondary my-grow-share-id-button" ${isMyGrowProfilePublic ? "" : "disabled aria-disabled=\"true\""}>${renderAppIconSvgMarkup("externalLink")}<span>Share Grow ID</span></button>
             <a class="button button-secondary" href="#profile">${renderAppIconSvgMarkup("settingsGear")}<span>Edit Profile</span></a>
             <button type="button" class="button button-secondary my-grow-home-more" aria-label="More profile actions">•••</button>
           </div>
