@@ -87735,9 +87735,6 @@ function renderGrowNetworkPage() {
     { icon: "members", label: "Growers", value: followingCount },
     { icon: "sourceDirectoryBars", label: "Sources", value: myGrowSourceCount },
     { icon: "seedSprout", label: "Breeders", value: 0 },
-    { icon: "profileUser", label: "Organizations", value: 0 },
-    { icon: "sourceTrustStar", label: "Industry Partners", value: 0 },
-    { icon: "calendar", label: "Events", value: useMockPresentation ? 4 : 0 },
   ];
   const myGrowNetworkConnectionItems = (useMockPresentation ? mockMembers : followingEntries).slice(0, 6).map((entry) => {
     const memberId = entry.memberId || entry.id || "";
@@ -87789,41 +87786,6 @@ function renderGrowNetworkPage() {
       items: favoriteVarieties.slice(0, 5).map(([label, count]) => ({ label, detail: `${count} variety signal${count === 1 ? "" : "s"}` })),
       placeholder: "Breeder",
     },
-    {
-      key: "organizations",
-      icon: "profileUser",
-      label: "Organizations",
-      count: useMockPresentation ? 3 : 0,
-      items: useMockPresentation ? [
-        { label: "Community Lab", detail: "Preview partner" },
-        { label: "Grow Education", detail: "Preview organization" },
-        { label: "Regional Group", detail: "Preview community" },
-      ] : [],
-      placeholder: "Org",
-    },
-    {
-      key: "industry",
-      icon: "sourceTrustStar",
-      label: "Industry Partners",
-      count: useMockPresentation ? 2 : 0,
-      items: useMockPresentation ? [
-        { label: "CSTP Network", detail: "Preview partner" },
-        { label: "Testing Partner", detail: "Preview partner" },
-      ] : [],
-      placeholder: "Partner",
-    },
-    {
-      key: "events",
-      icon: "calendar",
-      label: "Events",
-      count: useMockPresentation ? 4 : 0,
-      items: useMockPresentation ? [
-        { label: "Seed Drop", detail: "Preview event" },
-        { label: "Grow Lab", detail: "Preview event" },
-        { label: "Community Review", detail: "Preview event" },
-      ] : [],
-      placeholder: "Event",
-    },
   ];
   const renderMyGrowNetworkMiniStackMarkup = (items = [], fallbackIcon = "members") => {
     const visibleItems = items.slice(0, 3);
@@ -87869,7 +87831,7 @@ function renderGrowNetworkPage() {
         <span aria-hidden="true">${renderAppIconSvgMarkup("growNetworkNodes")}</span>
         <div>
           <strong>GROW NETWORK</strong>
-          <p>Your connections. Your community. Your industry.</p>
+          <p>Your growers. Your sources. Your breeders.</p>
         </div>
       </div>
       <nav class="my-grow-network-sidebar-nav" aria-label="Grow Network views">
@@ -87903,6 +87865,14 @@ function renderGrowNetworkPage() {
         typeLabel: "Trusted Source",
         href: "#explore",
       })),
+      ...(myGrowNetworkCategoryCards.find((card) => card.key === "breeders")?.items?.map((breeder) => ({
+        id: `breeder-${breeder.label}`,
+        displayName: breeder.label,
+        avatarUrl: "",
+        detail: breeder.detail || "Breeder signal",
+        typeLabel: "Breeder",
+        href: "#explore",
+      })) || []),
     ].slice(0, 5);
 
     if (!recentCards.length) {
@@ -87938,9 +87908,9 @@ function renderGrowNetworkPage() {
     },
     {
       icon: "activeSessionWaveform",
-      value: getProfileAnalyticsCountLabel(activeGrowersCount),
-      label: "Active network signals",
-      detail: "recent community activity around your network",
+      value: getProfileAnalyticsCountLabel(useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0),
+      label: "Breeder discovery signals",
+      detail: "breeder and genetics relationships emerging from your grows",
     },
   ];
   const renderMyGrowNetworkInsightsMarkup = () => `
@@ -88135,7 +88105,7 @@ function renderGrowNetworkPage() {
           <div class="my-grow-section-head">
             <div>
               <h3>My Grow Network</h3>
-              <p>Your connections. Your community. Your industry.</p>
+              <p>Your growers. Your sources. Your breeders.</p>
             </div>
             <button type="button" class="button button-secondary">View Network <span aria-hidden="true">→</span></button>
           </div>
@@ -88156,7 +88126,7 @@ function renderGrowNetworkPage() {
               <section class="my-grow-network-overview" aria-label="Your Grow Network Overview">
                 <div>
                   <h4>Your Grow Network Overview</h4>
-                  <p>You’re connected with amazing people and trusted partners.</p>
+                  <p>You’re connected with growers, trusted sources, and breeder signals.</p>
                 </div>
                 ${renderMyGrowNetworkCategoryCardsMarkup()}
               </section>
@@ -88164,7 +88134,7 @@ function renderGrowNetworkPage() {
                 <div class="my-grow-network-detail-head">
                   <div>
                     <h4>Recent Connections</h4>
-                    <p>People and partners recently connected to your Grow identity.</p>
+                    <p>Growers, sources, and breeders recently connected to your Grow identity.</p>
                   </div>
                   <a href="#network">View all <span aria-hidden="true">→</span></a>
                 </div>
