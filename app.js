@@ -20804,8 +20804,12 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     locationRegion: normalizePublicProfileTextField(row.location_region || row.locationRegion || row.region || "", 80),
     countryCode,
     storedCountryCode: rawCountryCode,
-    profileType: normalizePublicMemberProfileType(row.profile_type || row.profileType || "grower"),
-    hasAccountType: Object.prototype.hasOwnProperty.call(row, "profile_type") || Object.prototype.hasOwnProperty.call(row, "profileType"),
+    profileType: normalizePublicMemberProfileType(row.profile_type || row.profileType || row.account_type || row.accountType || "grower"),
+    accountType: normalizePublicMemberProfileType(row.account_type || row.accountType || row.profile_type || row.profileType || "grower"),
+    hasAccountType: Object.prototype.hasOwnProperty.call(row, "profile_type")
+      || Object.prototype.hasOwnProperty.call(row, "profileType")
+      || Object.prototype.hasOwnProperty.call(row, "account_type")
+      || Object.prototype.hasOwnProperty.call(row, "accountType"),
     isVerified,
     reservedGrowId,
     profileVisibility,
@@ -21506,6 +21510,7 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     countryCode: "",
     storedCountryCode: "",
     profileType: "grower",
+    accountType: "grower",
     hasAccountType: false,
     isVerified: false,
     reservedGrowId: false,
@@ -21549,8 +21554,9 @@ function buildCurrentUserPublicMemberProfileFallback(
       ? rawCountryCode
       : "",
     storedCountryCode: rawCountryCode,
-    profileType: normalizePublicMemberProfileType(existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower"),
-    hasAccountType: Boolean(existingPublicProfile?.hasAccountType || existingPublicProfile?.profileType || existingPublicProfile?.profile_type),
+    profileType: normalizePublicMemberProfileType(existingPublicProfile?.profileType || existingPublicProfile?.profile_type || existingPublicProfile?.accountType || existingPublicProfile?.account_type || "grower"),
+    accountType: normalizePublicMemberProfileType(existingPublicProfile?.accountType || existingPublicProfile?.account_type || existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower"),
+    hasAccountType: Boolean(existingPublicProfile?.hasAccountType || existingPublicProfile?.profileType || existingPublicProfile?.profile_type || existingPublicProfile?.accountType || existingPublicProfile?.account_type),
     isVerified: getPublicProfileVerifiedFlag(existingPublicProfile),
     reservedGrowId: getPublicProfileReservedGrowIdFlag(existingPublicProfile),
     profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
@@ -21590,8 +21596,9 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
       ? rawCountryCode
       : "",
     storedCountryCode: rawCountryCode,
-    profileType: normalizePublicMemberProfileType(primaryProfile?.profileType || primaryProfile?.profile_type || fallbackProfile?.profileType || "grower"),
-    hasAccountType: Boolean(primaryProfile?.hasAccountType || fallbackProfile?.hasAccountType || primaryProfile?.profileType || primaryProfile?.profile_type || fallbackProfile?.profileType),
+    profileType: normalizePublicMemberProfileType(primaryProfile?.profileType || primaryProfile?.profile_type || primaryProfile?.accountType || primaryProfile?.account_type || fallbackProfile?.profileType || fallbackProfile?.accountType || "grower"),
+    accountType: normalizePublicMemberProfileType(primaryProfile?.accountType || primaryProfile?.account_type || primaryProfile?.profileType || primaryProfile?.profile_type || fallbackProfile?.accountType || fallbackProfile?.profileType || "grower"),
+    hasAccountType: Boolean(primaryProfile?.hasAccountType || fallbackProfile?.hasAccountType || primaryProfile?.profileType || primaryProfile?.profile_type || primaryProfile?.accountType || primaryProfile?.account_type || fallbackProfile?.profileType || fallbackProfile?.accountType),
     isVerified: getPublicProfileVerifiedFlag(primaryProfile) || getPublicProfileVerifiedFlag(fallbackProfile),
     reservedGrowId: getPublicProfileReservedGrowIdFlag(primaryProfile) || getPublicProfileReservedGrowIdFlag(fallbackProfile),
     profileVisibility: normalizePublicProfileVisibility(
@@ -23970,7 +23977,7 @@ function hasCompletedProfile(profile = appState.profile) {
     || publicProfile?.country_code
     || "",
   );
-  const hasAccountType = Boolean(publicProfile?.hasAccountType || publicProfile?.profileType || publicProfile?.profile_type);
+  const hasAccountType = Boolean(publicProfile?.hasAccountType || publicProfile?.accountType || publicProfile?.account_type || publicProfile?.profileType || publicProfile?.profile_type);
   return Boolean(countryCode && hasAccountType);
 }
 
@@ -24332,12 +24339,18 @@ function buildPublicMemberProfileUpsertPayload(
     normalizedSettings.showProfileInCommunityGrow,
   );
   const profileType = normalizePublicMemberProfileType(
-    settingsInput?.profileType
+    settingsInput?.accountType
+    ?? settingsInput?.account_type
+    ?? settingsInput?.profileType
     ?? settingsInput?.profile_type
     ?? existingProfile?.profileType
     ?? existingProfile?.profile_type
+    ?? existingProfile?.accountType
+    ?? existingProfile?.account_type
     ?? profileInput?.profileType
     ?? profileInput?.profile_type
+    ?? profileInput?.accountType
+    ?? profileInput?.account_type
     ?? "grower",
   );
   const isVerified = getPublicProfileVerifiedFlag(existingProfile) || getPublicProfileVerifiedFlag(profileInput);
@@ -47072,6 +47085,7 @@ function bindProfileForm(form, options = {}) {
   const onboardingProgressSteps = Array.from(form.querySelectorAll("[data-profile-progress-step]"));
   const onboardingBackButton = form.querySelector("#profile-step-back");
   const onboardingNextButton = form.querySelector("#profile-step-next");
+  const formActions = form.querySelector(".form-actions");
   const accountTypeInputs = Array.from(form.querySelectorAll("input[name='profileType']"));
   const preferencesSection = form.querySelector(".profile-preferences");
   const dangerZone = form.querySelector(".profile-danger-zone");
@@ -47100,11 +47114,12 @@ function bindProfileForm(form, options = {}) {
       copy: "Add a profile image now or skip for later.",
     },
     {
-      title: "Finish",
-      copy: "Create your Grow Profile, permanent Grow ID, public profile URL, and QR identity.",
+      title: "Welcome to Grow",
+      copy: "Every session you complete helps improve community intelligence for growers around the world.",
     },
   ];
   let currentSetupStepIndex = 0;
+  let onboardingProfileSaved = false;
   const state = {
     profile,
     removeAvatar: false,
@@ -47190,13 +47205,19 @@ function bindProfileForm(form, options = {}) {
       copy.textContent = stepCopy.copy;
     }
     if (onboardingBackButton instanceof HTMLButtonElement) {
-      onboardingBackButton.hidden = currentSetupStepIndex === 0;
+      onboardingBackButton.hidden = currentSetupStepIndex === 0 || onboardingProfileSaved;
     }
     if (onboardingNextButton instanceof HTMLButtonElement) {
-      onboardingNextButton.hidden = currentSetupStepIndex >= setupStepContent.length - 1;
+      onboardingNextButton.hidden = currentSetupStepIndex >= setupStepContent.length - 1 || onboardingProfileSaved;
+      onboardingNextButton.textContent = currentSetupStepIndex === setupStepContent.length - 2
+        ? "Finish Setup"
+        : "Next";
     }
     if (submitButton instanceof HTMLButtonElement) {
-      submitButton.hidden = currentSetupStepIndex < setupStepContent.length - 1;
+      submitButton.hidden = true;
+    }
+    if (formActions instanceof HTMLElement) {
+      formActions.hidden = onboardingProfileSaved;
     }
   };
 
@@ -47246,7 +47267,7 @@ function bindProfileForm(form, options = {}) {
       ? false
       : profilePageSettings.showProfileInCommunityGrow !== false && profilePageSettings.showCountry !== false;
   }
-  setSelectedProfileType(existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower");
+  setSelectedProfileType(existingPublicProfile?.accountType || existingPublicProfile?.account_type || existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower");
   updateAccountTypeOptionStates();
   form.classList.toggle("is-profile-onboarding", isSetupMode);
   if (onboardingProgress instanceof HTMLElement) {
@@ -47301,6 +47322,14 @@ function bindProfileForm(form, options = {}) {
 
   onboardingNextButton?.addEventListener("click", () => {
     if (!validateOnboardingStep(currentSetupStepIndex)) {
+      return;
+    }
+    if (isSetupMode && currentSetupStepIndex === setupStepContent.length - 2) {
+      if (submitButton instanceof HTMLButtonElement) {
+        form.requestSubmit(submitButton);
+      } else {
+        form.requestSubmit();
+      }
       return;
     }
     updateOnboardingStep(currentSetupStepIndex + 1);
@@ -47418,6 +47447,13 @@ function bindProfileForm(form, options = {}) {
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = "Saving...";
+    }
+    if (onboardingNextButton instanceof HTMLButtonElement) {
+      onboardingNextButton.disabled = true;
+      onboardingNextButton.textContent = "Creating...";
+    }
+    if (onboardingBackButton instanceof HTMLButtonElement) {
+      onboardingBackButton.disabled = true;
     }
     if (deleteButton) {
       deleteButton.disabled = true;
@@ -47547,6 +47583,7 @@ function bindProfileForm(form, options = {}) {
           bio,
           countryCode,
           profileType,
+          accountType: profileType,
         }, {
           requirePersistence: true,
           debugContext: "profile-editor-notification-settings",
@@ -47600,14 +47637,19 @@ function bindProfileForm(form, options = {}) {
       if (warnings.length) {
         setProfileFormMessage(warnings.join(" "), "warning");
       } else {
-        setProfileFormMessage("Profile saved.", "success");
+        setProfileFormMessage(isSetupMode ? "" : "Profile saved.", "success");
       }
 
-      window.setTimeout(() => {
-        options.onSaved?.(appState.profile, {
-          warnings,
-        });
-      }, 650);
+      if (isSetupMode) {
+        onboardingProfileSaved = true;
+        updateOnboardingStep(setupStepContent.length - 1);
+      } else {
+        window.setTimeout(() => {
+          options.onSaved?.(appState.profile, {
+            warnings,
+          });
+        }, 650);
+      }
     } catch (error) {
       console.error("[Cannakan Profile] Save profile failed", error);
       setProfileFormMessage(error.message || "Could not save your profile.", "error");
@@ -47616,8 +47658,17 @@ function bindProfileForm(form, options = {}) {
         submitButton.disabled = false;
         submitButton.textContent = defaultSubmitLabel;
       }
+      if (onboardingNextButton instanceof HTMLButtonElement) {
+        onboardingNextButton.disabled = false;
+      }
+      if (onboardingBackButton instanceof HTMLButtonElement) {
+        onboardingBackButton.disabled = false;
+      }
       if (deleteButton) {
         deleteButton.disabled = false;
+      }
+      if (isSetupMode) {
+        updateOnboardingStep(currentSetupStepIndex);
       }
     }
   });

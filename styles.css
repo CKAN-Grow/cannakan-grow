@@ -27958,6 +27958,17 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   color: #f6f8f5;
 }
 
+.profile-onboarding-welcome-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.profile-onboarding-welcome-actions .button {
+  width: 100%;
+  justify-content: center;
+}
+
 .profile-onboarding-finish-list {
   display: grid;
   gap: 8px;
