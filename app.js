@@ -85990,37 +85990,124 @@ function renderPublicSessionDetail(snapshotId) {
   });
 }
 
-function renderGrowIdQrCode(target, profileUrl = "", options = {}) {
+let growIdQrLibraryLoadPromise = null;
+
+function loadScriptOnce(src = "") {
+  const normalizedSrc = String(src || "").trim();
+  if (!normalizedSrc) {
+    return Promise.reject(new Error("Missing script source."));
+  }
+
+  const existingScript = Array.from(document.scripts).find((script) => (
+    script.getAttribute("src") === normalizedSrc
+  ));
+  if (existingScript) {
+    return new Promise((resolve, reject) => {
+      if (
+        existingScript.dataset.loaded === "true"
+        || existingScript.readyState === "complete"
+        || existingScript.readyState === "loaded"
+        || typeof window.QRCode === "function"
+      ) {
+        resolve();
+        return;
+      }
+      const timeoutId = window.setTimeout(() => {
+        if (typeof window.QRCode === "function") {
+          existingScript.dataset.loaded = "true";
+          resolve();
+          return;
+        }
+        reject(new Error(`Could not load ${normalizedSrc}`));
+      }, 4000);
+      existingScript.addEventListener("load", () => {
+        window.clearTimeout(timeoutId);
+        existingScript.dataset.loaded = "true";
+        resolve();
+      }, { once: true });
+      existingScript.addEventListener("error", () => {
+        window.clearTimeout(timeoutId);
+        reject(new Error(`Could not load ${normalizedSrc}`));
+      }, { once: true });
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = normalizedSrc;
+    script.async = true;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      resolve();
+    }, { once: true });
+    script.addEventListener("error", () => {
+      script.remove();
+      reject(new Error(`Could not load ${normalizedSrc}`));
+    }, { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureGrowIdQrLibraryLoaded() {
+  if (typeof window.QRCode === "function") {
+    return window.QRCode;
+  }
+  if (!growIdQrLibraryLoadPromise) {
+    const sources = [
+      "/assets/vendor/qrcode.min.js",
+      "/public/assets/vendor/qrcode.min.js",
+    ];
+    growIdQrLibraryLoadPromise = sources.reduce((promise, src) => (
+      promise.catch(() => loadScriptOnce(src).then(() => {
+        if (typeof window.QRCode !== "function") {
+          throw new Error(`QR library loaded from ${src}, but QRCode was not exposed.`);
+        }
+        return window.QRCode;
+      }))
+    ), Promise.reject(new Error("QR library not loaded.")));
+  }
+  return growIdQrLibraryLoadPromise;
+}
+
+function renderGrowIdQrUnavailable(target, message = "QR unavailable") {
+  if (!target) {
+    return;
+  }
+  target.innerHTML = `<span class="grow-id-qr-fallback" aria-hidden="true">${escapeHtml(message)}</span>`;
+  target.dataset.growIdQrReady = "false";
+}
+
+async function renderGrowIdQrCode(target, profileUrl = "", options = {}) {
   if (!target || !profileUrl) {
     return;
   }
   const size = Math.max(88, Number(options.size || target.dataset.growIdQrSize || 132) || 132);
   target.innerHTML = "";
-  if (typeof window.QRCode !== "function") {
-    target.innerHTML = `<span class="grow-id-qr-fallback">${escapeHtml(profileUrl)}</span>`;
-    return;
-  }
+  target.dataset.growIdQrReady = "false";
   try {
-    new window.QRCode(target, {
+    const QRCodeCtor = await ensureGrowIdQrLibraryLoaded();
+    new QRCodeCtor(target, {
       text: profileUrl,
       width: size,
       height: size,
       colorDark: "#071007",
       colorLight: "#f4ffe9",
-      correctLevel: window.QRCode.CorrectLevel?.M ?? 0,
+      correctLevel: QRCodeCtor.CorrectLevel?.M ?? 0,
     });
+    target.dataset.growIdQrReady = "true";
   } catch (error) {
     console.warn("[Grow ID] QR code render failed.", error);
-    target.innerHTML = `<span class="grow-id-qr-fallback">${escapeHtml(profileUrl)}</span>`;
+    renderGrowIdQrUnavailable(target);
   }
 }
 
-function renderGrowIdQrCodes(scope = document) {
-  scope.querySelectorAll("[data-grow-id-qr]").forEach((target) => {
+async function renderGrowIdQrCodes(scope = document) {
+  const targets = Array.from(scope.querySelectorAll("[data-grow-id-qr]"));
+  await Promise.all(targets.map((target) => (
     renderGrowIdQrCode(target, target.getAttribute("data-grow-id-qr") || "", {
       size: target.getAttribute("data-grow-id-qr-size") || target.dataset.growIdQrSize,
-    });
-  });
+    })
+  )));
 }
 
 async function copyTextToClipboard(text = "") {
@@ -86071,6 +86158,72 @@ function setGrowIdModalStatus(modal, message = "") {
   if (status) {
     status.textContent = message;
   }
+}
+
+function buildGrowIdQrDownloadFileName(handle = "") {
+  const normalizedHandle = String(handle || "grow-id")
+    .trim()
+    .replace(/^@+/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "grow-id";
+  return `grow-id-${normalizedHandle}.png`;
+}
+
+function drawImageToQrDownloadCanvas(image, size = 768) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Canvas is not available.");
+  }
+  context.fillStyle = "#f4ffe9";
+  context.fillRect(0, 0, size, size);
+  const padding = Math.round(size * 0.07);
+  context.drawImage(image, padding, padding, size - padding * 2, size - padding * 2);
+  return canvas;
+}
+
+async function getGrowIdQrDownloadDataUrl(qrContainer) {
+  if (!qrContainer) {
+    throw new Error("QR code is not available.");
+  }
+  const canvas = qrContainer.querySelector("canvas");
+  if (canvas instanceof HTMLCanvasElement) {
+    return canvas.toDataURL("image/png");
+  }
+
+  const image = qrContainer.querySelector("img");
+  if (image instanceof HTMLImageElement) {
+    if (!image.complete) {
+      await new Promise((resolve, reject) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", reject, { once: true });
+      });
+    }
+    return drawImageToQrDownloadCanvas(image).toDataURL("image/png");
+  }
+
+  const svg = qrContainer.querySelector("svg");
+  if (svg instanceof SVGElement) {
+    const serializedSvg = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([serializedSvg], { type: "image/svg+xml;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(svgBlob);
+    try {
+      const svgImage = new Image();
+      await new Promise((resolve, reject) => {
+        svgImage.onload = resolve;
+        svgImage.onerror = reject;
+        svgImage.src = objectUrl;
+      });
+      return drawImageToQrDownloadCanvas(svgImage).toDataURL("image/png");
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  throw new Error("QR code has not finished rendering.");
 }
 
 function closeGrowIdModal(modal) {
@@ -86162,7 +86315,7 @@ async function openGrowIdModal() {
     </div>
   `;
   document.body.appendChild(modal);
-  renderGrowIdQrCodes(modal);
+  await renderGrowIdQrCodes(modal);
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal || event.target.closest("[data-grow-id-modal-close]")) {
@@ -86203,17 +86356,21 @@ async function openGrowIdModal() {
       }
     }
   });
-  modal.querySelector("[data-grow-id-download-qr]")?.addEventListener("click", () => {
-    const canvas = modal.querySelector(".grow-id-modal-qr canvas");
-    if (!canvas) {
-      setGrowIdModalStatus(modal, "QR code download is unavailable in this browser.");
-      return;
+  modal.querySelector("[data-grow-id-download-qr]")?.addEventListener("click", async () => {
+    const qrContainer = modal.querySelector(".grow-id-modal-qr");
+    try {
+      if (qrContainer?.dataset.growIdQrReady !== "true") {
+        await renderGrowIdQrCodes(modal);
+      }
+      const link = document.createElement("a");
+      link.href = await getGrowIdQrDownloadDataUrl(qrContainer);
+      link.download = buildGrowIdQrDownloadFileName(context.handle);
+      link.click();
+      setGrowIdModalStatus(modal, "QR code downloaded.");
+    } catch (error) {
+      console.warn("[Grow ID] QR code download failed.", error);
+      setGrowIdModalStatus(modal, "QR code could not be downloaded. Please try again.");
     }
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = `${context.handle}-grow-id-qr.png`;
-    link.click();
-    setGrowIdModalStatus(modal, "QR code downloaded.");
   });
 
   if (typeof modal.showModal === "function") {
@@ -88169,7 +88326,7 @@ function renderGrowNetworkPage() {
     </section>
   `;
 
-  renderGrowIdQrCodes(app);
+  void renderGrowIdQrCodes(app);
   app.querySelectorAll("[data-grow-id-open='true']").forEach((button) => {
     button.addEventListener("click", async () => {
       if (button.disabled || button.getAttribute("aria-disabled") === "true") {
