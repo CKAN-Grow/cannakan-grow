@@ -154,7 +154,7 @@ const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const SAFE_PUBLIC_MEMBER_PROFILES_VIEW = "safe_public_member_profiles";
-const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,country_code,profile_visibility,vault_theme,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
+const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,country_code,profile_visibility,vault_theme,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,profile_type,account_type,is_verified,reserved_grow_id,created_at,updated_at";
 const SEED_VAULT_SHARE_SETTINGS_TABLE = "seed_vault_share_settings";
 const SEED_VAULT_SHARE_USERS_TABLE = "seed_vault_share_users";
 const SEED_VAULT_SHARE_VISIBILITIES = Object.freeze(["private", "public", "link"]);
@@ -531,6 +531,7 @@ const DEFAULT_PROFILE_PAGE_SETTINGS = Object.freeze({
 });
 const USER_NOTIFICATION_PREFERENCES_STORAGE_KEY = "cannakanGrowNotificationPreferences";
 const PROFILE_PAGE_SETTINGS_STORAGE_KEY = "cannakanGrowProfilePageSettings";
+const PROFILE_SETUP_COMPLETE_STORAGE_KEY = "cannakanGrowProfileSetupComplete";
 const FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN = "filter_paper_inventory";
 const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
   "notify_snapshot",
@@ -8058,6 +8059,21 @@ function writeBooleanLocalStorageFlag(key = "", enabled = false) {
   } catch (error) {
     console.error(`Could not write localStorage flag: ${normalizedKey}`, error);
   }
+}
+
+function getProfileSetupCompleteStorageKey(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${PROFILE_SETUP_COMPLETE_STORAGE_KEY}:${normalizedUserId}`
+    : PROFILE_SETUP_COMPLETE_STORAGE_KEY;
+}
+
+function loadStoredProfileSetupComplete(userId = appState.user?.id || "") {
+  return readBooleanLocalStorageFlag(getProfileSetupCompleteStorageKey(userId));
+}
+
+function saveStoredProfileSetupComplete(userId = appState.user?.id || "", enabled = true) {
+  writeBooleanLocalStorageFlag(getProfileSetupCompleteStorageKey(userId), enabled === true);
 }
 
 function isLocalDevelopmentHost() {
@@ -20248,6 +20264,9 @@ function normalizeProfileRow(row) {
     deletionRequestedAt: row.deletion_requested_at || "",
     deletionScheduledFor: row.deletion_scheduled_for || "",
     deletionStatus: String(row.deletion_status || "").trim(),
+    profileSetupComplete: row.profile_setup_complete === true
+      || row.profileSetupComplete === true
+      || loadStoredProfileSetupComplete(row.id || ""),
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -23971,14 +23990,31 @@ function hasCompletedProfile(profile = appState.profile) {
   }
   const normalizedUserId = String(appState.user?.id || profile?.id || "").trim();
   const publicProfile = normalizedUserId ? appState.publicMemberProfiles[normalizedUserId] || null : null;
-  const countryCode = normalizeCountryCode(
-    publicProfile?.storedCountryCode
-    || publicProfile?.countryCode
-    || publicProfile?.country_code
-    || "",
+  if (
+    profile?.profileSetupComplete === true
+    || profile?.profile_setup_complete === true
+    || publicProfile?.profileSetupComplete === true
+    || publicProfile?.profile_setup_complete === true
+    || (normalizedUserId && loadStoredProfileSetupComplete(normalizedUserId))
+  ) {
+    return true;
+  }
+
+  const accountType = normalizePublicMemberProfileType(
+    publicProfile?.accountType
+    || publicProfile?.account_type
+    || publicProfile?.profileType
+    || publicProfile?.profile_type
+    || profile?.accountType
+    || profile?.account_type
+    || profile?.profileType
+    || profile?.profile_type
+    || "grower",
   );
-  const hasAccountType = Boolean(publicProfile?.hasAccountType || publicProfile?.accountType || publicProfile?.account_type || publicProfile?.profileType || publicProfile?.profile_type);
-  return Boolean(countryCode && hasAccountType);
+  const hasVisibilitySetting = appState.profilePageSettings
+    ? Object.prototype.hasOwnProperty.call(appState.profilePageSettings, "showProfileInCommunityGrow")
+    : true;
+  return Boolean(accountType && hasVisibilitySetting);
 }
 
 const GENERIC_DISPLAY_NAME_PLACEHOLDERS = new Set([
@@ -26884,12 +26920,31 @@ async function saveUserProfile(profileInput) {
         ? String(profileInput.deletionStatus || "").trim()
         : String(existingProfile.deletionStatus || "").trim(),
   };
+  if (profileInput?.profileSetupComplete !== undefined && appState.profileSetupCompleteColumnUnavailable !== true) {
+    payload.profile_setup_complete = profileInput.profileSetupComplete === true;
+  }
 
-  const { data, error } = await appState.supabase
+  let { data, error } = await appState.supabase
     .from("profiles")
     .upsert(payload)
     .select("*")
     .single();
+
+  if (error && Object.prototype.hasOwnProperty.call(payload, "profile_setup_complete")) {
+    const code = String(error?.code || "").trim();
+    const message = String(error?.message || error?.details || "").toLowerCase();
+    if (SUPABASE_MISSING_COLUMN_ERROR_CODES.has(code) || message.includes("profile_setup_complete") || message.includes("schema cache")) {
+      appState.profileSetupCompleteColumnUnavailable = true;
+      delete payload.profile_setup_complete;
+      const retryResponse = await appState.supabase
+        .from("profiles")
+        .upsert(payload)
+        .select("*")
+        .single();
+      data = retryResponse.data;
+      error = retryResponse.error;
+    }
+  }
 
   if (error) {
     console.error("[Cannakan Profile] Supabase profile upsert failed", {
@@ -26905,6 +26960,10 @@ async function saveUserProfile(profileInput) {
     username: payload.username,
   });
   const normalizedProfile = normalizeProfileRow(data);
+  if (profileInput?.profileSetupComplete !== undefined) {
+    normalizedProfile.profileSetupComplete = profileInput.profileSetupComplete === true;
+    saveStoredProfileSetupComplete(appState.user.id, normalizedProfile.profileSetupComplete);
+  }
   await upsertCurrentUserPublicMemberProfile(
     appState.user,
     getCurrentProfilePageSettings(),
@@ -47099,7 +47158,7 @@ function bindProfileForm(form, options = {}) {
     },
     {
       title: "Country",
-      copy: "Country powers community statistics and regional insights. You choose whether it appears publicly.",
+      copy: "Country helps power community statistics and regional insights. You can keep it private or skip it for now.",
     },
     {
       title: "Choose Your Account Type",
@@ -47230,14 +47289,6 @@ function bindProfileForm(form, options = {}) {
         setProfileFormMessage("Please enter your display name to continue.", "error");
         usernameInput?.focus?.();
         usernameInput?.reportValidity?.();
-        return false;
-      }
-    }
-    if (stepIndex === 1) {
-      if (!normalizeCountryCode(countryCodeInput?.value || "")) {
-        setProfileFormMessage("Please choose your country to continue.", "error");
-        const countrySearchInput = form.elements.countrySearch;
-        countrySearchInput?.focus?.();
         return false;
       }
     }
@@ -47519,6 +47570,7 @@ function bindProfileForm(form, options = {}) {
         username,
         avatarUrl,
         avatarPath,
+        ...(isSetupMode || state.profile?.profileSetupComplete === true ? { profileSetupComplete: true } : {}),
       });
       state.profile = appState.profile;
 
