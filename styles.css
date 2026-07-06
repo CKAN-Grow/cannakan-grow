@@ -40999,7 +40999,7 @@ textarea::placeholder {
 }
 
 .my-grow-network-preview {
-  padding-bottom: 20px;
+  padding-bottom: 24px;
 }
 
 .my-grow-network-counts {
@@ -41014,37 +41014,38 @@ textarea::placeholder {
 
 .my-grow-network-expanded {
   display: grid;
-  grid-template-columns: minmax(210px, 0.28fr) minmax(0, 1fr);
+  grid-template-columns: minmax(242px, 0.32fr) minmax(0, 1fr);
   align-items: stretch;
-  gap: 16px;
-  margin-top: 18px;
-  padding-top: 18px;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 24px;
   border-top: 1px solid rgba(148, 209, 89, 0.12);
 }
 
 .my-grow-network-sidebar,
 .my-grow-network-overview {
   display: grid;
-  gap: 18px;
+  gap: 22px;
   align-content: start;
   min-width: 0;
-  border: 1px solid rgba(148, 209, 89, 0.14);
+  border: 1px solid rgba(148, 209, 89, 0.18);
   background:
-    radial-gradient(circle at 28% 8%, rgba(148, 209, 89, 0.14), transparent 38%),
-    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(5, 12, 9, 0.26));
+    radial-gradient(circle at 28% 8%, rgba(148, 209, 89, 0.16), transparent 38%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(5, 12, 9, 0.3));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 22px 42px rgba(0, 0, 0, 0.22);
+    0 24px 48px rgba(0, 0, 0, 0.24),
+    0 0 28px rgba(148, 209, 89, 0.06);
 }
 
 .my-grow-network-sidebar {
-  padding: 18px;
-  border-radius: 18px;
+  padding: 22px;
+  border-radius: 20px;
 }
 
 .my-grow-network-main {
   display: grid;
-  gap: 16px;
+  gap: 24px;
   min-width: 0;
 }
 
@@ -41056,8 +41057,8 @@ textarea::placeholder {
 }
 
 .my-grow-network-sidebar-brand > span {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
   border-radius: 15px;
@@ -41068,14 +41069,14 @@ textarea::placeholder {
 }
 
 .my-grow-network-sidebar-brand svg {
-  width: 23px;
-  height: 23px;
+  width: 25px;
+  height: 25px;
 }
 
 .my-grow-network-sidebar-brand strong {
   display: block;
   color: #ffffff;
-  font-size: 1.08rem;
+  font-size: 1.14rem;
   letter-spacing: 0.02em;
 }
 
@@ -41085,18 +41086,18 @@ textarea::placeholder {
 }
 
 .my-grow-network-sidebar-brand p {
-  color: rgba(226, 235, 224, 0.66);
+  color: rgba(226, 235, 224, 0.6);
   line-height: 1.45;
 }
 
 .my-grow-network-sidebar-nav,
 .my-grow-network-sidebar-categories {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .my-grow-network-sidebar-nav {
-  padding-bottom: 14px;
+  padding-bottom: 18px;
   border-bottom: 1px solid rgba(148, 209, 89, 0.1);
 }
 
@@ -41116,9 +41117,9 @@ textarea::placeholder {
 }
 
 .my-grow-network-sidebar-nav button {
-  min-height: 46px;
-  padding: 0 13px;
-  border-radius: 13px;
+  min-height: 50px;
+  padding: 0 15px;
+  border-radius: 14px;
   font-weight: 850;
 }
 
@@ -41140,35 +41141,49 @@ textarea::placeholder {
 
 .my-grow-network-sidebar-nav svg,
 .my-grow-network-sidebar-categories svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   color: #94d159;
   flex: 0 0 auto;
 }
 
 .my-grow-network-sidebar-categories {
-  padding-bottom: 12px;
+  gap: 12px;
+  padding-bottom: 18px;
   border-bottom: 1px solid rgba(148, 209, 89, 0.1);
 }
 
 .my-grow-network-sidebar-categories button {
-  min-height: 34px;
-  padding: 0 4px;
+  min-height: 40px;
+  padding: 0 6px;
 }
 
 .my-grow-network-sidebar-categories strong {
   color: #ffffff;
-  font-size: 0.88rem;
+  font-size: 0.96rem;
 }
 
 .my-grow-network-find-button {
   width: 100%;
+  min-height: 52px;
   justify-content: center;
+  border-color: rgba(148, 209, 89, 0.32);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.14), rgba(148, 209, 89, 0.045)),
+    rgba(7, 14, 10, 0.86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 22px rgba(148, 209, 89, 0.1);
+}
+
+.my-grow-network-find-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .my-grow-network-overview {
-  padding: 18px;
-  border-radius: 18px;
+  padding: 24px;
+  border-radius: 20px;
 }
 
 .my-grow-network-overview h4,
@@ -41181,33 +41196,34 @@ textarea::placeholder {
 .my-grow-network-overview h4,
 .my-grow-network-detail-head h4 {
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 1.14rem;
   letter-spacing: 0.01em;
 }
 
 .my-grow-network-overview p:not(.eyebrow),
 .my-grow-network-detail-head p {
-  color: rgba(226, 235, 224, 0.66);
+  color: rgba(226, 235, 224, 0.58);
   line-height: 1.45;
+  font-weight: 450;
 }
 
 .my-grow-network-category-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .my-grow-network-category-card,
 .my-grow-network-detail-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(148, 209, 89, 0.13);
+  border: 1px solid rgba(148, 209, 89, 0.16);
   background:
     radial-gradient(circle at 18% 12%, rgba(148, 209, 89, 0.11), transparent 36%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 18px 34px rgba(0, 0, 0, 0.18);
+    0 20px 38px rgba(0, 0, 0, 0.2);
 }
 
 .my-grow-network-category-card {
@@ -41215,21 +41231,21 @@ textarea::placeholder {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 132px;
-  padding: 18px;
-  border-radius: 16px;
+  gap: 18px;
+  min-height: 166px;
+  padding: 22px;
+  border-radius: 18px;
 }
 
 .my-grow-network-category-card > div {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
 }
 
 .my-grow-network-category-icon {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   border-radius: 999px;
@@ -41240,20 +41256,20 @@ textarea::placeholder {
 }
 
 .my-grow-network-category-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 23px;
+  height: 23px;
 }
 
 .my-grow-network-category-card strong {
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 1.08rem;
   line-height: 1;
 }
 
 .my-grow-network-category-card small {
   min-width: 0;
-  color: rgba(226, 235, 224, 0.68);
-  font-size: 0.74rem;
+  color: rgba(226, 235, 224, 0.58);
+  font-size: 0.82rem;
   font-weight: 900;
   letter-spacing: 0.04em;
 }
@@ -41264,12 +41280,12 @@ textarea::placeholder {
   align-self: end;
   justify-content: flex-end;
   min-width: max-content;
-  padding-top: 44px;
+  padding-top: 52px;
 }
 
 .my-grow-network-mini-avatar {
-  width: 43px;
-  height: 43px;
+  width: 50px;
+  height: 50px;
   display: grid;
   place-items: center;
   margin-left: -10px;
@@ -41294,8 +41310,8 @@ textarea::placeholder {
 }
 
 .my-grow-network-mini-avatar svg {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
 }
 
 .my-grow-network-mini-avatar.is-overflow {
@@ -41305,15 +41321,25 @@ textarea::placeholder {
 .my-grow-network-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 18px;
 }
 
 .my-grow-network-detail-card {
   display: grid;
   align-content: start;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.my-grow-network-recent-card {
+  gap: 18px;
+  padding: 22px;
+}
+
+.my-grow-network-detail-grid .my-grow-network-detail-card {
   gap: 14px;
   padding: 18px;
-  border-radius: 18px;
 }
 
 .my-grow-network-detail-head {
@@ -41339,24 +41365,26 @@ textarea::placeholder {
 
 .my-grow-network-connection-row {
   display: flex;
-  gap: 14px;
+  gap: 18px;
   overflow-x: auto;
-  padding: 2px 2px 8px;
+  padding: 4px 4px 10px;
   scroll-snap-type: x proximity;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 209, 89, 0.45) rgba(255, 255, 255, 0.04);
 }
 
 .my-grow-network-connection-card {
-  flex: 0 0 170px;
-  min-width: 170px;
+  flex: 0 0 208px;
+  min-width: 208px;
   display: grid;
   justify-items: center;
-  gap: 10px;
-  padding: 16px 12px;
-  border-radius: 15px;
-  border: 1px solid rgba(148, 209, 89, 0.1);
-  background: rgba(255, 255, 255, 0.026);
+  gap: 9px;
+  padding: 18px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background:
+    radial-gradient(circle at 50% 8%, rgba(148, 209, 89, 0.11), transparent 34%),
+    rgba(255, 255, 255, 0.028);
   color: inherit;
   text-decoration: none;
   text-align: center;
@@ -41373,8 +41401,8 @@ textarea::placeholder {
 }
 
 .my-grow-network-connection-avatar {
-  width: 68px;
-  height: 68px;
+  width: 86px;
+  height: 86px;
   border-radius: 999px;
   border: 1px solid rgba(148, 209, 89, 0.28);
   box-shadow: 0 0 18px rgba(148, 209, 89, 0.12);
@@ -41385,7 +41413,7 @@ textarea::placeholder {
   place-items: center;
   color: #b8f07d;
   background: radial-gradient(circle at 50% 30%, rgba(148, 209, 89, 0.2), rgba(8, 14, 10, 0.94));
-  font-size: 1.08rem;
+  font-size: 1.22rem;
   font-weight: 950;
 }
 
@@ -41401,11 +41429,11 @@ textarea::placeholder {
 .my-grow-network-insight-list small,
 .my-grow-network-activity-list small,
 .my-grow-network-activity-list time {
-  color: rgba(226, 235, 224, 0.64);
+  color: rgba(226, 235, 224, 0.56);
 }
 
 .my-grow-network-connection-card em {
-  min-height: 32px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -41437,7 +41465,7 @@ textarea::placeholder {
 .my-grow-network-insight-list,
 .my-grow-network-activity-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .my-grow-network-insight-list article,
@@ -41445,8 +41473,8 @@ textarea::placeholder {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 11px;
-  padding: 11px;
+  gap: 12px;
+  padding: 10px 11px;
   border-radius: 14px;
   border: 1px solid rgba(148, 209, 89, 0.1);
   background: rgba(255, 255, 255, 0.026);
@@ -41454,6 +41482,7 @@ textarea::placeholder {
 
 .my-grow-network-insight-list article {
   grid-template-columns: auto minmax(0, 1fr);
+  min-height: 62px;
 }
 
 .my-grow-network-insight-list article > span,
@@ -41477,10 +41506,13 @@ textarea::placeholder {
 .my-grow-network-insight-list em {
   color: #b8f07d;
   font-style: normal;
+  font-weight: 950;
 }
 
 .my-grow-network-activity-list time {
-  font-size: 0.78rem;
+  color: rgba(238, 248, 232, 0.76);
+  font-size: 0.8rem;
+  font-weight: 800;
   white-space: nowrap;
 }
 
@@ -43729,8 +43761,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 
   .my-grow-network-connection-card {
-    flex-basis: min(74vw, 190px);
-    min-width: min(74vw, 190px);
+    flex-basis: min(78vw, 220px);
+    min-width: min(78vw, 220px);
   }
 
   .my-grow-summary-card:last-child {
