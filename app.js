@@ -2239,6 +2239,7 @@ const appState = {
   publicMemberProfileHandleIndex: {},
   publicMemberProfilesRefreshPromises: {},
   publicMemberProfilesViewUnavailable: false,
+  publicMemberProfileQrFieldsUnavailable: false,
   publicMemberFollowSummaries: {},
   publicMemberFollowSummaryRefreshPromises: {},
   publicMemberFollowSummaryUnavailable: false,
@@ -2841,8 +2842,10 @@ function resetSessionScopedAppState() {
     status: "all",
   };
   appState.publicMemberProfiles = {};
+  appState.publicMemberProfileHandleIndex = {};
   appState.publicMemberProfilesRefreshPromises = {};
   appState.publicMemberProfilesViewUnavailable = false;
+  appState.publicMemberProfileQrFieldsUnavailable = false;
   appState.publicMemberFollowSummaries = {};
   appState.publicMemberFollowSummaryRefreshPromises = {};
   appState.publicMemberFollowSummaryUnavailable = false;
@@ -20537,6 +20540,12 @@ const PUBLIC_MEMBER_PROFILE_OPTIONAL_ORG_FIELDS = [
   "is_verified",
   "reserved_grow_id",
 ];
+const PUBLIC_MEMBER_PROFILE_OPTIONAL_QR_FIELDS = [
+  "grow_id_qr_data_url",
+  "grow_id_qr_profile_url",
+  "grow_id_qr_updated_at",
+];
+const GROW_ID_QR_STORAGE_PREFIX = "grow-id-qr:";
 
 function getGrowIdHandle(value = "") {
   return normalizePublicProfileHandle(value);
@@ -20622,6 +20631,48 @@ function formatGrowId(handle = "") {
 function getGrowProfilePublicUrl(handle = "") {
   const normalizedHandle = getGrowIdHandle(handle);
   return normalizedHandle ? `${GROW_PROFILE_PUBLIC_ORIGIN}/@${encodeURIComponent(normalizedHandle)}` : GROW_PROFILE_PUBLIC_ORIGIN;
+}
+
+function getGrowIdQrStorageKey(profileUrl = "") {
+  const normalizedUrl = String(profileUrl || "").trim();
+  return normalizedUrl ? `${GROW_ID_QR_STORAGE_PREFIX}${normalizedUrl}` : "";
+}
+
+function readStoredGrowIdQrDataUrl(profileUrl = "", profile = null) {
+  const normalizedUrl = String(profileUrl || "").trim();
+  if (!normalizedUrl) {
+    return "";
+  }
+  const profileDataUrl = String(profile?.growIdQrDataUrl || "").trim();
+  const profileQrUrl = String(profile?.growIdQrProfileUrl || "").trim();
+  if (profileDataUrl && profileQrUrl === normalizedUrl) {
+    return profileDataUrl;
+  }
+  try {
+    const storageKey = getGrowIdQrStorageKey(normalizedUrl);
+    return storageKey ? String(window.localStorage?.getItem(storageKey) || "").trim() : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function writeStoredGrowIdQrDataUrl(profileUrl = "", dataUrl = "") {
+  const normalizedUrl = String(profileUrl || "").trim();
+  const normalizedDataUrl = String(dataUrl || "").trim();
+  if (!normalizedUrl || !normalizedDataUrl) {
+    return;
+  }
+  try {
+    const storageKey = getGrowIdQrStorageKey(normalizedUrl);
+    if (storageKey) {
+      window.localStorage?.setItem(storageKey, normalizedDataUrl);
+    }
+  } catch (error) {
+    console.warn("[Grow ID] QR local cache write failed.", {
+      profileUrl: normalizedUrl,
+      error,
+    });
+  }
 }
 
 function normalizePublicProfileTextField(value = "", maxLength = 240) {
@@ -20836,6 +20887,9 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     joinedAt: row.joined_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
+    growIdQrDataUrl: String(row.grow_id_qr_data_url || row.growIdQrDataUrl || ""),
+    growIdQrProfileUrl: String(row.grow_id_qr_profile_url || row.growIdQrProfileUrl || ""),
+    growIdQrUpdatedAt: row.grow_id_qr_updated_at || row.growIdQrUpdatedAt || "",
     verifiedProfile: isVerified || getSafePublicProfileFlagValue(row, ["verified_profile", "verifiedProfile", "is_verified_profile"]),
     founderAdmin: getSafePublicProfileFlagValue(row, ["founder_admin", "founderAdmin", "is_founder_admin"]),
     sourceTester: getSafePublicProfileFlagValue(row, ["source_tester", "sourceTester", "is_source_tester"]),
@@ -21627,6 +21681,9 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     joinedAt: primaryProfile?.joinedAt || fallbackProfile?.joinedAt || "",
     createdAt: primaryProfile?.createdAt || fallbackProfile?.createdAt || "",
     updatedAt: primaryProfile?.updatedAt || fallbackProfile?.updatedAt || "",
+    growIdQrDataUrl: String(primaryProfile?.growIdQrDataUrl || fallbackProfile?.growIdQrDataUrl || ""),
+    growIdQrProfileUrl: String(primaryProfile?.growIdQrProfileUrl || fallbackProfile?.growIdQrProfileUrl || ""),
+    growIdQrUpdatedAt: primaryProfile?.growIdQrUpdatedAt || fallbackProfile?.growIdQrUpdatedAt || "",
     hasCustomPublicProfile: Boolean(primaryProfile?.hasCustomPublicProfile ?? fallbackProfile?.hasCustomPublicProfile),
     isDerivedPublicProfile: Boolean(primaryProfile?.isDerivedPublicProfile ?? fallbackProfile?.isDerivedPublicProfile),
     ...resolvedSettings,
@@ -47623,6 +47680,7 @@ function bindProfileForm(form, options = {}) {
       }
 
       try {
+        setProfileFormMessage("Updating profile...");
         appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload, {
           requirePersistence: true,
           debugContext: "profile-editor-notification-settings",
@@ -47639,8 +47697,33 @@ function bindProfileForm(form, options = {}) {
         }, {
           requirePersistence: true,
           debugContext: "profile-editor-notification-settings",
-          verifyAfterSave: false,
+          verifyAfterSave: true,
         });
+        if (publicProfileEnabled) {
+          setProfileFormMessage("Generating QR...");
+          const refreshedProfile = await ensureCurrentUserGrowId({
+            reason: "grow-id:profile-visibility-public",
+            verifyAfterSave: true,
+          });
+          const qrProfile = refreshedProfile || getPublicMemberProfile(String(appState.user?.id || "").trim());
+          const qrHandle = getPublicMemberProfileGrowIdHandle(qrProfile);
+          const qrProfileUrl = getGrowProfilePublicUrl(qrHandle);
+          if (qrHandle && qrProfileUrl) {
+            const scratchTarget = document.createElement("div");
+            scratchTarget.dataset.growIdQrSize = "196";
+            await renderGrowIdQrCode(scratchTarget, qrProfileUrl, {
+              size: 196,
+              persist: true,
+              retry: false,
+              profile: qrProfile,
+            });
+          }
+          await ensureCurrentUserPublicMemberProfileSettings(appState.user, {
+            reason: "profile-editor-save:post-qr-refresh",
+            force: true,
+          });
+          appState.profilePageSettings = getCurrentProfilePageSettings();
+        }
         appState.profilePageSettingsUserId = String(appState.user?.id || "").trim();
         if (growRemindersPromptStatusToPersist) {
           saveGrowRemindersPromptState(growRemindersPromptStatusToPersist, appState.user?.id || "");
@@ -86019,7 +86102,7 @@ function loadScriptOnce(src = "") {
           return;
         }
         reject(new Error(`Could not load ${normalizedSrc}`));
-      }, 4000);
+      }, 1200);
       existingScript.addEventListener("load", () => {
         window.clearTimeout(timeoutId);
         existingScript.dataset.loaded = "true";
@@ -86056,6 +86139,10 @@ async function ensureGrowIdQrLibraryLoaded() {
     const sources = [
       "/assets/vendor/qrcode.min.js",
       "/public/assets/vendor/qrcode.min.js",
+      "assets/vendor/qrcode.min.js",
+      "./assets/vendor/qrcode.min.js",
+      "public/assets/vendor/qrcode.min.js",
+      "./public/assets/vendor/qrcode.min.js",
     ];
     growIdQrLibraryLoadPromise = sources.reduce((promise, src) => (
       promise.catch(() => loadScriptOnce(src).then(() => {
@@ -86069,23 +86156,144 @@ async function ensureGrowIdQrLibraryLoaded() {
   return growIdQrLibraryLoadPromise;
 }
 
-function renderGrowIdQrUnavailable(target, message = "QR unavailable") {
+function renderGrowIdQrLoading(target, message = "Generating QR...") {
   if (!target) {
     return;
   }
-  target.innerHTML = `<span class="grow-id-qr-fallback" aria-hidden="true">${escapeHtml(message)}</span>`;
+  target.innerHTML = `<span class="grow-id-qr-loading">${escapeHtml(message)}</span>`;
   target.dataset.growIdQrReady = "false";
+}
+
+async function extractGrowIdQrDataUrl(qrContainer) {
+  if (!qrContainer) {
+    throw new Error("QR container is missing.");
+  }
+  const canvas = qrContainer.querySelector("canvas");
+  if (canvas instanceof HTMLCanvasElement) {
+    return canvas.toDataURL("image/png");
+  }
+  const image = qrContainer.querySelector("img");
+  if (image instanceof HTMLImageElement) {
+    if (!image.complete) {
+      await new Promise((resolve, reject) => {
+        image.addEventListener("load", resolve, { once: true });
+        image.addEventListener("error", reject, { once: true });
+      });
+    }
+    return drawImageToQrDownloadCanvas(image).toDataURL("image/png");
+  }
+  const svg = qrContainer.querySelector("svg");
+  if (svg instanceof SVGElement) {
+    const serializedSvg = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([serializedSvg], { type: "image/svg+xml;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(svgBlob);
+    try {
+      const svgImage = new Image();
+      await new Promise((resolve, reject) => {
+        svgImage.onload = resolve;
+        svgImage.onerror = reject;
+        svgImage.src = objectUrl;
+      });
+      return drawImageToQrDownloadCanvas(svgImage).toDataURL("image/png");
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+  throw new Error("QR renderer did not create a canvas, image, or SVG.");
+}
+
+function renderGrowIdQrDataUrl(target, dataUrl = "", profileUrl = "") {
+  if (!target || !dataUrl) {
+    return;
+  }
+  const image = document.createElement("img");
+  image.src = dataUrl;
+  image.alt = "Grow ID QR code";
+  image.decoding = "async";
+  target.innerHTML = "";
+  target.appendChild(image);
+  target.dataset.growIdQrReady = "true";
+  target.dataset.growIdQrDataUrl = dataUrl;
+  if (profileUrl) {
+    target.dataset.growIdQrProfileUrl = profileUrl;
+  }
+}
+
+async function persistCurrentUserGrowIdQrData(profileUrl = "", dataUrl = "") {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const normalizedUrl = String(profileUrl || "").trim();
+  const normalizedDataUrl = String(dataUrl || "").trim();
+  if (!normalizedUserId || !normalizedUrl || !normalizedDataUrl) {
+    return null;
+  }
+
+  writeStoredGrowIdQrDataUrl(normalizedUrl, normalizedDataUrl);
+  const cachedProfile = appState.publicMemberProfiles[normalizedUserId] || null;
+  const nextProfile = mergePublicMemberProfileRecord({
+    ...(cachedProfile || {}),
+    id: normalizedUserId,
+    growIdQrDataUrl: normalizedDataUrl,
+    growIdQrProfileUrl: normalizedUrl,
+    growIdQrUpdatedAt: new Date().toISOString(),
+  }, cachedProfile);
+  if (nextProfile) {
+    cachePublicMemberProfile(nextProfile);
+  }
+
+  if (!appState.supabase || appState.publicMemberProfilesViewUnavailable || appState.publicMemberProfileQrFieldsUnavailable) {
+    return nextProfile;
+  }
+
+  try {
+    const { error } = await appState.supabase
+      .from(PUBLIC_MEMBER_PROFILES_TABLE)
+      .update({
+        grow_id_qr_data_url: normalizedDataUrl,
+        grow_id_qr_profile_url: normalizedUrl,
+        grow_id_qr_updated_at: new Date().toISOString(),
+      })
+      .eq("id", normalizedUserId);
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    if (isSupabaseColumnMissingError(error, PUBLIC_MEMBER_PROFILES_TABLE, PUBLIC_MEMBER_PROFILE_OPTIONAL_QR_FIELDS)) {
+      appState.publicMemberProfileQrFieldsUnavailable = true;
+      console.warn("[Grow ID] QR profile fields are unavailable; using local QR cache.", {
+        profileUrl: normalizedUrl,
+        error,
+      });
+      return nextProfile;
+    }
+    console.error("[Grow ID] QR profile persistence failed.", {
+      profileUrl: normalizedUrl,
+      error,
+    });
+  }
+
+  return nextProfile;
 }
 
 async function renderGrowIdQrCode(target, profileUrl = "", options = {}) {
   if (!target || !profileUrl) {
-    return;
+    return { ready: false, dataUrl: "" };
   }
   const size = Math.max(88, Number(options.size || target.dataset.growIdQrSize || 132) || 132);
+  const profile = options.profile || null;
+  const cachedDataUrl = readStoredGrowIdQrDataUrl(profileUrl, profile);
+  if (cachedDataUrl) {
+    renderGrowIdQrDataUrl(target, cachedDataUrl, profileUrl);
+    if (options.persist === true) {
+      await persistCurrentUserGrowIdQrData(profileUrl, cachedDataUrl);
+    }
+    return { ready: true, dataUrl: cachedDataUrl, cached: true };
+  }
   target.innerHTML = "";
   target.dataset.growIdQrReady = "false";
+  renderGrowIdQrLoading(target);
   try {
     const QRCodeCtor = await ensureGrowIdQrLibraryLoaded();
+    target.innerHTML = "";
     new QRCodeCtor(target, {
       text: profileUrl,
       width: size,
@@ -86094,18 +86302,42 @@ async function renderGrowIdQrCode(target, profileUrl = "", options = {}) {
       colorLight: "#f4ffe9",
       correctLevel: QRCodeCtor.CorrectLevel?.M ?? 0,
     });
+    const dataUrl = await extractGrowIdQrDataUrl(target);
+    target.dataset.growIdQrDataUrl = dataUrl;
+    target.dataset.growIdQrProfileUrl = profileUrl;
     target.dataset.growIdQrReady = "true";
+    writeStoredGrowIdQrDataUrl(profileUrl, dataUrl);
+    if (options.persist === true) {
+      await persistCurrentUserGrowIdQrData(profileUrl, dataUrl);
+    }
+    return { ready: true, dataUrl, cached: false };
   } catch (error) {
-    console.warn("[Grow ID] QR code render failed.", error);
-    renderGrowIdQrUnavailable(target);
+    console.error("[Grow ID] QR code render failed.", {
+      profileUrl,
+      size,
+      error,
+    });
+    renderGrowIdQrLoading(target);
+    if (options.retry !== false && target.isConnected) {
+      window.setTimeout(() => {
+        if (target.isConnected && target.dataset.growIdQrReady !== "true") {
+          void renderGrowIdQrCode(target, profileUrl, {
+            ...options,
+            retry: false,
+          });
+        }
+      }, 1200);
+    }
+    return { ready: false, dataUrl: "", error };
   }
 }
 
 async function renderGrowIdQrCodes(scope = document) {
   const targets = Array.from(scope.querySelectorAll("[data-grow-id-qr]"));
-  await Promise.all(targets.map((target) => (
+  return Promise.all(targets.map((target) => (
     renderGrowIdQrCode(target, target.getAttribute("data-grow-id-qr") || "", {
       size: target.getAttribute("data-grow-id-qr-size") || target.dataset.growIdQrSize,
+      persist: target.dataset.growIdQrPersist === "true",
     })
   )));
 }
@@ -86189,6 +86421,10 @@ async function getGrowIdQrDownloadDataUrl(qrContainer) {
   if (!qrContainer) {
     throw new Error("QR code is not available.");
   }
+  const cachedDataUrl = String(qrContainer.dataset.growIdQrDataUrl || "").trim();
+  if (cachedDataUrl) {
+    return cachedDataUrl;
+  }
   const canvas = qrContainer.querySelector("canvas");
   if (canvas instanceof HTMLCanvasElement) {
     return canvas.toDataURL("image/png");
@@ -86251,6 +86487,11 @@ async function openGrowIdModal() {
   let ensuredProfile = null;
   try {
     ensuredProfile = await ensureCurrentUserGrowId({ reason: "grow-id:modal" });
+    await ensureCurrentUserPublicMemberProfileSettings(appState.user, {
+      reason: "grow-id:modal-refresh",
+      force: true,
+    });
+    ensuredProfile = getPublicMemberProfile(String(appState.user?.id || "").trim()) || ensuredProfile;
   } catch (error) {
     console.warn("[Grow ID] Could not ensure Grow ID before opening modal.", error);
   }
@@ -86280,7 +86521,7 @@ async function openGrowIdModal() {
       </div>
       <div class="grow-id-modal-body">
         <div class="grow-id-modal-qr-card">
-          <div class="grow-id-modal-qr" data-grow-id-qr="${escapeHtml(context.profileUrl)}" data-grow-id-qr-size="196" aria-label="Grow ID QR code"></div>
+          <div class="grow-id-modal-qr" data-grow-id-qr="${escapeHtml(context.profileUrl)}" data-grow-id-qr-size="196" data-grow-id-qr-persist="${context.isPublic ? "true" : "false"}" aria-label="Grow ID QR code"></div>
           <span class="grow-id-modal-visibility is-${context.isPublic ? "public" : "private"}">${escapeHtml(context.visibilityLabel)}</span>
         </div>
         <div class="grow-id-modal-details">
@@ -86315,7 +86556,13 @@ async function openGrowIdModal() {
     </div>
   `;
   document.body.appendChild(modal);
-  await renderGrowIdQrCodes(modal);
+  setGrowIdModalStatus(modal, "Generating QR...");
+  const qrResults = await renderGrowIdQrCodes(modal);
+  if (qrResults.some((result) => result?.ready)) {
+    setGrowIdModalStatus(modal, "");
+  } else {
+    setGrowIdModalStatus(modal, "Generating QR...");
+  }
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal || event.target.closest("[data-grow-id-modal-close]")) {
@@ -88137,7 +88384,7 @@ function renderGrowNetworkPage() {
           <aside class="my-grow-id-panel" aria-label="My Grow ID">
             <div>
               <p class="eyebrow">My Grow ID</p>
-              <div class="my-grow-id-qr" ${currentGrowProfileUrl ? `data-grow-id-qr="${escapeHtml(currentGrowProfileUrl)}" data-grow-id-qr-size="92"` : ""} aria-label="Grow ID QR code">
+              <div class="my-grow-id-qr" ${currentGrowProfileUrl ? `data-grow-id-qr="${escapeHtml(currentGrowProfileUrl)}" data-grow-id-qr-size="92" data-grow-id-qr-persist="${isMyGrowProfilePublic ? "true" : "false"}"` : ""} aria-label="Grow ID QR code">
                 ${currentGrowProfileUrl ? "" : "<span>GK</span>"}
               </div>
             </div>

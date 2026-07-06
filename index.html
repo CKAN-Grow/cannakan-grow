@@ -125,10 +125,15 @@
 
     <footer class="app-footer" aria-label="Site footer">
       <div class="app-footer-copy">
-        <p class="app-footer-brand">© Cannakan®</p>
+        <p class="app-footer-brand">Powered by CannaKAN®</p>
       </div>
-      <nav class="app-footer-nav" aria-label="Footer">
-        <a class="app-footer-learn-link" href="#learn">Learn / Tutorials</a>
+      <a class="app-footer-visit-link" href="https://cannakan.com" target="_blank" rel="noopener noreferrer">Visit Cannakan.com →</a>
+      <div class="app-footer-meta" aria-label="App version and copyright">
+        <span>Version 1.0.0</span>
+        <span>© 2026 CKAN LLC</span>
+      </div>
+      <nav class="app-footer-legal" aria-label="Legal and support links">
+        <a href="#learn">Learn / Tutorials</a>
         <a href="#disclaimer">Data &amp; Testing Disclaimer</a>
         <a href="#terms">Terms of Service</a>
         <a href="#privacy">Privacy Policy</a>
@@ -224,32 +229,96 @@
         <p id="profile-copy" class="muted">Choose the display name you want Cannakan® Grow to show in the app.</p>
       </div>
       <form id="profile-form" class="auth-form profile-form">
-        <label>
+        <div class="profile-onboarding-progress" data-profile-onboarding-progress hidden aria-label="Grow Profile setup progress">
+          <span class="profile-onboarding-step-pill is-active" data-profile-progress-step="1">1</span>
+          <span class="profile-onboarding-step-pill" data-profile-progress-step="2">2</span>
+          <span class="profile-onboarding-step-pill" data-profile-progress-step="3">3</span>
+          <span class="profile-onboarding-step-pill" data-profile-progress-step="4">4</span>
+          <span class="profile-onboarding-step-pill" data-profile-progress-step="5">5</span>
+          <span class="profile-onboarding-step-pill" data-profile-progress-step="6">6</span>
+        </div>
+        <label data-profile-step="1">
           <span>Display Name</span>
+          <span class="profile-field-helper">Used throughout Grow. You can change it later.</span>
           <input type="text" name="username" placeholder="Choose a display name" maxlength="40" required>
         </label>
-        <label class="profile-country-field">
+        <label class="profile-country-field" data-profile-step="2">
           <span>Country (optional)</span>
+          <span class="profile-field-helper">Used for community statistics and regional insights. You can keep it private or skip it for now.</span>
           <input type="text" name="countrySearch" placeholder="Search countries" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" data-country-search>
           <input type="hidden" name="countryCode" data-country-code>
           <div class="profile-country-dropdown" role="listbox" data-country-options hidden></div>
         </label>
-        <label>
-          <span>Bio (optional)</span>
-          <textarea name="bio" placeholder="A short public grow profile bio" maxlength="280" rows="3"></textarea>
-        </label>
-        <label class="profile-avatar-field">
+        <fieldset class="profile-account-type-field" data-profile-step="3">
+          <legend>Which best describes you?</legend>
+          <p class="muted">This helps personalize your Grow experience and determines how your profile appears within the community.</p>
+          <div class="profile-account-type-grid">
+            <label class="profile-account-type-option">
+              <input type="radio" name="profileType" value="grower" checked>
+              <span class="profile-account-type-icon" aria-hidden="true">🌱</span>
+              <span class="profile-account-type-copy">
+                <strong>Grower</strong>
+                <span>I grow and contribute grow sessions.</span>
+              </span>
+            </label>
+            <label class="profile-account-type-option">
+              <input type="radio" name="profileType" value="source">
+              <span class="profile-account-type-icon" aria-hidden="true">🏪</span>
+              <span class="profile-account-type-copy">
+                <strong>Source</strong>
+                <span>I represent a company that sells seeds.</span>
+              </span>
+            </label>
+            <label class="profile-account-type-option">
+              <input type="radio" name="profileType" value="breeder">
+              <span class="profile-account-type-icon" aria-hidden="true">🌾</span>
+              <span class="profile-account-type-copy">
+                <strong>Breeder</strong>
+                <span>I create or develop genetics.</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="profile-visibility-controls" aria-label="Profile visibility settings" data-profile-step="4">
+          <label class="profile-preference-toggle profile-visibility-toggle">
+            <input type="checkbox" name="showProfileInCommunityGrow">
+            <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+            <span class="profile-preference-toggle-text">
+              <span class="profile-preference-toggle-copy">Public Profile</span>
+              <span class="profile-preference-toggle-detail">Allow other growers to view your public Grow profile.</span>
+            </span>
+          </label>
+          <label class="profile-preference-toggle profile-visibility-toggle">
+            <input type="checkbox" name="showCountry">
+            <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+            <span class="profile-preference-toggle-text">
+              <span class="profile-preference-toggle-copy">Show Country</span>
+              <span class="profile-preference-toggle-detail">Display your country on your public profile.</span>
+            </span>
+          </label>
+        </div>
+        <label class="profile-avatar-field" data-profile-step="5">
           <span>Profile Picture (optional)</span>
+          <span class="profile-field-helper">Upload an image or skip for now.</span>
           <span class="file-upload-control">
             <span class="file-upload-button">Choose Image</span>
             <span class="file-upload-name">No file selected</span>
             <input class="file-upload-input" type="file" name="avatar" accept="image/*">
           </span>
         </label>
-        <div id="profile-avatar-preview" class="profile-avatar-preview" hidden></div>
-        <div class="profile-avatar-actions">
+        <div id="profile-avatar-preview" class="profile-avatar-preview" data-profile-step="5" hidden></div>
+        <div class="profile-avatar-actions" data-profile-step="5">
           <button id="profile-remove-avatar" type="button" class="button button-secondary" hidden>Remove Picture</button>
         </div>
+        <section class="profile-onboarding-finish" data-profile-step="6" hidden>
+          <p class="eyebrow">Profile Complete</p>
+          <h3>Welcome to Grow</h3>
+          <p class="muted">Every session you complete helps improve community intelligence for growers around the world.</p>
+          <div class="profile-onboarding-welcome-actions" aria-label="Welcome actions">
+            <a class="button button-primary" href="#new" data-profile-welcome-primary>Start Your First Grow Session</a>
+            <a class="button button-secondary" href="#network" data-profile-welcome-secondary>Go to My Grow Home</a>
+          </div>
+        </section>
         <section class="profile-preferences" aria-labelledby="profile-preferences-title">
           <div>
             <p class="eyebrow">Preferences</p>
@@ -319,6 +388,8 @@
         </section>
         <p id="profile-message" class="form-message" role="alert" aria-live="polite"></p>
         <div class="form-actions">
+          <button id="profile-step-back" type="button" class="button button-secondary" hidden>Back</button>
+          <button id="profile-step-next" type="button" class="button button-primary" hidden>Next</button>
           <button id="profile-submit" type="submit" class="button button-primary">Save Profile</button>
         </div>
         <section class="profile-danger-zone" aria-labelledby="profile-danger-title">

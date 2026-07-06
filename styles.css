@@ -40460,7 +40460,7 @@ textarea::placeholder {
   box-shadow: 0 0 20px rgba(148, 209, 89, 0.14);
 }
 
-.my-grow-id-qr span {
+.my-grow-id-qr > span:not(.grow-id-qr-fallback):not(.grow-id-qr-loading) {
   display: grid;
   place-items: center;
   width: 34px;
@@ -40502,6 +40502,21 @@ textarea::placeholder {
   letter-spacing: 0;
   line-height: 1.1;
   text-align: center;
+}
+
+.grow-id-qr-loading {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  color: #071007;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .my-grow-id-value {
