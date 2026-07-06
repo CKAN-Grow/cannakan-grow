@@ -20451,14 +20451,15 @@ function normalizePublicProfileHandle(value = "") {
     .trim()
     .toLowerCase()
     .replace(/^@+/, "")
-    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 32);
   return normalizedValue.length >= 3 ? normalizedValue : "";
 }
 
 const GROW_PROFILE_PUBLIC_ORIGIN = "https://grow.cannakan.com";
-const RESERVED_GROW_ID_HANDLES = new Set([
+const ROUTE_RESERVED_GROW_ID_HANDLES = [
   "admin",
   "analytics",
   "api",
@@ -20486,10 +20487,45 @@ const RESERVED_GROW_ID_HANDLES = new Set([
   "sources",
   "terms",
   "www",
+];
+const PRODUCT_RESERVED_GROW_ID_HANDLES = [
+  "cannakan",
+  "ckan",
+  "seedsman",
+  "poppinfire",
+  "goodgenetix",
+  "highigan",
+  "greenthumbgen",
+  "admin",
+  "support",
+  "grow",
+  "community",
+];
+const RESERVED_GROW_ID_HANDLES = new Set([
+  ...ROUTE_RESERVED_GROW_ID_HANDLES,
+  ...PRODUCT_RESERVED_GROW_ID_HANDLES,
 ]);
+const PUBLIC_MEMBER_PROFILE_TYPES = new Set([
+  "grower",
+  "source",
+  "breeder",
+  "organization",
+  "industry_partner",
+  "event",
+]);
+const PUBLIC_MEMBER_PROFILE_OPTIONAL_ORG_FIELDS = [
+  "profile_type",
+  "is_verified",
+  "reserved_grow_id",
+];
 
 function getGrowIdHandle(value = "") {
   return normalizePublicProfileHandle(value);
+}
+
+function isReservedGrowIdHandle(handle = "") {
+  const normalizedHandle = getGrowIdHandle(handle);
+  return Boolean(normalizedHandle && RESERVED_GROW_ID_HANDLES.has(normalizedHandle));
 }
 
 function getPublicMemberProfileGrowIdHandle(profile = null) {
@@ -20511,7 +20547,7 @@ function getGrowIdPreferredBase(user = appState.user, profile = appState.profile
     emailName,
   ].find((value) => String(value || "").trim());
   const normalized = normalizePublicProfileHandle(preferred || "");
-  if (normalized && !RESERVED_GROW_ID_HANDLES.has(normalized)) {
+  if (normalized) {
     return normalized;
   }
   const fallbackId = String(user?.id || profile?.id || "").replace(/[^a-z0-9]/gi, "").slice(0, 6).toLowerCase();
@@ -20529,11 +20565,34 @@ function getDeterministicGrowIdSuffix(seed = "", attempt = 0) {
 
 function buildGrowIdCandidate(base = "grower", seed = "", attempt = 0) {
   const normalizedBase = normalizePublicProfileHandle(base) || "grower";
-  if (attempt === 0 && !RESERVED_GROW_ID_HANDLES.has(normalizedBase)) {
+  if (attempt === 0 && !isReservedGrowIdHandle(normalizedBase)) {
     return normalizedBase;
   }
   const suffix = getDeterministicGrowIdSuffix(seed || normalizedBase, attempt);
   return normalizePublicProfileHandle(`${normalizedBase.slice(0, Math.max(3, 27 - suffix.length))}-${suffix}`);
+}
+
+function normalizePublicMemberProfileType(value = "grower") {
+  const normalizedValue = String(value || "grower").trim().toLowerCase().replace(/[^a-z_]+/g, "_").replace(/^_+|_+$/g, "");
+  return PUBLIC_MEMBER_PROFILE_TYPES.has(normalizedValue) ? normalizedValue : "grower";
+}
+
+function getPublicProfileVerifiedFlag(profile = null) {
+  if (!profile || typeof profile !== "object") {
+    return false;
+  }
+  return getSafePublicProfileFlagValue(profile, ["is_verified", "isVerified", "verifiedProfile", "verified_profile", "is_verified_profile"]);
+}
+
+function getPublicProfileReservedGrowIdFlag(profile = null) {
+  if (!profile || typeof profile !== "object") {
+    return false;
+  }
+  return getSafePublicProfileFlagValue(profile, ["reserved_grow_id", "reservedGrowId"]);
+}
+
+function canPublicProfileUseReservedGrowId(profile = null) {
+  return getPublicProfileVerifiedFlag(profile) || getPublicProfileReservedGrowIdFlag(profile);
 }
 
 function formatGrowId(handle = "") {
@@ -20727,6 +20786,8 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
   const countryCode = normalizedSettings.showProfileInCommunityGrow !== false && normalizedSettings.showCountry !== false
     ? rawCountryCode
     : "";
+  const isVerified = getPublicProfileVerifiedFlag(row);
+  const reservedGrowId = getPublicProfileReservedGrowIdFlag(row);
   return {
     id: String(row.id || "").trim(),
     displayName: getDisplayName(
@@ -20742,12 +20803,15 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     publicHandle,
     locationRegion: normalizePublicProfileTextField(row.location_region || row.locationRegion || row.region || "", 80),
     countryCode,
+    profileType: normalizePublicMemberProfileType(row.profile_type || row.profileType || "grower"),
+    isVerified,
+    reservedGrowId,
     profileVisibility,
     isPublicVisible: profileVisibility === "public" && normalizedSettings.showProfileInCommunityGrow !== false,
     joinedAt: row.joined_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
-    verifiedProfile: getSafePublicProfileFlagValue(row, ["verified_profile", "verifiedProfile", "is_verified_profile"]),
+    verifiedProfile: isVerified || getSafePublicProfileFlagValue(row, ["verified_profile", "verifiedProfile", "is_verified_profile"]),
     founderAdmin: getSafePublicProfileFlagValue(row, ["founder_admin", "founderAdmin", "is_founder_admin"]),
     sourceTester: getSafePublicProfileFlagValue(row, ["source_tester", "sourceTester", "is_source_tester"]),
     cstpParticipant: getSafePublicProfileFlagValue(row, ["cstp_participant", "cstpParticipant", "is_cstp_participant"]),
@@ -20808,6 +20872,14 @@ function isPublicProfileHandleCollisionError(error = null) {
         || normalizedMessage.includes("public_member_profiles")
       )
     )
+  );
+}
+
+function isPublicMemberProfileOptionalOrganizationFieldsError(error = null) {
+  return isSupabaseColumnMissingError(
+    error,
+    PUBLIC_MEMBER_PROFILES_TABLE,
+    PUBLIC_MEMBER_PROFILE_OPTIONAL_ORG_FIELDS,
   );
 }
 
@@ -21430,6 +21502,9 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     publicHandle: "",
     locationRegion: "",
     countryCode: "",
+    profileType: "grower",
+    isVerified: false,
+    reservedGrowId: false,
     profileVisibility: "public",
     isPublicVisible: true,
     hasCustomPublicProfile: false,
@@ -21469,6 +21544,9 @@ function buildCurrentUserPublicMemberProfileFallback(
     countryCode: normalizedSettings.showProfileInCommunityGrow !== false && normalizedSettings.showCountry !== false
       ? rawCountryCode
       : "",
+    profileType: normalizePublicMemberProfileType(existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower"),
+    isVerified: getPublicProfileVerifiedFlag(existingPublicProfile),
+    reservedGrowId: getPublicProfileReservedGrowIdFlag(existingPublicProfile),
     profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
     isPublicVisible: normalizedSettings.showProfileInCommunityGrow !== false,
     hasCustomPublicProfile: true,
@@ -21505,6 +21583,9 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     countryCode: resolvedSettings.showProfileInCommunityGrow !== false && resolvedSettings.showCountry !== false
       ? rawCountryCode
       : "",
+    profileType: normalizePublicMemberProfileType(primaryProfile?.profileType || primaryProfile?.profile_type || fallbackProfile?.profileType || "grower"),
+    isVerified: getPublicProfileVerifiedFlag(primaryProfile) || getPublicProfileVerifiedFlag(fallbackProfile),
+    reservedGrowId: getPublicProfileReservedGrowIdFlag(primaryProfile) || getPublicProfileReservedGrowIdFlag(fallbackProfile),
     profileVisibility: normalizePublicProfileVisibility(
       primaryProfile?.profileVisibility || fallbackProfile?.profileVisibility || "",
       resolvedSettings.showProfileInCommunityGrow,
@@ -21517,6 +21598,7 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     ...resolvedSettings,
   };
   resolvedProfile.isPublicVisible = resolvedProfile.profileVisibility === "public" && resolvedProfile.showProfileInCommunityGrow !== false;
+  resolvedProfile.verifiedProfile = resolvedProfile.isVerified || Boolean(resolvedProfile.verifiedProfile);
 
   return resolvedProfile.id ? resolvedProfile : null;
 }
@@ -24228,6 +24310,15 @@ function buildPublicMemberProfileUpsertPayload(
     ?? "",
     normalizedSettings.showProfileInCommunityGrow,
   );
+  const profileType = normalizePublicMemberProfileType(
+    existingProfile?.profileType
+    ?? existingProfile?.profile_type
+    ?? profileInput?.profileType
+    ?? profileInput?.profile_type
+    ?? "grower",
+  );
+  const isVerified = getPublicProfileVerifiedFlag(existingProfile) || getPublicProfileVerifiedFlag(profileInput);
+  const reservedGrowId = getPublicProfileReservedGrowIdFlag(existingProfile) || getPublicProfileReservedGrowIdFlag(profileInput);
 
   return {
     id: normalizedUserId,
@@ -24238,6 +24329,9 @@ function buildPublicMemberProfileUpsertPayload(
     public_handle: publicHandle || null,
     location_region: locationRegion,
     country_code: countryCode || null,
+    profile_type: profileType,
+    is_verified: isVerified === true,
+    reserved_grow_id: reservedGrowId === true,
     profile_visibility: profileVisibility,
     vault_theme: normalizedSettings.vaultTheme,
     notify_community_activity: normalizedSettings.notifyCommunityActivity === true,
@@ -24268,15 +24362,29 @@ async function upsertCurrentUserPublicMemberProfile(
   } = options || {};
   const fallbackSettings = normalizeProfilePageSettings(settingsInput, loadStoredProfilePageSettings(normalizedUserId));
   const existingCachedProfile = existingProfile || appState.publicMemberProfiles[normalizedUserId] || null;
-  const storedGrowIdHandle = getPublicMemberProfileGrowIdHandle(existingCachedProfile);
-  const requestedGrowIdHandle = getPublicMemberProfileGrowIdHandle(settingsInput) || getPublicMemberProfileGrowIdHandle(profile);
+  const canUseReservedGrowId = canPublicProfileUseReservedGrowId(existingCachedProfile) || canPublicProfileUseReservedGrowId(profile);
+  const rawStoredGrowIdHandle = getPublicMemberProfileGrowIdHandle(existingCachedProfile);
+  const rawRequestedGrowIdHandle = getPublicMemberProfileGrowIdHandle(settingsInput) || getPublicMemberProfileGrowIdHandle(profile);
+  const storedGrowIdHandle = rawStoredGrowIdHandle && (!isReservedGrowIdHandle(rawStoredGrowIdHandle) || canUseReservedGrowId)
+    ? rawStoredGrowIdHandle
+    : "";
+  const requestedGrowIdHandle = rawRequestedGrowIdHandle && (!isReservedGrowIdHandle(rawRequestedGrowIdHandle) || canUseReservedGrowId)
+    ? rawRequestedGrowIdHandle
+    : "";
   const shouldAutoGenerateGrowId = !storedGrowIdHandle && !requestedGrowIdHandle;
-  const growIdPreferredBase = getGrowIdPreferredBase(user, profile, existingCachedProfile);
+  const growIdPreferredBase = rawRequestedGrowIdHandle || rawStoredGrowIdHandle || getGrowIdPreferredBase(user, profile, existingCachedProfile);
   let growIdAttempt = 0;
+  let includeOrganizationFields = appState.publicMemberProfileOrganizationFieldsUnavailable !== true;
   let activeSettings = null;
   let localFallbackProfile = null;
   let fallbackProfile = null;
   let upsertPayload = null;
+  const stripOptionalOrganizationFields = (payload = {}) => {
+    PUBLIC_MEMBER_PROFILE_OPTIONAL_ORG_FIELDS.forEach((field) => {
+      delete payload[field];
+    });
+    return payload;
+  };
   const refreshGrowIdUpsertState = () => {
     const publicHandle = storedGrowIdHandle
       || requestedGrowIdHandle
@@ -24288,6 +24396,9 @@ async function upsertCurrentUserPublicMemberProfile(
     localFallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, profile, activeSettings);
     fallbackProfile = mergePublicMemberProfileRecord(existingCachedProfile, localFallbackProfile) || localFallbackProfile;
     upsertPayload = buildPublicMemberProfileUpsertPayload(user, profile, activeSettings, fallbackProfile);
+    if (!includeOrganizationFields) {
+      stripOptionalOrganizationFields(upsertPayload);
+    }
   };
   refreshGrowIdUpsertState();
   const throwPublicMemberProfileSaveError = (message, error = null) => {
@@ -24350,6 +24461,15 @@ async function upsertCurrentUserPublicMemberProfile(
           error,
         }, true);
       }
+    }
+
+    if (error && includeOrganizationFields && isPublicMemberProfileOptionalOrganizationFieldsError(error)) {
+      appState.publicMemberProfileOrganizationFieldsUnavailable = true;
+      includeOrganizationFields = false;
+      data = null;
+      error = null;
+      refreshGrowIdUpsertState();
+      continue;
     }
 
     if (!error || !shouldAutoGenerateGrowId || !isPublicProfileHandleCollisionError(error) || growIdAttempt >= 8) {
@@ -85608,6 +85728,7 @@ function getCurrentGrowIdContext(profileOverride = null) {
     growId: formatGrowId(handle),
     profileUrl: getGrowProfilePublicUrl(handle),
     displayName,
+    isVerified: getPublicProfileVerifiedFlag(publicProfile),
     isPublic,
     visibilityLabel: isPublic ? "Public" : "Private",
   };
@@ -85666,7 +85787,10 @@ async function openGrowIdModal() {
       <button type="button" class="grow-id-modal-close" data-grow-id-modal-close aria-label="Close Grow ID">×</button>
       <div class="grow-id-modal-header">
         <p class="eyebrow">My Grow ID</p>
-        <h2>${escapeHtml(context.growId)}</h2>
+        <div class="grow-id-modal-title-row">
+          <h2>${escapeHtml(context.growId)}</h2>
+          ${context.isVerified ? `<span class="grow-id-verified-badge">${renderAppIconSvgMarkup("sourceTrustStar")}<span>Verified</span></span>` : ""}
+        </div>
         <p>Your permanent identity in the Grow community.</p>
       </div>
       <div class="grow-id-modal-body">

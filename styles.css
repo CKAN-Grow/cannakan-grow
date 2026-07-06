@@ -40309,11 +40309,43 @@ textarea::placeholder {
   margin: 0;
 }
 
+.grow-id-modal-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .grow-id-modal-header h2 {
   color: #ffffff;
   font-size: clamp(2rem, 6vw, 3.35rem);
   line-height: 1;
   letter-spacing: 0;
+}
+
+.grow-id-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 207, 88, 0.42);
+  color: #ffe7a3;
+  background:
+    linear-gradient(135deg, rgba(255, 202, 70, 0.18), rgba(148, 209, 89, 0.08)),
+    rgba(5, 11, 9, 0.7);
+  box-shadow: 0 0 18px rgba(255, 202, 70, 0.12);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.grow-id-verified-badge svg {
+  width: 16px;
+  height: 16px;
+  color: #ffd765;
 }
 
 .grow-id-modal-header p:not(.eyebrow) {
