@@ -20803,7 +20803,9 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     publicHandle,
     locationRegion: normalizePublicProfileTextField(row.location_region || row.locationRegion || row.region || "", 80),
     countryCode,
+    storedCountryCode: rawCountryCode,
     profileType: normalizePublicMemberProfileType(row.profile_type || row.profileType || "grower"),
+    hasAccountType: Object.prototype.hasOwnProperty.call(row, "profile_type") || Object.prototype.hasOwnProperty.call(row, "profileType"),
     isVerified,
     reservedGrowId,
     profileVisibility,
@@ -21502,7 +21504,9 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     publicHandle: "",
     locationRegion: "",
     countryCode: "",
+    storedCountryCode: "",
     profileType: "grower",
+    hasAccountType: false,
     isVerified: false,
     reservedGrowId: false,
     profileVisibility: "public",
@@ -21544,7 +21548,9 @@ function buildCurrentUserPublicMemberProfileFallback(
     countryCode: normalizedSettings.showProfileInCommunityGrow !== false && normalizedSettings.showCountry !== false
       ? rawCountryCode
       : "",
+    storedCountryCode: rawCountryCode,
     profileType: normalizePublicMemberProfileType(existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower"),
+    hasAccountType: Boolean(existingPublicProfile?.hasAccountType || existingPublicProfile?.profileType || existingPublicProfile?.profile_type),
     isVerified: getPublicProfileVerifiedFlag(existingPublicProfile),
     reservedGrowId: getPublicProfileReservedGrowIdFlag(existingPublicProfile),
     profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
@@ -21583,7 +21589,9 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     countryCode: resolvedSettings.showProfileInCommunityGrow !== false && resolvedSettings.showCountry !== false
       ? rawCountryCode
       : "",
+    storedCountryCode: rawCountryCode,
     profileType: normalizePublicMemberProfileType(primaryProfile?.profileType || primaryProfile?.profile_type || fallbackProfile?.profileType || "grower"),
+    hasAccountType: Boolean(primaryProfile?.hasAccountType || fallbackProfile?.hasAccountType || primaryProfile?.profileType || primaryProfile?.profile_type || fallbackProfile?.profileType),
     isVerified: getPublicProfileVerifiedFlag(primaryProfile) || getPublicProfileVerifiedFlag(fallbackProfile),
     reservedGrowId: getPublicProfileReservedGrowIdFlag(primaryProfile) || getPublicProfileReservedGrowIdFlag(fallbackProfile),
     profileVisibility: normalizePublicProfileVisibility(
@@ -23950,7 +23958,20 @@ async function togglePublicMemberFollow(memberId = "") {
 }
 
 function hasCompletedProfile(profile = appState.profile) {
-  return Boolean(String(profile?.username || "").trim());
+  const hasDisplayName = Boolean(String(profile?.username || "").trim());
+  if (!hasDisplayName) {
+    return false;
+  }
+  const normalizedUserId = String(appState.user?.id || profile?.id || "").trim();
+  const publicProfile = normalizedUserId ? appState.publicMemberProfiles[normalizedUserId] || null : null;
+  const countryCode = normalizeCountryCode(
+    publicProfile?.storedCountryCode
+    || publicProfile?.countryCode
+    || publicProfile?.country_code
+    || "",
+  );
+  const hasAccountType = Boolean(publicProfile?.hasAccountType || publicProfile?.profileType || publicProfile?.profile_type);
+  return Boolean(countryCode && hasAccountType);
 }
 
 const GENERIC_DISPLAY_NAME_PLACEHOLDERS = new Set([
@@ -24311,7 +24332,9 @@ function buildPublicMemberProfileUpsertPayload(
     normalizedSettings.showProfileInCommunityGrow,
   );
   const profileType = normalizePublicMemberProfileType(
-    existingProfile?.profileType
+    settingsInput?.profileType
+    ?? settingsInput?.profile_type
+    ?? existingProfile?.profileType
     ?? existingProfile?.profile_type
     ?? profileInput?.profileType
     ?? profileInput?.profile_type
@@ -24390,6 +24413,7 @@ async function upsertCurrentUserPublicMemberProfile(
       || requestedGrowIdHandle
       || buildGrowIdCandidate(growIdPreferredBase, normalizedUserId, growIdAttempt);
     activeSettings = {
+      ...(settingsInput || {}),
       ...fallbackSettings,
       publicHandle,
     };
@@ -39495,6 +39519,17 @@ function render() {
   syncSessionProgressionReminderNotifications(getSessions());
   renderAppNotificationCenter();
 
+  if (appState.user && !hasCompletedProfile()) {
+    renderProfileSetupScreen();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "profile",
+      pageKey: "profile-setup",
+      pageLabel: "Profile Setup",
+      pagePath: "#profile",
+    }));
+    return;
+  }
+
   const firstSessionRouteLockState = getFirstSessionAccessLockStateForHash(rawRoute ? `#${rawRoute}` : "#home");
   if (firstSessionRouteLockState.locked) {
     const redirectHash = replaceLocationHashWithoutNavigation(firstSessionRouteLockState.redirectHash || "#sessions");
@@ -46776,16 +46811,16 @@ function renderProfileSetupScreen() {
   const submit = document.querySelector("#profile-submit");
 
   if (title) {
-    title.textContent = "Set up your profile";
+    title.textContent = "Create your Grow Profile";
   }
   if (copy) {
-    copy.textContent = `Choose the username you want ${BRAND_APP_NAME} to show in the app. You can also add an optional profile picture and set notification preferences.`;
+    copy.textContent = "Start with the identity Grow uses for community intelligence, regional insights, and your permanent Grow ID.";
   }
   if (eyebrow) {
-    eyebrow.textContent = "Profile Setup";
+    eyebrow.textContent = "Grow Profile Setup";
   }
   if (submit) {
-    submit.textContent = "Save Profile";
+    submit.textContent = "Create Grow Profile";
   }
 
   const message = document.querySelector("#profile-message");
@@ -47032,8 +47067,44 @@ function bindProfileForm(form, options = {}) {
   const removeButton = form.querySelector("#profile-remove-avatar");
   const deleteButton = form.querySelector("#profile-delete-account");
   const submitButton = form.querySelector("#profile-submit");
+  const onboardingProgress = form.querySelector("[data-profile-onboarding-progress]");
+  const onboardingStepPanels = Array.from(form.querySelectorAll("[data-profile-step]"));
+  const onboardingProgressSteps = Array.from(form.querySelectorAll("[data-profile-progress-step]"));
+  const onboardingBackButton = form.querySelector("#profile-step-back");
+  const onboardingNextButton = form.querySelector("#profile-step-next");
+  const accountTypeInputs = Array.from(form.querySelectorAll("input[name='profileType']"));
+  const preferencesSection = form.querySelector(".profile-preferences");
+  const dangerZone = form.querySelector(".profile-danger-zone");
   const notificationDefaultsNote = form.querySelector("#profile-preferences-default-note");
   const defaultSubmitLabel = submitButton?.textContent || "Save Profile";
+  const isSetupMode = options.mode === "setup";
+  const setupStepContent = [
+    {
+      title: "Display Name",
+      copy: "Choose the name growers will see throughout Grow. You can change this later.",
+    },
+    {
+      title: "Country",
+      copy: "Country powers community statistics and regional insights. You choose whether it appears publicly.",
+    },
+    {
+      title: "Choose Your Account Type",
+      copy: "This helps personalize your Grow experience and prepares profile claiming for Sources and Breeders later.",
+    },
+    {
+      title: "Profile Visibility",
+      copy: "Your profile starts private. You can make it public and choose whether to show your country.",
+    },
+    {
+      title: "Profile Picture",
+      copy: "Add a profile image now or skip for later.",
+    },
+    {
+      title: "Finish",
+      copy: "Create your Grow Profile, permanent Grow ID, public profile URL, and QR identity.",
+    },
+  ];
+  let currentSetupStepIndex = 0;
   const state = {
     profile,
     removeAvatar: false,
@@ -47060,19 +47131,145 @@ function bindProfileForm(form, options = {}) {
     syncGrowReminderToggleAvailability(form);
   };
 
+  const getSelectedProfileType = () => {
+    const selectedInput = accountTypeInputs.find((input) => input instanceof HTMLInputElement && input.checked);
+    return normalizePublicMemberProfileType(selectedInput?.value || "grower");
+  };
+
+  const setSelectedProfileType = (profileType = "grower") => {
+    const normalizedProfileType = normalizePublicMemberProfileType(profileType || "grower");
+    accountTypeInputs.forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) {
+        return;
+      }
+      input.checked = normalizePublicMemberProfileType(input.value || "") === normalizedProfileType;
+    });
+  };
+
+  const updateAccountTypeOptionStates = () => {
+    accountTypeInputs.forEach((input) => {
+      const option = input.closest(".profile-account-type-option");
+      if (option instanceof HTMLElement) {
+        option.classList.toggle("is-selected", input.checked);
+      }
+    });
+  };
+
+  const updateOnboardingStep = (nextStepIndex = currentSetupStepIndex) => {
+    if (!isSetupMode) {
+      return;
+    }
+    currentSetupStepIndex = Math.max(0, Math.min(setupStepContent.length - 1, Number(nextStepIndex) || 0));
+    const activeStepNumber = String(currentSetupStepIndex + 1);
+    onboardingStepPanels.forEach((panel) => {
+      if (!(panel instanceof HTMLElement)) {
+        return;
+      }
+      const isActivePanel = panel.dataset.profileStep === activeStepNumber;
+      if (panel.id === "profile-avatar-preview" && isActivePanel && !panel.innerHTML.trim()) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = !isActivePanel;
+    });
+    onboardingProgressSteps.forEach((step) => {
+      if (!(step instanceof HTMLElement)) {
+        return;
+      }
+      const stepNumber = Number(step.dataset.profileProgressStep || 0);
+      step.classList.toggle("is-active", stepNumber === currentSetupStepIndex + 1);
+      step.classList.toggle("is-complete", stepNumber > 0 && stepNumber < currentSetupStepIndex + 1);
+    });
+    const stepCopy = setupStepContent[currentSetupStepIndex] || setupStepContent[0];
+    const title = document.querySelector("#profile-title");
+    const copy = document.querySelector("#profile-copy");
+    if (title) {
+      title.textContent = stepCopy.title;
+    }
+    if (copy) {
+      copy.textContent = stepCopy.copy;
+    }
+    if (onboardingBackButton instanceof HTMLButtonElement) {
+      onboardingBackButton.hidden = currentSetupStepIndex === 0;
+    }
+    if (onboardingNextButton instanceof HTMLButtonElement) {
+      onboardingNextButton.hidden = currentSetupStepIndex >= setupStepContent.length - 1;
+    }
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.hidden = currentSetupStepIndex < setupStepContent.length - 1;
+    }
+  };
+
+  const validateOnboardingStep = (stepIndex = currentSetupStepIndex) => {
+    if (!isSetupMode) {
+      return true;
+    }
+    if (stepIndex === 0) {
+      if (!String(usernameInput?.value || "").trim()) {
+        setProfileFormMessage("Please enter your display name to continue.", "error");
+        usernameInput?.focus?.();
+        usernameInput?.reportValidity?.();
+        return false;
+      }
+    }
+    if (stepIndex === 1) {
+      if (!normalizeCountryCode(countryCodeInput?.value || "")) {
+        setProfileFormMessage("Please choose your country to continue.", "error");
+        const countrySearchInput = form.elements.countrySearch;
+        countrySearchInput?.focus?.();
+        return false;
+      }
+    }
+    if (stepIndex === 2 && !getSelectedProfileType()) {
+      setProfileFormMessage("Please choose the account type that best describes you.", "error");
+      return false;
+    }
+    setProfileFormMessage("");
+    return true;
+  };
+
   usernameInput.value = profile?.username || "";
   initProfileCountryCombobox(
     form,
-    existingPublicProfile?.countryCode || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || ""),
+    existingPublicProfile?.storedCountryCode
+      || existingPublicProfile?.countryCode
+      || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || ""),
   );
   if (bioInput instanceof HTMLTextAreaElement) {
     bioInput.value = existingPublicProfile?.bio || "";
   }
   if (form.elements.showProfileInCommunityGrow instanceof HTMLInputElement) {
-    form.elements.showProfileInCommunityGrow.checked = profilePageSettings.showProfileInCommunityGrow !== false;
+    form.elements.showProfileInCommunityGrow.checked = isSetupMode ? false : profilePageSettings.showProfileInCommunityGrow !== false;
   }
   if (form.elements.showCountry instanceof HTMLInputElement) {
-    form.elements.showCountry.checked = profilePageSettings.showProfileInCommunityGrow !== false && profilePageSettings.showCountry !== false;
+    form.elements.showCountry.checked = isSetupMode
+      ? false
+      : profilePageSettings.showProfileInCommunityGrow !== false && profilePageSettings.showCountry !== false;
+  }
+  setSelectedProfileType(existingPublicProfile?.profileType || existingPublicProfile?.profile_type || "grower");
+  updateAccountTypeOptionStates();
+  form.classList.toggle("is-profile-onboarding", isSetupMode);
+  if (onboardingProgress instanceof HTMLElement) {
+    onboardingProgress.hidden = !isSetupMode;
+  }
+  if (preferencesSection instanceof HTMLElement) {
+    preferencesSection.hidden = isSetupMode;
+  }
+  if (dangerZone instanceof HTMLElement) {
+    dangerZone.hidden = isSetupMode;
+  }
+  if (!isSetupMode) {
+    onboardingStepPanels.forEach((panel) => {
+      if (panel instanceof HTMLElement) {
+        panel.hidden = false;
+      }
+    });
+    if (onboardingBackButton instanceof HTMLButtonElement) {
+      onboardingBackButton.hidden = true;
+    }
+    if (onboardingNextButton instanceof HTMLButtonElement) {
+      onboardingNextButton.hidden = true;
+    }
   }
   applyNotificationPreferenceStateToForm(form, notificationPreferences);
   syncProfileVisibilityToggleAvailability(form);
@@ -47080,9 +47277,19 @@ function bindProfileForm(form, options = {}) {
   bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
   renderProfileAvatarPreview(preview, removeButton, state, profile);
+  updateOnboardingStep(0);
 
   form.addEventListener("change", (event) => {
-    if (!(event.target instanceof HTMLInputElement) || event.target.type !== "checkbox") {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    if (event.target.name === "profileType") {
+      updateAccountTypeOptionStates();
+    }
+    if (event.target.type !== "checkbox") {
+      if (!message?.classList.contains("is-error")) {
+        setProfileFormMessage("");
+      }
       return;
     }
     syncProfileVisibilityToggleAvailability(form);
@@ -47090,6 +47297,18 @@ function bindProfileForm(form, options = {}) {
     if (!message?.classList.contains("is-error")) {
       setProfileFormMessage("");
     }
+  });
+
+  onboardingNextButton?.addEventListener("click", () => {
+    if (!validateOnboardingStep(currentSetupStepIndex)) {
+      return;
+    }
+    updateOnboardingStep(currentSetupStepIndex + 1);
+  });
+
+  onboardingBackButton?.addEventListener("click", () => {
+    updateOnboardingStep(currentSetupStepIndex - 1);
+    setProfileFormMessage("");
   });
 
   avatarInput.addEventListener("change", () => {
@@ -47170,6 +47389,7 @@ function bindProfileForm(form, options = {}) {
     });
     const username = String(usernameInput.value || "").trim();
     const countryCode = normalizeCountryCode(countryCodeInput?.value || "");
+    const profileType = getSelectedProfileType();
     const bio = bioInput instanceof HTMLTextAreaElement
       ? normalizePublicProfileTextField(bioInput.value || "", 280)
       : undefined;
@@ -47186,6 +47406,14 @@ function bindProfileForm(form, options = {}) {
       setProfileFormMessage("Please enter a username before saving.", "error");
       usernameInput.reportValidity();
       return;
+    }
+    if (isSetupMode) {
+      for (let stepIndex = 0; stepIndex < setupStepContent.length - 1; stepIndex += 1) {
+        if (!validateOnboardingStep(stepIndex)) {
+          updateOnboardingStep(stepIndex);
+          return;
+        }
+      }
     }
     if (submitButton) {
       submitButton.disabled = true;
@@ -47318,6 +47546,7 @@ function bindProfileForm(form, options = {}) {
           showCountry,
           bio,
           countryCode,
+          profileType,
         }, {
           requirePersistence: true,
           debugContext: "profile-editor-notification-settings",
