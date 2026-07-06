@@ -12982,6 +12982,15 @@ function getLocationRouteHash() {
 
 function getCurrentAppPathRoute() {
   const pathRoute = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  let decodedPathRoute = pathRoute;
+  try {
+    decodedPathRoute = decodeURIComponent(pathRoute);
+  } catch (error) {
+    decodedPathRoute = pathRoute;
+  }
+  if (/^@[a-z0-9_-]{3,32}$/i.test(decodedPathRoute)) {
+    return `members/${encodeURIComponent(decodedPathRoute.replace(/^@+/, ""))}`;
+  }
   if (pathRoute === "learn/tutorial" || pathRoute.startsWith("learn/tutorial/")) {
     return pathRoute;
   }
@@ -20448,6 +20457,95 @@ function normalizePublicProfileHandle(value = "") {
   return normalizedValue.length >= 3 ? normalizedValue : "";
 }
 
+const GROW_PROFILE_PUBLIC_ORIGIN = "https://grow.cannakan.com";
+const RESERVED_GROW_ID_HANDLES = new Set([
+  "admin",
+  "analytics",
+  "api",
+  "app",
+  "assets",
+  "community",
+  "community-grow",
+  "contact",
+  "cstp",
+  "download",
+  "explore",
+  "gallery",
+  "grow",
+  "grow-network",
+  "home",
+  "learn",
+  "login",
+  "network",
+  "privacy",
+  "profile",
+  "seed-vault",
+  "seeds",
+  "sessions",
+  "source-directory",
+  "sources",
+  "terms",
+  "www",
+]);
+
+function getGrowIdHandle(value = "") {
+  return normalizePublicProfileHandle(value);
+}
+
+function getPublicMemberProfileGrowIdHandle(profile = null) {
+  if (!profile || typeof profile !== "object") {
+    return "";
+  }
+  return getGrowIdHandle(profile.publicHandle || profile.public_handle || profile.handle || "");
+}
+
+function getGrowIdPreferredBase(user = appState.user, profile = appState.profile, existingProfile = null) {
+  const emailName = String(user?.email || "").split("@")[0] || "";
+  const preferred = [
+    existingProfile?.displayName,
+    profile?.username,
+    profile?.displayName,
+    profile?.fullName,
+    user?.user_metadata?.username,
+    user?.user_metadata?.full_name,
+    emailName,
+  ].find((value) => String(value || "").trim());
+  const normalized = normalizePublicProfileHandle(preferred || "");
+  if (normalized && !RESERVED_GROW_ID_HANDLES.has(normalized)) {
+    return normalized;
+  }
+  const fallbackId = String(user?.id || profile?.id || "").replace(/[^a-z0-9]/gi, "").slice(0, 6).toLowerCase();
+  return normalizePublicProfileHandle(`grower-${fallbackId || "grow"}`) || "grower";
+}
+
+function getDeterministicGrowIdSuffix(seed = "", attempt = 0) {
+  const normalizedSeed = `${String(seed || "grow")}:${attempt}`;
+  let hash = 0;
+  for (let index = 0; index < normalizedSeed.length; index += 1) {
+    hash = ((hash << 5) - hash + normalizedSeed.charCodeAt(index)) | 0;
+  }
+  return String(1000 + (Math.abs(hash) % 9000)).padStart(4, "0");
+}
+
+function buildGrowIdCandidate(base = "grower", seed = "", attempt = 0) {
+  const normalizedBase = normalizePublicProfileHandle(base) || "grower";
+  if (attempt === 0 && !RESERVED_GROW_ID_HANDLES.has(normalizedBase)) {
+    return normalizedBase;
+  }
+  const suffix = getDeterministicGrowIdSuffix(seed || normalizedBase, attempt);
+  return normalizePublicProfileHandle(`${normalizedBase.slice(0, Math.max(3, 27 - suffix.length))}-${suffix}`);
+}
+
+function formatGrowId(handle = "") {
+  const normalizedHandle = getGrowIdHandle(handle);
+  return normalizedHandle ? `@${normalizedHandle}` : "@grower";
+}
+
+function getGrowProfilePublicUrl(handle = "") {
+  const normalizedHandle = getGrowIdHandle(handle);
+  return normalizedHandle ? `${GROW_PROFILE_PUBLIC_ORIGIN}/@${encodeURIComponent(normalizedHandle)}` : GROW_PROFILE_PUBLIC_ORIGIN;
+}
+
 function normalizePublicProfileTextField(value = "", maxLength = 240) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
@@ -21366,7 +21464,7 @@ function buildCurrentUserPublicMemberProfileFallback(
     ),
     avatarUrl: getSafeAvatarImageUrl(profile?.avatarUrl || ""),
     bio: normalizePublicProfileTextField(existingPublicProfile?.bio || "", 280),
-    publicHandle: normalizePublicProfileHandle(existingPublicProfile?.publicHandle || ""),
+    publicHandle: normalizePublicProfileHandle(settings?.publicHandle || settings?.public_handle || existingPublicProfile?.publicHandle || ""),
     locationRegion: normalizePublicProfileTextField(existingPublicProfile?.locationRegion || "", 80),
     countryCode: normalizedSettings.showProfileInCommunityGrow !== false && normalizedSettings.showCountry !== false
       ? rawCountryCode
@@ -24169,9 +24267,29 @@ async function upsertCurrentUserPublicMemberProfile(
     verifyAfterSave = false,
   } = options || {};
   const fallbackSettings = normalizeProfilePageSettings(settingsInput, loadStoredProfilePageSettings(normalizedUserId));
-  const localFallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, profile, fallbackSettings);
-  const fallbackProfile = mergePublicMemberProfileRecord(existingProfile, localFallbackProfile) || localFallbackProfile;
-  const upsertPayload = buildPublicMemberProfileUpsertPayload(user, profile, fallbackSettings, fallbackProfile);
+  const existingCachedProfile = existingProfile || appState.publicMemberProfiles[normalizedUserId] || null;
+  const storedGrowIdHandle = getPublicMemberProfileGrowIdHandle(existingCachedProfile);
+  const requestedGrowIdHandle = getPublicMemberProfileGrowIdHandle(settingsInput) || getPublicMemberProfileGrowIdHandle(profile);
+  const shouldAutoGenerateGrowId = !storedGrowIdHandle && !requestedGrowIdHandle;
+  const growIdPreferredBase = getGrowIdPreferredBase(user, profile, existingCachedProfile);
+  let growIdAttempt = 0;
+  let activeSettings = null;
+  let localFallbackProfile = null;
+  let fallbackProfile = null;
+  let upsertPayload = null;
+  const refreshGrowIdUpsertState = () => {
+    const publicHandle = storedGrowIdHandle
+      || requestedGrowIdHandle
+      || buildGrowIdCandidate(growIdPreferredBase, normalizedUserId, growIdAttempt);
+    activeSettings = {
+      ...fallbackSettings,
+      publicHandle,
+    };
+    localFallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, profile, activeSettings);
+    fallbackProfile = mergePublicMemberProfileRecord(existingCachedProfile, localFallbackProfile) || localFallbackProfile;
+    upsertPayload = buildPublicMemberProfileUpsertPayload(user, profile, activeSettings, fallbackProfile);
+  };
+  refreshGrowIdUpsertState();
   const throwPublicMemberProfileSaveError = (message, error = null) => {
     if (!requirePersistence) {
       return false;
@@ -24186,6 +24304,7 @@ async function upsertCurrentUserPublicMemberProfile(
   if (!appState.supabase || appState.publicMemberProfilesViewUnavailable) {
     if (fallbackProfile) {
       appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
+      cachePublicMemberProfile(fallbackProfile);
       syncProfilePageSettingsCache(normalizedUserId, fallbackProfile, { persistLocal });
     }
     throwPublicMemberProfileSaveError("Community profile settings are temporarily unavailable.");
@@ -24194,42 +24313,52 @@ async function upsertCurrentUserPublicMemberProfile(
 
   let data = null;
   let error = null;
-  try {
-    if (debugContext === "profile-settings") {
-      logProfileSettingsDebug("public-member-profiles:upsert:request", {
-        table: PUBLIC_MEMBER_PROFILES_TABLE,
-        userId: normalizedUserId,
-        payload: upsertPayload,
-      });
+  while (true) {
+    try {
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("public-member-profiles:upsert:request", {
+          table: PUBLIC_MEMBER_PROFILES_TABLE,
+          userId: normalizedUserId,
+          payload: upsertPayload,
+        });
+      }
+      const response = await appState.supabase
+        .from(PUBLIC_MEMBER_PROFILES_TABLE)
+        .upsert(
+          upsertPayload,
+          { onConflict: "id" },
+        )
+        .select("*")
+        .single();
+      data = response?.data || null;
+      error = response?.error || null;
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("public-member-profiles:upsert:response", {
+          table: PUBLIC_MEMBER_PROFILES_TABLE,
+          userId: normalizedUserId,
+          row: data,
+          error,
+        }, Boolean(error));
+      }
+    } catch (requestError) {
+      error = requestError;
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("public-member-profiles:upsert:request-error", {
+          table: PUBLIC_MEMBER_PROFILES_TABLE,
+          userId: normalizedUserId,
+          payload: upsertPayload,
+          error,
+        }, true);
+      }
     }
-    const response = await appState.supabase
-      .from(PUBLIC_MEMBER_PROFILES_TABLE)
-      .upsert(
-        upsertPayload,
-        { onConflict: "id" },
-      )
-      .select("*")
-      .single();
-    data = response?.data || null;
-    error = response?.error || null;
-    if (debugContext === "profile-settings") {
-      logProfileSettingsDebug("public-member-profiles:upsert:response", {
-        table: PUBLIC_MEMBER_PROFILES_TABLE,
-        userId: normalizedUserId,
-        row: data,
-        error,
-      }, Boolean(error));
+
+    if (!error || !shouldAutoGenerateGrowId || !isPublicProfileHandleCollisionError(error) || growIdAttempt >= 8) {
+      break;
     }
-  } catch (requestError) {
-    error = requestError;
-    if (debugContext === "profile-settings") {
-      logProfileSettingsDebug("public-member-profiles:upsert:request-error", {
-        table: PUBLIC_MEMBER_PROFILES_TABLE,
-        userId: normalizedUserId,
-        payload: upsertPayload,
-        error,
-      }, true);
-    }
+    growIdAttempt += 1;
+    data = null;
+    error = null;
+    refreshGrowIdUpsertState();
   }
 
   if (error) {
@@ -24265,7 +24394,7 @@ async function upsertCurrentUserPublicMemberProfile(
   }
 
   const resolvedProfile = mergePublicMemberProfileRecord(
-    normalizePublicMemberProfileRow(data, fallbackSettings),
+    normalizePublicMemberProfileRow(data, activeSettings || fallbackSettings),
     fallbackProfile,
   );
   let verifiedProfile = resolvedProfile;
@@ -24309,7 +24438,7 @@ async function upsertCurrentUserPublicMemberProfile(
 
     if (readbackData) {
       verifiedProfile = mergePublicMemberProfileRecord(
-        normalizePublicMemberProfileRow(readbackData, fallbackSettings),
+        normalizePublicMemberProfileRow(readbackData, activeSettings || fallbackSettings),
         fallbackProfile,
       );
     }
@@ -24320,6 +24449,27 @@ async function upsertCurrentUserPublicMemberProfile(
     syncProfilePageSettingsCache(normalizedUserId, verifiedProfile, { persistLocal });
   }
   return verifiedProfile;
+}
+
+async function ensureCurrentUserGrowId(options = {}) {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+  const cachedProfile = getPublicMemberProfile(normalizedUserId);
+  if (getPublicMemberProfileGrowIdHandle(cachedProfile)) {
+    return cachedProfile;
+  }
+  return upsertCurrentUserPublicMemberProfile(
+    appState.user,
+    getCurrentProfilePageSettings(),
+    {
+      reason: "grow-id:ensure",
+      existingProfile: cachedProfile,
+      persistLocal: true,
+      ...options,
+    },
+  );
 }
 
 async function ensureCurrentUserPublicMemberProfileSettings(user = appState.user, options = {}) {
@@ -24340,7 +24490,16 @@ async function ensureCurrentUserPublicMemberProfileSettings(user = appState.user
   }
 
   if (!force && appState.publicMemberProfiles[normalizedUserId]) {
-    const cachedSettings = normalizeProfilePageSettings(appState.publicMemberProfiles[normalizedUserId], fallbackSettings);
+    const cachedProfile = appState.publicMemberProfiles[normalizedUserId];
+    if (!getPublicMemberProfileGrowIdHandle(cachedProfile)) {
+      const seededProfile = await upsertCurrentUserPublicMemberProfile(user, fallbackSettings, {
+        profile: appState.profile,
+        existingProfile: cachedProfile,
+        reason: `${reason}:grow-id`,
+      });
+      return syncProfilePageSettingsCache(normalizedUserId, seededProfile || cachedProfile || fallbackSettings);
+    }
+    const cachedSettings = normalizeProfilePageSettings(cachedProfile, fallbackSettings);
     return syncProfilePageSettingsCache(normalizedUserId, cachedSettings);
   }
 
@@ -24384,6 +24543,17 @@ async function ensureCurrentUserPublicMemberProfileSettings(user = appState.user
       );
       if (resolvedProfile) {
         appState.publicMemberProfiles[normalizedUserId] = resolvedProfile;
+        if (!getPublicMemberProfileGrowIdHandle(resolvedProfile)) {
+          const seededProfile = await upsertCurrentUserPublicMemberProfile(user, resolvedProfile, {
+            profile: appState.profile,
+            existingProfile: resolvedProfile,
+            reason: `${reason}:grow-id`,
+          });
+          return syncProfilePageSettingsCache(
+            normalizedUserId,
+            seededProfile || resolvedProfile,
+          );
+        }
         return syncProfilePageSettingsCache(normalizedUserId, resolvedProfile);
       }
 
@@ -85368,6 +85538,255 @@ function renderPublicSessionDetail(snapshotId) {
   });
 }
 
+function renderGrowIdQrCode(target, profileUrl = "", options = {}) {
+  if (!target || !profileUrl) {
+    return;
+  }
+  const size = Math.max(88, Number(options.size || target.dataset.growIdQrSize || 132) || 132);
+  target.innerHTML = "";
+  if (typeof window.QRCode !== "function") {
+    target.innerHTML = `<span class="grow-id-qr-fallback">${escapeHtml(profileUrl)}</span>`;
+    return;
+  }
+  try {
+    new window.QRCode(target, {
+      text: profileUrl,
+      width: size,
+      height: size,
+      colorDark: "#071007",
+      colorLight: "#f4ffe9",
+      correctLevel: window.QRCode.CorrectLevel?.M ?? 0,
+    });
+  } catch (error) {
+    console.warn("[Grow ID] QR code render failed.", error);
+    target.innerHTML = `<span class="grow-id-qr-fallback">${escapeHtml(profileUrl)}</span>`;
+  }
+}
+
+function renderGrowIdQrCodes(scope = document) {
+  scope.querySelectorAll("[data-grow-id-qr]").forEach((target) => {
+    renderGrowIdQrCode(target, target.getAttribute("data-grow-id-qr") || "", {
+      size: target.getAttribute("data-grow-id-qr-size") || target.dataset.growIdQrSize,
+    });
+  });
+}
+
+async function copyTextToClipboard(text = "") {
+  const normalizedText = String(text || "");
+  if (!normalizedText) {
+    return false;
+  }
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(normalizedText);
+    return true;
+  }
+  const textArea = document.createElement("textarea");
+  textArea.value = normalizedText;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.select();
+  const copied = document.execCommand("copy");
+  textArea.remove();
+  return copied;
+}
+
+function getCurrentGrowIdContext(profileOverride = null) {
+  const currentProfileSettings = getCurrentProfilePageSettings();
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const publicProfile = profileOverride
+    || (normalizedUserId ? getPublicMemberProfile(normalizedUserId) : null)
+    || buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, currentProfileSettings);
+  const handle = getPublicMemberProfileGrowIdHandle(publicProfile);
+  const displayName = publicProfile?.displayName
+    || getDisplayName({ id: normalizedUserId, username: appState.profile?.username || "" }, { fallbackLabel: "Grower" });
+  const isPublic = currentProfileSettings.showProfileInCommunityGrow !== false && publicProfile?.isPublicVisible !== false;
+  return {
+    profile: publicProfile,
+    handle,
+    growId: formatGrowId(handle),
+    profileUrl: getGrowProfilePublicUrl(handle),
+    displayName,
+    isPublic,
+    visibilityLabel: isPublic ? "Public" : "Private",
+  };
+}
+
+function setGrowIdModalStatus(modal, message = "") {
+  const status = modal?.querySelector("[data-grow-id-modal-status]");
+  if (status) {
+    status.textContent = message;
+  }
+}
+
+function closeGrowIdModal(modal) {
+  if (!modal) {
+    return;
+  }
+  if (typeof modal.close === "function") {
+    modal.close();
+  } else {
+    modal.remove();
+  }
+}
+
+async function openGrowIdModal() {
+  if (!appState.user?.id) {
+    showNavigationLockToast({
+      title: "Grow ID",
+      message: "Sign in to view and share your Grow ID.",
+      ctaLabel: "Sign In",
+      ctaHref: "#profile",
+    });
+    return;
+  }
+
+  let ensuredProfile = null;
+  try {
+    ensuredProfile = await ensureCurrentUserGrowId({ reason: "grow-id:modal" });
+  } catch (error) {
+    console.warn("[Grow ID] Could not ensure Grow ID before opening modal.", error);
+  }
+
+  const context = getCurrentGrowIdContext(ensuredProfile);
+  if (!context.handle) {
+    showNavigationLockToast({
+      title: "Grow ID",
+      message: "Your Grow ID could not be created right now. Please try again in a moment.",
+    });
+    return;
+  }
+
+  document.querySelector(".grow-id-modal")?.remove();
+  const modal = document.createElement("dialog");
+  modal.className = "grow-id-modal";
+  modal.innerHTML = `
+    <div class="grow-id-modal-shell">
+      <button type="button" class="grow-id-modal-close" data-grow-id-modal-close aria-label="Close Grow ID">×</button>
+      <div class="grow-id-modal-header">
+        <p class="eyebrow">My Grow ID</p>
+        <h2>${escapeHtml(context.growId)}</h2>
+        <p>Your permanent identity in the Grow community.</p>
+      </div>
+      <div class="grow-id-modal-body">
+        <div class="grow-id-modal-qr-card">
+          <div class="grow-id-modal-qr" data-grow-id-qr="${escapeHtml(context.profileUrl)}" data-grow-id-qr-size="196" aria-label="Grow ID QR code"></div>
+          <span class="grow-id-modal-visibility is-${context.isPublic ? "public" : "private"}">${escapeHtml(context.visibilityLabel)}</span>
+        </div>
+        <div class="grow-id-modal-details">
+          <dl>
+            <div>
+              <dt>Display Name</dt>
+              <dd>${escapeHtml(context.displayName)}</dd>
+            </div>
+            <div>
+              <dt>Grow ID</dt>
+              <dd>${escapeHtml(context.growId)}</dd>
+            </div>
+            <div>
+              <dt>Public Profile URL</dt>
+              <dd class="grow-id-modal-url">${escapeHtml(context.profileUrl)}</dd>
+            </div>
+            <div>
+              <dt>Visibility Status</dt>
+              <dd>${escapeHtml(context.visibilityLabel)}</dd>
+            </div>
+          </dl>
+          ${context.isPublic ? "" : `<p class="grow-id-private-note">This Grow Profile is private.</p>`}
+        </div>
+      </div>
+      <div class="grow-id-modal-actions">
+        <button type="button" class="button button-secondary" data-grow-id-copy-id>Copy Grow ID</button>
+        <button type="button" class="button button-secondary" data-grow-id-copy-link ${context.isPublic ? "" : "disabled aria-disabled=\"true\""}>Copy Profile Link</button>
+        <button type="button" class="button button-primary" data-grow-id-share ${context.isPublic ? "" : "disabled aria-disabled=\"true\""}>Share</button>
+        <button type="button" class="button button-secondary" data-grow-id-download-qr>Download QR Code</button>
+      </div>
+      <p class="grow-id-modal-status" data-grow-id-modal-status aria-live="polite"></p>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  renderGrowIdQrCodes(modal);
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal || event.target.closest("[data-grow-id-modal-close]")) {
+      closeGrowIdModal(modal);
+    }
+  });
+  modal.addEventListener("close", () => modal.remove(), { once: true });
+  modal.querySelector("[data-grow-id-copy-id]")?.addEventListener("click", async () => {
+    await copyTextToClipboard(context.growId);
+    setGrowIdModalStatus(modal, "Grow ID copied.");
+  });
+  modal.querySelector("[data-grow-id-copy-link]")?.addEventListener("click", async () => {
+    if (!context.isPublic) {
+      return;
+    }
+    await copyTextToClipboard(context.profileUrl);
+    setGrowIdModalStatus(modal, "Profile link copied.");
+  });
+  modal.querySelector("[data-grow-id-share]")?.addEventListener("click", async () => {
+    if (!context.isPublic) {
+      return;
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${context.displayName} on Grow`,
+          text: `View ${context.displayName}'s Grow Profile.`,
+          url: context.profileUrl,
+        });
+        setGrowIdModalStatus(modal, "Share sheet opened.");
+      } else {
+        await copyTextToClipboard(context.profileUrl);
+        setGrowIdModalStatus(modal, "Sharing is not available here, so the profile link was copied.");
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        setGrowIdModalStatus(modal, "Share was not completed.");
+      }
+    }
+  });
+  modal.querySelector("[data-grow-id-download-qr]")?.addEventListener("click", () => {
+    const canvas = modal.querySelector(".grow-id-modal-qr canvas");
+    if (!canvas) {
+      setGrowIdModalStatus(modal, "QR code download is unavailable in this browser.");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `${context.handle}-grow-id-qr.png`;
+    link.click();
+    setGrowIdModalStatus(modal, "QR code downloaded.");
+  });
+
+  if (typeof modal.showModal === "function") {
+    modal.showModal();
+  } else {
+    modal.setAttribute("open", "");
+  }
+}
+
+function renderPrivateGrowProfilePage(isLoading = false) {
+  app.innerHTML = `
+    <section class="card public-member-profile-page grow-id-private-profile-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("members")}
+          <div>
+            <p class="eyebrow">Grow Profile</p>
+            <h2>${isLoading ? "Loading Grow Profile..." : "This Grow Profile is private."}</h2>
+            <p class="muted">${isLoading ? "Checking profile visibility." : "The profile owner has chosen not to share their Grow Profile publicly."}</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderPublicMemberProfile(memberId) {
   const profileKey = String(memberId || "").trim();
   const normalizedId = resolvePublicMemberProfileId(profileKey) || (isUuidLike(profileKey) ? profileKey : "");
@@ -85375,7 +85794,8 @@ function renderPublicMemberProfile(memberId) {
   if (!normalizedId && normalizedHandle && !appState.publicMemberProfilesRefreshPromises[normalizedHandle]) {
     void loadPublicMemberProfile(normalizedHandle, { reason: "route:public-member-profile-handle" }).then((profile) => {
       const resolvedId = String(profile?.id || "").trim();
-      if (resolvedId && normalizeNavigationHash(window.location.hash || "#home").startsWith("#members/")) {
+      const activeRawRoute = String(getCurrentAppRawRoute() || "").replace(/^#/, "");
+      if (resolvedId && (normalizeNavigationHash(window.location.hash || "#home").startsWith("#members/") || activeRawRoute.startsWith("members/"))) {
         renderPublicMemberProfile(resolvedId);
       }
     });
@@ -85439,6 +85859,11 @@ function renderPublicMemberProfile(memberId) {
         </div>
       </section>
     `;
+    return;
+  }
+
+  if (profile && profile.isPublicVisible === false && !isOwnProfile && !isAdminUser()) {
+    renderPrivateGrowProfilePage(isLoadingProfile);
     return;
   }
 
@@ -86016,6 +86441,9 @@ function renderGrowNetworkPage() {
   const growerDisplayName = currentPublicProfile?.displayName
     || getDisplayName({ id: currentUserId, username: appState.profile?.username || "" }, { fallbackLabel: "Grower" });
   const growerAvatarUrl = currentPublicProfile?.avatarUrl || appState.profile?.avatarUrl || "";
+  const currentGrowIdHandle = getPublicMemberProfileGrowIdHandle(currentPublicProfile);
+  const currentGrowIdLabel = currentGrowIdHandle ? formatGrowId(currentGrowIdHandle) : "Creating Grow ID...";
+  const currentGrowProfileUrl = currentGrowIdHandle ? getGrowProfilePublicUrl(currentGrowIdHandle) : "";
   const averageGerminationLabel = getProfileAnalyticsRateLabel(ownerAnalytics.averageGerminationRate, "Pending");
   const totalSeedsStarted = Math.max(0, Number(ownerAnalytics.totalSeedsTested) || 0);
   const totalCommunityContributions = publicContributionCount;
@@ -87104,7 +87532,7 @@ function renderGrowNetworkPage() {
           </div>
           <div class="my-grow-home-actions">
             <span class="my-grow-visibility-badge ${isMyGrowProfilePublic ? "is-public" : "is-private"}">${escapeHtml(publicVisibilityLabel)}</span>
-            <button type="button" class="button button-secondary my-grow-share-id-button" ${isMyGrowProfilePublic ? "" : "disabled aria-disabled=\"true\""}>${renderAppIconSvgMarkup("externalLink")}<span>Share Grow ID</span></button>
+            <button type="button" class="button button-secondary my-grow-share-id-button" data-grow-id-open="true" ${isMyGrowProfilePublic ? "" : "disabled aria-disabled=\"true\""}>${renderAppIconSvgMarkup("externalLink")}<span>Share Grow ID</span></button>
             <a class="button button-secondary" href="#profile">${renderAppIconSvgMarkup("settingsGear")}<span>Edit Profile</span></a>
             <button type="button" class="button button-secondary my-grow-home-more" aria-label="More profile actions">•••</button>
           </div>
@@ -87126,13 +87554,13 @@ function renderGrowNetworkPage() {
           <aside class="my-grow-id-panel" aria-label="My Grow ID">
             <div>
               <p class="eyebrow">My Grow ID</p>
-              <div class="my-grow-id-qr" aria-hidden="true">
-                <span>GK</span>
+              <div class="my-grow-id-qr" ${currentGrowProfileUrl ? `data-grow-id-qr="${escapeHtml(currentGrowProfileUrl)}" data-grow-id-qr-size="92"` : ""} aria-label="Grow ID QR code">
+                ${currentGrowProfileUrl ? "" : "<span>GK</span>"}
               </div>
             </div>
             <div>
-              <p>Your identity in the Grow community.</p>
-              <button type="button" class="button button-secondary my-grow-panel-link">View Grow ID <span aria-hidden="true">→</span></button>
+              <p><strong class="my-grow-id-value">${escapeHtml(currentGrowIdLabel)}</strong><br>Your identity in the Grow community.</p>
+              <button type="button" class="button button-secondary my-grow-panel-link" data-grow-id-open="true">View Grow ID <span aria-hidden="true">→</span></button>
             </div>
           </aside>
         </div>
@@ -87314,6 +87742,29 @@ function renderGrowNetworkPage() {
       </div>
     </section>
   `;
+
+  renderGrowIdQrCodes(app);
+  app.querySelectorAll("[data-grow-id-open='true']").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (button.disabled || button.getAttribute("aria-disabled") === "true") {
+        return;
+      }
+      await openGrowIdModal();
+    });
+  });
+  if (currentUserId && !currentGrowIdHandle) {
+    void ensureCurrentUserGrowId({ reason: "grow-id:profile-card" }).then((profile) => {
+      const activeRawRoute = String(getCurrentAppRawRoute() || "").replace(/^#/, "");
+      if (
+        profile?.publicHandle
+        && (normalizeNavigationHash(window.location.hash || "#home") === "#network" || activeRawRoute === "network")
+      ) {
+        renderGrowNetworkPage();
+      }
+    }).catch((error) => {
+      console.warn("[Grow ID] Could not ensure Grow ID for Profile card.", error);
+    });
+  }
 
   app.querySelectorAll("[data-grow-network-unfollow]").forEach((button) => {
     button.addEventListener("click", async () => {
