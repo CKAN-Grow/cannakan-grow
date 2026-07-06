@@ -86853,6 +86853,7 @@ function renderGrowNetworkPage() {
     { icon: "seedSprout", label: "Breeders", value: 0 },
     { icon: "profileUser", label: "Organizations", value: 0 },
     { icon: "sourceTrustStar", label: "Industry Partners", value: 0 },
+    { icon: "calendar", label: "Events", value: useMockPresentation ? 4 : 0 },
   ];
   const myGrowNetworkConnectionItems = (useMockPresentation ? mockMembers : followingEntries).slice(0, 6).map((entry) => {
     const memberId = entry.memberId || entry.id || "";
@@ -86968,27 +86969,71 @@ function renderGrowNetworkPage() {
         <article class="my-grow-network-category-card is-${escapeHtml(card.key)}">
           <div>
             <span class="my-grow-network-category-icon" aria-hidden="true">${renderAppIconSvgMarkup(card.icon)}</span>
-            <strong>${escapeHtml(getProfileAnalyticsCountLabel(card.count))}</strong>
-            <small>${escapeHtml(card.label)}</small>
+            <span>
+              <strong>${escapeHtml(card.label)}</strong>
+              <small>${escapeHtml(`${getProfileAnalyticsCountLabel(card.count)} Connection${Number(card.count) === 1 ? "" : "s"}`)}</small>
+            </span>
           </div>
           ${renderMyGrowNetworkMiniStackMarkup(card.items, card.icon)}
         </article>
       `).join("")}
     </div>
   `;
+  const renderMyGrowNetworkSidebarMarkup = () => `
+    <aside class="my-grow-network-sidebar" aria-label="Grow Network navigation">
+      <div class="my-grow-network-sidebar-brand">
+        <span aria-hidden="true">${renderAppIconSvgMarkup("growNetworkNodes")}</span>
+        <div>
+          <strong>GROW NETWORK</strong>
+          <p>Your connections. Your community. Your industry.</p>
+        </div>
+      </div>
+      <nav class="my-grow-network-sidebar-nav" aria-label="Grow Network views">
+        <button type="button" class="is-active">${renderAppIconSvgMarkup("chart")}<span>Overview</span></button>
+        <button type="button">${renderAppIconSvgMarkup("growNetworkNodes")}<span>All Connections</span></button>
+      </nav>
+      <div class="my-grow-network-sidebar-categories">
+        <p class="eyebrow">Categories</p>
+        ${myGrowNetworkCategoryCards.map((card) => `
+          <button type="button">
+            <span>${renderAppIconSvgMarkup(card.icon)}${escapeHtml(card.label)}</span>
+            <strong>${escapeHtml(getProfileAnalyticsCountLabel(card.count))}</strong>
+          </button>
+        `).join("")}
+      </div>
+      <button type="button" class="button button-secondary my-grow-network-find-button">${renderAppIconSvgMarkup("growNetworkNodes")}<span>Find Connections</span></button>
+    </aside>
+  `;
   const renderMyGrowNetworkRecentConnectionsMarkup = () => {
-    if (!myGrowNetworkConnectionItems.length) {
+    const recentCards = [
+      ...myGrowNetworkConnectionItems.map((connection) => ({
+        ...connection,
+        typeLabel: connection.detail || "Grow community",
+        href: connection.href || "#network",
+      })),
+      ...myGrowNetworkSourceItems.map((source) => ({
+        id: `source-${source.label}`,
+        displayName: source.label,
+        avatarUrl: "",
+        detail: source.detail || "Trusted source",
+        typeLabel: "Trusted Source",
+        href: "#explore",
+      })),
+    ].slice(0, 5);
+
+    if (!recentCards.length) {
       return `<p class="my-grow-home-empty">Connect with growers to start building your Grow Network.</p>`;
     }
     return `
       <div class="my-grow-network-connection-row" aria-label="Recent connections">
-        ${myGrowNetworkConnectionItems.slice(0, 5).map((connection) => `
+        ${recentCards.map((connection) => `
           <a class="my-grow-network-connection-card" href="${escapeHtml(connection.href || "#network")}">
-            ${renderPublicMemberAvatarMarkup(connection.displayName, connection.avatarUrl, "my-grow-network-connection-avatar")}
-            <span>
-              <strong>${escapeHtml(connection.displayName)}</strong>
-              <small>${escapeHtml(connection.detail)}</small>
-            </span>
+            ${connection.avatarUrl
+              ? renderPublicMemberAvatarMarkup(connection.displayName, connection.avatarUrl, "my-grow-network-connection-avatar")
+              : `<span class="my-grow-network-connection-avatar is-fallback">${escapeHtml(getPublicMemberInitialsLabel(connection.displayName))}</span>`}
+            <strong>${escapeHtml(connection.displayName)}</strong>
+            <small>${escapeHtml(connection.typeLabel || connection.detail || "Connection")}</small>
+            <em>Connected</em>
           </a>
         `).join("")}
       </div>
@@ -87222,42 +87267,47 @@ function renderGrowNetworkPage() {
             `).join("")}
           </div>
           <div class="my-grow-network-expanded" aria-label="Expanded Grow Network dashboard">
-            <div class="my-grow-network-overview">
-              <div>
-                <p class="eyebrow">Grow Network Overview</p>
-                <h4>Your Grow Network Overview</h4>
-                <p>You’re connected with amazing people and trusted partners.</p>
-              </div>
-            </div>
-            ${renderMyGrowNetworkCategoryCardsMarkup()}
-            <div class="my-grow-network-detail-grid">
-              <article class="my-grow-network-detail-card my-grow-network-recent-card">
+            ${renderMyGrowNetworkSidebarMarkup()}
+            <div class="my-grow-network-main">
+              <section class="my-grow-network-overview" aria-label="Your Grow Network Overview">
+                <div>
+                  <h4>Your Grow Network Overview</h4>
+                  <p>You’re connected with amazing people and trusted partners.</p>
+                </div>
+                ${renderMyGrowNetworkCategoryCardsMarkup()}
+              </section>
+              <section class="my-grow-network-detail-card my-grow-network-recent-card" aria-label="Recent Connections">
                 <div class="my-grow-network-detail-head">
                   <div>
                     <h4>Recent Connections</h4>
                     <p>People and partners recently connected to your Grow identity.</p>
                   </div>
+                  <a href="#network">View all <span aria-hidden="true">→</span></a>
                 </div>
                 ${renderMyGrowNetworkRecentConnectionsMarkup()}
-              </article>
-              <article class="my-grow-network-detail-card">
-                <div class="my-grow-network-detail-head">
-                  <div>
-                    <h4>Connection Insights</h4>
-                    <p>Signals from your profile, vault, and community activity.</p>
+              </section>
+              <div class="my-grow-network-detail-grid">
+                <article class="my-grow-network-detail-card">
+                  <div class="my-grow-network-detail-head">
+                    <div>
+                      <h4>Connection Insights</h4>
+                      <p>Signals from your profile, vault, and community activity.</p>
+                    </div>
                   </div>
-                </div>
-                ${renderMyGrowNetworkInsightsMarkup()}
-              </article>
-              <article class="my-grow-network-detail-card my-grow-network-activity-card">
-                <div class="my-grow-network-detail-head">
-                  <div>
-                    <h4>Network Activity</h4>
-                    <p>Recent movement from your Grow community.</p>
+                  ${renderMyGrowNetworkInsightsMarkup()}
+                  <a class="my-grow-network-panel-link" href="#network">View All Insights <span aria-hidden="true">→</span></a>
+                </article>
+                <article class="my-grow-network-detail-card my-grow-network-activity-card">
+                  <div class="my-grow-network-detail-head">
+                    <div>
+                      <h4>Network Activity</h4>
+                      <p>Recent movement from your Grow community.</p>
+                    </div>
                   </div>
-                </div>
-                ${renderMyGrowNetworkActivityMarkup()}
-              </article>
+                  ${renderMyGrowNetworkActivityMarkup()}
+                  <a class="my-grow-network-panel-link" href="#network">View All Activity <span aria-hidden="true">→</span></a>
+                </article>
+              </div>
             </div>
           </div>
         </section>
