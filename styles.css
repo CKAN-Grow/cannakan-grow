@@ -40179,6 +40179,11 @@ textarea::placeholder {
   gap: 16px;
 }
 
+.my-grow-home-topline {
+  position: relative;
+  z-index: 20;
+}
+
 .my-grow-home-topline h2,
 .my-grow-home-topline p,
 .my-grow-section-head h3,
@@ -40204,6 +40209,8 @@ textarea::placeholder {
 }
 
 .my-grow-home-actions {
+  position: relative;
+  z-index: 21;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -40277,6 +40284,106 @@ textarea::placeholder {
   padding-inline: 0;
   font-weight: 900;
   letter-spacing: 0.18em;
+}
+
+.my-grow-home-more-root {
+  position: relative;
+  z-index: 22;
+  display: inline-flex;
+  align-items: center;
+}
+
+.my-grow-home-overflow-menu {
+  position: fixed;
+  top: var(--my-grow-overflow-menu-top, 80px);
+  left: var(--my-grow-overflow-menu-left, 16px);
+  z-index: 1000;
+  width: var(--my-grow-overflow-menu-width, min(250px, calc(100vw - 32px)));
+  padding: 8px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(15, 24, 19, 0.98), rgba(7, 13, 10, 0.98));
+  box-shadow:
+    0 22px 46px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: accountMenuIn 0.18s ease;
+  backdrop-filter: blur(18px);
+}
+
+.my-grow-home-overflow-menu[hidden] {
+  display: none !important;
+}
+
+.my-grow-home-overflow-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #f4f7f2;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.16s ease,
+    box-shadow 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.my-grow-home-overflow-item:hover,
+.my-grow-home-overflow-item:focus-visible {
+  outline: none;
+  color: #ffffff;
+  background: rgba(148, 209, 89, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.12);
+  transform: translateY(-1px);
+}
+
+.my-grow-home-overflow-item:disabled {
+  cursor: not-allowed;
+  color: rgba(226, 235, 224, 0.42);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.my-grow-home-overflow-item.is-danger {
+  color: #ff9d9d;
+}
+
+.my-grow-home-overflow-item > span:not(.account-menu-icon) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.my-grow-home-overflow-item strong {
+  color: inherit;
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.my-grow-home-overflow-item small {
+  color: rgba(189, 204, 192, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.15;
+}
+
+.my-grow-home-overflow-item:disabled small {
+  color: rgba(148, 209, 89, 0.62);
+}
+
+.my-grow-home-overflow-divider {
+  height: 1px;
+  margin: 7px 6px;
+  background: linear-gradient(90deg, transparent, rgba(148, 209, 89, 0.18), transparent);
 }
 
 .my-grow-home-hero,
@@ -44928,6 +45035,14 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   .my-grow-network-preview .button {
     width: 100%;
     justify-content: center;
+  }
+
+  .my-grow-home-more-root {
+    width: 100%;
+  }
+
+  .my-grow-home-overflow-menu {
+    width: var(--my-grow-overflow-menu-width, min(250px, calc(100vw - 32px)));
   }
 
   .my-grow-home-hero,

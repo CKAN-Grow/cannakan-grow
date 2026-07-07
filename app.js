@@ -2309,6 +2309,7 @@ const appState = {
   installPromptDismissed: false,
   installPromptMode: "",
   installPromptFeedbackMessage: "",
+  myGrowHomeOverflowMenuOpen: false,
   gallerySort: "date",
   gallerySortOrder: "desc",
   galleryExploreFilter: "standardized",
@@ -4208,7 +4209,86 @@ function closeAccountMenu() {
 
 function toggleAccountMenu() {
   appState.accountMenuOpen = !appState.accountMenuOpen;
+  if (appState.accountMenuOpen) {
+    closeMyGrowHomeOverflowMenu();
+  }
   updateAuthStatus();
+}
+
+function getMyGrowHomeOverflowMenuRoot() {
+  return document.querySelector("[data-my-grow-home-overflow-root]");
+}
+
+function setMyGrowHomeOverflowMenuOpen(isOpen = false, options = {}) {
+  appState.myGrowHomeOverflowMenuOpen = Boolean(isOpen);
+  const root = getMyGrowHomeOverflowMenuRoot();
+  if (!(root instanceof HTMLElement)) {
+    return;
+  }
+  const trigger = root.querySelector("[data-my-grow-home-overflow-trigger]");
+  const menu = root.querySelector("[data-my-grow-home-overflow-menu]")
+    || document.querySelector("[data-my-grow-home-overflow-menu]");
+  if (trigger instanceof HTMLElement) {
+    trigger.setAttribute("aria-expanded", appState.myGrowHomeOverflowMenuOpen ? "true" : "false");
+  }
+  if (menu instanceof HTMLElement) {
+    if (appState.myGrowHomeOverflowMenuOpen && menu.parentElement !== document.body) {
+      document.body.appendChild(menu);
+    }
+    menu.hidden = !appState.myGrowHomeOverflowMenuOpen;
+    menu.classList.toggle("is-open", appState.myGrowHomeOverflowMenuOpen);
+    if (appState.myGrowHomeOverflowMenuOpen && trigger instanceof HTMLElement) {
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuWidth = Math.min(250, Math.max(220, window.innerWidth - 32));
+      const menuLeft = Math.max(16, Math.min(window.innerWidth - menuWidth - 16, triggerRect.right - menuWidth));
+      menu.style.setProperty("--my-grow-overflow-menu-top", `${Math.round(triggerRect.bottom + 10)}px`);
+      menu.style.setProperty("--my-grow-overflow-menu-left", `${Math.round(menuLeft)}px`);
+      menu.style.setProperty("--my-grow-overflow-menu-width", `${Math.round(menuWidth)}px`);
+    } else {
+      menu.style.removeProperty("--my-grow-overflow-menu-top");
+      menu.style.removeProperty("--my-grow-overflow-menu-left");
+      menu.style.removeProperty("--my-grow-overflow-menu-width");
+      if (root.contains(trigger) && menu.parentElement !== root) {
+        root.appendChild(menu);
+      }
+    }
+  }
+  if (appState.myGrowHomeOverflowMenuOpen && options.focusFirst === true && menu instanceof HTMLElement) {
+    requestAnimationFrame(() => {
+      const firstItem = menu.querySelector("[role='menuitem']:not([disabled])");
+      if (firstItem instanceof HTMLElement) {
+        firstItem.focus();
+      }
+    });
+  }
+}
+
+function closeMyGrowHomeOverflowMenu() {
+  if (!appState.myGrowHomeOverflowMenuOpen) {
+    return;
+  }
+  setMyGrowHomeOverflowMenuOpen(false);
+}
+
+function toggleMyGrowHomeOverflowMenu(options = {}) {
+  if (!appState.myGrowHomeOverflowMenuOpen) {
+    closeAccountMenu();
+  }
+  setMyGrowHomeOverflowMenuOpen(!appState.myGrowHomeOverflowMenuOpen, options);
+}
+
+async function signOutFromMyGrowHomeOverflowMenu() {
+  closeMyGrowHomeOverflowMenu();
+  if (isLocalDevQaBypassActive()) {
+    setLocalDevQaBypassEnabled(false);
+    window.location.reload();
+    return;
+  }
+  appState.userRole = "user";
+  appState.isAdmin = false;
+  updateAuthStatus();
+  safeRender();
+  await appState.supabase?.auth.signOut();
 }
 
 function closeMobileNavigation() {
@@ -4254,6 +4334,17 @@ function toggleMobileNavigation() {
 function navigateToProfileRoute() {
   appState.profilePagePendingFocusSection = "";
   closeAccountMenu();
+  closeMyGrowHomeOverflowMenu();
+  closeMobileNavigation();
+  window.history.pushState(null, "", "/profile");
+  appState.currentRouteHash = "#profile";
+  safeRender();
+}
+
+function navigateToProfileSection(section = "") {
+  appState.profilePagePendingFocusSection = String(section || "").trim();
+  closeAccountMenu();
+  closeMyGrowHomeOverflowMenu();
   closeMobileNavigation();
   window.history.pushState(null, "", "/profile");
   appState.currentRouteHash = "#profile";
@@ -4261,16 +4352,12 @@ function navigateToProfileRoute() {
 }
 
 function navigateToProfilePreferences() {
-  appState.profilePagePendingFocusSection = "notification-preferences";
-  closeAccountMenu();
-  closeMobileNavigation();
-  window.history.pushState(null, "", "/profile");
-  appState.currentRouteHash = "#profile";
-  safeRender();
+  navigateToProfileSection("notification-preferences");
 }
 
 function navigateToSeedAgeAnalyticsRoute() {
   closeAccountMenu();
+  closeMyGrowHomeOverflowMenu();
   closeMobileNavigation();
   window.history.pushState(null, "", "/seed-age-analytics");
   appState.currentRouteHash = "#seed-age-analytics";
@@ -4280,6 +4367,7 @@ function navigateToSeedAgeAnalyticsRoute() {
 function navigateToHashRoute(nextHash = "#home") {
   const normalizedHash = normalizeNavigationHash(nextHash);
   closeAccountMenu();
+  closeMyGrowHomeOverflowMenu();
   closeMobileNavigation();
   const pathPrefix = getCurrentAppPathRoute() ? "/" : window.location.pathname;
   window.history.pushState(null, "", `${pathPrefix}${window.location.search}${normalizedHash}`);
@@ -4290,6 +4378,7 @@ function navigateToHashRoute(nextHash = "#home") {
 function navigateToLearnTutorialDetailRoute(tutorialId = "") {
   const route = getLearnTutorialDetailRoute(tutorialId);
   closeAccountMenu();
+  closeMyGrowHomeOverflowMenu();
   closeMobileNavigation();
   window.history.pushState(null, "", route);
   appState.currentRouteHash = "#learn";
@@ -46731,7 +46820,7 @@ function renderProfilePage() {
       </header>
       <form id="profile-settings-form" class="profile-settings-form">
         <div class="profile-page-layout">
-          <article class="profile-section-card" id="profile-account-info-card">
+          <article class="profile-section-card" id="profile-account-info-card" tabindex="-1">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Account Info</p>
@@ -46852,7 +46941,7 @@ function renderProfilePage() {
               ? "Notification preferences are currently using your latest saved browser fallback while the backend is unavailable."
               : `Notification settings are connected to your saved ${BRAND_APP_NAME} preferences and will reload whenever you sign back in.`}</p>
           </article>
-          ${firstSessionGateActive ? "" : `<article class="profile-section-card" id="profile-privacy-community-card">
+          ${firstSessionGateActive ? "" : `<article class="profile-section-card" id="profile-privacy-community-card" tabindex="-1">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Privacy</p>
@@ -46924,13 +47013,19 @@ function renderProfilePage() {
 
   bindProfilePageForm(app.querySelector("#profile-settings-form"));
 
-  if (appState.profilePagePendingFocusSection === "notification-preferences") {
+  if (appState.profilePagePendingFocusSection) {
+    const pendingSection = appState.profilePagePendingFocusSection;
     appState.profilePagePendingFocusSection = "";
-    const notificationCard = app.querySelector("#profile-notification-preferences-card");
-    if (notificationCard instanceof HTMLElement) {
+    const sectionSelectorMap = {
+      "account-info": "#profile-account-info-card",
+      "notification-preferences": "#profile-notification-preferences-card",
+      "privacy-community": "#profile-privacy-community-card",
+    };
+    const targetCard = app.querySelector(sectionSelectorMap[pendingSection] || "");
+    if (targetCard instanceof HTMLElement) {
       queueMicrotask(() => {
-        notificationCard.scrollIntoView({ behavior: "smooth", block: "start" });
-        notificationCard.focus({ preventScroll: true });
+        targetCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        targetCard.focus({ preventScroll: true });
       });
     }
   }
@@ -87020,6 +87115,7 @@ function renderGrowNetworkPage() {
   const followingEntries = getGrowNetworkFollowingEntries();
   const useMockNotifications = shouldUseMockGrowNetworkNotifications();
   const useMockPresentation = isMockDataEnabled() || useMockNotifications;
+  const firstSessionGateActive = isFirstSessionAccessGateActive(getSessions());
   const activeTab = useMockPresentation ? getGrowNetworkActiveTab() : "following";
   const isLoadingNetworkActivity = !useMockPresentation && (Boolean(appState.growNetworkActivityRefreshPromise) || (!appState.growNetworkActivityLoaded && Boolean(appState.user?.id)));
   const activities = getGrowNetworkActivityEntries();
@@ -88392,6 +88488,60 @@ function renderGrowNetworkPage() {
       `).join("")}
     </div>
   `;
+  const myGrowHomeOverflowMenuItems = [
+    { action: "profile-settings", icon: "profile", label: "Profile Settings" },
+    { action: "account-settings", icon: "profile", label: "Account Settings" },
+    { action: "privacy", icon: "admin", label: "Privacy", disabled: firstSessionGateActive, helper: firstSessionGateActive ? "Coming Soon" : "" },
+    { action: "notifications", icon: "notification", label: "Notifications" },
+    { action: "theme", icon: "moon", label: "Theme", disabled: true, helper: "Coming Soon" },
+    { divider: true },
+    { action: "export-data", icon: "analytics", label: "Export My Data", disabled: true, helper: "Coming Soon" },
+    { action: "help-support", icon: "learn", label: "Help & Support" },
+    { divider: true },
+    { action: "sign-out", icon: "signout", label: "Sign Out", danger: true },
+  ];
+  const renderMyGrowHomeOverflowMenuMarkup = () => `
+    <div class="my-grow-home-more-root" data-my-grow-home-overflow-root>
+      <button
+        type="button"
+        class="button button-secondary my-grow-home-more"
+        aria-label="More profile actions"
+        aria-haspopup="menu"
+        aria-controls="my-grow-home-overflow-menu"
+        aria-expanded="${appState.myGrowHomeOverflowMenuOpen ? "true" : "false"}"
+        data-my-grow-home-overflow-trigger
+      >•••</button>
+      <div
+        id="my-grow-home-overflow-menu"
+        class="my-grow-home-overflow-menu${appState.myGrowHomeOverflowMenuOpen ? " is-open" : ""}"
+        role="menu"
+        aria-label="More profile actions"
+        data-my-grow-home-overflow-menu
+        ${appState.myGrowHomeOverflowMenuOpen ? "" : "hidden"}
+      >
+        ${myGrowHomeOverflowMenuItems.map((item) => {
+          if (item.divider) {
+            return `<div class="my-grow-home-overflow-divider" role="separator"></div>`;
+          }
+          return `
+            <button
+              type="button"
+              class="my-grow-home-overflow-item${item.danger ? " is-danger" : ""}"
+              role="menuitem"
+              data-my-grow-home-overflow-action="${escapeHtml(item.action)}"
+              ${item.disabled ? "disabled aria-disabled=\"true\" title=\"Coming Soon\"" : ""}
+            >
+              ${getMenuIconMarkup(item.icon)}
+              <span>
+                <strong>${escapeHtml(item.label)}</strong>
+                ${item.helper ? `<small>${escapeHtml(item.helper)}</small>` : ""}
+              </span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
 
   app.innerHTML = `
     <section class="card grow-network-page my-grow-home-page">
@@ -88406,7 +88556,7 @@ function renderGrowNetworkPage() {
             <span class="my-grow-visibility-badge ${isMyGrowProfilePublic ? "is-public" : "is-private"}">${escapeHtml(publicVisibilityLabel)}</span>
             <button type="button" class="button button-secondary my-grow-share-id-button" data-grow-id-open="true" ${isMyGrowProfilePublic ? "" : "disabled aria-disabled=\"true\""}>${renderAppIconSvgMarkup("externalLink")}<span>Share Grow ID</span></button>
             <a class="button button-secondary" href="#profile">${renderAppIconSvgMarkup("settingsGear")}<span>Edit Profile</span></a>
-            <button type="button" class="button button-secondary my-grow-home-more" aria-label="More profile actions">•••</button>
+            ${renderMyGrowHomeOverflowMenuMarkup()}
           </div>
         </header>
 
@@ -88632,6 +88782,88 @@ function renderGrowNetworkPage() {
     }
     event.preventDefault();
     await openGrowIdModal();
+  });
+  const myGrowHomeOverflowRoot = app.querySelector("[data-my-grow-home-overflow-root]");
+  const myGrowHomeOverflowTrigger = myGrowHomeOverflowRoot?.querySelector("[data-my-grow-home-overflow-trigger]");
+  const myGrowHomeOverflowMenu = myGrowHomeOverflowRoot?.querySelector("[data-my-grow-home-overflow-menu]");
+  myGrowHomeOverflowRoot?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+  myGrowHomeOverflowTrigger?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleMyGrowHomeOverflowMenu();
+  });
+  myGrowHomeOverflowTrigger?.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowDown" && event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setMyGrowHomeOverflowMenuOpen(true, { focusFirst: true });
+  });
+  myGrowHomeOverflowMenu?.addEventListener("keydown", (event) => {
+    const enabledItems = [...myGrowHomeOverflowMenu.querySelectorAll("[role='menuitem']:not([disabled])")]
+      .filter((item) => item instanceof HTMLElement);
+    const currentIndex = enabledItems.findIndex((item) => item === document.activeElement);
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMyGrowHomeOverflowMenu();
+      if (myGrowHomeOverflowTrigger instanceof HTMLElement) {
+        myGrowHomeOverflowTrigger.focus();
+      }
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || !enabledItems.length) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? enabledItems.length - 1
+        : event.key === "ArrowUp"
+          ? (currentIndex <= 0 ? enabledItems.length - 1 : currentIndex - 1)
+          : (currentIndex < 0 || currentIndex >= enabledItems.length - 1 ? 0 : currentIndex + 1);
+    enabledItems[nextIndex]?.focus();
+  });
+  myGrowHomeOverflowMenu?.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    const item = event.target instanceof Element
+      ? event.target.closest("[data-my-grow-home-overflow-action]")
+      : null;
+    if (!(item instanceof HTMLButtonElement) || item.disabled) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const action = item.dataset.myGrowHomeOverflowAction || "";
+    if (action === "profile-settings") {
+      closeMyGrowHomeOverflowMenu();
+      openProfileEditor();
+      return;
+    }
+    if (action === "account-settings") {
+      navigateToProfileSection("account-info");
+      return;
+    }
+    if (action === "privacy") {
+      navigateToProfileSection("privacy-community");
+      return;
+    }
+    if (action === "notifications") {
+      navigateToProfileSection("notification-preferences");
+      return;
+    }
+    if (action === "help-support") {
+      navigateToHashRoute("#contact");
+      return;
+    }
+    if (action === "sign-out") {
+      await signOutFromMyGrowHomeOverflowMenu();
+    }
   });
   if (currentUserId && !currentGrowIdHandle) {
     void ensureCurrentUserGrowId({ reason: "grow-id:profile-card" }).then((profile) => {
@@ -96119,6 +96351,13 @@ document.addEventListener("click", (event) => {
   }
 
   if (!appState.accountMenuOpen) {
+    if (appState.myGrowHomeOverflowMenuOpen) {
+      const myGrowOverflowRoot = document.querySelector("[data-my-grow-home-overflow-root]");
+      if (myGrowOverflowRoot && event.target instanceof Node && myGrowOverflowRoot.contains(event.target)) {
+        return;
+      }
+      closeMyGrowHomeOverflowMenu();
+    }
     return;
   }
 
@@ -96128,6 +96367,12 @@ document.addEventListener("click", (event) => {
   }
 
   closeAccountMenu();
+  if (appState.myGrowHomeOverflowMenuOpen) {
+    const myGrowOverflowRoot = document.querySelector("[data-my-grow-home-overflow-root]");
+    if (!myGrowOverflowRoot || !(event.target instanceof Node) || !myGrowOverflowRoot.contains(event.target)) {
+      closeMyGrowHomeOverflowMenu();
+    }
+  }
 });
 
 document.addEventListener("keydown", (event) => {
@@ -96142,6 +96387,10 @@ document.addEventListener("keydown", (event) => {
 
   if (event.key === "Escape" && appState.accountMenuOpen) {
     closeAccountMenu();
+  }
+
+  if (event.key === "Escape" && appState.myGrowHomeOverflowMenuOpen) {
+    closeMyGrowHomeOverflowMenu();
   }
 
   if (event.key === "Escape" && appState.mobileNavOpen) {
