@@ -88381,10 +88381,10 @@ function renderGrowNetworkPage() {
               <blockquote>“${escapeHtml(profileTagline)}”</blockquote>
             </div>
           </div>
-          <aside class="my-grow-id-panel" aria-label="My Grow ID">
+          <aside class="my-grow-id-panel" aria-label="My Grow ID" role="button" tabindex="0" data-grow-id-open="true" data-grow-id-card="true">
             <div>
               <p class="eyebrow">My Grow ID</p>
-              <div class="my-grow-id-qr" ${currentGrowProfileUrl ? `data-grow-id-qr="${escapeHtml(currentGrowProfileUrl)}" data-grow-id-qr-size="92" data-grow-id-qr-persist="${isMyGrowProfilePublic ? "true" : "false"}"` : ""} aria-label="Grow ID QR code">
+              <div class="my-grow-id-qr" ${currentGrowProfileUrl ? `data-grow-id-qr="${escapeHtml(currentGrowProfileUrl)}" data-grow-id-qr-size="104" data-grow-id-qr-persist="${isMyGrowProfilePublic ? "true" : "false"}"` : ""} aria-label="Grow ID QR code">
                 ${currentGrowProfileUrl ? "" : "<span>GK</span>"}
               </div>
             </div>
@@ -88575,12 +88575,20 @@ function renderGrowNetworkPage() {
 
   void renderGrowIdQrCodes(app);
   app.querySelectorAll("[data-grow-id-open='true']").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
       if (button.disabled || button.getAttribute("aria-disabled") === "true") {
         return;
       }
       await openGrowIdModal();
     });
+  });
+  app.querySelector("[data-grow-id-card='true']")?.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    await openGrowIdModal();
   });
   if (currentUserId && !currentGrowIdHandle) {
     void ensureCurrentUserGrowId({ reason: "grow-id:profile-card" }).then((profile) => {
