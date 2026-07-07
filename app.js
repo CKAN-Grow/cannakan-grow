@@ -30300,6 +30300,10 @@ const APP_ICON_LIBRARY = Object.freeze({
   sourceTrustStar: `
     <path d="m12 3.8 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 9l5-.7Z"></path>
   `,
+  clock: `
+    <circle cx="12" cy="12" r="7.7"></circle>
+    <path d="M12 7.6v4.8l3.4 2"></path>
+  `,
   sourceHeroSprout: `
     <path data-solid="true" d="M11.1 19.2c0 .6.4 1 1 1s1-.4 1-1v-6.4h-2Z"></path>
     <path d="M11.2 12.6C7.7 12.2 5.6 10 5 6.2c3.9.2 6.2 2.2 6.8 5.9"></path>
@@ -88136,9 +88140,9 @@ function renderGrowNetworkPage() {
     },
   ];
   const myGrowNetworkCounts = [
-    { key: "growers", icon: "members", label: "Growers", value: followingCount },
+    { key: "growers", icon: "communityGroup", label: "Growers", value: followingCount },
     { key: "sources", icon: "sourceDirectoryBars", label: "Sources", value: myGrowSourceCount },
-    { key: "breeders", icon: "seedSprout", label: "Breeders", value: useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0 },
+    { key: "breeders", icon: "sourceTrustStar", label: "Breeders", value: useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0 },
   ];
   const myGrowNetworkConnectionItems = (useMockPresentation ? mockMembers : followingEntries).slice(0, 6).map((entry) => {
     const memberId = entry.memberId || entry.id || "";
@@ -88171,7 +88175,7 @@ function renderGrowNetworkPage() {
   const myGrowNetworkCategoryCards = [
     {
       key: "growers",
-      icon: "members",
+      icon: "communityGroup",
       label: "Growers",
       count: followingCount || myGrowNetworkConnectionItems.length,
       items: myGrowNetworkConnectionItems,
@@ -88187,7 +88191,7 @@ function renderGrowNetworkPage() {
     },
     {
       key: "breeders",
-      icon: "seedSprout",
+      icon: "sourceTrustStar",
       label: "Breeders",
       count: useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0,
       items: favoriteVarieties.slice(0, 5).map(([label, count]) => ({ label, detail: `${count} variety signal${count === 1 ? "" : "s"}` })),
@@ -88329,7 +88333,7 @@ function renderGrowNetworkPage() {
   };
   const myGrowNetworkInsightRows = [
     {
-      icon: "members",
+      icon: "communityGroup",
       value: getProfileAnalyticsCountLabel(followingCount || myGrowNetworkConnectionItems.length),
       label: "Grower connections",
       detail: "people connected to your Grow identity",
@@ -88541,7 +88545,7 @@ function renderGrowNetworkPage() {
               <span class="my-grow-network-title-icon" aria-hidden="true">${renderAppIconSvgMarkup("growNetworkNodes")}</span>
               <div>
                 <h3>My Grow Network</h3>
-                <p>Your growers. Your sources. Your breeders.</p>
+                <p>Your <span class="is-growers">growers</span>. Your <span class="is-sources">sources</span>. Your <span class="is-breeders">breeders</span>.</p>
               </div>
             </div>
             <a class="button button-secondary" href="#network">View Network <span aria-hidden="true">→</span></a>
@@ -88582,7 +88586,7 @@ function renderGrowNetworkPage() {
             </section>
             <section class="my-grow-network-cta-panel" aria-label="Grow Network actions">
               <div class="my-grow-network-cta-primary">
-                <span class="my-grow-network-cta-icon" aria-hidden="true">${renderAppIconSvgMarkup("members")}</span>
+                <span class="my-grow-network-cta-icon" aria-hidden="true">${renderAppIconSvgMarkup("communityGroup")}</span>
                 <div>
                   <h4>Find more connections</h4>
                   <p>Grow your network and share knowledge.</p>
@@ -88595,7 +88599,7 @@ function renderGrowNetworkPage() {
                   <h4>Stronger together.</h4>
                   <p>The more you connect, the more we all grow.</p>
                 </div>
-                <span class="my-grow-network-cta-mark" aria-hidden="true">${renderAppIconSvgMarkup("seedSprout")}</span>
+                <span class="my-grow-network-cta-mark" aria-hidden="true">${renderAppIconSvgMarkup("growNetworkNodes")}</span>
               </div>
             </section>
           </div>
