@@ -88511,7 +88511,7 @@ function renderGrowNetworkPage() {
               <h3>My Grow Network</h3>
               <p>Your growers. Your sources. Your breeders.</p>
             </div>
-            <button type="button" class="button button-secondary">View Network <span aria-hidden="true">→</span></button>
+            <a class="button button-secondary" href="#network">View Network <span aria-hidden="true">→</span></a>
           </div>
           <div class="my-grow-network-counts">
             ${myGrowNetworkCounts.map((item) => `
@@ -88524,49 +88524,26 @@ function renderGrowNetworkPage() {
               </article>
             `).join("")}
           </div>
-          <div class="my-grow-network-expanded" aria-label="Expanded Grow Network dashboard">
-            ${renderMyGrowNetworkSidebarMarkup()}
-            <div class="my-grow-network-main">
-              <section class="my-grow-network-overview" aria-label="Your Grow Network Overview">
+          <div class="my-grow-network-stack" aria-label="My Grow Network preview">
+            <section class="my-grow-network-overview" aria-label="Network Overview">
+              <div class="my-grow-network-detail-head">
                 <div>
-                  <h4>Your Grow Network Overview</h4>
-                  <p>You’re connected with growers, trusted sources, and breeder signals.</p>
+                  <h4>Network Overview</h4>
+                  <p>Growers, sources, and breeder signals connected to your Grow identity.</p>
                 </div>
-                ${renderMyGrowNetworkCategoryCardsMarkup()}
-              </section>
-              <section class="my-grow-network-detail-card my-grow-network-recent-card" aria-label="Recent Connections">
-                <div class="my-grow-network-detail-head">
-                  <div>
-                    <h4>Recent Connections</h4>
-                    <p>Growers, sources, and breeders recently connected to your Grow identity.</p>
-                  </div>
-                  <a href="#network">View all <span aria-hidden="true">→</span></a>
-                </div>
-                ${renderMyGrowNetworkRecentConnectionsMarkup()}
-              </section>
-              <div class="my-grow-network-detail-grid">
-                <article class="my-grow-network-detail-card">
-                  <div class="my-grow-network-detail-head">
-                    <div>
-                      <h4>Connection Insights</h4>
-                      <p>Signals from your profile, vault, and community activity.</p>
-                    </div>
-                  </div>
-                  ${renderMyGrowNetworkInsightsMarkup()}
-                  <a class="my-grow-network-panel-link" href="#network">View All Insights <span aria-hidden="true">→</span></a>
-                </article>
-                <article class="my-grow-network-detail-card my-grow-network-activity-card">
-                  <div class="my-grow-network-detail-head">
-                    <div>
-                      <h4>Network Activity</h4>
-                      <p>Recent movement from your Grow community.</p>
-                    </div>
-                  </div>
-                  ${renderMyGrowNetworkActivityMarkup()}
-                  <a class="my-grow-network-panel-link" href="#network">View All Activity <span aria-hidden="true">→</span></a>
-                </article>
               </div>
-            </div>
+              ${renderMyGrowNetworkCategoryCardsMarkup()}
+            </section>
+            <section class="my-grow-network-recent-card" aria-label="Recent Connections">
+              <div class="my-grow-network-detail-head">
+                <div>
+                  <h4>Recent Connections</h4>
+                  <p>Small signals from your network.</p>
+                </div>
+                <a href="#network">View all <span aria-hidden="true">→</span></a>
+              </div>
+              ${renderMyGrowNetworkRecentConnectionsMarkup()}
+            </section>
           </div>
         </section>
       </div>
