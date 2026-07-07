@@ -42547,11 +42547,27 @@ textarea::placeholder {
   min-height: 166px;
   padding: 20px;
   border-color: rgba(var(--network-accent-rgb, 156, 247, 91), 0.34);
-  background:
-    radial-gradient(circle at 10% 18%, rgba(var(--network-accent-rgb, 156, 247, 91), 0.15), transparent 46%),
-    linear-gradient(145deg, rgba(var(--network-accent-rgb, 156, 247, 91), 0.075), rgba(255, 255, 255, 0.018)),
-    rgba(4, 12, 10, 0.72);
+  background-color: rgba(4, 12, 10, 0.82);
+  background-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.34), rgba(1, 7, 5, 0.43)),
+    radial-gradient(circle at 12% 18%, rgba(var(--network-accent-rgb, 156, 247, 91), 0.16), transparent 46%),
+    var(--network-card-artwork, none);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.my-grow-network-category-card.is-growers {
+  --network-card-artwork: url("public/assets/images/grower-community-hero-bg.png");
+}
+
+.my-grow-network-category-card.is-sources {
+  --network-card-artwork: url("public/assets/images/sources-community-hero-bg.png");
+}
+
+.my-grow-network-category-card.is-breeders {
+  --network-card-artwork: url("public/assets/images/breedrs-community-hero-bg.png");
 }
 
 .my-grow-network-category-card::before {
@@ -42559,6 +42575,7 @@ textarea::placeholder {
   position: absolute;
   inset: auto 0 0 0;
   height: 58%;
+  z-index: 0;
   pointer-events: none;
   opacity: 0.38;
   background: radial-gradient(circle, rgba(var(--network-accent-rgb, 156, 247, 91), 0.5) 0 1.2px, transparent 1.8px);
