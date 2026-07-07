@@ -41036,6 +41036,14 @@ textarea::placeholder {
   color: #94d159;
 }
 
+.my-grow-trend-chart path,
+.my-grow-trend-chart polyline,
+.my-grow-trend-chart circle,
+.my-grow-trend-chart .my-grow-trend-final-label,
+.my-grow-trend-chart .my-grow-trend-empty-label {
+  animation: myGrowTrendRefresh 220ms ease both;
+}
+
 .my-grow-trend-chart line {
   stroke: rgba(148, 209, 89, 0.12);
   stroke-width: 1;
@@ -41064,6 +41072,24 @@ textarea::placeholder {
   fill: #ffffff;
   font-size: 14px;
   font-weight: 950;
+}
+
+.my-grow-trend-chart .my-grow-trend-empty-label {
+  fill: rgba(239, 247, 235, 0.82);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+@keyframes myGrowTrendRefresh {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .my-grow-home-two-col {

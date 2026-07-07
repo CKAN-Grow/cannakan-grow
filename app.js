@@ -2310,6 +2310,7 @@ const appState = {
   installPromptMode: "",
   installPromptFeedbackMessage: "",
   myGrowHomeOverflowMenuOpen: false,
+  myGrowTrendTimeframe: "30D",
   gallerySort: "date",
   gallerySortOrder: "desc",
   galleryExploreFilter: "standardized",
@@ -88057,17 +88058,73 @@ function renderGrowNetworkPage() {
   ].filter((session, index, sessions) => (
     session && sessions.findIndex((candidate) => String(candidate?.id || "") === String(session?.id || "")) === index
   )).sort((left, right) => getMyGrowSessionDateValue(right) - getMyGrowSessionDateValue(left));
-  const myGrowTrendRates = ownerCompletedSessions
+  const myGrowTrendTimeframes = [
+    { label: "7D", days: 7 },
+    { label: "30D", days: 30 },
+    { label: "90D", days: 90 },
+    { label: "1Y", days: 365 },
+    { label: "ALL", days: null },
+  ];
+  const selectedMyGrowTrendTimeframe = myGrowTrendTimeframes.some((item) => item.label === appState.myGrowTrendTimeframe)
+    ? appState.myGrowTrendTimeframe
+    : "30D";
+  const selectedMyGrowTrendWindow = myGrowTrendTimeframes.find((item) => item.label === selectedMyGrowTrendTimeframe)
+    || myGrowTrendTimeframes[1];
+  const myGrowTrendDateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  const getMyGrowTrendSessionDate = (session = null) => getProfileActivityDateValue(
+    session?.completedAt || session?.completed_at || session?.updatedAt || session?.createdAt || session?.date || "",
+  );
+  const formatMyGrowTrendAxisDateLabel = (date = null, fallback = "") => (
+    date && !Number.isNaN(date.getTime()) ? myGrowTrendDateFormatter.format(date) : fallback
+  );
+  const allMyGrowTrendPoints = ownerCompletedSessions
     .slice()
     .reverse()
-    .map((session) => getProfileAnalyticsSessionRate(session))
-    .filter((rate) => Number.isFinite(rate))
+    .map((session) => {
+      const rate = getProfileAnalyticsSessionRate(session);
+      const date = getMyGrowTrendSessionDate(session);
+      if (!Number.isFinite(rate) || !date) {
+        return null;
+      }
+      return {
+        value: rate,
+        label: formatMyGrowTrendAxisDateLabel(date),
+        timestamp: date.getTime(),
+      };
+    })
+    .filter(Boolean);
+  const myGrowTrendCutoffTimestamp = Number.isFinite(selectedMyGrowTrendWindow.days)
+    ? Date.now() - (selectedMyGrowTrendWindow.days * 24 * 60 * 60 * 1000)
+    : null;
+  const filteredMyGrowTrendPoints = allMyGrowTrendPoints
+    .filter((point) => !myGrowTrendCutoffTimestamp || point.timestamp >= myGrowTrendCutoffTimestamp)
     .slice(-9);
-  const myGrowTrendValues = myGrowTrendRates.length >= 2
-    ? myGrowTrendRates
-    : [24, 38, 51, 58, 63, 69, 72, 76, Number(ownerAnalytics.averageGerminationRate) || 82];
-  const renderMyGrowTrendChartMarkup = (values = []) => {
-    const safeValues = (values.length ? values : [0]).map((value) => Math.max(0, Math.min(100, Number(value) || 0)));
+  const myGrowTrendFallbackPoints = !allMyGrowTrendPoints.length
+    ? [24, 38, 51, 58, 63, 69, 72, 76, Number(ownerAnalytics.averageGerminationRate) || 82]
+        .map((value, index, values) => ({
+          value,
+          label: index === 0 ? "First" : (index === values.length - 1 ? "Latest" : ""),
+        }))
+    : [];
+  const myGrowTrendValues = filteredMyGrowTrendPoints.length
+    ? filteredMyGrowTrendPoints
+    : myGrowTrendFallbackPoints;
+  const myGrowTrendEmptyMessage = allMyGrowTrendPoints.length && !filteredMyGrowTrendPoints.length
+    ? "Not enough data for this period."
+    : "";
+  const renderMyGrowTrendChartMarkup = (values = [], options = {}) => {
+    const normalizedValues = (values || []).map((point) => {
+      if (point && typeof point === "object") {
+        return {
+          value: Number(point.value),
+          label: String(point.label || "").trim(),
+        };
+      }
+      return {
+        value: Number(point),
+        label: "",
+      };
+    }).filter((point) => Number.isFinite(point.value));
     const width = 760;
     const height = 220;
     const left = 44;
@@ -88076,17 +88133,36 @@ function renderGrowNetworkPage() {
     const bottom = 34;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
+    if (!normalizedValues.length) {
+      return `
+        <svg class="my-grow-trend-chart my-grow-trend-chart-empty" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(options.ariaLabel || "Germination rate trend")}">
+          ${[0, 25, 50, 75, 100].map((tick) => {
+            const y = top + ((100 - tick) / 100) * plotHeight;
+            return `<g><line x1="${left}" y1="${y.toFixed(1)}" x2="${width - right}" y2="${y.toFixed(1)}"></line><text x="8" y="${(y + 4).toFixed(1)}">${tick}%</text></g>`;
+          }).join("")}
+          <text class="my-grow-trend-empty-label" x="${(width / 2).toFixed(1)}" y="${(height / 2).toFixed(1)}" text-anchor="middle">${escapeHtml(options.emptyMessage || "Not enough data for this period.")}</text>
+          <text class="my-grow-trend-date" x="${left}" y="${height - 5}">${escapeHtml(options.startLabel || "Selected")}</text>
+          <text class="my-grow-trend-date" x="${width - right - 54}" y="${height - 5}">${escapeHtml(options.endLabel || "Period")}</text>
+        </svg>
+      `;
+    }
+    const safeValues = normalizedValues.map((point) => ({
+      value: Math.max(0, Math.min(100, Number(point.value) || 0)),
+      label: point.label,
+    }));
     const points = safeValues.map((value, index) => {
-      const x = left + ((safeValues.length === 1 ? 1 : index / (safeValues.length - 1)) * plotWidth);
-      const y = top + ((100 - value) / 100) * plotHeight;
-      return [x, y, value];
+      const x = left + ((safeValues.length === 1 ? 0.5 : index / (safeValues.length - 1)) * plotWidth);
+      const y = top + ((100 - value.value) / 100) * plotHeight;
+      return [x, y, value.value];
     });
     const polyline = points.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
     const areaPath = `M ${points[0][0].toFixed(1)} ${height - bottom} L ${points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L ")} L ${points[points.length - 1][0].toFixed(1)} ${height - bottom} Z`;
     const finalPoint = points[points.length - 1];
     const finalLabel = `${Math.round(finalPoint[2])}%`;
+    const firstDateLabel = options.startLabel || safeValues[0]?.label || "First";
+    const latestDateLabel = options.endLabel || safeValues[safeValues.length - 1]?.label || "Latest";
     return `
-      <svg class="my-grow-trend-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Germination rate trend">
+      <svg class="my-grow-trend-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(options.ariaLabel || "Germination rate trend")}">
         <defs>
           <linearGradient id="my-grow-trend-fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stop-color="#94d159" stop-opacity="0.42"></stop>
@@ -88108,8 +88184,8 @@ function renderGrowNetworkPage() {
         <polyline points="${polyline}" fill="none" filter="url(#my-grow-trend-glow)"></polyline>
         ${points.map(([x, y], index) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${index === points.length - 1 ? "5" : "3.5"}"></circle>`).join("")}
         <text class="my-grow-trend-final-label" x="${Math.max(left + 40, finalPoint[0] - 22).toFixed(1)}" y="${Math.max(top + 16, finalPoint[1] - 13).toFixed(1)}">${escapeHtml(finalLabel)}</text>
-        <text class="my-grow-trend-date" x="${left}" y="${height - 5}">First</text>
-        <text class="my-grow-trend-date" x="${width - right - 44}" y="${height - 5}">Latest</text>
+        <text class="my-grow-trend-date" x="${left}" y="${height - 5}">${escapeHtml(firstDateLabel)}</text>
+        <text class="my-grow-trend-date" x="${width - right - 54}" y="${height - 5}">${escapeHtml(latestDateLabel)}</text>
       </svg>
     `;
   };
@@ -88613,10 +88689,20 @@ function renderGrowNetworkPage() {
               <span class="my-grow-metric-select"><i></i> Germination Rate <span aria-hidden="true">⌄</span></span>
             </div>
             <div class="my-grow-timeframe-tabs" aria-label="Growth trend timeframe">
-              ${["7D", "30D", "90D", "1Y", "ALL"].map((item) => `<button type="button" class="${item === "30D" ? "is-active" : ""}">${escapeHtml(item)}</button>`).join("")}
+              ${myGrowTrendTimeframes.map((item) => `
+                <button
+                  type="button"
+                  class="${item.label === selectedMyGrowTrendTimeframe ? "is-active" : ""}"
+                  aria-pressed="${item.label === selectedMyGrowTrendTimeframe ? "true" : "false"}"
+                  data-my-grow-trend-timeframe="${escapeHtml(item.label)}"
+                >${escapeHtml(item.label)}</button>
+              `).join("")}
             </div>
           </div>
-          ${renderMyGrowTrendChartMarkup(myGrowTrendValues)}
+          ${renderMyGrowTrendChartMarkup(myGrowTrendValues, {
+            ariaLabel: `Germination rate trend for ${selectedMyGrowTrendTimeframe}`,
+            emptyMessage: myGrowTrendEmptyMessage || "Not enough data for this period.",
+          })}
         </section>
 
         <section class="my-grow-home-two-col" aria-label="Active session and vault">
@@ -88782,6 +88868,16 @@ function renderGrowNetworkPage() {
     }
     event.preventDefault();
     await openGrowIdModal();
+  });
+  app.querySelectorAll("[data-my-grow-trend-timeframe]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextTimeframe = String(button.dataset.myGrowTrendTimeframe || "").trim();
+      if (!nextTimeframe || appState.myGrowTrendTimeframe === nextTimeframe) {
+        return;
+      }
+      appState.myGrowTrendTimeframe = nextTimeframe;
+      renderGrowNetworkPage();
+    });
   });
   const myGrowHomeOverflowRoot = app.querySelector("[data-my-grow-home-overflow-root]");
   const myGrowHomeOverflowTrigger = myGrowHomeOverflowRoot?.querySelector("[data-my-grow-home-overflow-trigger]");
