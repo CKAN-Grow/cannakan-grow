@@ -88178,6 +88178,8 @@ function renderGrowNetworkPage() {
       icon: "communityGroup",
       label: "Growers",
       count: followingCount || myGrowNetworkConnectionItems.length,
+      summary: "Active connections",
+      support: "Community growers",
       items: myGrowNetworkConnectionItems,
       placeholder: "Grower",
     },
@@ -88186,6 +88188,8 @@ function renderGrowNetworkPage() {
       icon: "sourceDirectoryBars",
       label: "Sources",
       count: myGrowSourceCount,
+      summary: "Trusted sources",
+      support: "Seed origins you follow",
       items: myGrowNetworkSourceItems,
       placeholder: "Source",
     },
@@ -88194,6 +88198,8 @@ function renderGrowNetworkPage() {
       icon: "sourceTrustStar",
       label: "Breeders",
       count: useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0,
+      summary: "Breeder signals",
+      support: "Genetics connections",
       items: favoriteVarieties.slice(0, 5).map(([label, count]) => ({ label, detail: `${count} variety signal${count === 1 ? "" : "s"}` })),
       placeholder: "Breeder",
     },
@@ -88228,9 +88234,11 @@ function renderGrowNetworkPage() {
             <span class="my-grow-network-category-icon" aria-hidden="true">${renderAppIconSvgMarkup(card.icon)}</span>
             <span>
               <strong>${escapeHtml(card.label)}</strong>
-              <small>${escapeHtml(`${getProfileAnalyticsCountLabel(card.count)} Connection${Number(card.count) === 1 ? "" : "s"}`)}</small>
+              <small class="my-grow-network-category-summary">${escapeHtml(card.summary)}</small>
+              <em>${escapeHtml(getProfileAnalyticsCountLabel(card.count))} ${escapeHtml(Number(card.count) === 1 ? "connection" : "connections")}</em>
             </span>
           </div>
+          <p>${escapeHtml(card.support)}</p>
           ${renderMyGrowNetworkMiniStackMarkup(card.items, card.icon)}
           <span class="my-grow-network-category-chevron" aria-hidden="true">›</span>
         </article>

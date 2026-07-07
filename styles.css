@@ -42549,7 +42549,7 @@ textarea::placeholder {
   border-color: rgba(var(--network-accent-rgb, 156, 247, 91), 0.34);
   background-color: rgba(4, 12, 10, 0.82);
   background-image:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.34), rgba(1, 7, 5, 0.43)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(1, 7, 5, 0.39)),
     radial-gradient(circle at 12% 18%, rgba(var(--network-accent-rgb, 156, 247, 91), 0.16), transparent 46%),
     var(--network-card-artwork, none);
   background-position: center center;
@@ -42603,9 +42603,31 @@ textarea::placeholder {
   font-size: 1.18rem;
 }
 
-.my-grow-network-category-card small {
-  color: rgba(245, 250, 239, 0.82);
+.my-grow-network-category-card .my-grow-network-category-summary {
+  color: var(--network-accent, #a6ff64);
   font-size: 1rem;
+  font-weight: 900;
+}
+
+.my-grow-network-category-card em {
+  display: block;
+  margin-top: 5px;
+  color: rgba(245, 250, 239, 0.7);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 760;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.my-grow-network-category-card p {
+  grid-column: 1 / -1;
+  align-self: end;
+  margin: 0 0 48px 82px;
+  color: rgba(245, 250, 239, 0.82);
+  font-size: 0.84rem;
+  font-weight: 720;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.42);
 }
 
 .my-grow-network-category-card .my-grow-network-mini-stack {
@@ -45037,6 +45059,25 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
     grid-template-columns: minmax(0, 1fr) auto;
     min-height: 116px;
     padding: 16px;
+  }
+
+  .my-grow-network-category-icon {
+    width: 58px;
+    height: 58px;
+  }
+
+  .my-grow-network-category-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .my-grow-network-category-card .my-grow-network-category-summary {
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  .my-grow-network-category-card p {
+    margin: 0 0 48px;
   }
 
   .my-grow-network-category-card .my-grow-network-mini-stack {
