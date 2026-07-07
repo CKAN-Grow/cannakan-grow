@@ -93878,6 +93878,332 @@ function getSessionCommandCenterProgressEvents(session = null) {
   });
 }
 
+function getSessionCommandCenterRawMethodType(session = null) {
+  return String(
+    session?.methodType
+    || session?.method_type
+    || session?.systemType
+    || session?.system_type
+    || "",
+  )
+    .trim()
+    .toUpperCase()
+    .replace(/[+&]+/g, "_")
+    .replace(/[\s-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/[\u0100\u0101]/g, "A");
+}
+
+function getSessionCommandCenterMethodKey(session = null) {
+  const rawMethodType = getSessionCommandCenterRawMethodType(session);
+  if ([
+    "SOAK_PAPER",
+    "SOAK_AND_PAPER_TOWEL",
+    "SOAK_PAPER_TOWEL",
+    "SOAK_PLUS_PAPER_TOWEL",
+    "WATER_SOAK_PAPER_TOWEL",
+  ].includes(rawMethodType)) {
+    return "SOAK_PAPER_TOWEL";
+  }
+  return getSessionMethodType(session);
+}
+
+function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
+  switch (methodKey) {
+    case "KAN":
+      return {
+        title: "KAN",
+        tone: "green",
+        iconName: "method-kan",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "soaking", label: "Soaking", timing: "0-18h" },
+          { key: "move-germination", label: "Move to Germination", timing: "18-24h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "TRA":
+      return {
+        title: "TR\u0101",
+        tone: "green",
+        iconName: "method-tra",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "soaking", label: "Soaking", timing: "0-18h" },
+          { key: "move-germination", label: "Move to Germination", timing: "18-24h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "SOAK_PAPER_TOWEL":
+      return {
+        title: "Soak + Paper Towel",
+        tone: "purple",
+        iconName: "method-soak-paper",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "soaking", label: "Soaking", timing: "0-24h" },
+          { key: "move-paper-towel", label: "Move to Paper Towel", timing: "After soaking" },
+          { key: "check-moisture", label: "Check Moisture", timing: "Every 12h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "PAPER_TOWEL":
+      return {
+        title: "Paper Towel Only",
+        tone: "blue",
+        iconName: "method-paper-towel",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "paper-towel", label: "Paper Towel Phase", timing: "0-48h" },
+          { key: "check-moisture", label: "Check Moisture", timing: "Every 12h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "DIRECT_SOW":
+    case "ROCKWOOL":
+      return {
+        title: "Direct to Soil / Medium",
+        tone: "orange",
+        iconName: "method-direct-sow",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "planted", label: "Planted", timing: "Day 0" },
+          { key: "check-medium", label: "Check Medium", timing: "Daily" },
+          { key: "check-emergence", label: "Check Emergence", timing: "2-7 days" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "WATER_SOAK":
+      return {
+        title: "Soak Only",
+        tone: "cyan",
+        iconName: "method-soak-only",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "soaking", label: "Soaking", timing: "0-24h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "18-48h" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    default:
+      return {
+        title: "Custom Method",
+        tone: "gray",
+        iconName: "method-custom",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "tracking", label: "Tracking", timing: "As needed" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+  }
+}
+
+function findSessionCommandCenterRoadmapStageIndex(stages = [], candidateKeys = []) {
+  const stageIndex = stages.findIndex((stage) => candidateKeys.includes(stage.key));
+  return stageIndex >= 0 ? stageIndex : -1;
+}
+
+function getSessionCommandCenterRoadmapCurrentIndex(session = null, stages = []) {
+  if (!session || !stages.length) {
+    return 0;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  const progressKey = getSessionProgressKeyFromSession(session);
+  if (normalizedStatus === "completed" || progressKey === "completed") {
+    return stages.length - 1;
+  }
+
+  if (progressKey === "first-germinated") {
+    const checkedIndex = findSessionCommandCenterRoadmapStageIndex(stages, ["check-seeds", "check-emergence"]);
+    return checkedIndex >= 0 ? checkedIndex : Math.max(0, stages.length - 2);
+  }
+
+  if (normalizedStatus === "germinating" || progressKey === "germination") {
+    const germinationIndex = findSessionCommandCenterRoadmapStageIndex(stages, [
+      "move-germination",
+      "move-paper-towel",
+      "check-moisture",
+      "check-medium",
+      "check-seeds",
+      "tracking",
+    ]);
+    return germinationIndex >= 0 ? germinationIndex : Math.min(1, stages.length - 1);
+  }
+
+  if (normalizedStatus === "soaking" || normalizedStatus === "active" || progressKey === "soaking") {
+    const activeIndex = findSessionCommandCenterRoadmapStageIndex(stages, [
+      "soaking",
+      "paper-towel",
+      "planted",
+      "tracking",
+    ]);
+    return activeIndex >= 0 ? activeIndex : Math.min(1, stages.length - 1);
+  }
+
+  return 0;
+}
+
+function getSessionCommandCenterRoadmapState(session = null) {
+  const methodKey = getSessionCommandCenterMethodKey(session);
+  const template = getSessionCommandCenterMethodRoadmapTemplate(methodKey);
+  const currentIndex = getSessionCommandCenterRoadmapCurrentIndex(session, template.stages);
+  const isCompleted = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "") === "completed"
+    || getSessionProgressKeyFromSession(session) === "completed";
+
+  return {
+    ...template,
+    currentIndex,
+    isCompleted,
+    stages: template.stages.map((stage, index) => ({
+      ...stage,
+      isComplete: isCompleted || index < currentIndex,
+      isCurrent: isCompleted ? index === template.stages.length - 1 : index === currentIndex,
+      isFuture: !isCompleted && index > currentIndex,
+    })),
+  };
+}
+
+function formatSessionCommandCenterStartedAgo(session = null) {
+  const startedAt = getEffectiveSessionTimerStartAt(session);
+  if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
+    return session ? "Started recently" : "Not started";
+  }
+
+  const elapsedLabel = formatSpotlightElapsed(startedAt);
+  if (!elapsedLabel || elapsedLabel === "--") {
+    return "Started recently";
+  }
+  if (elapsedLabel.toLowerCase().startsWith("starts in")) {
+    return elapsedLabel;
+  }
+  return `Started ${elapsedLabel} ago`;
+}
+
+function normalizeSessionCommandCenterNextUpText(value = "") {
+  return String(value || "")
+    .replace(/^next step:\s*/i, "")
+    .trim();
+}
+
+function getSessionCommandCenterNextReminderMeta(session = null) {
+  if (!session) {
+    return null;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  const schedule = STAGE_REMINDER_SCHEDULES[normalizedStatus];
+  if (!schedule?.length) {
+    return null;
+  }
+
+  const stageStart = getStageStartDateTime(
+    session.date,
+    session.time,
+    normalizedStatus,
+    session.germinationStartedAt || session.germination_started_at || "",
+    session.timerStartAt || session.timer_start_at || "",
+    getSessionStageReminderOptions(session),
+  );
+  if (!(stageStart instanceof Date) || Number.isNaN(stageStart.getTime())) {
+    return null;
+  }
+
+  const elapsedMs = Math.max(0, Date.now() - stageStart.getTime());
+  const elapsedHours = elapsedMs / (60 * 60 * 1000);
+  const activeReminder = getActiveStageReminder(
+    session.date,
+    session.time,
+    normalizedStatus,
+    session.germinationStartedAt || session.germination_started_at || "",
+    session.timerStartAt || session.timer_start_at || "",
+    getSessionStageReminderOptions(session),
+  );
+
+  if (activeReminder) {
+    return {
+      label: normalizeSessionCommandCenterNextUpText(activeReminder.actionText || activeReminder.title || activeReminder.message || "Review this session"),
+      countdown: "Due now",
+    };
+  }
+
+  const nextReminder = [...schedule]
+    .filter((reminder) => elapsedHours < Math.max(0, Number(reminder?.hours) || 0))
+    .sort((left, right) => (Number(left?.hours) || 0) - (Number(right?.hours) || 0))[0] || null;
+  if (!nextReminder) {
+    return null;
+  }
+
+  const nextReminderMs = Math.max(0, ((Number(nextReminder.hours) || 0) * 60 * 60 * 1000) - elapsedMs);
+  return {
+    label: normalizeSessionCommandCenterNextUpText(nextReminder.actionText || nextReminder.title || nextReminder.message || "Review this session"),
+    countdown: `in ${formatDurationMsShort(nextReminderMs) || "soon"}`,
+  };
+}
+
+function getSessionCommandCenterResultStatus(session = null) {
+  if (!session) {
+    return "--";
+  }
+
+  const totals = getSessionSeedTotals(session);
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  if (totals.totalSeeds <= 0) {
+    return normalizedStatus === "completed" ? "Completed" : "Pending";
+  }
+
+  if (normalizedStatus === "completed") {
+    return `${totals.totalGerminated}/${totals.totalSeeds} germinated (${totals.percentage || 0}%)`;
+  }
+
+  if (totals.totalAccounted > 0) {
+    return `${totals.totalAccounted}/${totals.totalSeeds} accounted`;
+  }
+
+  return "Pending";
+}
+
+function getSessionCommandCenterActionMeta(session = null, roadmap = null, options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  if (!session) {
+    return {
+      currentTitle: "No active session",
+      currentTiming: requiresSignIn ? "Sign in to begin" : "Start a session to track progress",
+      nextTitle: requiresSignIn ? "Sign in to start tracking" : "Start a session",
+      nextTiming: "Roadmap appears after setup",
+    };
+  }
+
+  const stages = roadmap?.stages || [];
+  const currentStage = stages.find((stage) => stage.isCurrent) || stages[0] || null;
+  const nextStage = stages.find((stage) => stage.isFuture) || null;
+  const isCompleted = Boolean(roadmap?.isCompleted);
+  const timingState = getSessionTimingState(session);
+
+  if (isCompleted) {
+    const durationLabel = formatDurationBetween(timingState.totalStartedAt, timingState.completedAt);
+    return {
+      currentTitle: currentStage?.label || "Complete",
+      currentTiming: durationLabel ? `Completed in ${durationLabel}` : "Session complete",
+      nextTitle: getSessionCommandCenterResultStatus(session),
+      nextTiming: "Final results",
+    };
+  }
+
+  const reminderMeta = getSessionCommandCenterNextReminderMeta(session);
+  return {
+    currentTitle: currentStage?.label || "Tracking",
+    currentTiming: currentStage?.timing || "In progress",
+    nextTitle: reminderMeta?.label || nextStage?.label || "Complete when ready",
+    nextTiming: reminderMeta?.countdown || nextStage?.timing || "No reminder scheduled",
+  };
+}
+
 function renderCommandCenterIconMarkup(iconName, className = "") {
   const classes = [
     "command-icon",
@@ -93964,6 +94290,54 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
           </svg>
         </span>
       `;
+    case "method-kan":
+    case "method-tra": {
+      const methodIcon = getMethodHeaderIconConfig(iconName === "method-tra" ? "TRA" : "KAN");
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <img class="command-icon-image command-icon-image--method" src="${escapeHtml(methodIcon.src)}" alt="" loading="lazy" decoding="async" draggable="false">
+        </span>
+      `;
+    }
+    case "method-soak-paper":
+    case "method-soak-only":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 3.5c3.4 4 5.1 7 5.1 9.1 0 3-2.2 5.4-5.1 5.4s-5.1-2.4-5.1-5.4c0-2.1 1.7-5.1 5.1-9.1Z" stroke-linejoin="round"></path>
+            <path d="M9.2 12.8c.2 1.5 1.2 2.4 2.7 2.6" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "method-paper-towel":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <rect x="6" y="4.5" width="12" height="15" rx="2" stroke-linejoin="round"></rect>
+            <path d="M9 8h6M9 11.5h6M9 15h4" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "method-direct-sow":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 18v-6" stroke-linecap="round"></path>
+            <path d="M12 12.2c0-2.4 1.9-4 4.6-4 0 2.5-1.8 4-4.6 4Z" stroke-linejoin="round"></path>
+            <path d="M12 14.1c0-2-1.6-3.3-4-3.3 0 2.1 1.5 3.3 4 3.3Z" stroke-linejoin="round"></path>
+            <path d="M5.5 19h13" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "method-custom":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <rect x="5" y="5" width="14" height="14" rx="3" stroke-linejoin="round"></rect>
+            <path d="m8.7 12.2 2.2 2.2 4.7-5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
     default:
       return `
         <span class="${classes}" aria-hidden="true">
@@ -93977,65 +94351,76 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
 
 function renderSessionCommandCenterProgressMarkup(session = null, options = {}) {
   const requiresSignIn = Boolean(options.requiresSignIn);
-  const events = getSessionCommandCenterProgressEvents(session);
-  const rowMarkup = events.map((event, index) => {
-    const nextEvent = events[index + 1] || null;
+  const roadmap = getSessionCommandCenterRoadmapState(session);
+  const actionMeta = getSessionCommandCenterActionMeta(session, roadmap, { requiresSignIn });
+  const rowMarkup = roadmap.stages.map((stage, index) => {
+    const nextStage = roadmap.stages[index + 1] || null;
     const connectorIsActive = Boolean(
-      nextEvent
-      && (event.isComplete || nextEvent.isComplete || nextEvent.isCurrent)
+      nextStage
+      && (stage.isComplete || nextStage.isComplete || nextStage.isCurrent)
     );
 
     return `
-      <article class="session-command-stage stage-item session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
-        ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "first-germinated" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "first-germinated" : event.key}`)}
-        <strong>${escapeHtml(event.displayLabel)}</strong>
-        <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
+      <article class="session-command-roadmap-stage session-command-stage--${escapeHtml(roadmap.tone)} ${stage.isComplete ? "is-complete" : ""} ${stage.isCurrent ? "is-current" : ""} ${stage.isFuture ? "is-future" : ""}" role="listitem">
+        <span class="session-command-roadmap-marker" aria-hidden="true">${stage.isComplete ? "&#10003;" : escapeHtml(String(index + 1))}</span>
+        <strong>${escapeHtml(stage.label)}</strong>
       </article>
-      ${nextEvent ? `<div class="stage-connector${connectorIsActive ? " stage-connector--active" : ""}" aria-hidden="true"></div>` : ""}
+      ${nextStage ? `<div class="session-command-roadmap-connector${connectorIsActive ? " is-active" : ""}" aria-hidden="true"></div>` : ""}
     `;
   }).join("");
 
   return `
-    <div class="session-command-stage-grid stage-progress-row">
-      ${rowMarkup}
+    <div class="session-command-roadmap-card session-command-roadmap-card--${escapeHtml(roadmap.tone)}">
+      <header class="session-command-roadmap-header">
+        ${renderCommandCenterIconMarkup(roadmap.iconName, `command-icon--method command-icon--method-${roadmap.tone}`)}
+        <div class="session-command-roadmap-title">
+          <h5>${escapeHtml(roadmap.title)}</h5>
+          <p>${escapeHtml(formatSessionCommandCenterStartedAgo(session))}</p>
+        </div>
+      </header>
+      <div class="session-command-roadmap-row" role="list" aria-label="${escapeHtml(`${roadmap.title} roadmap`)}">
+        ${rowMarkup}
+      </div>
+      <div class="session-command-action-grid">
+        <article class="session-command-action-panel">
+          <span>Current Action</span>
+          <strong>${escapeHtml(actionMeta.currentTitle)}</strong>
+          <p>${escapeHtml(actionMeta.currentTiming)}</p>
+        </article>
+        <article class="session-command-action-panel">
+          <span>Next Up</span>
+          <strong>${escapeHtml(actionMeta.nextTitle)}</strong>
+          <p>${escapeHtml(actionMeta.nextTiming)}</p>
+        </article>
+      </div>
     </div>
   `;
 }
 
 function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
   const requiresSignIn = Boolean(options.requiresSignIn);
-  const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
-  const totalsForSession = session ? getSessionSeedTotals(session) : { totalSeeds: 0, totalPlanted: 0 };
-  const stageStart = session
-    ? getStageStartDateTime(
-      session.date,
-      session.time,
-      normalizedStage,
-      session.germinationStartedAt || "",
-      session.timerStartAt || "",
-      getSessionStageReminderOptions(session),
-    )
-    : null;
-  const rateValue = session && totalsForSession.totalSeeds > 0
-    ? `${Math.round((totalsForSession.totalPlanted / totalsForSession.totalSeeds) * 100)}%`
+  const totalsForSession = session ? getSessionSeedTotals(session) : { totalSeeds: 0 };
+  const timingState = session ? getSessionTimingState(session) : null;
+  const elapsedValue = session
+    ? formatDurationMsShort(getElapsedDurationMs(timingState?.totalStartedAt, timingState?.totalEndedAt)) || formatSpotlightElapsed(timingState?.totalStartedAt)
     : "--";
   const statCards = [
     {
-      label: "Stage Timer",
-      value: session ? formatSpotlightElapsed(stageStart) : "--",
-      caption: requiresSignIn ? "Sign in to track" : "Elapsed",
+      label: "Elapsed",
+      value: elapsedValue,
+      caption: requiresSignIn ? "Sign in to track" : "Session time",
       tone: "blue",
     },
     {
-      label: "Seeds Progress",
-      value: session ? `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds} seeds` : "--",
-      caption: "Planted",
+      label: "Seeds Started",
+      value: session ? `${totalsForSession.totalSeeds} seeds` : "--",
+      caption: "Started",
       tone: "green",
     },
     {
-      label: "Germination Rate",
-      value: rateValue,
-      caption: "Current rate",
+      label: "Results",
+      value: getSessionCommandCenterResultStatus(session),
+      caption: "Status",
       tone: "orange",
     },
   ];
@@ -94048,7 +94433,6 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
     </article>
   `).join("");
 }
-
 function renderSessionCommandCenterFilterPaperSupplyMarkup() {
   const supply = getFilterPaperSupplyDisplayState();
   return `
