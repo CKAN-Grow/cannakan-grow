@@ -88136,9 +88136,9 @@ function renderGrowNetworkPage() {
     },
   ];
   const myGrowNetworkCounts = [
-    { icon: "members", label: "Growers", value: followingCount },
-    { icon: "sourceDirectoryBars", label: "Sources", value: myGrowSourceCount },
-    { icon: "seedSprout", label: "Breeders", value: 0 },
+    { key: "growers", icon: "members", label: "Growers", value: followingCount },
+    { key: "sources", icon: "sourceDirectoryBars", label: "Sources", value: myGrowSourceCount },
+    { key: "breeders", icon: "seedSprout", label: "Breeders", value: useMockPresentation ? Math.max(2, favoriteVarieties.length) : 0 },
   ];
   const myGrowNetworkConnectionItems = (useMockPresentation ? mockMembers : followingEntries).slice(0, 6).map((entry) => {
     const memberId = entry.memberId || entry.id || "";
@@ -88153,6 +88153,9 @@ function renderGrowNetworkPage() {
       displayName,
       avatarUrl,
       detail,
+      typeKey: "grower",
+      typeLabel: "Grower",
+      timeLabel: entry.followedAt ? formatGrowNetworkNotificationRelativeTime(entry.followedAt, new Date().toISOString()) : "",
       href: getPublicMemberProfileRoute(memberId || entry.id || ""),
     };
   });
@@ -88225,6 +88228,7 @@ function renderGrowNetworkPage() {
             </span>
           </div>
           ${renderMyGrowNetworkMiniStackMarkup(card.items, card.icon)}
+          <span class="my-grow-network-category-chevron" aria-hidden="true">›</span>
         </article>
       `).join("")}
     </div>
@@ -88255,28 +88259,51 @@ function renderGrowNetworkPage() {
     </aside>
   `;
   const renderMyGrowNetworkRecentConnectionsMarkup = () => {
-    const recentCards = [
-      ...myGrowNetworkConnectionItems.map((connection) => ({
-        ...connection,
-        typeLabel: connection.detail || "Grow community",
-        href: connection.href || "#network",
-      })),
-      ...myGrowNetworkSourceItems.map((source) => ({
-        id: `source-${source.label}`,
-        displayName: source.label,
-        avatarUrl: "",
-        detail: source.detail || "Trusted source",
-        typeLabel: "Trusted Source",
-        href: "#explore",
-      })),
-      ...(myGrowNetworkCategoryCards.find((card) => card.key === "breeders")?.items?.map((breeder) => ({
+    const recentGrowerCards = myGrowNetworkConnectionItems.map((connection) => ({
+      ...connection,
+      typeKey: "grower",
+      typeLabel: "Grower",
+      href: connection.href || "#network",
+    }));
+    const recentSourceCards = myGrowNetworkSourceItems.map((source) => ({
+      id: `source-${source.label}`,
+      displayName: source.label,
+      avatarUrl: "",
+      detail: source.detail || "Trusted source",
+      typeKey: "source",
+      typeLabel: "Source",
+      timeLabel: "",
+      href: "#network",
+    }));
+    const breederNetworkCard = myGrowNetworkCategoryCards.find((card) => card.key === "breeders") || null;
+    const recentBreederCards = breederNetworkCard?.items?.length
+      ? breederNetworkCard.items.map((breeder) => ({
         id: `breeder-${breeder.label}`,
         displayName: breeder.label,
         avatarUrl: "",
         detail: breeder.detail || "Breeder signal",
+        typeKey: "breeder",
         typeLabel: "Breeder",
-        href: "#explore",
-      })) || []),
+        timeLabel: "",
+        href: "#network",
+      }))
+      : (Number(breederNetworkCard?.count || 0) > 0 ? [{
+        id: "breeder-signals",
+        displayName: "Breeder Signals",
+        avatarUrl: "",
+        detail: "Breeder signal",
+        typeKey: "breeder",
+        typeLabel: "Breeder",
+        timeLabel: "",
+        href: "#network",
+      }] : []);
+    const recentCards = [
+      ...recentGrowerCards.slice(0, 3),
+      ...recentSourceCards.slice(0, 1),
+      ...recentBreederCards.slice(0, 1),
+      ...recentGrowerCards.slice(3),
+      ...recentSourceCards.slice(1),
+      ...recentBreederCards.slice(1),
     ].slice(0, 5);
 
     if (!recentCards.length) {
@@ -88285,12 +88312,15 @@ function renderGrowNetworkPage() {
     return `
       <div class="my-grow-network-connection-row" aria-label="Recent connections">
         ${recentCards.map((connection) => `
-          <a class="my-grow-network-connection-card" href="${escapeHtml(connection.href || "#network")}">
+          <a class="my-grow-network-connection-card is-${escapeHtml(connection.typeKey || "grower")}" href="${escapeHtml(connection.href || "#network")}">
             ${connection.avatarUrl
               ? renderPublicMemberAvatarMarkup(connection.displayName, connection.avatarUrl, "my-grow-network-connection-avatar")
               : `<span class="my-grow-network-connection-avatar is-fallback">${escapeHtml(getPublicMemberInitialsLabel(connection.displayName))}</span>`}
-            <strong>${escapeHtml(connection.displayName)}</strong>
-            <small>${escapeHtml(connection.typeLabel || connection.detail || "Connection")}</small>
+            <span class="my-grow-network-connection-copy">
+              <strong>${escapeHtml(connection.displayName)}</strong>
+              <small>${escapeHtml(connection.typeLabel || "Connection")}</small>
+            </span>
+            ${connection.timeLabel ? `<time>${escapeHtml(connection.timeLabel)}</time>` : ""}
             <em>Connected</em>
           </a>
         `).join("")}
@@ -88507,19 +88537,23 @@ function renderGrowNetworkPage() {
 
         <section class="my-grow-home-panel my-grow-network-preview" aria-label="My Grow Network">
           <div class="my-grow-section-head">
-            <div>
-              <h3>My Grow Network</h3>
-              <p>Your growers. Your sources. Your breeders.</p>
+            <div class="my-grow-network-title-lockup">
+              <span class="my-grow-network-title-icon" aria-hidden="true">${renderAppIconSvgMarkup("growNetworkNodes")}</span>
+              <div>
+                <h3>My Grow Network</h3>
+                <p>Your growers. Your sources. Your breeders.</p>
+              </div>
             </div>
             <a class="button button-secondary" href="#network">View Network <span aria-hidden="true">→</span></a>
           </div>
           <div class="my-grow-network-counts">
             ${myGrowNetworkCounts.map((item) => `
-              <article>
+              <article class="is-${escapeHtml(item.key)}">
                 <span aria-hidden="true">${renderAppIconSvgMarkup(item.icon)}</span>
                 <div>
                   <strong>${escapeHtml(item.label)}</strong>
                   <small>${escapeHtml(getProfileAnalyticsCountLabel(item.value))}</small>
+                  <em>Connected</em>
                 </div>
               </article>
             `).join("")}
@@ -88527,22 +88561,42 @@ function renderGrowNetworkPage() {
           <div class="my-grow-network-stack" aria-label="My Grow Network preview">
             <section class="my-grow-network-overview" aria-label="Network Overview">
               <div class="my-grow-network-detail-head">
+                <span class="my-grow-network-panel-icon" aria-hidden="true">${renderAppIconSvgMarkup("growNetworkNodes")}</span>
                 <div>
-                  <h4>Network Overview</h4>
-                  <p>Growers, sources, and breeder signals connected to your Grow identity.</p>
+                  <h4>Your Grow Network Overview</h4>
+                  <p>You’re connected with growers, trusted sources, and breeder signals.</p>
                 </div>
               </div>
               ${renderMyGrowNetworkCategoryCardsMarkup()}
             </section>
             <section class="my-grow-network-recent-card" aria-label="Recent Connections">
               <div class="my-grow-network-detail-head">
+                <span class="my-grow-network-panel-icon" aria-hidden="true">${renderAppIconSvgMarkup("clock")}</span>
                 <div>
                   <h4>Recent Connections</h4>
-                  <p>Small signals from your network.</p>
+                  <p>Growers, sources, and breeders recently connected to your Grow identity.</p>
                 </div>
                 <a href="#network">View all <span aria-hidden="true">→</span></a>
               </div>
               ${renderMyGrowNetworkRecentConnectionsMarkup()}
+            </section>
+            <section class="my-grow-network-cta-panel" aria-label="Grow Network actions">
+              <div class="my-grow-network-cta-primary">
+                <span class="my-grow-network-cta-icon" aria-hidden="true">${renderAppIconSvgMarkup("members")}</span>
+                <div>
+                  <h4>Find more connections</h4>
+                  <p>Grow your network and share knowledge.</p>
+                </div>
+                <a class="button button-secondary" href="#network">Explore Network <span aria-hidden="true">→</span></a>
+              </div>
+              <div class="my-grow-network-cta-secondary">
+                <span class="my-grow-network-cta-icon" aria-hidden="true">${renderAppIconSvgMarkup("sourceTrustStar")}</span>
+                <div>
+                  <h4>Stronger together.</h4>
+                  <p>The more you connect, the more we all grow.</p>
+                </div>
+                <span class="my-grow-network-cta-mark" aria-hidden="true">${renderAppIconSvgMarkup("seedSprout")}</span>
+              </div>
             </section>
           </div>
         </section>
