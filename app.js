@@ -93865,6 +93865,68 @@ function getSessionEngineVisualTimelineNextLabel(engineState = null) {
   return nextStep ? `Next: ${nextStep.label}` : "Timeline ready";
 }
 
+function getSessionEngineVisualTimelineIconKey(step = {}, status = {}) {
+  if (status.key === "complete") {
+    return "check";
+  }
+  if (status.key === "overdue") {
+    return "warning";
+  }
+
+  const stepKey = String(step.key || "").trim();
+  if (["soaking", "soak"].includes(stepKey)) {
+    return "drop";
+  }
+  if (["move-germination", "ready-transfer"].includes(stepKey)) {
+    return "transfer";
+  }
+  if (["paper-towel"].includes(stepKey)) {
+    return "paper";
+  }
+  if (["prep-cubes"].includes(stepKey)) {
+    return "cube";
+  }
+  if (["prep-plugs", "plant-seeds", "planted", "germination", "monitor", "keep-moist"].includes(stepKey)) {
+    return "sprout";
+  }
+  if (["first-check", "check-window", "check-seeds", "check-sprouts", "emergence"].includes(stepKey)) {
+    return "inspect";
+  }
+  if (["complete"].includes(stepKey)) {
+    return "flag";
+  }
+  if (["started"].includes(stepKey)) {
+    return "start";
+  }
+  return "number";
+}
+
+function renderSessionEngineVisualTimelineIconMarkup(step = {}, index = 0, status = {}) {
+  const iconKey = getSessionEngineVisualTimelineIconKey(step, status);
+  const iconMarkupByKey = {
+    check: '<path d="M5 12.3 9.2 16.4 19 7" />',
+    warning: '<path d="M12 4 21 19H3L12 4Z" /><path d="M12 9v4" /><path d="M12 16h.01" />',
+    drop: '<path d="M12 3.8c3.8 4.5 5.7 7.8 5.7 10.1a5.7 5.7 0 0 1-11.4 0C6.3 11.6 8.2 8.3 12 3.8Z" />',
+    transfer: '<path d="M5 8h11.5" /><path d="m13 4 4 4-4 4" /><path d="M19 16H7.5" /><path d="m11 12-4 4 4 4" />',
+    paper: '<rect x="7" y="4" width="10" height="16" rx="2" /><path d="M10 8h4M10 11.5h4M10 15h3" />',
+    cube: '<path d="m12 3.8 7 4v8.4l-7 4-7-4V7.8l7-4Z" /><path d="M5.4 8.1 12 12l6.6-3.9" /><path d="M12 12v7.6" />',
+    sprout: '<path d="M12 19v-6" /><path d="M12 13c0-3 2.3-5 5.8-5 0 3.1-2.1 5-5.8 5Z" /><path d="M12 15c0-2.4-1.9-4-4.8-4 0 2.6 1.8 4 4.8 4Z" />',
+    inspect: '<circle cx="10.5" cy="10.5" r="4.8" /><path d="m14.2 14.2 4.3 4.3" /><path d="M10.5 8v5" /><path d="M8 10.5h5" />',
+    flag: '<path d="M6 20V5" /><path d="M6 5h10l-1.5 3L16 11H6" />',
+    start: '<circle cx="12" cy="12" r="6.5" /><path d="M12 8v4l3 2" />',
+  };
+
+  if (iconKey === "number") {
+    return `<span class="session-engine-visual-timeline-number">${escapeHtml(String(index + 1))}</span>`;
+  }
+
+  return `
+    <svg class="session-engine-visual-timeline-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      ${iconMarkupByKey[iconKey] || iconMarkupByKey.start}
+    </svg>
+  `;
+}
+
 function renderSessionEngineVisualTimelineMarkup(engineState = null) {
   const steps = Array.isArray(engineState?.timelineSteps)
     ? engineState.timelineSteps.filter((step) => String(step?.label || "").trim())
@@ -93885,17 +93947,18 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null) {
       style="--visual-timeline-accent: ${escapeHtml(theme.accent)}; --visual-timeline-accent-soft: ${escapeHtml(theme.accentSoft)}; --visual-timeline-glow: ${escapeHtml(theme.glow)}; --visual-timeline-step-count: ${stepCount};"
     >
       <div class="session-engine-visual-timeline-head">
-        <p class="eyebrow">Visual Timeline</p>
+        <p class="eyebrow">Session Timeline</p>
         <span class="session-engine-visual-timeline-next">${escapeHtml(getSessionEngineVisualTimelineNextLabel(engineState))}</span>
       </div>
       <div class="session-engine-visual-timeline-scroll" tabindex="0" aria-label="${escapeHtml(`${methodName} visual timeline`)}">
         <ol class="session-engine-visual-timeline-list">
-          ${steps.map((step) => {
+          ${steps.map((step, index) => {
             const status = getSessionEngineVisualTimelineStatus(step, engineState);
             return `
               <li class="session-engine-visual-timeline-step is-${escapeHtml(status.key)}">
                 <span class="session-engine-visual-timeline-marker">
-                  ${renderCommandCenterIconMarkup(step.iconName || "stage-soaking", "session-engine-visual-timeline-icon")}
+                  <span class="session-engine-visual-timeline-index">${escapeHtml(String(index + 1))}</span>
+                  ${renderSessionEngineVisualTimelineIconMarkup(step, index, status)}
                 </span>
                 <strong>${escapeHtml(step.label || "Step")}</strong>
                 <small>${escapeHtml(step.timing || "")}</small>

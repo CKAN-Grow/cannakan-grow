@@ -51484,13 +51484,12 @@ body.modal-open {
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "heading sequence"
-    "visual-timeline visual-timeline"
     "setup-tools setup-tools";
   gap: 14px 18px;
 }
 
 .session-workspace-form #partition-chart-shell > .partition-work-header {
-  padding: 18px;
+  padding: 20px 18px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
   background:
     radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.08), transparent 30%),
@@ -51527,7 +51526,6 @@ body.modal-open {
 }
 
 .session-workspace-form .session-engine-visual-timeline {
-  grid-area: visual-timeline;
   min-width: 0;
 }
 
@@ -51536,18 +51534,18 @@ body.modal-open {
   --visual-timeline-accent-soft: rgba(148, 209, 89, 0.16);
   --visual-timeline-glow: rgba(148, 209, 89, 0.28);
   display: grid;
-  gap: 12px;
-  padding: 13px 14px;
+  gap: 14px;
+  padding: 16px 18px 18px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--visual-timeline-accent) 22%, rgba(255, 255, 255, 0.08));
-  border-radius: 8px;
+  border-radius: 18px;
   background:
     radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--visual-timeline-accent) 12%, transparent), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
-    rgba(7, 13, 9, 0.72);
+    rgba(7, 13, 9, 0.82);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    0 16px 32px rgba(0, 0, 0, 0.18);
+    0 18px 34px rgba(0, 0, 0, 0.22);
 }
 
 .session-engine-visual-timeline-card.is-overdue {
@@ -51638,8 +51636,8 @@ body.modal-open {
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   border: 2px solid rgba(255, 255, 255, 0.26);
   border-radius: 999px;
   background: rgba(10, 14, 12, 0.94);
@@ -51649,21 +51647,38 @@ body.modal-open {
     0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-.session-engine-visual-timeline-icon {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
+.session-engine-visual-timeline-index {
+  position: absolute;
+  top: -12px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  background: rgba(9, 14, 11, 0.96);
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1;
 }
 
-.session-engine-visual-timeline-icon.command-icon-tile {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+.session-engine-visual-timeline-svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.session-engine-visual-timeline-icon .command-icon-image {
-  width: 24px;
-  height: 24px;
+.session-engine-visual-timeline-number {
+  color: currentColor;
+  font-size: 0.92rem;
+  font-weight: 900;
 }
 
 .session-engine-visual-timeline-step strong {
