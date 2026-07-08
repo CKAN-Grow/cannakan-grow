@@ -49037,6 +49037,13 @@ function promptFilterPaperSetupBeforeNewSession() {
   });
 }
 
+function dismissFilterPaperSetupBeforeNewSession() {
+  const modal = document.querySelector("#filter-paper-setup-modal");
+  if (modal instanceof HTMLDialogElement && modal.open) {
+    modal.close();
+  }
+}
+
 function promptFilterPaperPreSessionWarning() {
   if (!hasFilterPaperInventoryBeenSet() || getFilterPaperInventory().count > 0) {
     return Promise.resolve(true);
@@ -81295,13 +81302,7 @@ function startNewSessionFromSeedVaultEntry(entryId = "") {
   appState.newSessionSeedVaultActivePartitionId = 1;
   appState.newSessionReturnHash = "#seed-vault";
 
-  void promptFilterPaperSetupBeforeNewSession().then((canProceed) => {
-    if (!canProceed) {
-      clearNewSessionSeedVaultStarterIntent();
-      return;
-    }
-    openNewSessionSystemModal();
-  });
+  openNewSessionSystemModal();
 }
 
 function getActiveSeedVaultEntriesForSessionPicker() {
@@ -83197,6 +83198,21 @@ function renderSessionForm(initialSystemType = "KAN") {
     applyStageEditingMode(form, sessionStatusField.value);
   }
 
+  function maybePromptKanFilterPaperSetup(methodType = "") {
+    const normalizedMethod = normalizeMethodType(methodType);
+    if (normalizedMethod !== "KAN") {
+      delete form.dataset.filterPaperSetupPromptedForKan;
+      dismissFilterPaperSetupBeforeNewSession();
+      return;
+    }
+    if (form.dataset.filterPaperSetupPromptedForKan === "true" || hasFilterPaperInventoryBeenSet()) {
+      return;
+    }
+
+    form.dataset.filterPaperSetupPromptedForKan = "true";
+    void promptFilterPaperSetupBeforeNewSession();
+  }
+
   function closePaperTowelSetupModal() {
     document.querySelector("#paper-towel-setup-modal-overlay")?.remove();
     document.body.classList.remove("modal-open");
@@ -83376,6 +83392,9 @@ function renderSessionForm(initialSystemType = "KAN") {
     });
   };
   renderFormSuppliesCard();
+  queueMicrotask(() => {
+    maybePromptKanFilterPaperSetup(systemTypeField.value);
+  });
   updateMethodTypeLayout(form, systemTypeField.value);
   updateMethodTypeLayout(app, systemTypeField.value);
   updateSessionStatusReminder(
@@ -83696,6 +83715,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     );
     refreshNewSessionTimelineViews();
     renderFormSuppliesCard();
+    maybePromptKanFilterPaperSetup(nextMethod);
     updateMethodTypeLayout(form, nextMethod);
   });
     addSeedRowButton?.addEventListener("click", () => {
@@ -83964,7 +83984,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   const existingSessionsBeforeSave = getSessions();
 
     try {
-      const canProceedWithoutFilterPapers = await promptFilterPaperPreSessionWarning();
+      const canProceedWithoutFilterPapers = selectedMethod.supportsFilterInventory
+        ? await promptFilterPaperPreSessionWarning()
+        : true;
       if (!canProceedWithoutFilterPapers) {
         return null;
       }
@@ -98333,12 +98355,7 @@ document.addEventListener("click", (event) => {
   if (newSessionTrigger instanceof HTMLAnchorElement) {
     event.preventDefault();
     appState.newSessionReturnHash = window.location.hash || "#home";
-    void promptFilterPaperSetupBeforeNewSession().then((canProceed) => {
-      if (!canProceed) {
-        return;
-      }
-      openNewSessionSystemModal();
-    });
+    openNewSessionSystemModal();
     return;
   }
 
