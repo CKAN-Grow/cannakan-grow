@@ -1,4 +1,5 @@
 const webpush = require("web-push");
+const SessionEngine = require("../src/session-engine");
 
 const GROW_SESSIONS_TABLE = "grow_sessions";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
@@ -22,106 +23,7 @@ const SESSION_LIFECYCLE_STALE_THRESHOLDS = Object.freeze({
   futureTimestampGraceMinutes: 10,
 });
 
-const GROW_REMINDER_RULES = Object.freeze([
-  Object.freeze({
-    key: "soaking-check-18h",
-    stage: "soaking",
-    category: "soaking-reminder",
-    sendAfterHours: 18,
-    maxHours: null,
-    level: "guidance",
-    title: "Time to check soaking progress",
-    body: "Time to check soaking progress.",
-    skipReasonDisabled: "Soaking reminders are disabled for this user.",
-    urgency: "normal",
-    actions: Object.freeze([
-      Object.freeze({ action: "open-session", title: "Open Session", routeMode: "session" }),
-      Object.freeze({ action: "review-session", title: "Review Session", routeMode: "session" }),
-    ]),
-  }),
-  Object.freeze({
-    key: "soaking-warning-24h",
-    stage: "soaking",
-    category: "soaking-reminder",
-    sendAfterHours: 24,
-    maxHours: null,
-    level: "critical",
-    title: "Urgent soaking warning",
-    body: "Your seeds should not remain soaking much longer. Move them into germination to avoid drowning risk.",
-    skipReasonDisabled: "Soaking reminders are disabled for this user.",
-    urgency: "high",
-    actions: Object.freeze([
-      Object.freeze({ action: "open-session", title: "Open Session", routeMode: "session" }),
-      Object.freeze({ action: "review-session", title: "Review Stage", routeMode: "session" }),
-    ]),
-  }),
-  Object.freeze({
-    key: "germination-check-window",
-    stage: "germinating",
-    category: "germination-reminder",
-    sendAfterHours: 18,
-    maxHours: 30,
-    level: "guidance",
-    title: "Time to check germination progress",
-    body: "Time to check germination progress.",
-    skipReasonDisabled: "Germination reminders are disabled for this user.",
-    urgency: "normal",
-    actions: Object.freeze([
-      Object.freeze({ action: "open-session", title: "Open Session", routeMode: "session" }),
-      Object.freeze({ action: "review-results", title: "Update Results", routeMode: "session" }),
-    ]),
-  }),
-  Object.freeze({
-    key: "completion-reminder-42h",
-    stage: "germinating",
-    category: "germination-reminder",
-    sendAfterHours: 42,
-    maxHours: null,
-    level: "guidance",
-    title: "Review your session when ready",
-    body: "Review your session and mark completed when ready.",
-    skipReasonDisabled: "Germination reminders are disabled for this user.",
-    urgency: "normal",
-    actions: Object.freeze([
-      Object.freeze({ action: "open-session", title: "Open Session", routeMode: "session" }),
-      Object.freeze({ action: "review-results", title: "Review Results", routeMode: "session" }),
-    ]),
-  }),
-  Object.freeze({
-    key: "completion-urgent-54h",
-    stage: "germinating",
-    category: "germination-reminder",
-    sendAfterHours: 54,
-    maxHours: null,
-    level: "critical",
-    title: "Session may need attention",
-    body: "Your session may need attention. Mark completed or postpone the reminder.",
-    skipReasonDisabled: "Germination reminders are disabled for this user.",
-    urgency: "high",
-    supportsPostpone: true,
-    postponeOptionsHours: Object.freeze([2, 6, 12]),
-    actions: Object.freeze([
-      Object.freeze({ action: "open-session", title: "Open Session", routeMode: "session" }),
-      Object.freeze({ action: "review-results", title: "Review Results", routeMode: "session" }),
-    ]),
-  }),
-  Object.freeze({
-    key: "wellness-check-72h",
-    stage: "germinating",
-    category: "germination-reminder",
-    sendAfterHours: 72,
-    maxHours: null,
-    level: "critical",
-    title: "Session wellness check",
-    body: "Is everything okay with this session?",
-    skipReasonDisabled: "Germination reminders are disabled for this user.",
-    urgency: "normal",
-    actions: Object.freeze([
-      Object.freeze({ action: "open-session", title: "Open Session", routeMode: "session" }),
-      Object.freeze({ action: "review-results", title: "Review Results", routeMode: "session" }),
-    ]),
-  }),
-]);
+const GROW_REMINDER_RULES = Object.freeze(SessionEngine.buildReminderRules().map((rule) => Object.freeze(rule)));
 
 function getEnv(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
@@ -273,6 +175,21 @@ function normalizeSessionStatus(value = "") {
     return "soaking";
   }
   return "";
+}
+
+function getSessionMethodKey(session = {}) {
+  return SessionEngine.normalizeMethodKey(
+    session?.methodType
+    || session?.method_type
+    || session?.systemType
+    || session?.system_type
+    || "KAN",
+  );
+}
+
+function getSessionReminderRules(session = {}) {
+  const methodKey = getSessionMethodKey(session);
+  return GROW_REMINDER_RULES.filter((rule) => String(rule?.methodKey || "").trim() === methodKey);
 }
 
 function parseTimestamp(value) {
@@ -538,7 +455,7 @@ function buildReminderAvailableActions(rule, session, eventKey) {
       sessionId,
       eventKey,
     });
-  } else if (normalizedStatus === "germinating" && String(rule?.key || "").trim() === "completion-urgent-54h") {
+  } else if (normalizedStatus === "germinating" && (String(rule?.key || "").trim() === "completion-urgent-54h" || String(rule?.requiredAction || "").trim() === "complete-session")) {
     actions.push({
       kind: "session-stage-completed",
       action: "session-stage-completed",
@@ -704,7 +621,7 @@ async function fetchAllCandidateSessions(config) {
 
   while (true) {
     const rows = await supabaseRest(
-      `${GROW_SESSIONS_TABLE}?select=id,user_id,date,time,session_started_at,soak_started_at,timer_start_at,session_name,custom_session_name,session_status,germination_started_at,first_planted_at,completed_at,is_deleted,user_deleted,visibility_status,excluded_from_analytics,created_at,updated_at&is_deleted=is.false&session_status=in.(soaking,germinating,completed)&order=created_at.asc&limit=${PAGE_SIZE}&offset=${offset}`,
+      `${GROW_SESSIONS_TABLE}?select=id,user_id,date,time,method_type,system_type,session_started_at,soak_started_at,timer_start_at,session_name,custom_session_name,session_status,germination_started_at,first_planted_at,completed_at,is_deleted,user_deleted,visibility_status,excluded_from_analytics,created_at,updated_at&is_deleted=is.false&session_status=in.(soaking,germinating,active,completed)&order=created_at.asc&limit=${PAGE_SIZE}&offset=${offset}`,
       config,
     );
     const normalizedRows = Array.isArray(rows) ? rows : [];
@@ -721,6 +638,8 @@ async function fetchAllCandidateSessions(config) {
     date: String(row?.date || "").trim(),
     time: String(row?.time || "").trim(),
     sessionStartedAt: String(row?.session_started_at || "").trim(),
+    methodType: String(row?.method_type || row?.system_type || "").trim(),
+    systemType: String(row?.system_type || "").trim(),
     soakStartedAt: String(row?.soak_started_at || "").trim(),
     timerStartAt: String(row?.timer_start_at || "").trim(),
     sessionName: String(row?.session_name || row?.custom_session_name || "").trim(),
@@ -875,6 +794,9 @@ function shouldTreatSubscriptionAsExpired(error) {
 }
 
 function getRuleDueAt(session, rule) {
+  if (SessionEngine.getMilestoneDueAt) {
+    return SessionEngine.getMilestoneDueAt(session, rule, { method: getSessionMethodKey(session) });
+  }
   const stageStart = getStageStartDateTime(session, rule?.stage || "");
   if (!(stageStart instanceof Date) || Number.isNaN(stageStart.getTime())) {
     return null;
@@ -896,13 +818,16 @@ function isReminderRecordTerminal(record = {}) {
 }
 
 function getCurrentActiveRule(session, now) {
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
-  if (!normalizedStatus || normalizedStatus === "completed") {
+  if (normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
     return null;
   }
 
-  const dueRules = GROW_REMINDER_RULES
-    .filter((rule) => rule.stage === normalizedStatus)
+  const engineState = SessionEngine.calculateSessionState({ session, now, method: getSessionMethodKey(session) });
+  if (engineState?.activeMilestone?.key) {
+    return getSessionReminderRules(session).find((rule) => rule.key === engineState.activeMilestone.key) || null;
+  }
+
+  const dueRules = getSessionReminderRules(session)
     .filter((rule) => {
       const dueAt = getRuleDueAt(session, rule);
       if (!dueAt || now.getTime() < dueAt.getTime()) {
@@ -999,14 +924,14 @@ async function deliverReminder(rule, session, existingRecord, config, preference
       message: "Grow reminders are disabled for this user.",
     };
   }
-  if (rule.stage === "soaking" && preferences.notifySoakingReminders === false) {
+  if (rule.category === "soaking-reminder" && preferences.notifySoakingReminders === false) {
     return {
       status: "skipped",
       skipReason: "soaking-reminders-disabled",
       message: rule.skipReasonDisabled,
     };
   }
-  if (rule.stage === "germinating" && preferences.notifyGerminationReminders === false) {
+  if (rule.category !== "soaking-reminder" && preferences.notifyGerminationReminders === false) {
     return {
       status: "skipped",
       skipReason: "germination-reminders-disabled",
@@ -1216,6 +1141,8 @@ async function deliverReminder(rule, session, existingRecord, config, preference
 
 async function processSessionReminders(session, config, preferencesCache, summary, now) {
   if (!isGrowSessionReminderLifecycleEligible(session, now)) {
+    // TODO(session-engine phase 2): evaluate SessionEngine.requiresResultEntry
+    // for completed sessions and emit a dedicated result-entry reminder type.
     summary.skipped += 1;
     return;
   }
@@ -1223,7 +1150,7 @@ async function processSessionReminders(session, config, preferencesCache, summar
   const existingRecords = await loadReminderEventsForSession(session.userId, session.id, config);
   const activeRule = getCurrentActiveRule(session, now);
 
-  for (const rule of GROW_REMINDER_RULES) {
+  for (const rule of getSessionReminderRules(session)) {
     const existingRecord = existingRecords.get(rule.key) || null;
     const suppressionReason = getSuppressionReason(session, rule, activeRule, now);
     if (rule.key !== activeRule?.key && suppressionReason && !["sent", "suppressed"].includes(String(existingRecord?.status || "").trim().toLowerCase())) {

@@ -4073,6 +4073,356 @@ body.theme-dark .spotlight-stat strong {
   overflow: hidden;
 }
 
+.session-engine-summary {
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  border-radius: 8px;
+  background: rgba(8, 16, 10, 0.34);
+}
+
+.session-engine-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.session-engine-summary-grid div {
+  min-width: 0;
+}
+
+.session-engine-summary-grid dt {
+  margin: 0 0 4px;
+  color: rgba(212, 221, 211, 0.66);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.session-engine-summary-grid dd {
+  margin: 0;
+  color: #f6f8f5;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.session-status-engine-details-shell {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.session-status-engine-details {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0;
+}
+
+.session-status-engine-details div {
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.session-status-engine-details dt {
+  margin: 0 0 3px;
+  color: rgba(212, 221, 211, 0.62);
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.session-status-engine-details dd {
+  margin: 0;
+  color: #f6f8f5;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.session-progress-command-card {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    rgba(8, 14, 10, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 36px rgba(0, 0, 0, 0.24);
+}
+
+.session-progress-command-card.is-overdue {
+  border-color: rgba(245, 158, 11, 0.46);
+}
+
+.session-progress-command-head {
+  display: grid;
+  gap: 4px;
+}
+
+.session-progress-command-kicker,
+.session-progress-command-metrics dt,
+.session-progress-command-step-head span {
+  color: rgba(205, 214, 206, 0.68);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.session-progress-command-head strong {
+  color: #f6f8f5;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.session-progress-command-head p {
+  margin: 0;
+  color: rgba(221, 229, 220, 0.76);
+  font-size: 0.92rem;
+}
+
+.session-progress-command-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.session-progress-command-metrics div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.session-progress-command-metrics dt {
+  margin: 0 0 5px;
+}
+
+.session-progress-command-metrics dd {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: #f6f8f5;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.session-progress-command-metrics small {
+  color: rgba(212, 221, 211, 0.66);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.session-progress-command-metric-wide {
+  grid-column: 1 / -1;
+}
+
+.session-progress-command-progress {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.session-progress-command-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7fb8ff 0%, #94d159 100%);
+}
+
+.session-progress-command-status {
+  display: inline-flex;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.session-progress-command-status.is-ok {
+  color: #dff6d2;
+  background: rgba(47, 125, 50, 0.32);
+}
+
+.session-progress-command-status.is-warning {
+  color: #ffe3b0;
+  background: rgba(180, 83, 9, 0.32);
+}
+
+.session-progress-command-result-alert {
+  border-color: rgba(245, 158, 11, 0.38) !important;
+  background: rgba(180, 83, 9, 0.15) !important;
+}
+
+.session-progress-command-warning {
+  display: grid;
+  gap: 3px;
+  padding: 11px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  border-radius: 8px;
+  color: #ffe3b0;
+  background: rgba(180, 83, 9, 0.14);
+}
+
+.session-progress-command-warning strong {
+  font-size: 0.9rem;
+}
+
+.session-progress-command-warning span {
+  color: rgba(255, 236, 203, 0.84);
+  font-size: 0.84rem;
+}
+
+.session-progress-command-action-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.session-progress-command-no-action {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 8px;
+  color: rgba(226, 234, 224, 0.82);
+  font-size: 0.9rem;
+  font-weight: 750;
+  background: rgba(148, 209, 89, 0.08);
+}
+
+.session-progress-command-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.session-progress-command-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid rgba(148, 209, 89, 0.34);
+  border-radius: 8px;
+  color: #f6f8f5;
+  font-weight: 850;
+  background: rgba(148, 209, 89, 0.12);
+  cursor: pointer;
+}
+
+.session-progress-command-action--primary {
+  color: #0e170d;
+  background: #94d159;
+}
+
+.session-progress-command-step-panel {
+  display: grid;
+  gap: 9px;
+}
+
+.session-progress-command-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-progress-command-step {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.session-progress-command-step-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(205, 214, 206, 0.32);
+}
+
+.session-progress-command-step.is-current {
+  border-color: rgba(148, 209, 89, 0.42);
+  background: rgba(148, 209, 89, 0.08);
+}
+
+.session-progress-command-step.is-current .session-progress-command-step-marker,
+.session-progress-command-step.is-complete .session-progress-command-step-marker {
+  background: #94d159;
+}
+
+.session-progress-command-step.is-future {
+  opacity: 0.68;
+}
+
+.session-progress-command-step-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-progress-command-step-copy strong {
+  color: #f6f8f5;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.session-progress-command-step-copy small,
+.session-progress-command-step-state {
+  color: rgba(212, 221, 211, 0.66);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.session-progress-command-step-state {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .session-progress-command-card {
+    padding: 13px;
+  }
+
+  .session-progress-command-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .session-progress-command-step {
+    grid-template-columns: 12px minmax(0, 1fr);
+  }
+
+  .session-progress-command-step-state {
+    grid-column: 2;
+  }
+
+  .session-progress-command-actions {
+    display: grid;
+  }
+
+  .session-progress-command-action {
+    width: 100%;
+  }
+}
+
 .session-command-stage-grid,
 .stage-progress-row {
   position: relative;
@@ -4110,6 +4460,17 @@ body.theme-dark .spotlight-stat strong {
   max-width: 100%;
   overflow: visible;
   padding-inline: 8px;
+}
+
+.session-lifecycle-progress-grid--dynamic {
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 10px;
+  padding-inline: 0;
+}
+
+.session-lifecycle-progress-grid--dynamic::before,
+.session-lifecycle-progress-grid--dynamic::after {
+  content: none;
 }
 
 .session-lifecycle-progress-grid::before,
@@ -5134,15 +5495,14 @@ body.theme-dark #active-sessions-section {
 
 #session-lifecycle-section .session-lifecycle-detail-layout,
 #detail-lifecycle-section .session-lifecycle-detail-layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "main";
   align-items: stretch;
 }
 
 #session-lifecycle-section .session-lifecycle-status-column,
 #detail-lifecycle-section .session-lifecycle-status-column {
-  align-self: stretch;
-  height: 100%;
-  align-content: stretch;
-  grid-template-rows: minmax(0, 1fr);
+  display: none;
 }
 
 #session-lifecycle-section .session-lifecycle-status-column .session-status-panel,
@@ -51124,8 +51484,17 @@ body.modal-open {
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "heading sequence"
+    "visual-timeline visual-timeline"
     "setup-tools setup-tools";
   gap: 14px 18px;
+}
+
+.session-workspace-form #partition-chart-shell > .partition-work-header {
+  padding: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
 }
 
 .session-workspace-shell--detail .partition-work-header {
@@ -51155,6 +51524,227 @@ body.modal-open {
 .session-workspace-form .partition-work-header .session-sequence-label,
 .session-workspace-shell--detail .partition-work-header .session-sequence-label {
   grid-area: sequence;
+}
+
+.session-workspace-form .session-engine-visual-timeline {
+  grid-area: visual-timeline;
+  min-width: 0;
+}
+
+.session-engine-visual-timeline-card {
+  --visual-timeline-accent: #94d159;
+  --visual-timeline-accent-soft: rgba(148, 209, 89, 0.16);
+  --visual-timeline-glow: rgba(148, 209, 89, 0.28);
+  display: grid;
+  gap: 12px;
+  padding: 13px 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--visual-timeline-accent) 22%, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--visual-timeline-accent) 12%, transparent), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01)),
+    rgba(7, 13, 9, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 16px 32px rgba(0, 0, 0, 0.18);
+}
+
+.session-engine-visual-timeline-card.is-overdue {
+  --visual-timeline-accent: #f59e0b;
+  --visual-timeline-accent-soft: rgba(245, 158, 11, 0.16);
+  --visual-timeline-glow: rgba(245, 158, 11, 0.3);
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+.session-engine-visual-timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.session-engine-visual-timeline-head .eyebrow {
+  width: auto;
+  margin: 0;
+  color: var(--visual-timeline-accent);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+}
+
+.session-engine-visual-timeline-next {
+  max-width: min(52ch, 60%);
+  padding: 4px 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--visual-timeline-accent) 34%, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--visual-timeline-accent) 72%, #ffffff);
+  background: color-mix(in srgb, var(--visual-timeline-accent) 10%, rgba(12, 18, 13, 0.88));
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-engine-visual-timeline-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: color-mix(in srgb, var(--visual-timeline-accent) 32%, rgba(255, 255, 255, 0.18)) transparent;
+  scrollbar-width: thin;
+}
+
+.session-engine-visual-timeline-list {
+  display: grid;
+  grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(118px, 1fr));
+  min-width: max(100%, calc(var(--visual-timeline-step-count) * 124px));
+  margin: 0;
+  padding: 4px 2px 2px;
+  list-style: none;
+}
+
+.session-engine-visual-timeline-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 8px;
+  color: rgba(226, 234, 224, 0.7);
+  text-align: center;
+}
+
+.session-engine-visual-timeline-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: calc(50% + 27px);
+  width: calc(100% - 54px);
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
+}
+
+.session-engine-visual-timeline-step.is-complete:not(:last-child)::after,
+.session-engine-visual-timeline-step.is-current:not(:last-child)::after {
+  background: linear-gradient(90deg, var(--visual-timeline-accent), color-mix(in srgb, var(--visual-timeline-accent) 42%, rgba(255, 255, 255, 0.12)));
+  box-shadow: 0 0 12px var(--visual-timeline-glow);
+}
+
+.session-engine-visual-timeline-marker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border: 2px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: rgba(10, 14, 12, 0.94);
+  color: rgba(255, 255, 255, 0.74);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.session-engine-visual-timeline-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+}
+
+.session-engine-visual-timeline-icon.command-icon-tile {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-engine-visual-timeline-icon .command-icon-image {
+  width: 24px;
+  height: 24px;
+}
+
+.session-engine-visual-timeline-step strong {
+  color: #f4f8f0;
+  font-size: 0.8rem;
+  font-weight: 850;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.session-engine-visual-timeline-step small,
+.session-engine-visual-timeline-state {
+  color: rgba(218, 227, 216, 0.64);
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.15;
+}
+
+.session-engine-visual-timeline-state {
+  min-height: 0.8rem;
+}
+
+.session-engine-visual-timeline-step.is-complete .session-engine-visual-timeline-marker,
+.session-engine-visual-timeline-step.is-current .session-engine-visual-timeline-marker {
+  border-color: var(--visual-timeline-accent);
+  color: var(--visual-timeline-accent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--visual-timeline-accent) 34%, transparent),
+    0 0 18px var(--visual-timeline-glow);
+}
+
+.session-engine-visual-timeline-step.is-complete .session-engine-visual-timeline-state {
+  color: var(--visual-timeline-accent);
+}
+
+.session-engine-visual-timeline-step.is-current .session-engine-visual-timeline-marker {
+  transform: scale(1.08);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--visual-timeline-accent) 16%, transparent), rgba(10, 14, 12, 0.95));
+}
+
+.session-engine-visual-timeline-step.is-current .session-engine-visual-timeline-state {
+  color: var(--visual-timeline-accent);
+  font-weight: 900;
+}
+
+.session-engine-visual-timeline-step.is-overdue .session-engine-visual-timeline-marker {
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow:
+    inset 0 0 0 1px rgba(245, 158, 11, 0.32),
+    0 0 20px rgba(245, 158, 11, 0.32);
+}
+
+.session-engine-visual-timeline-step.is-overdue .session-engine-visual-timeline-state {
+  color: #fbbf24;
+  font-weight: 900;
+}
+
+.session-engine-visual-timeline-step.is-upcoming {
+  opacity: 0.64;
+}
+
+@media (max-width: 720px) {
+  .session-workspace-form #partition-chart-shell > .partition-work-header {
+    padding: 14px;
+  }
+
+  .session-engine-visual-timeline-head {
+    display: grid;
+  }
+
+  .session-engine-visual-timeline-next {
+    max-width: 100%;
+    width: fit-content;
+  }
+
+  .session-engine-visual-timeline-list {
+    grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(110px, 112px));
+    min-width: calc(var(--visual-timeline-step-count) * 112px);
+  }
 }
 
 .session-workspace-form .session-setup-tools-card {
@@ -53158,10 +53748,6 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   grid-template-columns: 72px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px);
 }
 
-[data-method-standardized="false"] #session-lifecycle-section,
-[data-method-standardized="false"] #detail-lifecycle-section,
-[data-method-standardized="false"] #session-timing-section,
-[data-method-standardized="false"] #detail-timing-section,
 [data-method-standardized="false"] .system-layout-block,
 [data-method-standardized="false"] .timeline-debug-panel,
 [data-method-standardized="false"] .system-id-field,

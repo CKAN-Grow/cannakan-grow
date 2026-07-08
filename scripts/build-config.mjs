@@ -10,10 +10,14 @@ const pushPublicKey = process.env.VAPID_PUBLIC_KEY
 const cloudflareStreamCustomerCode = process.env.CANNAKAN_CLOUDFLARE_STREAM_CUSTOMER_CODE
   || process.env.CLOUDFLARE_STREAM_CUSTOMER_CODE
   || "";
-const localDemoAuthEnabled = String(process.env.VITE_ENABLE_LOCAL_DEMO_AUTH || "")
-  .trim()
-  .toLowerCase() === "true";
 const isVercelBuild = process.env.VERCEL === "1";
+const localDemoAuthEnabledExpression = `(() => {
+    const hostname = String(globalThis.location?.hostname || "").trim().toLowerCase();
+    return hostname === "localhost"
+      || hostname === "127.0.0.1"
+      || hostname === "::1"
+      || hostname === "[::1]";
+  })()`;
 
 if ((!url || !anonKey) && isVercelBuild) {
   console.error("Missing required Vercel environment variables: CANNAKAN_SUPABASE_URL and CANNAKAN_SUPABASE_ANON_KEY");
@@ -39,7 +43,7 @@ const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   anonKey: ${JSON.stringify(anonKey)},
   pushPublicKey: ${JSON.stringify(pushPublicKey)},
   cloudflareStreamCustomerCode: ${JSON.stringify(cloudflareStreamCustomerCode)},
-  localDemoAuthEnabled: ${JSON.stringify(localDemoAuthEnabled)},
+  localDemoAuthEnabled: ${localDemoAuthEnabledExpression},
 };
 `;
 

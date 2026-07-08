@@ -62,7 +62,7 @@ const THEME_KEY = "cannakan-grow-theme";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
-const DEFAULT_AVATAR_IMAGE_URL = "/assets/images/default-avatar.png";
+const DEFAULT_AVATAR_IMAGE_URL = "/icon-192.png";
 const SUPABASE_CLIENT_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 const SOURCE_LOGO_BUCKET = "source-logos";
 const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
@@ -1436,7 +1436,8 @@ const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "/src/assets/kan-partition-icon-v2.png",
   TRA: "/src/assets/tra-partition-icon.png",
 };
-const CUSTOM_METHOD_HEADER_ICON_ASSET = "/assets/images/learn-share-preview.png";
+const CUSTOM_METHOD_HEADER_ICON_ASSET = "/icon-192.png";
+const SESSION_ENGINE = globalThis.CannakanSessionEngine || null;
 const METHOD_TYPE_CONFIG = Object.freeze({
   KAN: Object.freeze({
     id: "KAN",
@@ -1453,8 +1454,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     defaultSessionStatus: "",
     defaultRowCount: 8,
     rowLabel: "Partition",
-    chartEyebrow: "Partitions",
-    chartTitle: "KAN® Partition Chart",
+    chartEyebrow: "KAN",
+    chartTitle: "KAN Seed Chart",
     iconAlt: "KAN partition icon",
     headerIconSrc: PARTITION_HEADER_ICON_ASSETS.KAN,
   }),
@@ -1473,8 +1474,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     defaultSessionStatus: "",
     defaultRowCount: 16,
     rowLabel: "Partition",
-    chartEyebrow: "Partitions",
-    chartTitle: "TRā™ Partition Chart",
+    chartEyebrow: "TRā",
+    chartTitle: "TRā Seed Chart",
     iconAlt: "TRā partition icon",
     headerIconSrc: PARTITION_HEADER_ICON_ASSETS.TRA,
   }),
@@ -1482,19 +1483,39 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     id: "PAPER_TOWEL",
     name: "Paper Towel",
     optionLabel: "Paper Towel",
-    modalDescription: "Lightweight custom seed chart",
+    modalDescription: "Paper towel germination timeline",
     isStandardized: false,
     supportsLayoutImage: false,
     supportsPartitions: false,
-    supportsTimeline: false,
+    supportsTimeline: true,
     supportsStageTracking: false,
     supportsProgress: true,
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
-    chartEyebrow: "Custom Method",
-    chartTitle: "Custom Seed Chart",
+    chartEyebrow: "Paper Towel",
+    chartTitle: "Paper Towel Seed Chart",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
+  }),
+  PAPER_TOWEL_SOAK: Object.freeze({
+    id: "PAPER_TOWEL_SOAK",
+    name: "Paper Towel + Soak",
+    optionLabel: "Paper Towel + Soak",
+    modalDescription: "Soak first, then move seeds to paper towel",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: true,
+    supportsStageTracking: false,
+    supportsProgress: true,
+    supportsFilterInventory: false,
+    defaultSessionStatus: "active",
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Paper Towel + Soak",
+    chartTitle: "Paper Towel + Soak Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
@@ -1502,59 +1523,79 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     id: "ROCKWOOL",
     name: "Rockwool",
     optionLabel: "Rockwool",
-    modalDescription: "Lightweight custom seed chart",
+    modalDescription: "Rockwool planting timeline",
     isStandardized: false,
     supportsLayoutImage: false,
     supportsPartitions: false,
-    supportsTimeline: false,
+    supportsTimeline: true,
     supportsStageTracking: false,
     supportsProgress: true,
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
-    chartEyebrow: "Custom Method",
-    chartTitle: "Custom Seed Chart",
+    chartEyebrow: "Rockwool",
+    chartTitle: "Rockwool Seed Chart",
+    iconAlt: "Grow App icon",
+    headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
+  }),
+  RAPID_ROOTER: Object.freeze({
+    id: "RAPID_ROOTER",
+    name: "Rapid Rooter",
+    optionLabel: "Rapid Rooter / Starter Plug",
+    modalDescription: "Starter plug planting timeline",
+    isStandardized: false,
+    supportsLayoutImage: false,
+    supportsPartitions: false,
+    supportsTimeline: true,
+    supportsStageTracking: false,
+    supportsProgress: true,
+    supportsFilterInventory: false,
+    defaultSessionStatus: "active",
+    defaultRowCount: 1,
+    rowLabel: "Seed Row",
+    chartEyebrow: "Rapid Rooter",
+    chartTitle: "Rapid Rooter Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   WATER_SOAK: Object.freeze({
     id: "WATER_SOAK",
-    name: "Water Soak",
-    optionLabel: "Water Soak",
-    modalDescription: "Lightweight custom seed chart",
+    name: "Water Glass",
+    optionLabel: "Water Glass",
+    modalDescription: "Water glass germination timeline",
     isStandardized: false,
     supportsLayoutImage: false,
     supportsPartitions: false,
-    supportsTimeline: false,
+    supportsTimeline: true,
     supportsStageTracking: false,
     supportsProgress: true,
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
-    chartEyebrow: "Custom Method",
-    chartTitle: "Custom Seed Chart",
+    chartEyebrow: "Water Glass",
+    chartTitle: "Water Glass Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   DIRECT_SOW: Object.freeze({
     id: "DIRECT_SOW",
-    name: "Direct Sow",
-    optionLabel: "Direct Sow",
-    modalDescription: "Lightweight custom seed chart",
+    name: "Direct Soil",
+    optionLabel: "Direct Soil",
+    modalDescription: "Direct soil planting timeline",
     isStandardized: false,
     supportsLayoutImage: false,
     supportsPartitions: false,
-    supportsTimeline: false,
+    supportsTimeline: true,
     supportsStageTracking: false,
     supportsProgress: true,
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Seed Row",
-    chartEyebrow: "Custom Method",
-    chartTitle: "Custom Seed Chart",
+    chartEyebrow: "Direct Soil",
+    chartTitle: "Direct Soil Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
@@ -1566,7 +1607,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     isStandardized: false,
     supportsLayoutImage: false,
     supportsPartitions: false,
-    supportsTimeline: false,
+    supportsTimeline: true,
     supportsStageTracking: false,
     supportsProgress: true,
     supportsFilterInventory: false,
@@ -1579,7 +1620,18 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
 });
-const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
+const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL_SOAK", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
+const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
+  KAN: Object.freeze({ key: "kan", accent: "#94d159", accentSoft: "rgba(148, 209, 89, 0.16)", glow: "rgba(148, 209, 89, 0.28)" }),
+  TRA: Object.freeze({ key: "tra", accent: "#b8ff5c", accentSoft: "rgba(184, 255, 92, 0.16)", glow: "rgba(184, 255, 92, 0.3)" }),
+  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#e9c84b", accentSoft: "rgba(233, 200, 75, 0.16)", glow: "rgba(233, 200, 75, 0.28)" }),
+  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f1b65b", accentSoft: "rgba(241, 182, 91, 0.15)", glow: "rgba(241, 182, 91, 0.26)" }),
+  WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)" }),
+  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#9cab8d", accentSoft: "rgba(156, 171, 141, 0.16)", glow: "rgba(156, 171, 141, 0.24)" }),
+  RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)" }),
+  DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)" }),
+  OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)" }),
+});
 const TIMELINE_STAGE_ICON_ASSETS = Object.freeze({
   "stage-soaking": "/src/assets/icons/timeline-icons-soaking.png",
   "stage-germination": "/src/assets/icons/timeline-icons-germination.png",
@@ -1611,14 +1663,30 @@ function normalizeMethodType(value = "") {
   if (normalizedValue === "TR" || normalizedValue === "TRA") {
     return "TRA";
   }
-  if (normalizedValue === "PAPER" || normalizedValue === "PAPER_TOWELS" || normalizedValue === "PAPER_TOWEL") {
+  if ([
+    "SOAK_PAPER",
+    "SOAK_AND_PAPER_TOWEL",
+    "SOAK_PAPER_TOWEL",
+    "SOAK_PLUS_PAPER_TOWEL",
+    "WATER_SOAK_PAPER_TOWEL",
+    "PAPER_TOWEL_SOAK",
+  ].includes(normalizedValue)) {
+    return "PAPER_TOWEL_SOAK";
+  }
+  if (normalizedValue === "PAPER" || normalizedValue === "PAPER_TOWELS" || normalizedValue === "PAPER_TOWEL" || normalizedValue === "PAPER_TOWEL_ONLY") {
     return "PAPER_TOWEL";
   }
-  if (normalizedValue === "WATER" || normalizedValue === "SOAK" || normalizedValue === "WATER_SOAK") {
+  if (normalizedValue === "WATER" || normalizedValue === "SOAK" || normalizedValue === "WATER_SOAK" || normalizedValue === "WATER_GLASS") {
     return "WATER_SOAK";
   }
-  if (normalizedValue === "DIRECT" || normalizedValue === "DIRECT_SOW") {
+  if (normalizedValue === "DIRECT" || normalizedValue === "DIRECT_SOW" || normalizedValue === "DIRECT_SOIL" || normalizedValue === "SOIL") {
     return "DIRECT_SOW";
+  }
+  if (normalizedValue === "STARTER_PLUG" || normalizedValue === "STARTER_PLUGS") {
+    return "RAPID_ROOTER";
+  }
+  if (normalizedValue === "CUSTOM") {
+    return "OTHER";
   }
   if (Object.prototype.hasOwnProperty.call(METHOD_TYPE_CONFIG, normalizedValue)) {
     return normalizedValue;
@@ -1628,6 +1696,10 @@ function normalizeMethodType(value = "") {
 
 function getMethodConfig(value = "") {
   return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
+}
+
+function usesCustomMethodWorkflow(methodType = "") {
+  return getMethodConfig(methodType).id === "OTHER";
 }
 
 function getMethodHeaderIconConfig(value = "") {
@@ -1655,6 +1727,76 @@ function getSessionMethodType(session = null) {
     || session?.system_type
     || "KAN",
   );
+}
+
+function getSessionEngineMethodKey(methodType = "") {
+  return SESSION_ENGINE?.normalizeMethodKey
+    ? SESSION_ENGINE.normalizeMethodKey(methodType)
+    : normalizeMethodType(methodType);
+}
+
+function getSessionEngineMethodDefinition(methodType = "") {
+  if (!SESSION_ENGINE?.getMethodDefinition) {
+    return null;
+  }
+  return SESSION_ENGINE.getMethodDefinition(getSessionEngineMethodKey(methodType));
+}
+
+function getSessionEngineResults(session = null) {
+  if (!session) {
+    return {};
+  }
+  if (typeof getSessionSeedTotals !== "function") {
+    return {};
+  }
+  try {
+    return getSessionSeedTotals(session);
+  } catch (error) {
+    console.warn("[Session Engine] Could not calculate session result totals.", error);
+    return {};
+  }
+}
+
+function buildSessionEngineState(session = null, options = {}) {
+  if (!SESSION_ENGINE?.calculateSessionState || !session) {
+    return null;
+  }
+  try {
+    return SESSION_ENGINE.calculateSessionState({
+      session,
+      method: options.method || getSessionMethodType(session),
+      now: options.now || new Date(),
+      results: options.results || getSessionEngineResults(session),
+    });
+  } catch (error) {
+    console.warn("[Session Engine] Could not calculate session state.", error);
+    return null;
+  }
+}
+
+function buildFormSessionEngineState(form, options = {}) {
+  if (!SESSION_ENGINE?.calculateSessionState || !(form instanceof HTMLFormElement)) {
+    return null;
+  }
+  const methodType = form.elements?.systemType?.value || form.dataset.methodType || "KAN";
+  const session = {
+    methodType,
+    date: form.elements?.date?.value || "",
+    time: form.elements?.time?.value || "",
+    sessionStatus: form.dataset.currentStage || form.elements?.sessionStatus?.value || "",
+    sessionStartedAt: form.dataset.sessionStartedAt || "",
+    soakStartedAt: form.dataset.soakStartedAt || form.dataset.timerStartAt || "",
+    timerStartAt: form.dataset.timerStartAt || "",
+    germinationStartedAt: form.dataset.germinationStartedAt || "",
+    firstPlantedAt: form.dataset.firstPlantedAt || "",
+    completedAt: form.dataset.completedAt || "",
+    partitions: buildPartitionDraftValuesFromContainer(
+      form.querySelector("#partition-fields")
+      || form.querySelector(".partition-table-body")
+      || form,
+    ),
+  };
+  return buildSessionEngineState(session, options);
 }
 
 function getMethodSessionStatusLabel(status = "", methodType = "") {
@@ -16178,7 +16320,7 @@ function buildGrowReminderAvailableActions(session = null, options = {}) {
       eventKey,
       variant: "primary",
     });
-  } else if (normalizedStatus === "germinating" && reminderKey === "completion-urgent-54h") {
+  } else if (normalizedStatus === "germinating" && (reminderKey === "completion-urgent-54h" || String(options.requiredAction || "").trim() === "complete-session")) {
     actions.push({
       kind: "session-stage-completed",
       label: "Mark Completed",
@@ -16208,57 +16350,28 @@ function buildStageProgressReminderEntries(session = null) {
     || normalizeSessionStatus(session?.sessionStatus || "") === "completed"
     || !isGrowSessionLifecycleRemindable(session)
   ) {
+    // TODO(session-engine phase 2): allow completed sessions with requiresResultEntry
+    // to generate result-entry reminders without reopening generic stage reminders.
     return [];
   }
 
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
-  if (normalizedStatus === "soaking" && !areSoakingReminderNotificationsEnabled()) {
-    return [];
-  }
-  if (normalizedStatus === "germinating" && !areGerminationReminderNotificationsEnabled()) {
-    return [];
-  }
-  const schedule = STAGE_REMINDER_SCHEDULES[normalizedStatus];
-  if (!Array.isArray(schedule) || !schedule.length) {
-    return [];
-  }
-
-  const stageStart = getStageStartDateTime(
-    session?.date || "",
-    session?.time || "",
-    normalizedStatus,
-    session?.germinationStartedAt || "",
-    session?.timerStartAt || "",
-    {
-      sessionStartedAt: session?.sessionStartedAt || session?.session_started_at || "",
-      soakStartedAt: session?.soakStartedAt || session?.soak_started_at || "",
-    },
-  );
-  if (!stageStart) {
-    return [];
-  }
-
-  const elapsedHours = Math.max(0, (Date.now() - stageStart.getTime()) / (60 * 60 * 1000));
-  const latestDueReminder = [...schedule]
-    .filter((reminder) => {
-      const minimumHours = Math.max(0, Number(reminder?.hours) || 0);
-      const maximumHours = Number(reminder?.maxHours);
-      if (elapsedHours < minimumHours) {
-        return false;
-      }
-      if (Number.isFinite(maximumHours) && elapsedHours > maximumHours) {
-        return false;
-      }
-      return true;
-    })
-    .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0];
+  const engineState = buildSessionEngineState(session);
+  const latestDueReminder = engineState?.activeMilestone || null;
   if (!latestDueReminder) {
+    return [];
+  }
+  const reminderCategory = normalizeAppNotificationCategory(latestDueReminder.category || (normalizedStatus === "soaking" ? "soaking-reminder" : "germination-reminder"));
+  if (reminderCategory === "soaking-reminder" && !areSoakingReminderNotificationsEnabled()) {
+    return [];
+  }
+  if (reminderCategory === "germination-reminder" && !areGerminationReminderNotificationsEnabled()) {
     return [];
   }
 
   const reminderEventKey = buildStageProgressReminderEventKey(
     session.id,
-    String(latestDueReminder?.key || `${normalizedStatus}-${Math.max(0, Number(latestDueReminder?.hours) || 0)}h`).trim(),
+    String(latestDueReminder?.key || `${normalizedStatus}-${Math.max(0, Number(latestDueReminder?.atHours || latestDueReminder?.hours) || 0)}h`).trim(),
     normalizedStatus,
   );
   if (isStageProgressReminderSuppressed(session, latestDueReminder, reminderEventKey)) {
@@ -16317,23 +16430,24 @@ function buildStageProgressReminderEntries(session = null) {
     eventKey: reminderEventKey,
     reminderKey: String(latestDueReminder?.key || "").trim(),
     status: normalizedStatus,
+    requiredAction: String(latestDueReminder?.requiredAction || "").trim(),
   });
 
   return [{
     eventKey: reminderEventKey,
-    category: normalizedStatus === "soaking" ? "soaking-reminder" : "germination-reminder",
+    category: reminderCategory,
     notificationType: "grow-reminder",
     title: latestDueReminder.title || getSessionStatusAlertTitle(normalizedStatus, latestDueReminder.level),
     message: latestDueReminder.message,
     sessionId: session.id,
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: `#sessions/${session.id}`,
-    actions: latestDueReminder?.key === "completion-urgent-54h"
+    actions: latestDueReminder?.key === "completion-urgent-54h" || latestDueReminder?.requiredAction === "complete-session"
       ? criticalCompletionActions
       : defaultActions,
     availableActions,
     level: latestDueReminder.level,
-    reminderHours: Math.max(0, Number(latestDueReminder?.hours) || 0),
+    reminderHours: Math.max(0, Number(latestDueReminder?.atHours || latestDueReminder?.hours) || 0),
   }];
 }
 
@@ -24360,6 +24474,40 @@ function resolveAvatarImageUrl(avatarUrl = "", avatarPath = "", options = {}) {
   return getSafeAvatarImageUrl(avatarUrl, options) || getProfileAvatarPublicUrlFromPath(avatarPath);
 }
 
+function handleAvatarImageLoadError(image) {
+  if (!(image instanceof HTMLImageElement)) {
+    return;
+  }
+
+  const defaultAvatarSrc = String(image.dataset.defaultAvatarSrc || "").trim();
+  const fallbackHtml = String(image.dataset.fallbackHtml || "");
+  const hasTriedDefault = image.dataset.defaultAvatarAttempted === "true";
+
+  if (defaultAvatarSrc && !hasTriedDefault) {
+    let currentAvatarHref = String(image.getAttribute("src") || image.src || "").trim();
+    let defaultAvatarHref = defaultAvatarSrc;
+    try {
+      currentAvatarHref = new URL(image.currentSrc || image.src || currentAvatarHref, window.location.href).href;
+      defaultAvatarHref = new URL(defaultAvatarSrc, window.location.href).href;
+    } catch (error) {
+      currentAvatarHref = String(image.getAttribute("src") || "").trim();
+    }
+
+    if (currentAvatarHref !== defaultAvatarHref) {
+      image.dataset.defaultAvatarAttempted = "true";
+      image.src = defaultAvatarSrc;
+      return;
+    }
+  }
+
+  image.onerror = null;
+  if (fallbackHtml) {
+    image.outerHTML = fallbackHtml;
+  } else {
+    image.removeAttribute("src");
+  }
+}
+
 function buildAvatarImageMarkup({
   avatarUrl = "",
   alt = "Member",
@@ -24373,7 +24521,8 @@ function buildAvatarImageMarkup({
     allowDataImage,
   });
   const resolvedAvatarUrl = safeAvatarUrl || DEFAULT_AVATAR_IMAGE_URL;
-  return `<img src="${escapeHtml(resolvedAvatarUrl)}" alt="${escapeHtml(alt)}" class="${escapeHtml(className)}" data-default-avatar-src="${escapeHtml(DEFAULT_AVATAR_IMAGE_URL)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="if(this.dataset.defaultAvatarSrc && this.src !== this.dataset.defaultAvatarSrc){this.src=this.dataset.defaultAvatarSrc; return;} this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
+  const defaultAvatarAttempted = resolvedAvatarUrl === DEFAULT_AVATAR_IMAGE_URL ? "true" : "false";
+  return `<img src="${escapeHtml(resolvedAvatarUrl)}" alt="${escapeHtml(alt)}" class="${escapeHtml(className)}" data-default-avatar-src="${escapeHtml(DEFAULT_AVATAR_IMAGE_URL)}" data-default-avatar-attempted="${defaultAvatarAttempted}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="handleAvatarImageLoadError(this)">`;
 }
 
 function renderProfileAvatarMarkup({
@@ -29462,7 +29611,7 @@ function openGallerySnapshotOverview(snapshotId) {
   const durationLabel = formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) || "In progress";
   const currentStageLabel = capitalize(normalizeSessionStatus(linkedSession?.sessionStatus || "") || "completed").replace("Unselected", "Not started");
   const timelineFacts = [
-    { label: "Current Stage", value: currentStageLabel || "Not shared" },
+    { label: "Current Phase", value: currentStageLabel || "Not shared" },
     { label: "Started", value: startedAt ? formatTimingDateTime(startedAt) : "Not shared" },
     { label: "Progress", value: `${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds germinated` },
     { label: "Duration", value: durationLabel },
@@ -69314,7 +69463,7 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
     detail.saveButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
   }
   if (detail.statusLabel) {
-    detail.statusLabel.textContent = "Current Stage";
+    detail.statusLabel.textContent = "Current Status";
   }
   if (detail.statusField) {
     detail.statusField.value = sessionStageValue;
@@ -72940,7 +73089,7 @@ function renderLeaderboardAuditExpandedRowMarkup(row) {
     ? `<div class="leaderboard-audit-expanded-notes"><strong>Session Notes</strong><p>${escapeHtml(linkedSession.sessionNotes)}</p></div>`
     : '<div class="leaderboard-audit-expanded-notes"><strong>Session Notes</strong><p>No saved notes for this session.</p></div>';
   const timelineMarkup = linkedSession
-    ? renderSessionLifecycleTimelineMarkup(buildSessionLifecycleState(linkedSession))
+    ? renderSessionProgressCommandCenterMarkup(buildSessionLifecycleState(linkedSession).engineState || null)
     : '<p class="leaderboard-audit-expanded-empty">Timeline data is unavailable because this snapshot is not linked to a saved session.</p>';
   const exclusionMarkup = !row.includedInLeaderboard
     ? `
@@ -81208,7 +81357,7 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
 
   const entries = getActiveSeedVaultEntriesForSessionPicker();
   if (!entries.length) {
-    if (pendingStarterIntent?.entryId && !appState.seedVaultLoaded) {
+    if (!appState.seedVaultLoaded) {
       section.hidden = false;
       section.classList.add("is-empty");
       section.innerHTML = `
@@ -81232,8 +81381,19 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
       }
       return;
     }
-    section.hidden = true;
-    section.innerHTML = "";
+
+    section.hidden = false;
+    section.classList.add("is-empty");
+    section.innerHTML = `
+      <label class="session-seed-age-toggle session-setup-tool session-setup-tool--seed-vault new-session-seed-vault-toggle">
+        <input id="new-session-seed-vault-toggle" type="checkbox" data-seed-vault-session-toggle disabled>
+        <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
+        <span class="session-seed-age-toggle-text">
+          <span id="new-session-seed-vault-title" class="session-seed-age-toggle-copy">Add from My Seed Vault</span>
+          <span class="session-seed-age-toggle-helper">No active Vault entries are available yet. Add seeds to My Seed Vault, then return to auto-fill this session.</span>
+        </span>
+      </label>
+    `;
     return;
   }
 
@@ -81243,6 +81403,9 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
   const partitionCount = method.isStandardized
     ? getPartitionCountForSystem(method.id)
     : Math.max(method.defaultRowCount, getNewSessionSeedVaultPartitionRows(form).length || method.defaultRowCount);
+  const helperCopy = method.isStandardized
+    ? "Select seeds from your collection to auto-fill partition details."
+    : "Select seeds from your collection to auto-fill seed row details.";
   const activePartitionId = Math.min(
     partitionCount,
     Math.max(1, Number(appState.newSessionSeedVaultActivePartitionId) || 1),
@@ -81268,7 +81431,7 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
       <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
       <span class="session-seed-age-toggle-text">
         <span id="new-session-seed-vault-title" class="session-seed-age-toggle-copy">Add from My Seed Vault</span>
-        <span class="session-seed-age-toggle-helper">Select seeds from your collection to auto-fill ${method.isStandardized ? "partition" : "seed row"} details.</span>
+        <span class="session-seed-age-toggle-helper">${escapeHtml(helperCopy)}</span>
       </span>
     </label>
     <div class="new-session-seed-vault-panel" data-seed-vault-session-panel ${expanded ? "" : "hidden"}>
@@ -81677,7 +81840,9 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
         return;
       }
       if (isPartitionRowPopulatedForVaultApply(row)) {
-        const confirmed = window.confirm(`Clear this ${rowLabel}'s Vault Entry assignment and copied fields?`);
+        const confirmed = window.confirm(method.isStandardized
+          ? "Clear this partition's Vault Entry assignment and copied fields?"
+          : "Clear this seed row's Vault Entry assignment and copied fields?");
         if (!confirmed) {
           return;
         }
@@ -81739,7 +81904,9 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
 
     const existingVaultEntryId = String(initialRow.dataset.seedVaultEntryId || "").trim();
     if (isPartitionRowPopulatedForVaultApply(initialRow) && existingVaultEntryId !== entry.id) {
-      const confirmed = window.confirm(`Apply this Vault Entry and overwrite details in this populated ${rowLabel}?`);
+      const confirmed = window.confirm(method.isStandardized
+        ? "Apply this Vault Entry and overwrite details in this populated partition?"
+        : "Apply this Vault Entry and overwrite details in this populated seed row?");
       if (!confirmed) {
         return;
       }
@@ -82560,10 +82727,12 @@ function renderSessionForm(initialSystemType = "KAN") {
   const runProgressSummary = document.querySelector("#run-progress-summary");
   const lifecycleSection = document.querySelector("#session-lifecycle-section");
   const lifecycleSummary = document.querySelector("#session-lifecycle-progress");
+  const visualTimeline = document.querySelector("#session-engine-visual-timeline");
   const suppliesAnchor = document.querySelector("#session-lifecycle-supplies-anchor");
   const sessionSequenceLabel = document.querySelector("#session-sequence-label");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
+  const saveShortcut = document.querySelector(".timeline-save-shortcut");
   const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
   const addSeedRowButton = document.querySelector("#add-seed-row");
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
@@ -82674,6 +82843,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   });
   form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
   appState.growthStage = sessionStatusField.value || null;
+  if (lifecycleSection && saveShortcut) {
+    saveShortcut.before(lifecycleSection);
+  }
   syncSessionStatusControlDatasets(sessionStatusField, {
     startedAt: parseSessionStartDateTime(form.elements.date.value, form.elements.time.value)?.toISOString() || "",
     germinationStartedAt: form.dataset.germinationStartedAt || "",
@@ -82684,6 +82856,16 @@ function renderSessionForm(initialSystemType = "KAN") {
 
   function refreshNewSessionSeedVaultPicker() {
     renderNewSessionSeedVaultPicker(seedVaultSessionSection, systemTypeField.value, form);
+  }
+
+  function refreshNewSessionTimelineViews() {
+    const lifecycleState = buildFormLifecycleState(form);
+    updateSessionEngineVisualTimeline(visualTimeline, lifecycleState);
+    updateSessionLifecycleTimeline(
+      lifecycleSummary,
+      lifecycleSection,
+      lifecycleState,
+    );
   }
 
   function refreshNewSessionAfterVaultApply() {
@@ -82702,11 +82884,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       sessionStatusField.value,
       getPartitionProgressDataFromForm(form),
     );
-    updateSessionLifecycleTimeline(
-      lifecycleSummary,
-      lifecycleSection,
-      buildFormLifecycleState(form),
-    );
+    refreshNewSessionTimelineViews();
     validateSeedAgeSettings(form);
     validatePartitions(form, { showMessage: false });
     refreshUnsavedChangesState();
@@ -82778,11 +82956,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     sessionStatusField.value,
     getPartitionProgressDataFromForm(form),
   );
-  updateSessionLifecycleTimeline(
-    lifecycleSummary,
-    lifecycleSection,
-    buildFormLifecycleState(form),
-  );
+  refreshNewSessionTimelineViews();
   bindFormTimelineDebugTools(form, () => {
     validatePartitions(form, { showMessage: false });
     updateSessionSuccessSummary(form, sessionSuccessSummary);
@@ -82810,11 +82984,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       sessionStatusField.value,
       getPartitionProgressDataFromForm(form),
     );
-    updateSessionLifecycleTimeline(
-      lifecycleSummary,
-      lifecycleSection,
-      buildFormLifecycleState(form),
-    );
+    refreshNewSessionTimelineViews();
     refreshUnsavedChangesState();
   });
   const rerenderSeedAgePartitions = () => {
@@ -82927,8 +83097,12 @@ function renderSessionForm(initialSystemType = "KAN") {
       form.elements.time.value,
       sessionStatusField.value,
       );
+      refreshNewSessionTimelineViews();
     });
     sessionStatusTrigger?.addEventListener("click", () => {
+      if (handleSessionEnginePrimaryAction(sessionStatusField)) {
+        return;
+      }
       appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
     });
@@ -83042,17 +83216,13 @@ function renderSessionForm(initialSystemType = "KAN") {
       sessionStatusField.value,
       getPartitionProgressDataFromForm(form),
     );
-    updateSessionLifecycleTimeline(
-      lifecycleSummary,
-      lifecycleSection,
-      buildFormLifecycleState(form),
-    );
+    refreshNewSessionTimelineViews();
     renderFormSuppliesCard();
     updateMethodTypeLayout(form, nextMethod);
   });
     addSeedRowButton?.addEventListener("click", () => {
       const method = getMethodConfig(systemTypeField.value);
-      if (method.isStandardized) {
+      if (!usesCustomMethodWorkflow(method.id)) {
         return;
       }
 
@@ -83125,11 +83295,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       sessionStatusField.value,
       getPartitionProgressDataFromForm(form),
     );
-      updateSessionLifecycleTimeline(
-        lifecycleSummary,
-        lifecycleSection,
-        buildFormLifecycleState(form),
-      );
+      refreshNewSessionTimelineViews();
       syncSessionStatusControlDatasets(sessionStatusField, {
         germinationStartedAt: form.dataset.germinationStartedAt || "",
         firstPlantedAt: form.dataset.firstPlantedAt || "",
@@ -83152,11 +83318,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       form.elements.time.value,
       sessionStatusField.value,
     );
-    updateSessionLifecycleTimeline(
-      lifecycleSummary,
-      lifecycleSection,
-      buildFormLifecycleState(form),
-    );
+    refreshNewSessionTimelineViews();
   });
   form.elements.time.addEventListener("change", () => {
     updateSessionStatusReminder(
@@ -83173,11 +83335,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       form.elements.time.value,
       sessionStatusField.value,
     );
-    updateSessionLifecycleTimeline(
-      lifecycleSummary,
-      lifecycleSection,
-      buildFormLifecycleState(form),
-    );
+    refreshNewSessionTimelineViews();
   });
 
   bindPartitionRowHighlighting(form);
@@ -84812,7 +84970,7 @@ function ensureGrowthStageModal() {
     <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title" aria-describedby="growth-stage-modal-helper">
       <button type="button" class="modal-close" data-growth-stage-modal-close aria-label="Close">×</button>
       <div class="growth-stage-modal-copy">
-        <h2 id="growth-stage-modal-title">Choose Growth Stage</h2>
+        <h2 id="growth-stage-modal-title">Review Session Status</h2>
         <p id="growth-stage-modal-helper" class="growth-stage-modal-helper" data-growth-stage-modal-helper hidden></p>
       </div>
       <div class="growth-stage-modal-actions" id="growth-stage-modal-actions"></div>
@@ -84835,7 +84993,7 @@ function ensureGrowthStageModal() {
 }
 
 function getSessionStageLabel(value) {
-  return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Select Growth Stage";
+  return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Review Session";
 }
 
 function getSessionStageDisplayLabel(value) {
@@ -84874,7 +85032,7 @@ function getCanonicalSessionStageDisplayLabel(stageKey = "", options = {}) {
 }
 
 function getSessionStageButtonLabel(value) {
-  return value ? "Update Growth Stage" : "Select Growth Stage";
+  return "Review Session";
 }
 
 function getSessionProgressDisplayLabel(progressKey, value) {
@@ -84944,8 +85102,8 @@ function getSessionStageProgressionState(control) {
     nextIconKey: iconKeyByStage[nextKey] || "stage-germination",
     nextIconClass: iconClassByStage[nextKey] || iconClassByStage.germination,
     actionLabel: resolvedCurrentKey === "not-started"
-      ? "Start Soaking"
-      : (resolvedCurrentKey === "completed" ? "Session Complete" : "Update Stage"),
+      ? "Start Session"
+      : (resolvedCurrentKey === "completed" ? "Session Complete" : "Review Session"),
     isComplete: resolvedCurrentKey === "completed",
   };
 }
@@ -84956,6 +85114,7 @@ function syncDetailSessionActionBar(control) {
     return;
   }
 
+  const engineState = getSessionStatusEngineState(control);
   const state = getSessionStageProgressionState(control);
   const currentStageElement = actionBar.querySelector("[data-detail-action-current-stage]");
   const nextStageElement = actionBar.querySelector("[data-detail-action-next-stage]");
@@ -84967,6 +85126,58 @@ function syncDetailSessionActionBar(control) {
   const stageActionLabel = actionBar.querySelector("[data-detail-stage-progress-action-label]");
   const stageActionArrow = actionBar.querySelector("[data-detail-stage-progress-action-arrow]");
   const stageCard = actionBar.querySelector("[data-detail-stage-progress-card]");
+  const currentStep = getSessionEngineCurrentStep(engineState);
+  const nextStep = getSessionEngineNextStep(engineState);
+  const actionLabel = getSessionEnginePrimaryActionLabel(engineState);
+
+  if (engineState && currentStep) {
+    if (currentStageElement) {
+      currentStageElement.textContent = engineState.phaseLabel || currentStep.label || "Tracking";
+    }
+    if (nextStageElement) {
+      nextStageElement.textContent = nextStep?.label || engineState.nextMilestone?.title || "No milestone scheduled";
+    }
+    if (currentLabelElement) {
+      currentLabelElement.textContent = "Current Phase";
+    }
+    if (nextLabelElement) {
+      nextLabelElement.textContent = nextStep ? "Next Phase" : "Next Milestone";
+    }
+    if (currentIconElement) {
+      currentIconElement.innerHTML = renderCommandCenterIconMarkup(currentStep.iconName || "stage-germination", "detail-stage-progress-icon command-icon--stage");
+    }
+    if (nextIconElement) {
+      nextIconElement.innerHTML = renderCommandCenterIconMarkup(nextStep?.iconName || "stage-completed", "detail-stage-progress-icon command-icon--stage");
+    }
+    if (stageActionLabel) {
+      stageActionLabel.textContent = actionLabel || "No Action Needed";
+    }
+    if (stageActionArrow) {
+      stageActionArrow.hidden = !actionLabel;
+    }
+
+    actionBar.dataset.currentStageTone = currentStep.tone || "active";
+    actionBar.dataset.nextStageTone = nextStep?.tone || "completed";
+    actionBar.dataset.currentStageKey = currentStep.key || "";
+    actionBar.dataset.nextStageKey = nextStep?.key || "";
+    actionBar.dataset.stageActionState = actionLabel ? "available" : "none";
+
+    if (stageCard) {
+      const isComplete = Boolean(engineState.completedAt || engineState.currentPhase?.key === "complete");
+      stageCard.classList.toggle("is-session-complete", isComplete);
+      stageCard.setAttribute(
+        "aria-label",
+        `${engineState.phaseLabel || currentStep.label}. ${actionLabel || "No required action."}`,
+      );
+    }
+
+    if (stageTrigger) {
+      stageTrigger.hidden = !actionLabel;
+      stageTrigger.disabled = !actionLabel;
+      stageTrigger.setAttribute("aria-label", actionLabel || "No required session action");
+    }
+    return;
+  }
 
   if (currentStageElement) {
     currentStageElement.textContent = state.isComplete ? "Session Completed" : state.currentLabel;
@@ -84975,10 +85186,10 @@ function syncDetailSessionActionBar(control) {
     nextStageElement.textContent = state.nextLabel;
   }
   if (currentLabelElement) {
-    currentLabelElement.textContent = state.isComplete ? "Final Stage" : "Current Stage";
+    currentLabelElement.textContent = state.isComplete ? "Final Phase" : "Current Phase";
   }
   if (nextLabelElement) {
-    nextLabelElement.textContent = "Next Stage";
+    nextLabelElement.textContent = "Next Phase";
   }
   if (currentIconElement) {
     currentIconElement.innerHTML = renderCommandCenterIconMarkup(state.currentIconKey, state.currentIconClass);
@@ -85018,6 +85229,74 @@ function syncDetailSessionActionBar(control) {
         : `${state.actionLabel}. Current stage ${state.currentLabel}. Next stage ${state.nextLabel}.`,
     );
   }
+}
+
+function focusSessionResultEntry(scope = document) {
+  const target = scope?.querySelector?.('input[name="plantedCount"], #detail-partitions input[name="plantedCount"], #partition-fields input[name="plantedCount"]') || null;
+  if (target instanceof HTMLElement) {
+    target.focus({ preventScroll: false });
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    return true;
+  }
+  return false;
+}
+
+function handleSessionEnginePrimaryAction(control = null) {
+  const engineState = getSessionStatusEngineState(control);
+  const action = engineState?.requiredUserActions?.[0] || null;
+  if (!engineState || !action) {
+    return false;
+  }
+
+  const actionKey = String(action.key || "").trim();
+  const form = control?.closest?.("form") || null;
+  const scope = form || document;
+  const now = new Date().toISOString();
+
+  if (actionKey === "confirm-moved-to-germination" && control) {
+    control.value = "germinating";
+    control.dataset.germinationStartedAt = control.dataset.germinationStartedAt || now;
+    if (control.__sessionRecord) {
+      control.__sessionRecord.sessionStatus = "germinating";
+      control.__sessionRecord.germinationStartedAt = control.__sessionRecord.germinationStartedAt || control.dataset.germinationStartedAt;
+    }
+    if (form) {
+      form.dataset.germinationStartedAt = control.dataset.germinationStartedAt;
+      form.dataset.currentStage = "germinating";
+    }
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  if (actionKey === "confirm-moved-to-paper-towel" && control) {
+    control.dataset.germinationStartedAt = control.dataset.germinationStartedAt || now;
+    if (control.__sessionRecord) {
+      control.__sessionRecord.germinationStartedAt = control.__sessionRecord.germinationStartedAt || control.dataset.germinationStartedAt;
+    }
+    if (form) {
+      form.dataset.germinationStartedAt = control.dataset.germinationStartedAt;
+    }
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+    updateSessionStatusAppearance(control, document.querySelector("#session-status-trigger, #detail-session-status-trigger"));
+    showNavigationLockToast({
+      title: "Paper towel timing started",
+      message: "Session Progress will now track paper towel milestones from this timestamp.",
+    });
+    return true;
+  }
+
+  if (["check-seeds", "check-environment", "check-emergence", "confirm-transfer-ready", "record-results", "record-germination-results", "complete-session"].includes(actionKey)) {
+    focusSessionResultEntry(scope);
+    showNavigationLockToast({
+      title: action.label || "Session action",
+      message: actionKey === "complete-session"
+        ? "Review germination counts, then complete the session when results are ready."
+        : "Review the session chart and update results as needed.",
+    });
+    return true;
+  }
+
+  return false;
 }
 
 function syncSessionStatusControlDatasets(control, source = {}) {
@@ -85118,7 +85397,7 @@ function getSessionStatusVisualState(control) {
         progressKey,
         tone: "unselected",
         label: "Not Started",
-        helperText: "Update the stage as your seeds progress through the session.",
+        helperText: "Session status is calculated from the selected method timeline.",
         iconKey: "",
         timestampLabel: "Not recorded yet",
       };
@@ -85138,10 +85417,14 @@ function renderSessionStatusStageIconMarkup(stageIconKey = "", variant = "pill")
       </span>
     `;
   }
+  const iconName = String(stageIconKey || "").startsWith("stage-")
+    ? String(stageIconKey)
+    : `stage-${stageIconKey}`;
+  const iconClass = `session-status-stage-icon-symbol command-icon--stage command-icon--${iconName}`;
 
   return `
     <span class="session-status-stage-icon session-status-stage-icon--${escapeHtml(variant)}" aria-hidden="true">
-      ${renderCommandCenterIconMarkup(`stage-${stageIconKey}`, `session-status-stage-icon-symbol command-icon--stage command-icon--stage-${stageIconKey}`)}
+      ${renderCommandCenterIconMarkup(iconName, iconClass)}
     </span>
   `;
 }
@@ -85262,7 +85545,7 @@ function updateMethodTypeLayout(scope, methodType = "") {
     element.hidden = !method.isStandardized;
   });
   scope.querySelectorAll("[data-custom-method-actions]").forEach((element) => {
-    element.hidden = method.isStandardized;
+    element.hidden = !usesCustomMethodWorkflow(method.id);
   });
   scope.querySelectorAll(".partition-table").forEach((element) => {
     element.dataset.methodType = method.id;
@@ -89634,6 +89917,7 @@ function renderSessionDetail(sessionId) {
     }
   }
   detail.statusField.value = session.sessionStatus || (sessionMethod.supportsStageTracking ? "soaking" : getMethodDefaultSessionStatus(sessionMethod.id));
+  detail.statusField.__sessionRecord = session;
   syncSessionStatusControlDatasets(detail.statusField, {
     startedAt: getSessionStatusStartedAtValue(session),
     germinationStartedAt: session.germinationStartedAt || "",
@@ -89660,7 +89944,7 @@ function renderSessionDetail(sessionId) {
     if (!detail.customCompletionActions) {
       return;
     }
-    const isCustomMethod = !sessionMethod.supportsStageTracking;
+    const isCustomMethod = usesCustomMethodWorkflow(sessionMethod.id);
     const isCompleted = normalizeSessionStatus(detail.statusField?.value || session.sessionStatus || "") === "completed";
     detail.customCompletionActions.hidden = !isCustomMethod || isCompleted;
     if (detail.customCompleteButton) {
@@ -90039,6 +90323,9 @@ function renderSessionDetail(sessionId) {
   });
 
     detail.statusTrigger?.addEventListener("click", () => {
+      if (handleSessionEnginePrimaryAction(detail.statusField)) {
+        return;
+      }
       appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: detail.statusField, stageTrigger: detail.statusTrigger });
     });
@@ -90199,7 +90486,7 @@ function renderSessionDetail(sessionId) {
   };
 
   const completeCustomMethodSession = async () => {
-    if (sessionMethod.supportsStageTracking || normalizeSessionStatus(session.sessionStatus || "") === "completed") {
+    if (!usesCustomMethodWorkflow(sessionMethod.id) || sessionMethod.supportsStageTracking || normalizeSessionStatus(session.sessionStatus || "") === "completed") {
       return null;
     }
 
@@ -90861,7 +91148,7 @@ function getSessionResultSummary(session = null, options = {}) {
     || "",
   );
   const includePendingCustomResults = options.includePendingCustomResults === true;
-  const isPendingCustomMethodSession = !method.isStandardized
+  const isPendingCustomMethodSession = usesCustomMethodWorkflow(method.id)
     && sessionStatus !== "completed"
     && !includePendingCustomResults;
   const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
@@ -92339,6 +92626,75 @@ function shouldShowDetailSeedAgeEditor({
   return Boolean(isCreateMode || (seedAgeEditingUnlocked && normalizedStatus === "soaking"));
 }
 
+function getSessionStatusEngineState(control = null) {
+  const session = control?.__sessionRecord || null;
+  if (session) {
+    return buildSessionEngineState(session);
+  }
+  const form = control?.closest?.("form");
+  if (form instanceof HTMLFormElement) {
+    return buildFormSessionEngineState(form);
+  }
+  return null;
+}
+
+function getSessionEngineCurrentStep(engineState = null) {
+  return engineState?.timelineSteps?.find((step) => step.isCurrent)
+    || engineState?.timelineSteps?.find((step) => !step.isComplete)
+    || engineState?.timelineSteps?.[engineState.timelineSteps.length - 1]
+    || null;
+}
+
+function getSessionEngineNextStep(engineState = null) {
+  return engineState?.timelineSteps?.find((step) => step.isFuture) || null;
+}
+
+function getSessionEnginePrimaryActionLabel(engineState = null) {
+  return engineState?.requiredUserActions?.[0]?.label
+    || engineState?.activeMilestone?.actionText
+    || engineState?.activeMilestone?.title
+    || "";
+}
+
+function getSessionStatusEngineDetailsMarkup(engineState = null) {
+  if (!engineState) {
+    return "";
+  }
+  const nextMilestone = engineState.activeMilestone || engineState.nextMilestone || null;
+  const nextMilestoneLabel = nextMilestone
+    ? `${nextMilestone.title || nextMilestone.message || "Review session"}${engineState.activeMilestone ? " (due now)" : ""}`
+    : "No milestone scheduled";
+  const requiredAction = getSessionEnginePrimaryActionLabel(engineState) || "No action needed";
+  return `
+    <dl class="session-status-engine-details">
+      <div><dt>Next Milestone</dt><dd>${escapeHtml(nextMilestoneLabel)}</dd></div>
+      <div><dt>Required Action</dt><dd>${escapeHtml(requiredAction)}</dd></div>
+      <div><dt>Overdue</dt><dd>${escapeHtml(engineState.overdueStatus?.label || "On track")}</dd></div>
+      ${engineState.requiresResultEntry ? "<div><dt>Results</dt><dd>Record germination results</dd></div>" : ""}
+    </dl>
+  `;
+}
+
+function getSessionEngineStatusVisualState(engineState = null) {
+  const currentStep = getSessionEngineCurrentStep(engineState);
+  if (!engineState || !currentStep) {
+    return null;
+  }
+  const nextMilestone = engineState.activeMilestone || engineState.nextMilestone || null;
+  return {
+    normalizedStatus: engineState.status || "active",
+    progressKey: currentStep.key || engineState.currentPhase?.key || "",
+    tone: currentStep.tone || engineState.currentPhase?.tone || "active",
+    label: engineState.phaseLabel || currentStep.label || "Tracking",
+    helperText: nextMilestone
+      ? `${nextMilestone.title || nextMilestone.message || "Next milestone"}${engineState.activeMilestone ? " is due now" : ""}`
+      : "No required action right now",
+    iconKey: currentStep.iconName || "stage-germination",
+    timestampLabel: formatSessionEngineDurationLabel(engineState.elapsedMs),
+    engineState,
+  };
+}
+
 function updateSessionStatusAppearance(control, trigger) {
   if (!control && !trigger) {
     return;
@@ -92347,7 +92703,8 @@ function updateSessionStatusAppearance(control, trigger) {
   const value = control?.value || "";
   const normalizedStatus = normalizeSessionStatus(value);
   const progressKey = getSessionStatusProgressKey(control);
-  const visualState = getSessionStatusVisualState(control);
+  const engineState = getSessionStatusEngineState(control);
+  const visualState = getSessionEngineStatusVisualState(engineState) || getSessionStatusVisualState(control);
   const stageOrder = ["soaking", "germination", "first-germinated", "completed"];
   const currentStageIndex = stageOrder.indexOf(progressKey);
   const nextStageIndex = progressKey ? Math.min(currentStageIndex + 1, stageOrder.length - 1) : 0;
@@ -92355,6 +92712,7 @@ function updateSessionStatusAppearance(control, trigger) {
   const currentValueElement = panel?.querySelector(".session-status-current-value");
   const helperTextElement = panel?.querySelector(".session-status-help");
   const metaValueElement = panel?.querySelector(".session-status-meta-value");
+  const metaLabelElement = panel?.querySelector(".session-status-meta-label");
   const pillIconElement = panel?.querySelector("[data-session-status-pill-icon]");
   const triggerLabelElement = trigger?.querySelector("[data-session-status-trigger-label]") || panel?.querySelector("[data-session-status-trigger-label]");
 
@@ -92370,7 +92728,10 @@ function updateSessionStatusAppearance(control, trigger) {
     currentValueElement.textContent = visualState.label || getSessionProgressDisplayLabel(progressKey, value);
   }
   if (helperTextElement) {
-    helperTextElement.textContent = visualState.helperText || "Update the stage as your seeds progress through the session.";
+    helperTextElement.textContent = visualState.helperText || "Session status is calculated from the selected method timeline.";
+  }
+  if (metaLabelElement) {
+    metaLabelElement.textContent = engineState ? "Elapsed Time" : "Last Updated";
   }
   if (metaValueElement) {
     metaValueElement.textContent = visualState.timestampLabel || "Not recorded yet";
@@ -92393,10 +92754,28 @@ function updateSessionStatusAppearance(control, trigger) {
 
   if (trigger) {
     trigger.dataset.sessionStatus = normalizedStatus;
+    const actionLabel = getSessionEnginePrimaryActionLabel(engineState);
     if (triggerLabelElement) {
-      triggerLabelElement.textContent = getSessionStageButtonLabel(value);
+      triggerLabelElement.textContent = actionLabel || "Review Session";
     } else {
-      trigger.textContent = getSessionStageButtonLabel(value);
+      trigger.textContent = actionLabel || "Review Session";
+    }
+    trigger.hidden = Boolean(engineState && !actionLabel);
+    trigger.disabled = Boolean(engineState && !actionLabel);
+    trigger.setAttribute("aria-label", actionLabel || "No required session action");
+  }
+
+  if (panel) {
+    let detailsElement = panel.querySelector(".session-status-engine-details-shell");
+    if (engineState) {
+      if (!detailsElement) {
+        detailsElement = document.createElement("div");
+        detailsElement.className = "session-status-engine-details-shell";
+        panel.querySelector(".session-status-card")?.appendChild(detailsElement);
+      }
+      detailsElement.innerHTML = getSessionStatusEngineDetailsMarkup(engineState);
+    } else if (detailsElement) {
+      detailsElement.remove();
     }
   }
 
@@ -92548,6 +92927,34 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
 
   const lifecycleAlert = getSessionLifecycleRecoveryAlert(options.session || null);
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const engineState = buildSessionEngineState(options.session || null);
+  if (engineState?.requiresResultEntry) {
+    element.innerHTML = renderSessionStatusAlertsMarkup([
+      ...(lifecycleAlert ? [lifecycleAlert] : []),
+      {
+        level: "warning",
+        title: "Results needed",
+        message: "Record germination results to complete this session data.",
+        actionText: "Next step: enter germinated counts for this session.",
+      },
+    ]);
+    element.hidden = false;
+    return;
+  }
+  if (engineState?.activeMilestone) {
+    const milestone = engineState.activeMilestone;
+    element.innerHTML = renderSessionStatusAlertsMarkup([
+      ...(lifecycleAlert ? [lifecycleAlert] : []),
+      {
+        level: milestone.level,
+        title: milestone.title || getSessionStatusAlertTitle(normalizedStatus, milestone.level),
+        message: milestone.message || "",
+        actionText: milestone.actionText || getSessionStatusAlertActionText(normalizedStatus, milestone.level),
+      },
+    ]);
+    element.hidden = false;
+    return;
+  }
   if (normalizedStatus === "unselected" || !["soaking", "germinating"].includes(normalizedStatus)) {
     element.innerHTML = lifecycleAlert ? renderSessionStatusAlertsMarkup([lifecycleAlert]) : "";
     element.hidden = !lifecycleAlert;
@@ -92597,6 +93004,15 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
   }
 
 function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "", options = {}) {
+  const engineState = buildSessionEngineState(options.session || null);
+  if (engineState?.activeMilestone) {
+    return {
+      ...engineState.activeMilestone,
+      hours: engineState.activeMilestone.atHours,
+      maxHours: engineState.activeMilestone.maxHours,
+    };
+  }
+
   const schedule = STAGE_REMINDER_SCHEDULES[sessionStatus];
   if (!schedule?.length) {
     return null;
@@ -93405,13 +93821,105 @@ function getRunProgressGradient(progressPercent) {
   return "linear-gradient(90deg, #c2410c 0%, #f59e0b 35%, #84cc16 65%, #166534 100%)";
 }
 
-function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
-  if (!summaryElement || !sectionElement) {
+function getSessionEngineVisualTimelineTheme(engineState = null) {
+  const methodKey = getSessionEngineMethodKey(engineState?.methodKey || engineState?.definition?.key || "");
+  return SESSION_ENGINE_VISUAL_TIMELINE_THEMES[methodKey]
+    || SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizeMethodType(methodKey)]
+    || SESSION_ENGINE_VISUAL_TIMELINE_THEMES.OTHER;
+}
+
+function getSessionEngineVisualTimelineStatus(step = {}, engineState = null) {
+  const isOverdue = Boolean(engineState?.overdueStatus?.isOverdue && step.isCurrent);
+  if (isOverdue) {
+    return {
+      key: "overdue",
+      label: "Overdue",
+    };
+  }
+  if (step.isCurrent) {
+    return {
+      key: "current",
+      label: "Current",
+    };
+  }
+  if (step.isComplete) {
+    return {
+      key: "complete",
+      label: "Complete",
+    };
+  }
+  return {
+    key: "upcoming",
+    label: "Upcoming",
+  };
+}
+
+function getSessionEngineVisualTimelineNextLabel(engineState = null) {
+  const milestone = engineState?.activeMilestone || engineState?.nextMilestone || null;
+  if (milestone) {
+    const title = milestone.title || milestone.actionText || milestone.message || "Review";
+    const atHours = Number(milestone.atHours ?? milestone.hours);
+    return `${engineState.activeMilestone ? "Due" : "Next"}: ${title}${Number.isFinite(atHours) ? ` at ${formatSessionEngineHourOffsetLabel(atHours)}` : ""}`;
+  }
+  const nextStep = engineState?.timelineSteps?.find((step) => step.isFuture) || null;
+  return nextStep ? `Next: ${nextStep.label}` : "Timeline ready";
+}
+
+function renderSessionEngineVisualTimelineMarkup(engineState = null) {
+  const steps = Array.isArray(engineState?.timelineSteps)
+    ? engineState.timelineSteps.filter((step) => String(step?.label || "").trim())
+    : [];
+  if (!steps.length) {
+    return "";
+  }
+
+  const theme = getSessionEngineVisualTimelineTheme(engineState);
+  const methodName = engineState?.methodName || engineState?.definition?.displayName || "Session";
+  const stepCount = Math.max(1, steps.length);
+  const isOverdue = Boolean(engineState?.overdueStatus?.isOverdue);
+
+  return `
+    <article
+      class="session-engine-visual-timeline-card ${isOverdue ? "is-overdue" : ""}"
+      data-method-theme="${escapeHtml(theme.key)}"
+      style="--visual-timeline-accent: ${escapeHtml(theme.accent)}; --visual-timeline-accent-soft: ${escapeHtml(theme.accentSoft)}; --visual-timeline-glow: ${escapeHtml(theme.glow)}; --visual-timeline-step-count: ${stepCount};"
+    >
+      <div class="session-engine-visual-timeline-head">
+        <p class="eyebrow">Visual Timeline</p>
+        <span class="session-engine-visual-timeline-next">${escapeHtml(getSessionEngineVisualTimelineNextLabel(engineState))}</span>
+      </div>
+      <div class="session-engine-visual-timeline-scroll" tabindex="0" aria-label="${escapeHtml(`${methodName} visual timeline`)}">
+        <ol class="session-engine-visual-timeline-list">
+          ${steps.map((step) => {
+            const status = getSessionEngineVisualTimelineStatus(step, engineState);
+            return `
+              <li class="session-engine-visual-timeline-step is-${escapeHtml(status.key)}">
+                <span class="session-engine-visual-timeline-marker">
+                  ${renderCommandCenterIconMarkup(step.iconName || "stage-soaking", "session-engine-visual-timeline-icon")}
+                </span>
+                <strong>${escapeHtml(step.label || "Step")}</strong>
+                <small>${escapeHtml(step.timing || "")}</small>
+                <span class="session-engine-visual-timeline-state">${escapeHtml(status.label)}</span>
+              </li>
+            `;
+          }).join("")}
+        </ol>
+      </div>
+    </article>
+  `;
+}
+
+function updateSessionEngineVisualTimeline(timelineElement = null, state = {}) {
+  if (!(timelineElement instanceof HTMLElement)) {
     return;
   }
-  if (sectionElement.closest('[data-method-standardized="false"]')) {
-    summaryElement.innerHTML = "";
-    sectionElement.hidden = true;
+  const markup = renderSessionEngineVisualTimelineMarkup(state?.engineState || null);
+  timelineElement.innerHTML = markup;
+  timelineElement.hidden = !markup;
+}
+
+function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
+  if (!summaryElement || !sectionElement) {
     return;
   }
 
@@ -93421,11 +93929,32 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
     return;
   }
 
-  summaryElement.innerHTML = renderSessionLifecycleTimelineMarkup(state);
+  summaryElement.innerHTML = renderSessionProgressCommandCenterMarkup(state.engineState || null);
+  bindSessionProgressCommandActions(summaryElement);
   sectionElement.hidden = false;
 }
 
 function getSessionLifecycleTimelineEvents(state = {}) {
+  if (state.engineState?.timelineSteps?.length) {
+    return state.engineState.timelineSteps.map((step) => ({
+      key: step.key,
+      label: step.label,
+      timestamp: parseCompletedAtValue(step.startAt || ""),
+      displayLabel: step.timing || "",
+      tone: step.tone || "green",
+      complete: Boolean(step.isComplete),
+      statusText: step.isCurrent
+        ? "Current phase"
+        : (step.isComplete ? "Completed" : "Up next"),
+      timestampText: step.timing || (step.startAt ? formatTimingDateTime(parseCompletedAtValue(step.startAt)) : "Pending"),
+      iconName: step.iconName || `stage-${step.key}`,
+      isCurrent: Boolean(step.isCurrent),
+      isFuture: Boolean(step.isFuture),
+      isComplete: Boolean(step.isComplete),
+      lengthText: step.timing || "Pending",
+    }));
+  }
+
   const setupGraceActive = Boolean(state.setupGraceActive);
   const events = [
     {
@@ -93578,6 +94107,9 @@ function getSessionLifecycleTimelineStageBounds(state = {}, eventKey = "") {
 }
 
 function getSessionLifecycleTimelineCardMeta(state = {}, event = {}) {
+  if (event.lengthText) {
+    return { lengthText: event.lengthText };
+  }
   const { startAt, finishAt } = getSessionLifecycleTimelineStageBounds(state, event.key);
   const hasValidStart = startAt instanceof Date && !Number.isNaN(startAt.getTime());
   const hasValidFinish = finishAt instanceof Date && !Number.isNaN(finishAt.getTime());
@@ -93691,43 +94223,316 @@ function renderSessionLifecycleTimelineStatusMarkup(statusText = "") {
   )).join("");
 }
 
-function renderSessionLifecycleTimelineMarkup(state) {
-  const events = getSessionLifecycleTimelineEvents(state);
+function formatSessionEngineTimestampLabel(value = "") {
+  const parsed = parseCompletedAtValue(value);
+  return parsed ? formatTimingDateTime(parsed) : "Not scheduled";
+}
+
+function formatSessionEngineDurationLabel(ms = 0) {
+  const duration = Math.max(0, Number(ms) || 0);
+  return formatDurationMsShort(duration) || "0m";
+}
+
+function renderSessionEngineSummaryMarkup(engineState = null) {
+  if (!engineState) {
+    return "";
+  }
+
+  const nextMilestone = engineState.activeMilestone || engineState.nextMilestone || null;
+  const nextMilestoneLabel = nextMilestone
+    ? `${nextMilestone.title || nextMilestone.message || "Review session"}${engineState.activeMilestone ? " (due now)" : ""}`
+    : "No milestone scheduled";
+  const expectedCompletion = [
+    engineState.expectedCompletionWindow?.startAt ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.startAt) : "",
+    engineState.expectedCompletionWindow?.endAt ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.endAt) : "",
+  ].filter(Boolean).join(" - ") || "Not scheduled";
+  const requiredAction = engineState.requiredUserActions?.[0]?.label || "No action needed";
 
   return `
-    <div class="session-command-stage-grid session-lifecycle-progress-grid stage-progress-row" role="list" aria-label="Session timeline progress">
-      ${events.map((event, index) => {
-        const nextEvent = events[index + 1] || null;
-        const connectorIsActive = Boolean(
-          nextEvent
-          && (event.isComplete || nextEvent.isComplete || nextEvent.isCurrent)
-        );
-        const iconStageKey = event.key === "germination-started" ? "first-germinated" : event.key;
-        const cardMeta = getSessionLifecycleTimelineCardMeta(state, event);
-
-        return `
-        <article
-          class="session-command-stage stage-item session-lifecycle-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${event.isFuture ? "is-future" : ""}"
-          role="listitem"
-        >
-          ${renderCommandCenterIconMarkup(`stage-${iconStageKey}`, `command-icon--stage command-icon--stage-${iconStageKey}`)}
-          <strong>${escapeHtml(event.label)}</strong>
-          <p class="session-command-stage-helper">${renderSessionLifecycleTimelineStatusMarkup(event.statusText)}</p>
-          <div class="session-lifecycle-stage-card" aria-label="${escapeHtml(`${event.label} timing details`)}">
-            <dl class="session-lifecycle-stage-card-grid">
-              <dt>Stage Duration</dt>
-              <dd>${escapeHtml(cardMeta.lengthText)}</dd>
-            </dl>
-          </div>
-        </article>
-        ${nextEvent ? `<div class="stage-connector session-lifecycle-stage-connector${connectorIsActive ? " stage-connector--active" : ""}" aria-hidden="true"></div>` : ""}
-      `;
-      }).join("")}
+    <div class="session-engine-summary" aria-label="Session timeline summary">
+      <dl class="session-engine-summary-grid">
+        <div><dt>Current Phase</dt><dd>${escapeHtml(engineState.phaseLabel || "Tracking")}</dd></div>
+        <div><dt>Elapsed Time</dt><dd>${escapeHtml(formatSessionEngineDurationLabel(engineState.elapsedMs))}</dd></div>
+        <div><dt>Next Milestone</dt><dd>${escapeHtml(nextMilestoneLabel)}</dd></div>
+        <div><dt>Expected Completion</dt><dd>${escapeHtml(expectedCompletion)}</dd></div>
+        <div><dt>Progress</dt><dd>${escapeHtml(`${Math.max(0, Math.min(100, Number(engineState.progressPercentage) || 0))}%`)}</dd></div>
+        <div><dt>Overdue Status</dt><dd>${escapeHtml(engineState.overdueStatus?.label || "On track")}</dd></div>
+        <div><dt>Required Action</dt><dd>${escapeHtml(requiredAction)}</dd></div>
+        ${engineState.requiresResultEntry ? "<div><dt>Results</dt><dd>Record germination results</dd></div>" : ""}
+      </dl>
     </div>
   `;
 }
 
+function formatSessionEngineHourOffsetLabel(hours = 0) {
+  const normalizedHours = Math.max(0, Number(hours) || 0);
+  if (normalizedHours >= 24 && normalizedHours % 24 === 0) {
+    return `Day ${normalizedHours / 24}`;
+  }
+  if (normalizedHours >= 24) {
+    const days = Math.floor(normalizedHours / 24);
+    const remainder = normalizedHours % 24;
+    return `${days}d ${remainder}h`;
+  }
+  return `${normalizedHours}h`;
+}
+
+function formatSessionEngineWindowOffsetLabel(engineState = null) {
+  const windowConfig = engineState?.definition?.completionWindow || null;
+  if (!windowConfig) {
+    return "Not scheduled";
+  }
+  const startHour = Number(windowConfig.startHour);
+  const endHour = Number(windowConfig.endHour);
+  if (!Number.isFinite(startHour) && !Number.isFinite(endHour)) {
+    return "Not scheduled";
+  }
+  if (Number.isFinite(startHour) && Number.isFinite(endHour)) {
+    return `${formatSessionEngineHourOffsetLabel(startHour)} - ${formatSessionEngineHourOffsetLabel(endHour)}`;
+  }
+  return Number.isFinite(startHour)
+    ? `${formatSessionEngineHourOffsetLabel(startHour)}+`
+    : formatSessionEngineHourOffsetLabel(endHour);
+}
+
+function getSessionEngineMilestoneSummary(engineState = null) {
+  const milestone = engineState?.activeMilestone || engineState?.nextMilestone || null;
+  if (!milestone) {
+    return "No milestone scheduled";
+  }
+
+  const title = milestone.title || milestone.message || "Review session";
+  const offsetLabel = Number.isFinite(Number(milestone.atHours))
+    ? formatSessionEngineHourOffsetLabel(Number(milestone.atHours))
+    : "";
+  const anchorLabel = milestone.from === "paperTowelStart"
+    ? " after paper towel begins"
+    : "";
+  return engineState.activeMilestone
+    ? `${title} due now`
+    : `${title}${offsetLabel ? ` at ${offsetLabel}${anchorLabel}` : ""}`;
+}
+
+function getSessionEngineActionList(engineState = null) {
+  return Array.isArray(engineState?.requiredUserActions)
+    ? engineState.requiredUserActions.filter((action) => String(action?.label || action?.key || "").trim())
+    : [];
+}
+
+function renderSessionProgressActionMarkup(engineState = null) {
+  const actions = getSessionEngineActionList(engineState);
+  if (!actions.length) {
+    return `<p class="session-progress-command-no-action">No action needed yet.</p>`;
+  }
+
+  return `
+    <div class="session-progress-command-actions" aria-label="Required session actions">
+      ${actions.map((action, index) => `
+        <button
+          type="button"
+          class="session-progress-command-action ${index === 0 ? "session-progress-command-action--primary" : ""}"
+          data-session-engine-action-trigger
+          data-session-engine-action-key="${escapeHtml(action.key || "")}"
+        >
+          ${escapeHtml(action.label || "Review session")}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getSessionProgressStepStateLabel(step = {}) {
+  if (step.isCurrent) {
+    return "Now";
+  }
+  if (step.isComplete) {
+    return "Done";
+  }
+  return "Next";
+}
+
+function renderSessionProgressStepsMarkup(engineState = null) {
+  const steps = Array.isArray(engineState?.timelineSteps) ? engineState.timelineSteps : [];
+  if (!steps.length) {
+    return "";
+  }
+
+  return `
+    <ol class="session-progress-command-steps" aria-label="Dynamic session progress steps">
+      ${steps.map((step) => {
+        const stepState = step.isCurrent ? "current" : (step.isComplete ? "complete" : "future");
+        return `
+          <li class="session-progress-command-step is-${escapeHtml(stepState)}">
+            <span class="session-progress-command-step-marker" aria-hidden="true"></span>
+            <span class="session-progress-command-step-copy">
+              <strong>${escapeHtml(step.label || "Step")}</strong>
+              <small>${escapeHtml(step.timing || getSessionProgressStepStateLabel(step))}</small>
+            </span>
+            <span class="session-progress-command-step-state">${escapeHtml(getSessionProgressStepStateLabel(step))}</span>
+          </li>
+        `;
+      }).join("")}
+    </ol>
+  `;
+}
+
+function renderSessionProgressCommandCenterMarkup(engineState = null) {
+  if (!engineState) {
+    return `
+      <article class="session-progress-command-card session-progress-command-card--empty" aria-label="Session Progress">
+        <div class="session-progress-command-head">
+          <span class="session-progress-command-kicker">Session Progress</span>
+          <strong>Timeline unavailable</strong>
+          <p>Select a method and start time to calculate session progress.</p>
+        </div>
+      </article>
+    `;
+  }
+
+  const progress = Math.max(0, Math.min(100, Number(engineState.progressPercentage) || 0));
+  const methodName = engineState.methodName || engineState.definition?.displayName || "Session Method";
+  const requiredAction = getSessionEngineActionList(engineState)[0]?.label || "No action needed yet.";
+  const isOverdue = Boolean(engineState.overdueStatus?.isOverdue);
+  const overdueLabel = engineState.overdueStatus?.label || "On track";
+  const overdueDetail = isOverdue && engineState.overdueStatus?.overdueAt
+    ? `Since ${formatSessionEngineTimestampLabel(engineState.overdueStatus.overdueAt)}`
+    : "Within expected timing";
+
+  return `
+    <article class="session-progress-command-card ${isOverdue ? "is-overdue" : ""}" aria-label="Session Progress">
+      <div class="session-progress-command-head">
+        <span class="session-progress-command-kicker">Session Progress</span>
+        <strong>${escapeHtml(methodName)}</strong>
+      </div>
+
+      <dl class="session-progress-command-metrics">
+        <div>
+          <dt>Method</dt>
+          <dd>${escapeHtml(methodName)}</dd>
+        </div>
+        <div>
+          <dt>Current Phase</dt>
+          <dd>${escapeHtml(engineState.phaseLabel || "Tracking")}</dd>
+        </div>
+        <div>
+          <dt>Elapsed</dt>
+          <dd>${escapeHtml(formatSessionEngineDurationLabel(engineState.elapsedMs))}</dd>
+        </div>
+        <div>
+          <dt>Next Milestone</dt>
+          <dd>${escapeHtml(getSessionEngineMilestoneSummary(engineState))}</dd>
+        </div>
+        <div>
+          <dt>Expected Completion</dt>
+          <dd>${escapeHtml(formatSessionEngineWindowOffsetLabel(engineState))}</dd>
+        </div>
+        <div>
+          <dt>Overdue Status</dt>
+          <dd>
+            <span class="session-progress-command-status ${isOverdue ? "is-warning" : "is-ok"}">${escapeHtml(overdueLabel)}</span>
+            <small>${escapeHtml(overdueDetail)}</small>
+          </dd>
+        </div>
+        <div class="session-progress-command-metric-wide">
+          <dt>Progress</dt>
+          <dd>
+            <div class="session-progress-command-progress" aria-label="${escapeHtml(`Progress ${progress}%`)}">
+              <span style="width: ${progress}%;"></span>
+            </div>
+            <strong>${escapeHtml(`${progress}%`)}</strong>
+          </dd>
+        </div>
+        <div class="session-progress-command-metric-wide">
+          <dt>Required Action</dt>
+          <dd>${escapeHtml(requiredAction)}</dd>
+        </div>
+        ${engineState.requiresResultEntry ? `
+          <div class="session-progress-command-metric-wide session-progress-command-result-alert">
+            <dt>Results</dt>
+            <dd>Record germination results</dd>
+          </div>
+        ` : ""}
+      </dl>
+
+      ${isOverdue ? `
+        <div class="session-progress-command-warning" role="status">
+          <strong>Overdue warning</strong>
+          <span>This session has passed its expected completion window.</span>
+        </div>
+      ` : ""}
+
+      <section class="session-progress-command-action-panel" aria-label="Session progress action">
+        ${renderSessionProgressActionMarkup(engineState)}
+      </section>
+
+      <section class="session-progress-command-step-panel" aria-label="Timeline steps">
+        <div class="session-progress-command-step-head">
+          <span>Timeline Steps</span>
+        </div>
+        ${renderSessionProgressStepsMarkup(engineState)}
+      </section>
+    </article>
+  `;
+}
+
+function getSessionProgressControlForSummary(summaryElement = null) {
+  const form = summaryElement?.closest?.("form");
+  if (form instanceof HTMLFormElement && form.elements?.sessionStatus) {
+    return form.elements.sessionStatus;
+  }
+  if (summaryElement?.closest?.("#detail-lifecycle-section")) {
+    return document.querySelector("#detail-session-status-control");
+  }
+  return document.querySelector("#session-status-control");
+}
+
+function refreshSessionProgressCommandView(summaryElement = null, control = null) {
+  const sectionElement = summaryElement?.closest?.("#session-lifecycle-section, #detail-lifecycle-section") || null;
+  if (!summaryElement || !sectionElement) {
+    return;
+  }
+  const form = control?.closest?.("form") || summaryElement.closest?.("form");
+  const state = form instanceof HTMLFormElement
+    ? buildFormLifecycleState(form)
+    : buildSessionLifecycleState(control?.__sessionRecord || {});
+  updateSessionLifecycleTimeline(summaryElement, sectionElement, state);
+}
+
+function bindSessionProgressCommandActions(summaryElement = null) {
+  if (!summaryElement || summaryElement.dataset.sessionProgressActionsBound === "true") {
+    return;
+  }
+  summaryElement.addEventListener("click", (event) => {
+    const trigger = event.target instanceof Element
+      ? event.target.closest("[data-session-engine-action-trigger]")
+      : null;
+    if (!trigger) {
+      return;
+    }
+    event.preventDefault();
+    const control = getSessionProgressControlForSummary(summaryElement);
+    if (handleSessionEnginePrimaryAction(control)) {
+      refreshSessionProgressCommandView(summaryElement, control);
+    }
+  });
+  summaryElement.dataset.sessionProgressActionsBound = "true";
+}
+
 function getSpotlightLifecycleEvents(session = null) {
+  const engineState = buildSessionEngineState(session);
+  if (engineState?.timelineSteps?.length) {
+    return engineState.timelineSteps.map((step) => ({
+      key: step.key,
+      label: step.label,
+      tone: step.tone || "green",
+      currentLabel: step.label,
+      isCurrent: Boolean(step.isCurrent),
+      isComplete: Boolean(step.isComplete),
+      isActive: Boolean(step.isCurrent || step.isComplete),
+      statusText: step.isComplete ? `${step.label} completed` : (step.isCurrent ? step.label : ""),
+    }));
+  }
+
   const currentProgressKey = session ? getSessionProgressKeyFromSession(session) : "";
 
   const stageConfig = [
@@ -94050,6 +94855,29 @@ function getSessionCommandCenterRoadmapCurrentIndex(session = null, stages = [])
 }
 
 function getSessionCommandCenterRoadmapState(session = null) {
+  const engineState = buildSessionEngineState(session);
+  if (engineState?.timelineSteps?.length) {
+    const stages = engineState.timelineSteps.map((step) => ({
+      key: step.key,
+      label: step.label,
+      timing: step.timing || "",
+      iconName: step.iconName || "info",
+      isComplete: Boolean(step.isComplete),
+      isCurrent: Boolean(step.isCurrent),
+      isFuture: Boolean(step.isFuture),
+    }));
+    return {
+      title: engineState.methodName || formatMethodTypeLabel(getSessionMethodType(session)),
+      tone: engineState.definition?.tone || "green",
+      iconName: engineState.definition?.iconName || "method-custom",
+      currentIndex: Math.max(0, stages.findIndex((stage) => stage.isCurrent)),
+      isCompleted: normalizeSessionStatus(session?.sessionStatus || session?.session_status || "") === "completed"
+        || engineState.currentPhase?.key === "complete",
+      stages,
+      engineState,
+    };
+  }
+
   const methodKey = getSessionCommandCenterMethodKey(session);
   const template = getSessionCommandCenterMethodRoadmapTemplate(methodKey);
   const currentIndex = getSessionCommandCenterRoadmapCurrentIndex(session, template.stages);
@@ -94094,6 +94922,19 @@ function normalizeSessionCommandCenterNextUpText(value = "") {
 function getSessionCommandCenterNextReminderMeta(session = null) {
   if (!session) {
     return null;
+  }
+
+  const engineState = buildSessionEngineState(session);
+  const engineMilestone = engineState?.activeMilestone || engineState?.nextMilestone || null;
+  if (engineMilestone) {
+    const dueAt = parseCompletedAtValue(engineMilestone.dueAt || "");
+    const countdown = engineState.activeMilestone
+      ? "Due now"
+      : (dueAt ? `in ${formatDurationMsShort(Math.max(0, dueAt.getTime() - Date.now())) || "soon"}` : "");
+    return {
+      label: normalizeSessionCommandCenterNextUpText(engineMilestone.actionText || engineMilestone.title || engineMilestone.message || "Review this session"),
+      countdown,
+    };
   }
 
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
@@ -95585,9 +96426,11 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
 
 function buildFormLifecycleState(form) {
   const normalizedStatus = normalizeSessionStatus(form.dataset.currentStage || form.elements.sessionStatus?.value || "");
+  const engineState = buildFormSessionEngineState(form);
   if (normalizedStatus === "unselected") {
     return {
       showEmptyTimeline: true,
+      engineState,
       startedAt: null,
       germinationStartedAt: null,
       firstPlantedAt: null,
@@ -95597,6 +96440,7 @@ function buildFormLifecycleState(form) {
 
   return {
     showEmptyTimeline: false,
+    engineState,
     sessionStatus: normalizedStatus,
     currentProgressKey: resolveGrowSessionCurrentProgressKey({
       sessionStatus: normalizedStatus,
@@ -95617,8 +96461,10 @@ function buildSessionLifecycleState(session) {
   const timingState = getSessionTimingState(session);
   const startedAt = timingState.totalStartedAt;
   const completedAt = timingState.completedAt;
+  const engineState = buildSessionEngineState(session);
   return {
     showEmptyTimeline: false,
+    engineState,
     sessionStatus: normalizeSessionStatus(session?.sessionStatus || ""),
     currentProgressKey: getSessionProgressKeyFromSession(session),
     startedAt,
@@ -96203,7 +97049,7 @@ function buildPartitionDraftValuesFromContainer(container) {
       seedCount: getPartitionRowFieldValue(row, "seedCount").trim(),
       seedAgeYears: getPartitionRowFieldValue(row, "seedAgeYears").trim(),
       plantedCount: getPartitionRowFieldValue(row, "plantedCount").trim(),
-      seedVaultEntryId: String(row.dataset.seedVaultEntryId || "").trim(),
+      seedVaultEntryId: String(row?.dataset.seedVaultEntryId || "").trim(),
       seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
     };
   });

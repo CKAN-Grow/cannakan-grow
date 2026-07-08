@@ -34,7 +34,7 @@
       document.documentElement.style.colorScheme = "dark";
     })();
   </script>
-  <link rel="stylesheet" href="/styles.css?v=20260628-source-demo-rate-fix">
+  <link rel="stylesheet" href="/styles.css?v=20260708-session-engine-ui-active">
   <script src="/supabase-config.js"></script>
 </head>
 <body>
@@ -683,7 +683,7 @@
                 <div class="session-status-panel">
                   <div class="session-status-card">
                     <div class="session-status-card-head">
-                      <p class="session-status-label">Current Stage</p>
+                      <p class="session-status-label">Current Status</p>
                     </div>
                     <input type="hidden" id="session-status-control" name="sessionStatus" value="">
                     <div class="session-status-current">
@@ -692,7 +692,7 @@
                         <strong class="session-status-current-value">Not Started</strong>
                       </div>
                     </div>
-                    <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
+                    <p class="session-status-help">Session status is calculated from the selected method timeline.</p>
                     <button type="button" id="session-status-trigger" class="session-status-trigger">
                       <span class="session-status-trigger-icon" data-session-status-trigger-icon aria-hidden="true">
                         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -700,7 +700,7 @@
                           <path d="m13.9 7.9 2.2 2.2"></path>
                         </svg>
                       </span>
-                      <span class="session-status-trigger-label" data-session-status-trigger-label>Select Growth Stage</span>
+                      <span class="session-status-trigger-label" data-session-status-trigger-label>Review Session</span>
                     </button>
                     <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
                     <div class="session-status-meta" aria-live="polite">
@@ -718,7 +718,7 @@
                         </svg>
                       </span>
                       <div class="session-status-meta-copy">
-                        <span class="session-status-meta-label">Last Updated</span>
+                        <span class="session-status-meta-label">Elapsed Time</span>
                         <strong class="session-status-meta-value">Not recorded yet</strong>
                       </div>
                     </div>
@@ -731,7 +731,7 @@
               <div class="timeline-debug-actions">
                 <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
                 <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
-                <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="completed">Set Completion Time Now</button>
                 <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
               </div>
             </details>
@@ -739,67 +739,68 @@
         </section>
 
         <section class="partitions-panel session-workspace-content">
-          <div class="partition-work-header session-glass-panel session-workspace-panel-head">
-            <div class="partition-work-heading">
-              <span class="partition-product-icon" aria-hidden="true">
-                <img class="partition-product-icon-image" data-partition-title-icon src="/src/assets/kan-partition-icon-v2.png" alt="KAN partition icon">
-              </span>
-              <p class="eyebrow">Partitions</p>
-              <h3 id="partition-work-title"><span data-partition-title-text>KAN® Partition Chart</span></h3>
-            </div>
-            <div id="session-sequence-label" class="session-sequence-label" hidden aria-live="polite"></div>
-            <div class="session-setup-tools-card" aria-label="Session Setup Tools">
-              <div class="session-setup-tools-header">
-                <p class="eyebrow">Session Setup Tools</p>
-              </div>
-              <label class="session-seed-age-toggle session-setup-tool session-setup-tool--seed-age">
-                <input id="session-seed-age-tracking" type="checkbox" name="seedAgeTrackingEnabled">
-                <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
-                <span class="session-seed-age-toggle-text">
-                  <span id="seed-age-title" class="session-seed-age-toggle-copy">Track Seed Age</span>
-                  <span class="session-seed-age-toggle-helper">By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</span>
-                </span>
-              </label>
-              <div id="seed-age-setup-host" class="session-seed-age-setup-host" data-seed-age-setup-host></div>
-              <template id="seed-age-setup-template">
-                <div id="seed-age-setup-section" class="session-seed-age-setup">
-                  <div class="session-seed-age-setup-header">
-                    <p class="eyebrow">Seed Age Setup</p>
-                    <p class="muted">Choose how seed age should be recorded for this session.</p>
-                  </div>
-                  <fieldset class="session-seed-age-mode-group">
-                    <legend>Seed age mode</legend>
-                    <label class="session-seed-age-mode-card" data-seed-age-mode-card="same">
-                      <input type="radio" name="seedAgeMode" value="same">
-                      <span class="session-seed-age-mode-copy">
-                        <strong>Same age for all seeds</strong>
-                        <span>Use one age value across this session.</span>
-                      </span>
-                    </label>
-                    <label class="session-seed-age-mode-card" data-seed-age-mode-card="mixed">
-                      <input type="radio" name="seedAgeMode" value="mixed">
-                      <span class="session-seed-age-mode-copy">
-                        <strong>Mixed ages by row</strong>
-                        <span>Enter seed age separately for each seed row.</span>
-                      </span>
-                    </label>
-                  </fieldset>
-                  <div id="session-seed-age-same-field" class="session-seed-age-same-field" hidden>
-                    <label class="session-seed-age-input-field">
-                      <span>Seed age</span>
-                      <div class="session-seed-age-input-wrap">
-                        <input type="number" name="sessionSeedAgeYears" inputmode="decimal" min="1" max="99" step="0.5" placeholder="#">
-                        <span class="session-seed-age-input-unit">years</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </template>
-              <section id="new-session-seed-vault-section" class="new-session-seed-vault-section" aria-labelledby="new-session-seed-vault-title" hidden></section>
-            </div>
-          </div>
           <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
           <div id="partition-chart-shell" class="chart-shell session-glass-panel">
+            <div class="partition-work-header session-workspace-panel-head">
+              <div class="partition-work-heading">
+                <span class="partition-product-icon" aria-hidden="true">
+                  <img class="partition-product-icon-image" data-partition-title-icon src="/src/assets/kan-partition-icon-v2.png" alt="KAN partition icon">
+                </span>
+                <p class="eyebrow">Partitions</p>
+                <h3 id="partition-work-title"><span data-partition-title-text>KAN Seed Chart</span></h3>
+              </div>
+              <div id="session-sequence-label" class="session-sequence-label" hidden aria-live="polite"></div>
+              <section id="session-engine-visual-timeline" class="session-engine-visual-timeline" aria-label="Visual Timeline" hidden></section>
+              <div class="session-setup-tools-card" aria-label="Session Setup Tools">
+                <div class="session-setup-tools-header">
+                  <p class="eyebrow">Session Setup Tools</p>
+                </div>
+                <label class="session-seed-age-toggle session-setup-tool session-setup-tool--seed-age">
+                  <input id="session-seed-age-tracking" type="checkbox" name="seedAgeTrackingEnabled">
+                  <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
+                  <span class="session-seed-age-toggle-text">
+                    <span id="seed-age-title" class="session-seed-age-toggle-copy">Track Seed Age</span>
+                    <span class="session-seed-age-toggle-helper">By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</span>
+                  </span>
+                </label>
+                <div id="seed-age-setup-host" class="session-seed-age-setup-host" data-seed-age-setup-host></div>
+                <template id="seed-age-setup-template">
+                  <div id="seed-age-setup-section" class="session-seed-age-setup">
+                    <div class="session-seed-age-setup-header">
+                      <p class="eyebrow">Seed Age Setup</p>
+                      <p class="muted">Choose how seed age should be recorded for this session.</p>
+                    </div>
+                    <fieldset class="session-seed-age-mode-group">
+                      <legend>Seed age mode</legend>
+                      <label class="session-seed-age-mode-card" data-seed-age-mode-card="same">
+                        <input type="radio" name="seedAgeMode" value="same">
+                        <span class="session-seed-age-mode-copy">
+                          <strong>Same age for all seeds</strong>
+                          <span>Use one age value across this session.</span>
+                        </span>
+                      </label>
+                      <label class="session-seed-age-mode-card" data-seed-age-mode-card="mixed">
+                        <input type="radio" name="seedAgeMode" value="mixed">
+                        <span class="session-seed-age-mode-copy">
+                          <strong>Mixed ages by row</strong>
+                          <span>Enter seed age separately for each seed row.</span>
+                        </span>
+                      </label>
+                    </fieldset>
+                    <div id="session-seed-age-same-field" class="session-seed-age-same-field" hidden>
+                      <label class="session-seed-age-input-field">
+                        <span>Seed age</span>
+                        <div class="session-seed-age-input-wrap">
+                          <input type="number" name="sessionSeedAgeYears" inputmode="decimal" min="1" max="99" step="0.5" placeholder="#">
+                          <span class="session-seed-age-input-unit">years</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                </template>
+                <section id="new-session-seed-vault-section" class="new-session-seed-vault-section" aria-labelledby="new-session-seed-vault-title" hidden></section>
+              </div>
+            </div>
             <div id="partition-chart-header" class="chart-header chart-row">
               <span>Partition</span>
               <span>Source</span>
@@ -1179,19 +1180,19 @@
               <form id="detail-session-times-form" class="session-detail-edit-form" novalidate>
                 <div class="session-detail-edit-grid session-detail-times-grid">
                   <label>
-                    <span>Soaking</span>
+                    <span>Session Started</span>
                     <input type="datetime-local" name="sessionStartedAt" required>
                   </label>
                   <label>
-                    <span>Germinating</span>
+                    <span>Phase Started</span>
                     <input type="datetime-local" name="soakStartedAt" required>
                   </label>
                   <label>
-                    <span>Germination Started</span>
+                    <span>First Result</span>
                     <input type="datetime-local" name="germinationStartedAt">
                   </label>
                   <label>
-                    <span>Completed</span>
+                    <span>Completion Time</span>
                     <input type="datetime-local" name="completedAt">
                   </label>
                 </div>
@@ -1232,7 +1233,7 @@
               <div class="session-status-panel">
                 <div class="session-status-card">
                   <div class="session-status-card-head">
-                    <p class="session-status-label">Current Stage</p>
+                    <p class="session-status-label">Current Status</p>
                   </div>
                   <input type="hidden" id="detail-session-status-control" value="">
                   <div class="session-status-current">
@@ -1241,7 +1242,7 @@
                       <strong class="session-status-current-value">Not Started</strong>
                     </div>
                   </div>
-                  <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
+                  <p class="session-status-help">Session status is calculated from the selected method timeline.</p>
                   <button type="button" id="detail-session-status-trigger" class="session-status-trigger">
                     <span class="session-status-trigger-icon" data-session-status-trigger-icon aria-hidden="true">
                       <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -1249,7 +1250,7 @@
                         <path d="m13.9 7.9 2.2 2.2"></path>
                       </svg>
                     </span>
-                    <span class="session-status-trigger-label" data-session-status-trigger-label>Update Growth Stage</span>
+                    <span class="session-status-trigger-label" data-session-status-trigger-label>Review Session</span>
                   </button>
                   <div class="session-status-meta" aria-live="polite">
                     <span class="session-status-meta-icon" aria-hidden="true">
@@ -1266,7 +1267,7 @@
                       </svg>
                     </span>
                     <div class="session-status-meta-copy">
-                      <span class="session-status-meta-label">Last Updated</span>
+                      <span class="session-status-meta-label">Elapsed Time</span>
                       <strong class="session-status-meta-value">Not recorded yet</strong>
                     </div>
                   </div>
@@ -1279,7 +1280,7 @@
             <div class="timeline-debug-actions">
               <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
               <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
-              <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="completed">Set Completion Time Now</button>
               <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
             </div>
           </details>
@@ -1292,7 +1293,7 @@
               <img class="partition-product-icon-image" data-partition-title-icon src="/src/assets/kan-partition-icon-v2.png" alt="KAN partition icon">
             </span>
             <p class="eyebrow">Partitions</p>
-            <h3 id="detail-partition-work-title"><span data-partition-title-text>KAN® Partition Chart</span></h3>
+            <h3 id="detail-partition-work-title"><span data-partition-title-text>KAN Seed Chart</span></h3>
           </div>
           <form id="detail-seed-age-form" class="session-detail-seed-age-form" novalidate hidden>
             <label class="session-seed-age-toggle">
@@ -1368,20 +1369,20 @@
             <span class="detail-stage-progress-step" data-stage-role="current">
               <span class="detail-stage-progress-icon-slot" data-detail-action-current-icon aria-hidden="true"></span>
               <span class="detail-stage-progress-copy">
-                <span class="detail-stage-progress-label" data-detail-action-current-label>Current Stage</span>
-                <strong data-detail-action-current-stage>Soaking</strong>
+                <span class="detail-stage-progress-label" data-detail-action-current-label>Current Phase</span>
+                <strong data-detail-action-current-stage>Current status</strong>
               </span>
             </span>
             <span class="detail-stage-progress-arrow" aria-hidden="true">→</span>
             <span class="detail-stage-progress-step" data-stage-role="next">
               <span class="detail-stage-progress-icon-slot" data-detail-action-next-icon aria-hidden="true"></span>
               <span class="detail-stage-progress-copy">
-                <span class="detail-stage-progress-label" data-detail-action-next-label>Next Stage</span>
-                <strong data-detail-action-next-stage>Germinating</strong>
+                <span class="detail-stage-progress-label" data-detail-action-next-label>Next Milestone</span>
+                <strong data-detail-action-next-stage>Next action</strong>
               </span>
             </span>
-            <button type="button" class="detail-stage-progress-action" data-detail-stage-progress-trigger aria-label="Update growth stage">
-              <span data-detail-stage-progress-action-label>Update Stage</span>
+            <button type="button" class="detail-stage-progress-action" data-detail-stage-progress-trigger aria-label="Review required session action">
+              <span data-detail-stage-progress-action-label>Review Session</span>
               <span data-detail-stage-progress-action-arrow aria-hidden="true">→</span>
             </button>
           </div>
@@ -1649,6 +1650,7 @@
   </template>
 
   <script src="/announcement-slides-manifest.js"></script>
-  <script src="/app.js?v=20260628-source-demo-rate-fix"></script>
+  <script src="/src/session-engine.js?v=20260708-session-engine-ui-active"></script>
+  <script src="/app.js?v=20260708-session-engine-ui-active"></script>
 </body>
 </html>
