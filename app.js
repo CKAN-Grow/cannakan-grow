@@ -82753,7 +82753,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const saveShortcut = document.querySelector(".timeline-save-shortcut");
   const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
   const addSeedRowButton = document.querySelector("#add-seed-row");
-  const paperTowelSetupChoice = document.querySelector("#paper-towel-setup-choice");
+  let applyingPaperTowelSetupChoice = false;
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
   const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
   const seedAgeSameInput = form.elements.sessionSeedAgeYears;
@@ -82798,7 +82798,11 @@ function renderSessionForm(initialSystemType = "KAN") {
   syncMethodTypeSelectOptions(systemTypeField, normalizedSystemType);
   systemTypeField.value = normalizedSystemType;
   updateMethodTypeLayout(form, normalizedSystemType);
-  syncPaperTowelSetupChoice();
+  if (normalizedSystemType === "PAPER_TOWEL_SOAK") {
+    form.dataset.paperTowelSetupChoice = normalizedSystemType;
+  } else {
+    delete form.dataset.paperTowelSetupChoice;
+  }
   if (notesField && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
     notesField.value = notesDraft.sessionNotes || "";
   }
@@ -82917,21 +82921,43 @@ function renderSessionForm(initialSystemType = "KAN") {
     applyStageEditingMode(form, sessionStatusField.value);
   }
 
-  function syncPaperTowelSetupChoice() {
-    if (!(paperTowelSetupChoice instanceof HTMLElement)) {
-      return;
-    }
+  function closePaperTowelSetupModal() {
+    document.querySelector("#paper-towel-setup-modal-overlay")?.remove();
+    document.body.classList.remove("modal-open");
+  }
 
-    const methodType = normalizeMethodType(systemTypeField.value || form.dataset.methodType || "KAN");
-    const isPaperTowel = isPaperTowelSetupMethod(methodType);
-    paperTowelSetupChoice.hidden = !isPaperTowel;
-    paperTowelSetupChoice.dataset.methodType = methodType;
-    paperTowelSetupChoice.querySelectorAll("[data-paper-towel-setup]").forEach((button) => {
-      const setupMethod = normalizeMethodType(button.getAttribute("data-paper-towel-setup") || "");
-      const isSelected = isPaperTowel && setupMethod === methodType;
-      button.classList.toggle("is-selected", isSelected);
-      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+  function openPaperTowelSetupModal() {
+    closePaperTowelSetupModal();
+    const overlay = document.createElement("div");
+    overlay.id = "paper-towel-setup-modal-overlay";
+    overlay.className = "paper-towel-setup-modal-overlay";
+    overlay.innerHTML = `
+      <div class="paper-towel-setup-modal" role="dialog" aria-modal="true" aria-labelledby="paper-towel-setup-modal-title">
+        <h2 id="paper-towel-setup-modal-title">Paper Towel Setup</h2>
+        <div class="paper-towel-setup-modal-options" role="group" aria-label="Paper Towel setup">
+          <button type="button" class="paper-towel-setup-modal-option" data-paper-towel-setup="PAPER_TOWEL_SOAK">
+            <strong>Soak + Paper Towel</strong>
+            <span>Soak first, then move seeds to paper towel.</span>
+          </button>
+          <button type="button" class="paper-towel-setup-modal-option" data-paper-towel-setup="PAPER_TOWEL">
+            <strong>Paper Towel Only</strong>
+            <span>Start directly on paper towel.</span>
+          </button>
+        </div>
+      </div>
+    `;
+    overlay.addEventListener("click", (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-paper-towel-setup]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      applyPaperTowelSetupChoice(button.getAttribute("data-paper-towel-setup") || "");
     });
+    document.body.appendChild(overlay);
+    document.body.classList.add("modal-open");
+    overlay.querySelector("[data-paper-towel-setup]")?.focus();
   }
 
   function applyPaperTowelSetupChoice(methodType = "") {
@@ -82940,10 +82966,24 @@ function renderSessionForm(initialSystemType = "KAN") {
       return;
     }
 
-    syncMethodTypeSelectOptions(systemTypeField, nextMethod);
-    systemTypeField.value = nextMethod;
-    syncPaperTowelSetupChoice();
-    systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));
+    applyingPaperTowelSetupChoice = true;
+    form.dataset.paperTowelSetupChoice = nextMethod;
+    closePaperTowelSetupModal();
+    try {
+      syncMethodTypeSelectOptions(systemTypeField, nextMethod);
+      systemTypeField.value = nextMethod;
+      systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));
+    } finally {
+      applyingPaperTowelSetupChoice = false;
+    }
+  }
+
+  if (normalizedSystemType === "PAPER_TOWEL") {
+    queueMicrotask(() => {
+      if (normalizeMethodType(systemTypeField.value) === "PAPER_TOWEL" && form.dataset.paperTowelSetupChoice !== "PAPER_TOWEL") {
+        openPaperTowelSetupModal();
+      }
+    });
   }
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
@@ -83207,6 +83247,16 @@ function renderSessionForm(initialSystemType = "KAN") {
       const previousMethod = normalizeMethodType(appState.newSessionSystemType || form.dataset.methodType || systemTypeField.value || "KAN");
       const nextMethod = normalizeMethodType(systemTypeField.value);
       systemTypeField.value = nextMethod;
+      if (nextMethod === "PAPER_TOWEL" && !applyingPaperTowelSetupChoice && form.dataset.paperTowelSetupChoice !== "PAPER_TOWEL") {
+        openPaperTowelSetupModal();
+        return;
+      }
+      if (isPaperTowelSetupMethod(nextMethod)) {
+        form.dataset.paperTowelSetupChoice = nextMethod;
+      } else {
+        delete form.dataset.paperTowelSetupChoice;
+        closePaperTowelSetupModal();
+      }
       resetNewSessionMethodSpecificDraftState(form, previousMethod, nextMethod);
       appState.newSessionSystemType = nextMethod;
       form.__customMethodRowCount = getMethodConfig(nextMethod).isStandardized
@@ -83244,7 +83294,6 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       updateMethodTypeLayout(form, nextMethod);
       updateMethodTypeLayout(app, nextMethod);
-      syncPaperTowelSetupChoice();
       renderSystemLayoutReference(layoutReference, nextMethod);
       if (partitionWorkTitle) {
         updatePartitionWorkHeading(partitionWorkTitle, nextMethod);
@@ -83271,17 +83320,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     refreshNewSessionTimelineViews();
     renderFormSuppliesCard();
     updateMethodTypeLayout(form, nextMethod);
-    syncPaperTowelSetupChoice();
   });
-    paperTowelSetupChoice?.addEventListener("click", (event) => {
-      const button = event.target instanceof Element
-        ? event.target.closest("[data-paper-towel-setup]")
-        : null;
-      if (!(button instanceof HTMLButtonElement)) {
-        return;
-      }
-      applyPaperTowelSetupChoice(button.getAttribute("data-paper-towel-setup") || "");
-    });
     addSeedRowButton?.addEventListener("click", () => {
       const method = getMethodConfig(systemTypeField.value);
       if (method.isStandardized) {

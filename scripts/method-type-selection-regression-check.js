@@ -30,30 +30,34 @@ for (const needle of [
   'isPaperTowelSetupMethod(method.id) ? "Paper Towel" : method.optionLabel',
   'METHOD_TYPE_SELECTION_ORDER.map((methodId) =>',
   'hidden>${escapeHtml(getMethodTypeSelectionLabel(nextMethod))}</option>',
-  'function syncPaperTowelSetupChoice()',
+  'function openPaperTowelSetupModal()',
   'function applyPaperTowelSetupChoice(methodType = "")',
+  'id="paper-towel-setup-modal-title">Paper Towel Setup</h2>',
+  'form.dataset.paperTowelSetupChoice = nextMethod;',
+  'delete form.dataset.paperTowelSetupChoice;',
+  'openPaperTowelSetupModal();',
   'systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));',
 ]) {
   requireNeedle(appSource, needle);
 }
 
 for (const needle of [
-  'id="paper-towel-setup-choice"',
-  'data-paper-towel-setup="PAPER_TOWEL_SOAK"',
-  'data-paper-towel-setup="PAPER_TOWEL"',
   '<option value="RAPID_ROOTER">Starter Plug</option>',
 ]) {
   requireNeedle(htmlSource, needle);
 }
 
 for (const needle of [
-  ".paper-towel-setup-choice",
-  ".paper-towel-setup-option.is-selected",
+  ".paper-towel-setup-modal-overlay",
+  ".paper-towel-setup-modal-option",
 ]) {
   requireNeedle(stylesSource, needle);
 }
 
 requireNeedle(engineSource, 'displayName: "Starter Plug"');
+rejectNeedle(htmlSource, 'id="paper-towel-setup-choice"', "inline Paper Towel setup card");
+rejectNeedle(stylesSource, ".paper-towel-setup-choice", "inline Paper Towel setup styles");
+rejectNeedle(appSource, "function syncPaperTowelSetupChoice()", "inline Paper Towel setup sync");
 rejectNeedle(appSource, 'Rapid Rooter / Starter Plug');
 rejectNeedle(appSource, 'name: "Rapid Rooter"');
 rejectNeedle(engineSource, 'displayName: "Rapid Rooter"');
