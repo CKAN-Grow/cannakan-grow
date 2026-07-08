@@ -5,7 +5,7 @@ const engine = require(path.resolve(__dirname, "..", "src", "session-engine.js")
 
 const START = "2026-07-08T12:00:00.000Z";
 
-function stateFor(method, hours = 0, methodSetup = {}) {
+function stateFor(method, hours = 0, methodSetup = {}, sessionOverrides = {}) {
   return engine.calculateSessionState({
     session: {
       methodType: method,
@@ -15,6 +15,7 @@ function stateFor(method, hours = 0, methodSetup = {}) {
       date: "2026-07-08",
       time: "12:00",
       methodSetup,
+      ...sessionOverrides,
     },
     now: new Date(new Date(START).getTime() + (hours * engine.HOUR_MS)),
   });
@@ -98,6 +99,12 @@ assert.equal(preparedRockwool.timelineSteps[0].isComplete, true);
 assert.equal(preparedRockwool.timelineSteps[1].isCurrent, true);
 assert.equal(preparedRockwool.timelineSteps.some((step) => step.key === "prep-cubes"), false);
 assert.equal(preparedRockwool.nextMilestone.title, "Keep moist");
+const preparedRockwoolWithOldPrepTimestamp = stateFor("ROCKWOOL", 0, { choice: "prepared", preparedMedia: true }, {
+  soakStartedAt: "2026-07-06T12:00:00.000Z",
+  timerStartAt: "2026-07-06T12:00:00.000Z",
+});
+assert.equal(preparedRockwoolWithOldPrepTimestamp.currentPhase.key, "seeds-planted");
+assert.equal(preparedRockwoolWithOldPrepTimestamp.timelineSteps[1].isCurrent, true, "Prepared Rockwool should anchor to sessionStartedAt, not prep/soak timestamps.");
 assert.deepEqual(
   stepLabels("RAPID_ROOTER"),
   [
@@ -125,6 +132,12 @@ assert.equal(preparedStarterPlug.timelineSteps[0].isComplete, true);
 assert.equal(preparedStarterPlug.timelineSteps[1].isCurrent, true);
 assert.equal(preparedStarterPlug.timelineSteps.some((step) => step.key === "prep-plugs"), false);
 assert.equal(preparedStarterPlug.nextMilestone.title, "Keep moist");
+const preparedStarterPlugWithOldPrepTimestamp = stateFor("RAPID_ROOTER", 0, { choice: "prepared", preparedMedia: true }, {
+  soakStartedAt: "2026-07-06T12:00:00.000Z",
+  timerStartAt: "2026-07-06T12:00:00.000Z",
+});
+assert.equal(preparedStarterPlugWithOldPrepTimestamp.currentPhase.key, "seeds-planted");
+assert.equal(preparedStarterPlugWithOldPrepTimestamp.timelineSteps[1].isCurrent, true, "Prepared Starter Plug should anchor to sessionStartedAt, not prep/soak timestamps.");
 assert.deepEqual(
   stepLabels("OTHER"),
   [

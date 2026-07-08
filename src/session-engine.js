@@ -508,10 +508,10 @@
   }
 
   function getStartAt(session) {
-    return parseTimestamp(session?.soakStartedAt || session?.soak_started_at || "")
-      || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
-      || parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
+    return parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
       || parseSessionStartDateTime(session?.date || "", session?.time || "")
+      || parseTimestamp(session?.soakStartedAt || session?.soak_started_at || "")
+      || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
       || parseTimestamp(session?.createdAt || session?.created_at || "");
   }
 

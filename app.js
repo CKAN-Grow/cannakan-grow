@@ -1625,6 +1625,7 @@ const METHOD_TYPE_SELECTION_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", 
 const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWEL"]);
 const PREPARED_MEDIA_SETUP_METHODS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER"]);
 const METHOD_SETUP_PREFERENCE_STORAGE_KEY = "cannakanGrowMethodSetupPreferences";
+const METHOD_SETUP_SESSION_STORAGE_KEY = "cannakanGrowSessionMethodSetup";
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({ key: "kan", accent: "#94d159", accentSoft: "rgba(148, 209, 89, 0.16)", glow: "rgba(148, 209, 89, 0.28)" }),
   TRA: Object.freeze({ key: "tra", accent: "#b8ff5c", accentSoft: "rgba(184, 255, 92, 0.16)", glow: "rgba(184, 255, 92, 0.3)" }),
@@ -1961,6 +1962,70 @@ function clearPreparedMediaSetupPreference(methodType = "") {
   }
 }
 
+function normalizeMethodSetupState(methodType = "", setup = null) {
+  const normalizedMethod = normalizeMethodType(methodType);
+  if (!isPreparedMediaSetupMethod(normalizedMethod) || !setup || typeof setup !== "object") {
+    return {};
+  }
+
+  const choice = normalizePreparedMediaSetupChoice(
+    setup.choice
+    || setup.preparedMediaChoice
+    || setup.prepared_media_choice
+    || (setup.preparedMedia === true || setup.prepared_media === true || setup.prepared === true ? "prepared" : "")
+    || (setup.preparedMedia === false || setup.prepared_media === false || setup.prepared === false ? "needs-prep" : "")
+  );
+  if (!choice) {
+    return {};
+  }
+
+  return {
+    methodType: normalizedMethod,
+    choice,
+    preparedMedia: choice === "prepared",
+  };
+}
+
+function loadSessionMethodSetupCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(METHOD_SETUP_SESSION_STORAGE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.warn("Could not read session method setup cache.", error);
+    return {};
+  }
+}
+
+function getSavedSessionMethodSetup(sessionId = "", methodType = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return {};
+  }
+  const cache = loadSessionMethodSetupCache();
+  return normalizeMethodSetupState(methodType, cache?.[normalizedSessionId]);
+}
+
+function saveSessionMethodSetup(sessionId = "", methodType = "", setup = null) {
+  const normalizedSessionId = String(sessionId || "").trim();
+  const normalizedSetup = normalizeMethodSetupState(methodType, setup);
+  if (!normalizedSessionId || !normalizedSetup.choice) {
+    return;
+  }
+
+  const cache = loadSessionMethodSetupCache();
+  cache[normalizedSessionId] = {
+    methodType: normalizedSetup.methodType,
+    choice: normalizedSetup.choice,
+    preparedMedia: normalizedSetup.preparedMedia,
+    updatedAt: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(METHOD_SETUP_SESSION_STORAGE_KEY, JSON.stringify(cache));
+  } catch (error) {
+    console.warn("Could not save session method setup cache.", error);
+  }
+}
+
 function setFormPreparedMediaSetupChoice(form, methodType = "", choice = "", source = "") {
   if (!(form instanceof HTMLFormElement)) {
     return;
@@ -1995,11 +2060,7 @@ function getMethodSetupStateFromForm(form) {
   if (!isPreparedMediaSetupMethod(methodType) || form.dataset.methodSetupMethod !== methodType || !choice) {
     return {};
   }
-  return {
-    methodType,
-    choice,
-    preparedMedia: choice === "prepared",
-  };
+  return normalizeMethodSetupState(methodType, { choice });
 }
 
 function getMethodTypeSelectionLabel(methodType = "") {
@@ -6562,11 +6623,16 @@ function normalizeStoredSession(session) {
     ? normalizeSeedAgeYears(session.sessionSeedAgeYears ?? session.session_seed_age_years)
     : null;
   const methodType = getSessionMethodType(session);
-  const methodSetup = session.methodSetup && typeof session.methodSetup === "object"
+  const explicitMethodSetup = session.methodSetup && typeof session.methodSetup === "object"
     ? session.methodSetup
     : session.method_setup && typeof session.method_setup === "object"
       ? session.method_setup
       : {};
+  const methodSetup = normalizeMethodSetupState(methodType, explicitMethodSetup);
+  const cachedMethodSetup = methodSetup.choice
+    ? methodSetup
+    : getSavedSessionMethodSetup(session.id || session.session_id || "", methodType);
+  const effectiveMethodSetup = cachedMethodSetup.choice ? cachedMethodSetup : methodSetup;
 
   return {
     ...session,
@@ -6574,8 +6640,8 @@ function normalizeStoredSession(session) {
     method_type: methodType,
     systemType: methodType,
     system_type: methodType,
-    methodSetup,
-    method_setup: methodSetup,
+    methodSetup: effectiveMethodSetup,
+    method_setup: effectiveMethodSetup,
     customSessionName: String(session.customSessionName || "").trim(),
     sessionNotes: String(session.sessionNotes || "").trim(),
     sessionImages: normalizePersistedSessionImages(session.sessionImages),
@@ -25431,6 +25497,7 @@ async function createCloudSession(session) {
     if (intendedImages.length > 0) {
       savedSession.sessionImages = intendedImages;
     }
+    saveSessionMethodSetup(savedSession.id, savedSession.methodType || savedSession.systemType, savedSession.methodSetup);
     saveSessions([savedSession, ...getSessions().filter((item) => item.id !== savedSession.id)]);
     return savedSession;
   }
@@ -25539,11 +25606,13 @@ async function createCloudSession(session) {
   savedSession.methodSetup = sessionForSave.methodSetup && typeof sessionForSave.methodSetup === "object"
     ? sessionForSave.methodSetup
     : {};
+  savedSession.method_setup = savedSession.methodSetup;
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(sessionForSave);
   const intendedImages = normalizePersistedSessionImages(sessionForSave.sessionImages);
   if (intendedImages.length > 0 && savedSession.sessionImages.length !== intendedImages.length) {
     savedSession.sessionImages = await persistSessionImages(savedSession, intendedImages);
   }
+  saveSessionMethodSetup(savedSession.id, savedSession.methodType || savedSession.systemType, savedSession.methodSetup);
   saveSessions([savedSession, ...getSessions().filter((item) => item.id !== savedSession.id)]);
   return savedSession;
 }
@@ -25655,6 +25724,7 @@ async function updateCloudSession(session) {
     const nextSessions = existingSession
       ? getSessions().map((item) => (item.id === savedSession.id ? savedSession : item))
       : [savedSession, ...getSessions()];
+    saveSessionMethodSetup(savedSession.id, savedSession.methodType || savedSession.systemType, savedSession.methodSetup);
     saveSessions(nextSessions);
     return savedSession;
   }
@@ -25845,7 +25915,12 @@ async function updateCloudSession(session) {
   }
 
   const savedSession = mapRowToSession(data);
+  savedSession.methodSetup = session.methodSetup && typeof session.methodSetup === "object"
+    ? session.methodSetup
+    : getSavedSessionMethodSetup(savedSession.id, savedSession.methodType || savedSession.systemType);
+  savedSession.method_setup = savedSession.methodSetup;
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
+  saveSessionMethodSetup(savedSession.id, savedSession.methodType || savedSession.systemType, savedSession.methodSetup);
   saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
   const previousAnalyticsSession = {
     ...session,
@@ -93559,9 +93634,9 @@ function getSessionDurationStartAt(session = null) {
     return null;
   }
 
-  return parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || "")
-    || parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || "")
+  return parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || "")
     || parseSessionStartDateTime(session.date, session.time)
+    || parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || "")
     || parseCompletedAtValue(session.timerStartAt || session.timer_start_at || "")
     || parseCompletedAtValue(session.createdAt || session.created_at || "");
 }

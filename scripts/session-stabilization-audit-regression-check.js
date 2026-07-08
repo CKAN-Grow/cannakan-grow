@@ -20,10 +20,22 @@ const requireSource = (source, needle, label) => {
   "parseCompletedAtValue(session.createdAt || session.created_at || \"\")",
   "return parseCompletedAtValue(germinationStartedAt);",
   "<strong>${setupGraceActive ? \"Setup Grace Period\" : \"Session Duration\"}</strong>",
-  "<dt>Stage Duration</dt>",
+  "function getSessionDurationStartAt(session = null)",
+  "parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || \"\")",
   "getSessionStageReminderOptions(session)",
   "visibilityStatus = normalizeSessionVisibilityStatus(",
 ].forEach((needle) => requireSource(appSource, needle, "app session stabilization behavior"));
+
+const durationStartFunction = appSource.match(/function getSessionDurationStartAt\(session = null\) \{[\s\S]*?\n\}/)?.[0] || "";
+if (!durationStartFunction) {
+  throw new Error("Could not locate getSessionDurationStartAt.");
+}
+if (
+  durationStartFunction.indexOf("parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || \"\")")
+  > durationStartFunction.indexOf("parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || \"\")")
+) {
+  throw new Error("Session timer stabilization must prefer sessionStartedAt before timeline stage timestamps.");
+}
 
 const analyticsEligibilityMatch = appSource.match(/function isGrowSessionAnalyticsEligible[\s\S]*?\r?\n}\r?\n\r?\nfunction getVisibleUserSessions/);
 if (!analyticsEligibilityMatch) {
@@ -40,8 +52,8 @@ if (analyticsEligibilityMatch[0].includes("isSessionSoftDeleted(normalizedSessio
 
 [
   "return parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || \"\");",
-  "parseTimestamp(session?.soakStartedAt || session?.soak_started_at || \"\")",
   "parseTimestamp(session?.sessionStartedAt || session?.session_started_at || \"\")",
+  "parseTimestamp(session?.soakStartedAt || session?.soak_started_at || \"\")",
   "parseTimestamp(session?.createdAt || session?.created_at || \"\")",
   "function isReminderCandidateSessionVisible(row = {})",
   "session_started_at,soak_started_at,timer_start_at",
