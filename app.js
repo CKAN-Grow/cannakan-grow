@@ -1493,7 +1493,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Row",
     chartEyebrow: "Paper Towel",
     chartTitle: "Paper Towel Seed Chart",
     iconAlt: "Grow App icon",
@@ -1513,7 +1513,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Row",
     chartEyebrow: "Paper Towel + Soak",
     chartTitle: "Paper Towel + Soak Seed Chart",
     iconAlt: "Grow App icon",
@@ -1533,7 +1533,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Cube",
     chartEyebrow: "Rockwool",
     chartTitle: "Rockwool Seed Chart",
     iconAlt: "Grow App icon",
@@ -1553,7 +1553,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Plug",
     chartEyebrow: "Rapid Rooter",
     chartTitle: "Rapid Rooter Seed Chart",
     iconAlt: "Grow App icon",
@@ -1573,7 +1573,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Glass",
     chartEyebrow: "Water Glass",
     chartTitle: "Water Glass Seed Chart",
     iconAlt: "Grow App icon",
@@ -1593,7 +1593,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Pot",
     chartEyebrow: "Direct Soil",
     chartTitle: "Direct Soil Seed Chart",
     iconAlt: "Grow App icon",
@@ -1613,7 +1613,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Seed Row",
+    rowLabel: "Row",
     chartEyebrow: "Custom Method",
     chartTitle: "Custom Seed Chart",
     iconAlt: "Grow App icon",
@@ -38461,6 +38461,7 @@ function syncSeedAgeSetupUi(form, options = {}) {
       ? "Enter seed age separately for each partition. Leave it blank when unknown."
       : "Use one session-wide age value across this session.";
   }
+  syncMethodSeedAgeCopy(form, getMethodConfig(form.elements?.systemType?.value || form.dataset.methodType || "KAN"));
 
   const sameAgeInput = form.elements.sessionSeedAgeYears;
   if (!options.preserveValidationState) {
@@ -81134,7 +81135,7 @@ function getNewSessionSeedVaultPartitionLabel(systemType = "KAN", partitionId = 
   const method = getMethodConfig(systemType);
   const numericId = Math.max(1, Number(partitionId) || 1);
   if (!method.isStandardized) {
-    return `Seed Row ${numericId}`;
+    return `${method.rowLabel} ${numericId}`;
   }
   if (method.id !== "TRA") {
     return `P${numericId}`;
@@ -81291,7 +81292,7 @@ function renderNewSessionSeedVaultPartitionAssignmentCard({
   const label = getNewSessionSeedVaultPartitionLabel(systemType, partitionId);
   const statusClass = current.entry ? "is-assigned" : "is-empty";
   const method = getMethodConfig(systemType);
-  const rowLabel = method.isStandardized ? "Partition" : "Seed Row";
+  const rowLabel = method.rowLabel;
   const buttonLabel = current.entry ? `Update ${rowLabel}` : `Apply to ${rowLabel}`;
   const statusLabel = current.entry
     ? current.label
@@ -81405,7 +81406,7 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
     : Math.max(method.defaultRowCount, getNewSessionSeedVaultPartitionRows(form).length || method.defaultRowCount);
   const helperCopy = method.isStandardized
     ? "Select seeds from your collection to auto-fill partition details."
-    : "Select seeds from your collection to auto-fill seed row details.";
+    : `Select seeds from your collection to auto-fill ${method.rowLabel.toLowerCase()} details.`;
   const activePartitionId = Math.min(
     partitionCount,
     Math.max(1, Number(appState.newSessionSeedVaultActivePartitionId) || 1),
@@ -81834,7 +81835,7 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
       const message = section.querySelector("[data-seed-vault-session-message]");
       const row = getNewSessionSeedVaultPartitionRow(form, partitionId);
       const method = getMethodConfig(getSystemType());
-      const rowLabel = method.isStandardized ? "partition" : "seed row";
+      const rowLabel = method.rowLabel.toLowerCase();
       if (!(row instanceof Element)) {
         setFeedbackMessage(message, `Selected ${rowLabel} is unavailable for this method.`, "error");
         return;
@@ -81842,7 +81843,7 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
       if (isPartitionRowPopulatedForVaultApply(row)) {
         const confirmed = window.confirm(method.isStandardized
           ? "Clear this partition's Vault Entry assignment and copied fields?"
-          : "Clear this seed row's Vault Entry assignment and copied fields?");
+          : `Clear this ${rowLabel}'s Vault Entry assignment and copied fields?`);
         if (!confirmed) {
           return;
         }
@@ -81870,7 +81871,7 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
     const partitionId = Math.max(1, Number(button.getAttribute("data-seed-vault-apply-partition")) || 1);
     const message = section.querySelector("[data-seed-vault-session-message]");
     const method = getMethodConfig(getSystemType());
-    const rowLabel = method.isStandardized ? "partition" : "seed row";
+    const rowLabel = method.rowLabel.toLowerCase();
     const entry = getSelectedSeedVaultEntryForSession(section, partitionId);
     const countInput = section.querySelector(`[data-seed-vault-partition-count="${CSS.escape(String(partitionId))}"]`);
     const seedCount = Math.floor(Number(countInput?.value) || 0);
@@ -81906,7 +81907,7 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
     if (isPartitionRowPopulatedForVaultApply(initialRow) && existingVaultEntryId !== entry.id) {
       const confirmed = window.confirm(method.isStandardized
         ? "Apply this Vault Entry and overwrite details in this populated partition?"
-        : "Apply this Vault Entry and overwrite details in this populated seed row?");
+        : `Apply this Vault Entry and overwrite details in this populated ${rowLabel}?`);
       if (!confirmed) {
         return;
       }
@@ -85475,15 +85476,31 @@ function updateMethodProgressHeading(scope, method) {
     return;
   }
 
-  const headingText = method.isStandardized
-    ? "Germination progress by partition"
-    : "Germination progress by seed row";
+  const headingText = `Germination progress by ${method.rowLabel.toLowerCase()}`;
   const selectors = [
     "#partition-progress-title span",
     "#detail-progress-title",
   ];
   scope.querySelectorAll(selectors.join(", ")).forEach((element) => {
     element.textContent = headingText;
+  });
+}
+
+function syncMethodSeedAgeCopy(scope, method) {
+  if (!scope || !method) {
+    return;
+  }
+  const rowLabel = method.rowLabel.toLowerCase();
+  scope.querySelectorAll("[data-seed-age-mixed-mode-title]").forEach((element) => {
+    element.textContent = `Mixed ages by ${rowLabel}`;
+  });
+  scope.querySelectorAll("[data-seed-age-mixed-mode-helper]").forEach((element) => {
+    element.textContent = `Enter seed age separately for each ${rowLabel}.`;
+  });
+  scope.querySelectorAll("[data-seed-age-mode-hint]").forEach((element) => {
+    if (element.textContent.includes("separately") || element.textContent.includes("blank when unknown")) {
+      element.textContent = `Enter seed age separately for each ${rowLabel}. Leave it blank when unknown.`;
+    }
   });
 }
 
@@ -85564,6 +85581,7 @@ function updateMethodTypeLayout(scope, methodType = "") {
   scope.querySelectorAll("#partition-work-title, #detail-partition-work-title").forEach((titleElement) => {
     updatePartitionWorkHeading(titleElement, method.id);
   });
+  syncMethodSeedAgeCopy(scope, method);
   updateMethodProgressHeading(scope, method);
 }
 
@@ -91206,8 +91224,8 @@ function getSessionResultSummary(session = null, options = {}) {
     const result = {
       id: partitionNumber,
       index,
-      label: method.isStandardized ? `P${partitionNumber}` : `Row ${partitionNumber}`,
-      displayLabel: method.isStandardized ? `Partition ${partitionNumber}` : `Seed Row ${partitionNumber}`,
+      label: method.isStandardized ? `P${partitionNumber}` : `${method.rowLabel} ${partitionNumber}`,
+      displayLabel: `${method.rowLabel} ${partitionNumber}`,
       source: sourceLabel,
       sourceLabel: sourceLabel || "Not shared",
       sourceKey,
@@ -91399,7 +91417,7 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
       <div class="public-session-partition-results-head">
         <div>
           <p class="eyebrow">Public Session</p>
-          <h3>${escapeHtml(method.isStandardized ? "Partition Results" : "Seed Row Results")}</h3>
+          <h3>${escapeHtml(`${method.rowLabel} Results`)}</h3>
           <p>${escapeHtml(contextText || `Seed count by ${method.rowLabel.toLowerCase()}.`)}${summary?.mixedContext?.isMixedSession ? " shown independently for fair source context." : ""}</p>
         </div>
         <span>${escapeHtml(overallLabel)}</span>
@@ -91491,8 +91509,8 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
       ].filter(Boolean).join(" / ")
     : "Single source or variety";
   const breakdownTitle = method.isStandardized
-    ? "Fair view by partition, source, and variety"
-    : "Result view by seed row, source, and variety";
+    ? `Fair view by ${method.rowLabel.toLowerCase()}, source, and variety`
+    : `Result view by ${method.rowLabel.toLowerCase()}, source, and variety`;
   const overallLabel = hasPendingCustomResults
     ? "Pending results"
     : `${summary.overall.percentageLabel} overall`;
