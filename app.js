@@ -1623,6 +1623,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
 const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL_SOAK", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
 const METHOD_TYPE_SELECTION_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
 const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWEL"]);
+const PREPARED_MEDIA_SETUP_METHODS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER"]);
+const METHOD_SETUP_PREFERENCE_STORAGE_KEY = "cannakanGrowMethodSetupPreferences";
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({ key: "kan", accent: "#94d159", accentSoft: "rgba(148, 209, 89, 0.16)", glow: "rgba(148, 209, 89, 0.28)" }),
   TRA: Object.freeze({ key: "tra", accent: "#b8ff5c", accentSoft: "rgba(184, 255, 92, 0.16)", glow: "rgba(184, 255, 92, 0.3)" }),
@@ -1792,6 +1794,7 @@ function buildFormSessionEngineState(form, options = {}) {
     germinationStartedAt: form.dataset.germinationStartedAt || "",
     firstPlantedAt: form.dataset.firstPlantedAt || "",
     completedAt: form.dataset.completedAt || "",
+    methodSetup: getMethodSetupStateFromForm(form),
     partitions: buildPartitionDraftValuesFromContainer(
       form.querySelector("#partition-fields")
       || form.querySelector(".partition-table-body")
@@ -1816,6 +1819,134 @@ function formatMethodTypeLabel(value = "") {
 
 function isPaperTowelSetupMethod(methodType = "") {
   return PAPER_TOWEL_SETUP_METHODS.includes(normalizeMethodType(methodType));
+}
+
+function isPreparedMediaSetupMethod(methodType = "") {
+  return PREPARED_MEDIA_SETUP_METHODS.includes(normalizeMethodType(methodType));
+}
+
+function normalizePreparedMediaSetupChoice(value = "") {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+  if (["prepared", "ready", "yes", "already-prepared", "already-ready"].includes(normalized)) {
+    return "prepared";
+  }
+  if (["needs-prep", "needs-preparation", "not-prepared", "not-ready", "no", "prepare"].includes(normalized)) {
+    return "needs-prep";
+  }
+  return "";
+}
+
+function getPreparedMediaSetupConfig(methodType = "") {
+  const normalizedMethod = normalizeMethodType(methodType);
+  if (normalizedMethod === "ROCKWOOL") {
+    return {
+      methodType: "ROCKWOOL",
+      title: "Rockwool Setup",
+      question: "Have your rockwool cubes already been prepared?",
+      readyLabel: "Yes, my cubes are ready",
+      needsPrepLabel: "No, I still need to prepare them",
+    };
+  }
+  if (normalizedMethod === "RAPID_ROOTER") {
+    return {
+      methodType: "RAPID_ROOTER",
+      title: "Starter Plug Setup",
+      question: "Have your starter plugs already been prepared?",
+      readyLabel: "Yes, my plugs are ready",
+      needsPrepLabel: "No, I still need to prepare them",
+    };
+  }
+  return null;
+}
+
+function loadMethodSetupPreferences() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(METHOD_SETUP_PREFERENCE_STORAGE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.warn("Could not read method setup preferences.", error);
+    return {};
+  }
+}
+
+function savePreparedMediaSetupPreference(methodType = "", choice = "") {
+  const normalizedMethod = normalizeMethodType(methodType);
+  const normalizedChoice = normalizePreparedMediaSetupChoice(choice);
+  if (!isPreparedMediaSetupMethod(normalizedMethod) || !normalizedChoice) {
+    return;
+  }
+
+  const preferences = loadMethodSetupPreferences();
+  preferences[normalizedMethod] = {
+    preparedMediaChoice: normalizedChoice,
+    updatedAt: new Date().toISOString(),
+  };
+  try {
+    localStorage.setItem(METHOD_SETUP_PREFERENCE_STORAGE_KEY, JSON.stringify(preferences));
+  } catch (error) {
+    console.warn("Could not save method setup preference.", error);
+  }
+}
+
+function getSavedPreparedMediaSetupPreference(methodType = "") {
+  const normalizedMethod = normalizeMethodType(methodType);
+  const preferences = loadMethodSetupPreferences();
+  return normalizePreparedMediaSetupChoice(preferences?.[normalizedMethod]?.preparedMediaChoice || "");
+}
+
+function clearPreparedMediaSetupPreference(methodType = "") {
+  const normalizedMethod = normalizeMethodType(methodType);
+  const preferences = loadMethodSetupPreferences();
+  if (!Object.prototype.hasOwnProperty.call(preferences, normalizedMethod)) {
+    return;
+  }
+  delete preferences[normalizedMethod];
+  try {
+    localStorage.setItem(METHOD_SETUP_PREFERENCE_STORAGE_KEY, JSON.stringify(preferences));
+  } catch (error) {
+    console.warn("Could not clear method setup preference.", error);
+  }
+}
+
+function setFormPreparedMediaSetupChoice(form, methodType = "", choice = "", source = "") {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+  const normalizedMethod = normalizeMethodType(methodType);
+  const normalizedChoice = normalizePreparedMediaSetupChoice(choice);
+  if (!isPreparedMediaSetupMethod(normalizedMethod) || !normalizedChoice) {
+    return;
+  }
+  form.dataset.methodSetupMethod = normalizedMethod;
+  form.dataset.methodSetupChoice = normalizedChoice;
+  form.dataset.methodSetupPreparedMedia = normalizedChoice === "prepared" ? "true" : "false";
+  form.dataset.methodSetupSource = source || "session";
+}
+
+function clearFormPreparedMediaSetupChoice(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+  delete form.dataset.methodSetupMethod;
+  delete form.dataset.methodSetupChoice;
+  delete form.dataset.methodSetupPreparedMedia;
+  delete form.dataset.methodSetupSource;
+}
+
+function getMethodSetupStateFromForm(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return {};
+  }
+  const methodType = normalizeMethodType(form.elements?.systemType?.value || form.dataset.methodType || "");
+  const choice = normalizePreparedMediaSetupChoice(form.dataset.methodSetupChoice || "");
+  if (!isPreparedMediaSetupMethod(methodType) || form.dataset.methodSetupMethod !== methodType || !choice) {
+    return {};
+  }
+  return {
+    methodType,
+    choice,
+    preparedMedia: choice === "prepared",
+  };
 }
 
 function getMethodTypeSelectionLabel(methodType = "") {
@@ -6378,6 +6509,11 @@ function normalizeStoredSession(session) {
     ? normalizeSeedAgeYears(session.sessionSeedAgeYears ?? session.session_seed_age_years)
     : null;
   const methodType = getSessionMethodType(session);
+  const methodSetup = session.methodSetup && typeof session.methodSetup === "object"
+    ? session.methodSetup
+    : session.method_setup && typeof session.method_setup === "object"
+      ? session.method_setup
+      : {};
 
   return {
     ...session,
@@ -6385,6 +6521,8 @@ function normalizeStoredSession(session) {
     method_type: methodType,
     systemType: methodType,
     system_type: methodType,
+    methodSetup,
+    method_setup: methodSetup,
     customSessionName: String(session.customSessionName || "").trim(),
     sessionNotes: String(session.sessionNotes || "").trim(),
     sessionImages: normalizePersistedSessionImages(session.sessionImages),
@@ -25345,6 +25483,9 @@ async function createCloudSession(session) {
   }
 
   const savedSession = mapRowToSession(data);
+  savedSession.methodSetup = sessionForSave.methodSetup && typeof sessionForSave.methodSetup === "object"
+    ? sessionForSave.methodSetup
+    : {};
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(sessionForSave);
   const intendedImages = normalizePersistedSessionImages(sessionForSave.sessionImages);
   if (intendedImages.length > 0 && savedSession.sessionImages.length !== intendedImages.length) {
@@ -82754,6 +82895,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
   const addSeedRowButton = document.querySelector("#add-seed-row");
   let applyingPaperTowelSetupChoice = false;
+  let applyingPreparedMediaSetupChoice = false;
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
   const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
   const seedAgeSameInput = form.elements.sessionSeedAgeYears;
@@ -82802,6 +82944,12 @@ function renderSessionForm(initialSystemType = "KAN") {
     form.dataset.paperTowelSetupChoice = normalizedSystemType;
   } else {
     delete form.dataset.paperTowelSetupChoice;
+  }
+  const savedPreparedMediaChoice = getSavedPreparedMediaSetupPreference(normalizedSystemType);
+  if (savedPreparedMediaChoice) {
+    setFormPreparedMediaSetupChoice(form, normalizedSystemType, savedPreparedMediaChoice, "preference");
+  } else if (!isPreparedMediaSetupMethod(normalizedSystemType)) {
+    clearFormPreparedMediaSetupChoice(form);
   }
   if (notesField && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
     notesField.value = notesDraft.sessionNotes || "";
@@ -82978,10 +83126,93 @@ function renderSessionForm(initialSystemType = "KAN") {
     }
   }
 
+  function closePreparedMediaSetupModal() {
+    document.querySelector("#prepared-media-setup-modal-overlay")?.remove();
+    document.body.classList.remove("modal-open");
+  }
+
+  function openPreparedMediaSetupModal(methodType = "") {
+    const setupConfig = getPreparedMediaSetupConfig(methodType);
+    if (!setupConfig) {
+      return;
+    }
+
+    closePreparedMediaSetupModal();
+    const overlay = document.createElement("div");
+    overlay.id = "prepared-media-setup-modal-overlay";
+    overlay.className = "prepared-media-setup-modal-overlay";
+    overlay.innerHTML = `
+      <div class="prepared-media-setup-modal" role="dialog" aria-modal="true" aria-labelledby="prepared-media-setup-modal-title">
+        <h2 id="prepared-media-setup-modal-title">${escapeHtml(setupConfig.title)}</h2>
+        <p>${escapeHtml(setupConfig.question)}</p>
+        <div class="prepared-media-setup-modal-options" role="group" aria-label="${escapeHtml(setupConfig.title)}">
+          <button type="button" class="prepared-media-setup-modal-option" data-prepared-media-choice="prepared">
+            <strong>${escapeHtml(setupConfig.readyLabel)}</strong>
+            <span>Skip prep and begin with planting.</span>
+          </button>
+          <button type="button" class="prepared-media-setup-modal-option" data-prepared-media-choice="needs-prep">
+            <strong>${escapeHtml(setupConfig.needsPrepLabel)}</strong>
+            <span>Include prep as the first active step.</span>
+          </button>
+        </div>
+        <label class="prepared-media-setup-modal-remember">
+          <input type="checkbox" data-prepared-media-remember>
+          <span>Don't ask me again</span>
+        </label>
+      </div>
+    `;
+    overlay.addEventListener("click", (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-prepared-media-choice]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const remember = overlay.querySelector("[data-prepared-media-remember]")?.checked === true;
+      applyPreparedMediaSetupChoice(setupConfig.methodType, button.getAttribute("data-prepared-media-choice") || "", remember);
+    });
+    document.body.appendChild(overlay);
+    document.body.classList.add("modal-open");
+    overlay.querySelector("[data-prepared-media-choice]")?.focus();
+  }
+
+  function applyPreparedMediaSetupChoice(methodType = "", choice = "", remember = false) {
+    const nextMethod = normalizeMethodType(methodType);
+    const normalizedChoice = normalizePreparedMediaSetupChoice(choice);
+    if (!isPreparedMediaSetupMethod(nextMethod) || !normalizedChoice) {
+      return;
+    }
+
+    applyingPreparedMediaSetupChoice = true;
+    setFormPreparedMediaSetupChoice(form, nextMethod, normalizedChoice, remember ? "preference" : "session");
+    if (remember) {
+      savePreparedMediaSetupPreference(nextMethod, normalizedChoice);
+    }
+    closePreparedMediaSetupModal();
+    try {
+      syncMethodTypeSelectOptions(systemTypeField, nextMethod);
+      systemTypeField.value = nextMethod;
+      systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));
+    } finally {
+      applyingPreparedMediaSetupChoice = false;
+    }
+  }
+
   if (normalizedSystemType === "PAPER_TOWEL") {
     queueMicrotask(() => {
       if (normalizeMethodType(systemTypeField.value) === "PAPER_TOWEL" && form.dataset.paperTowelSetupChoice !== "PAPER_TOWEL") {
         openPaperTowelSetupModal();
+      }
+    });
+  }
+
+  if (isPreparedMediaSetupMethod(normalizedSystemType) && !savedPreparedMediaChoice) {
+    queueMicrotask(() => {
+      if (
+        normalizeMethodType(systemTypeField.value) === normalizedSystemType
+        && form.dataset.methodSetupMethod !== normalizedSystemType
+      ) {
+        openPreparedMediaSetupModal(normalizedSystemType);
       }
     });
   }
@@ -83257,6 +83488,24 @@ function renderSessionForm(initialSystemType = "KAN") {
         delete form.dataset.paperTowelSetupChoice;
         closePaperTowelSetupModal();
       }
+      if (isPreparedMediaSetupMethod(nextMethod)) {
+        const savedChoice = getSavedPreparedMediaSetupPreference(nextMethod);
+        if (savedChoice && !applyingPreparedMediaSetupChoice) {
+          setFormPreparedMediaSetupChoice(form, nextMethod, savedChoice, "preference");
+        } else if (
+          !applyingPreparedMediaSetupChoice
+          && (
+            form.dataset.methodSetupMethod !== nextMethod
+            || !normalizePreparedMediaSetupChoice(form.dataset.methodSetupChoice || "")
+          )
+        ) {
+          openPreparedMediaSetupModal(nextMethod);
+          return;
+        }
+      } else {
+        clearFormPreparedMediaSetupChoice(form);
+        closePreparedMediaSetupModal();
+      }
       resetNewSessionMethodSpecificDraftState(form, previousMethod, nextMethod);
       appState.newSessionSystemType = nextMethod;
       form.__customMethodRowCount = getMethodConfig(nextMethod).isStandardized
@@ -83487,6 +83736,11 @@ function renderSessionForm(initialSystemType = "KAN") {
     formMessage.textContent = "";
 
     const formData = new FormData(form);
+    const pendingMethodType = normalizeMethodType(formData.get("systemType"));
+    if (isPreparedMediaSetupMethod(pendingMethodType) && !getMethodSetupStateFromForm(form).choice) {
+      openPreparedMediaSetupModal(pendingMethodType);
+      return null;
+    }
     const seedAgeState = getSeedAgeSettingsFromForm(form);
     const partitionEntries = buildPartitionDraftValuesFromContainer(partitionFields).map((partition, index) => ({
       ...partition,
@@ -83505,6 +83759,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     const createdAt = new Date().toISOString();
     const sessionStartedAt = parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString() || createdAt;
     const selectedMethod = getMethodConfig(formData.get("systemType"));
+    const methodSetup = getMethodSetupStateFromForm(form);
     const normalizedInitialStatus = selectedMethod.supportsStageTracking
       ? normalizeSessionStatus(formData.get("sessionStatus"))
       : getMethodDefaultSessionStatus(selectedMethod.id);
@@ -83521,6 +83776,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       method_type: normalizeMethodType(formData.get("systemType")),
       systemType: normalizeMethodType(formData.get("systemType")),
       system_type: normalizeMethodType(formData.get("systemType")),
+      methodSetup,
       unitId: normalizedUnitId,
       sessionName: buildFinalSessionName(
         formData.get("sessionName"),
@@ -94011,6 +94267,12 @@ function getSessionEngineVisualTimelineStatus(step = {}, engineState = null) {
     return {
       key: "current",
       label: "Current",
+    };
+  }
+  if (step.preparationComplete && step.isComplete) {
+    return {
+      key: "preparation-complete",
+      label: step.statusLabel || "Already Complete",
     };
   }
   if (step.isComplete) {

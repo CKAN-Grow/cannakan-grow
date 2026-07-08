@@ -49,6 +49,8 @@
       tone: config.tone || "green",
       iconName: config.iconName || "",
       requiredConfirmation: config.requiredConfirmation || "",
+      preparationComplete: config.preparationComplete === true,
+      statusLabel: config.statusLabel || "",
     };
   }
 
@@ -256,7 +258,7 @@
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
         phase("prep-cubes", "Prep Cubes", 0, 2, { timing: "Day 0", tone: "soaking" }),
-        phase("seeds-planted", "Seeds Planted", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("seeds-planted", "Plant Seeds", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
         phase("keep-cubes-moist", "Keep Cubes Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
         phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
         phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
@@ -272,7 +274,7 @@
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green" }),
         phase("prep-plugs", "Prep Plugs", 0, 2, { timing: "Day 0", tone: "soaking" }),
-        phase("seeds-planted", "Seeds Planted", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("seeds-planted", "Plant Seeds", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
         phase("keep-plugs-moist", "Keep Plugs Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
         phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
         phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
@@ -395,6 +397,72 @@
       };
     }
     return definition;
+  }
+
+  function getSessionMethodSetup(session) {
+    const setup = session?.methodSetup || session?.method_setup || {};
+    return setup && typeof setup === "object" ? setup : {};
+  }
+
+  function hasPreparedMediaSetup(session) {
+    const setup = getSessionMethodSetup(session);
+    const choice = String(setup.choice || setup.preparedMediaChoice || setup.prepared_media_choice || "")
+      .trim()
+      .toLowerCase();
+    return setup.preparedMedia === true
+      || setup.prepared_media === true
+      || setup.prepared === true
+      || setup.cubesPrepared === true
+      || setup.plugsPrepared === true
+      || choice === "prepared";
+  }
+
+  function getPreparedMediaPhases(methodKey) {
+    if (methodKey === "ROCKWOOL") {
+      return [
+        phase("prep-cubes", "Prep Cubes", 0, 0, {
+          timing: "Already prepared",
+          tone: "preparation-complete",
+          preparationComplete: true,
+          statusLabel: "Already Complete",
+        }),
+        phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
+        phase("seeds-planted", "Seeds Planted", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("keep-cubes-moist", "Keep Cubes Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
+        phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
+        phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
+      ];
+    }
+
+    if (methodKey === "RAPID_ROOTER") {
+      return [
+        phase("prep-plugs", "Prep Plugs", 0, 0, {
+          timing: "Already prepared",
+          tone: "preparation-complete",
+          preparationComplete: true,
+          statusLabel: "Already Complete",
+        }),
+        phase("started", "Start", 0, 0, { timing: "Session started", tone: "green" }),
+        phase("seeds-planted", "Seeds Planted", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("keep-plugs-moist", "Keep Plugs Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
+        phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
+        phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
+      ];
+    }
+
+    return null;
+  }
+
+  function getEffectiveMethodDefinition(definition, methodKey, session) {
+    const preparedPhases = hasPreparedMediaSetup(session) ? getPreparedMediaPhases(methodKey) : null;
+    if (!preparedPhases) {
+      return definition;
+    }
+    return {
+      ...definition,
+      phases: preparedPhases,
+      startLabel: "Seeds planted",
+    };
   }
 
   function parseTimestamp(value) {
@@ -543,6 +611,8 @@
         isComplete,
         isFuture: !isCurrent && !isComplete,
         requiredConfirmation: item.requiredConfirmation || "",
+        preparationComplete: item.preparationComplete === true,
+        statusLabel: item.statusLabel || "",
       };
     });
   }
@@ -615,7 +685,7 @@
       ? options.now
       : parseTimestamp(options.now) || new Date();
     const methodKey = getSessionMethodKey(session, options.method);
-    const definition = getMethodDefinition(methodKey);
+    const definition = getEffectiveMethodDefinition(getMethodDefinition(methodKey), methodKey, session);
     const status = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
     const startAt = getStartAt(session);
     const completedAt = parseTimestamp(session?.completedAt || session?.completed_at || "");
