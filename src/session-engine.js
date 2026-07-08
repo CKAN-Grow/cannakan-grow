@@ -117,20 +117,20 @@
   ];
 
   const DIRECT_MEDIA_REMINDERS = [
-    reminder("check-environment-day-2", 2 * DAY_HOURS, "Check environment", "Check moisture, temperature, and placement.", {
+    reminder("keep-moist-day-1", DAY_HOURS, "Keep moist", "Check moisture and keep the medium evenly moist.", {
       stage: "active",
       category: "germination-reminder",
-      requiredAction: "check-environment",
+      requiredAction: "check-moisture",
     }),
-    reminder("check-emergence-day-3", 3 * DAY_HOURS, "Check emergence", "Check for emergence.", {
+    reminder("watch-sprouts-day-2", 2 * DAY_HOURS, "Watch for sprouts", "Check for early sprout activity.", {
       stage: "active",
-      requiredAction: "check-emergence",
+      requiredAction: "check-sprouts",
     }),
-    reminder("update-results-day-5", 5 * DAY_HOURS, "Update results", "Update germination results.", {
+    reminder("record-results-day-5", 5 * DAY_HOURS, "Record results", "Record germination results when sprouts have emerged.", {
       stage: "active",
       requiredAction: "record-results",
     }),
-    reminder("urgent-update-day-7", 7 * DAY_HOURS, "Urgent results reminder", "This planted session needs attention.", {
+    reminder("urgent-results-day-7", 7 * DAY_HOURS, "Results reminder", "This planted session needs attention.", {
       stage: "active",
       level: "critical",
       requiredAction: "record-results",
@@ -187,8 +187,8 @@
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "purple" }),
-        phase("soak", "Soak", 0, 18, { timing: "0-18h", tone: "soaking", requiredConfirmation: "confirm-moved-to-paper-towel" }),
-        phase("ready-transfer", "Move to Paper Towel", 18, null, { timing: "12-18h", tone: "germination", requiredConfirmation: "confirm-moved-to-paper-towel" }),
+        phase("soak", "Soak", 0, 12, { timing: "0-12h", tone: "soaking", requiredConfirmation: "confirm-moved-to-paper-towel" }),
+        phase("ready-transfer", "Move to Paper Towel", 12, null, { timing: "12-18h", tone: "germination", requiredConfirmation: "confirm-moved-to-paper-towel" }),
         phase("paper-towel", "Paper Towel", 0, 24, { from: "paperTowelStart", timing: "0-24h", tone: "germination" }),
         phase("check-window", "Check Seeds", 24, 48, { from: "paperTowelStart", timing: "24-48h", tone: "green" }),
         phase("complete", "Complete", 48, null, { from: "paperTowelStart", timing: "48h+", tone: "completed" }),
@@ -233,14 +233,14 @@
       displayName: "Direct Soil",
       tone: "orange",
       iconName: "method-direct-sow",
-      startLabel: "Planted",
+      startLabel: "Seeds planted",
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "orange" }),
-        phase("planted", "Plant Seeds", 0, 2 * DAY_HOURS, { timing: "Day 0-2", tone: "soaking" }),
-        phase("monitor", "Keep Moist", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "germination" }),
-        phase("emergence", "Watch for Sprouts", 5 * DAY_HOURS, 7 * DAY_HOURS, { timing: "Day 5-7", tone: "green" }),
-        phase("complete", "Complete", 7 * DAY_HOURS, null, { timing: "Day 7+", tone: "completed" }),
+        phase("seeds-planted", "Seeds Planted", 0, DAY_HOURS, { timing: "Day 0", tone: "soaking" }),
+        phase("keep-moist", "Keep Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
+        phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
+        phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
       ],
       milestones: DIRECT_MEDIA_REMINDERS,
       completionWindow: { from: "start", startHour: 5 * DAY_HOURS, endHour: 7 * DAY_HOURS },
@@ -255,11 +255,11 @@
       startLabel: "Prep cubes",
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
-        phase("prep-cubes", "Prep Cubes", 0, 12, { timing: "0-12h", tone: "soaking" }),
-        phase("plant-seeds", "Plant Seeds", 12, 2 * DAY_HOURS, { timing: "12h-Day 2", tone: "germination" }),
-        phase("keep-moist", "Keep Moist", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "germination" }),
-        phase("check-sprouts", "Check Sprouts", 5 * DAY_HOURS, 7 * DAY_HOURS, { timing: "Day 5-7", tone: "green" }),
-        phase("complete", "Complete", 7 * DAY_HOURS, null, { timing: "Day 7+", tone: "completed" }),
+        phase("prep-cubes", "Prep Cubes", 0, 2, { timing: "Day 0", tone: "soaking" }),
+        phase("seeds-planted", "Seeds Planted", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("keep-cubes-moist", "Keep Cubes Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
+        phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
+        phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
       ],
     },
     RAPID_ROOTER: {
@@ -271,11 +271,11 @@
       startLabel: "Prep plugs",
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green" }),
-        phase("prep-plugs", "Prep Plugs", 0, 12, { timing: "0-12h", tone: "soaking" }),
-        phase("plant-seeds", "Plant Seeds", 12, 2 * DAY_HOURS, { timing: "12h-Day 2", tone: "germination" }),
-        phase("keep-moist", "Keep Moist", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "germination" }),
-        phase("check-sprouts", "Check Sprouts", 5 * DAY_HOURS, 7 * DAY_HOURS, { timing: "Day 5-7", tone: "green" }),
-        phase("complete", "Complete", 7 * DAY_HOURS, null, { timing: "Day 7+", tone: "completed" }),
+        phase("prep-plugs", "Prep Plugs", 0, 2, { timing: "Day 0", tone: "soaking" }),
+        phase("seeds-planted", "Seeds Planted", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("keep-plugs-moist", "Keep Plugs Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
+        phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
+        phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
       ],
     },
     WATER_SOAK: {
@@ -287,8 +287,8 @@
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "cyan" }),
-        phase("soak", "Soak", 0, 18, { timing: "0-18h", tone: "soaking" }),
-        phase("check-seeds", "Check Seeds", 18, 24, { timing: "18-24h", tone: "germination" }),
+        phase("soak", "Soak", 0, 12, { timing: "0-12h", tone: "soaking" }),
+        phase("check-seeds", "Check Seeds", 12, 24, { timing: "12-24h", tone: "germination" }),
         phase("complete", "Complete", 24, null, { timing: "24h+", tone: "completed" }),
       ],
       milestones: [
@@ -297,12 +297,12 @@
           stage: "soaking",
           requiredAction: "check-seeds",
         }),
-        reminder("prepare-transfer-18h", 18, "Prepare transfer", "Prepare to transfer seeds.", {
+        reminder("check-again-18h", 18, "Check again", "Check seeds and prepare the next step.", {
           category: "soaking-reminder",
           stage: "soaking",
-          requiredAction: "confirm-transfer-ready",
+          requiredAction: "check-seeds",
         }),
-        reminder("urgent-transfer-24h", 24, "Urgent transfer reminder", "Transfer seeds or complete this water glass session.", {
+        reminder("complete-water-glass-24h", 24, "Complete water glass session", "Complete this water glass session or move seeds into their next method.", {
           category: "soaking-reminder",
           stage: "soaking",
           level: "critical",
@@ -320,15 +320,15 @@
       displayName: "Custom Method",
       tone: "gray",
       iconName: "method-custom",
-      startLabel: "Started",
+      startLabel: "Seeds started",
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
-        phase("monitor", "Monitor", 0, 48, { timing: "0-48h", tone: "germination" }),
+        phase("seeds-started", "Seeds Started", 0, 48, { timing: "0-48h", tone: "germination" }),
         phase("complete", "Complete", 48, null, { timing: "48h+", tone: "completed" }),
       ],
       milestones: [
-        reminder("custom-check-48h", 48, "Review custom method", "Review this custom method session.", {
+        reminder("custom-check-48h", 48, "Review seeds", "Review this custom method session.", {
           stage: "active",
           requiredAction: "check-seeds",
           supportsPostpone: true,
@@ -552,10 +552,19 @@
     if (["soaking", "soak", "ready-transfer", "prep-cubes", "prep-plugs"].includes(normalized)) {
       return "stage-soaking";
     }
-    if (["germination", "paper-towel", "monitor", "planted", "move-germination", "plant-seeds", "keep-moist"].includes(normalized)) {
+    if ([
+      "germination",
+      "paper-towel",
+      "seeds-started",
+      "seeds-planted",
+      "move-germination",
+      "keep-moist",
+      "keep-cubes-moist",
+      "keep-plugs-moist",
+    ].includes(normalized)) {
       return "stage-germination";
     }
-    if (["check-window", "emergence", "first-check", "check-seeds", "check-sprouts"].includes(normalized)) {
+    if (["check-window", "emergence", "first-check", "check-seeds", "check-sprouts", "watch-sprouts"].includes(normalized)) {
       return "stage-first-germinated";
     }
     if (["complete", "completion-window"].includes(normalized)) {

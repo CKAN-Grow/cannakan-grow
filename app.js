@@ -1493,7 +1493,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Row",
+    rowLabel: "Towel",
     chartEyebrow: "Paper Towel",
     chartTitle: "Paper Towel Seed Chart",
     iconAlt: "Grow App icon",
@@ -1513,7 +1513,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsFilterInventory: false,
     defaultSessionStatus: "active",
     defaultRowCount: 1,
-    rowLabel: "Row",
+    rowLabel: "Towel",
     chartEyebrow: "Paper Towel + Soak",
     chartTitle: "Paper Towel + Soak Seed Chart",
     iconAlt: "Grow App icon",
@@ -83284,7 +83284,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     });
     addSeedRowButton?.addEventListener("click", () => {
       const method = getMethodConfig(systemTypeField.value);
-      if (!usesCustomMethodWorkflow(method.id)) {
+      if (method.isStandardized) {
         return;
       }
 
@@ -83617,6 +83617,7 @@ function buildPartitionFormCard(partition, index, options = {}) {
   const seedAgeReadOnly = Boolean(options.seedAgeReadOnly);
   const includeGerminationFields = options.includeGerminationFields !== false;
   const rowLabel = options.rowLabel || "Partition";
+  const displayLabel = `${rowLabel} ${partition.id}`;
   const row = document.createElement("article");
   row.className = "chart-row partition-row";
   row.classList.toggle("custom-method-row", !includeGerminationFields);
@@ -83624,7 +83625,7 @@ function buildPartitionFormCard(partition, index, options = {}) {
   row.dataset.partitionId = String(partition.id);
   row.tabIndex = -1;
   row.innerHTML = `
-    <div class="partition-number partition-btn" aria-label="${escapeHtml(rowLabel)} ${partition.id}">${partition.id}</div>
+    <div class="partition-number partition-btn" aria-label="${escapeHtml(displayLabel)}">${escapeHtml(displayLabel)}</div>
     <label class="partition-identity-field" data-source-directory-autocomplete="true">
       <span class="mobile-field-label">Source</span>
         <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-label="${escapeHtml(rowLabel)} ${partition.id} source" aria-autocomplete="list">
@@ -85348,7 +85349,17 @@ function handleSessionEnginePrimaryAction(control = null) {
     return true;
   }
 
-  if (["check-seeds", "check-environment", "check-emergence", "confirm-transfer-ready", "record-results", "record-germination-results", "complete-session"].includes(actionKey)) {
+  if ([
+    "check-seeds",
+    "check-environment",
+    "check-emergence",
+    "check-moisture",
+    "check-sprouts",
+    "confirm-transfer-ready",
+    "record-results",
+    "record-germination-results",
+    "complete-session",
+  ].includes(actionKey)) {
     focusSessionResultEntry(scope);
     showNavigationLockToast({
       title: action.label || "Session action",
@@ -85624,7 +85635,11 @@ function updateMethodTypeLayout(scope, methodType = "") {
     element.hidden = !method.isStandardized;
   });
   scope.querySelectorAll("[data-custom-method-actions]").forEach((element) => {
-    element.hidden = !usesCustomMethodWorkflow(method.id);
+    element.hidden = method.isStandardized;
+    element.querySelectorAll("#add-seed-row, [data-add-seed-row]").forEach((button) => {
+      button.textContent = `+ Add ${method.rowLabel}`;
+      button.setAttribute("aria-label", `Add ${method.rowLabel}`);
+    });
   });
   scope.querySelectorAll(".partition-table").forEach((element) => {
     element.dataset.methodType = method.id;
@@ -91851,6 +91866,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const showSeedAgeField = Boolean(options.showSeedAgeField);
   const includeGerminationFields = options.includeGerminationFields !== false;
   const rowLabel = options.rowLabel || "Partition";
+  const displayLabel = `${rowLabel} ${displayIndex}`;
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
   const seedAgeValue = getEffectivePartitionSeedAgeYears(partition, options.session || null);
@@ -91884,7 +91900,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   row.dataset.partitionSeedAgeYears = seedAgeValue === null ? "" : String(seedAgeValue);
   row.dataset.partitionPlantedCount = String(partition?.plantedCount ?? "");
   row.innerHTML = `
-    <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="${escapeHtml(rowLabel)} ${displayIndex}">${displayIndex}</div>
+    <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="${escapeHtml(displayLabel)}">${escapeHtml(displayLabel)}</div>
     <div class="detail-cell">
       <span class="mobile-field-label">Source</span>
       <p>${escapeHtml(sourceLabel)}</p>
@@ -94002,10 +94018,18 @@ function getSessionEngineVisualTimelineIconKey(step = {}, status = {}) {
   if (["prep-cubes"].includes(stepKey)) {
     return "cube";
   }
-  if (["prep-plugs", "plant-seeds", "planted", "germination", "monitor", "keep-moist"].includes(stepKey)) {
+  if ([
+    "prep-plugs",
+    "seeds-planted",
+    "seeds-started",
+    "germination",
+    "keep-moist",
+    "keep-cubes-moist",
+    "keep-plugs-moist",
+  ].includes(stepKey)) {
     return "sprout";
   }
-  if (["first-check", "check-window", "check-seeds", "check-sprouts", "emergence"].includes(stepKey)) {
+  if (["first-check", "check-window", "check-seeds", "check-sprouts", "emergence", "watch-sprouts"].includes(stepKey)) {
     return "inspect";
   }
   if (["complete"].includes(stepKey)) {
@@ -94906,7 +94930,8 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
           { key: "started", label: "Started", timing: "Session started" },
           { key: "soaking", label: "Soaking", timing: "0-18h" },
           { key: "move-germination", label: "Move to Germination", timing: "18-24h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "germination", label: "Germination", timing: "24-36h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "36-56h" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
@@ -94919,7 +94944,8 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
           { key: "started", label: "Started", timing: "Session started" },
           { key: "soaking", label: "Soaking", timing: "0-18h" },
           { key: "move-germination", label: "Move to Germination", timing: "18-24h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "germination", label: "Germination", timing: "24-36h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "36-56h" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
@@ -94930,10 +94956,10 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
         iconName: "method-soak-paper",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
-          { key: "soaking", label: "Soaking", timing: "0-24h" },
-          { key: "move-paper-towel", label: "Move to Paper Towel", timing: "After soaking" },
-          { key: "check-moisture", label: "Check Moisture", timing: "Every 12h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "soaking", label: "Soak", timing: "0-12h" },
+          { key: "move-paper-towel", label: "Move to Paper Towel", timing: "12-18h" },
+          { key: "paper-towel", label: "Paper Towel", timing: "0-24h after move" },
+          { key: "check-seeds", label: "Check Seeds", timing: "24-48h after move" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
@@ -94944,35 +94970,62 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
         iconName: "method-paper-towel",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
-          { key: "paper-towel", label: "Paper Towel Phase", timing: "0-48h" },
-          { key: "check-moisture", label: "Check Moisture", timing: "Every 12h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "24-72h" },
+          { key: "paper-towel", label: "Paper Towel", timing: "0-12h" },
+          { key: "first-check", label: "First Check", timing: "12-24h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "24-48h" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
     case "DIRECT_SOW":
-    case "ROCKWOOL":
       return {
-        title: "Direct to Soil / Medium",
+        title: "Direct Soil",
         tone: "orange",
         iconName: "method-direct-sow",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
-          { key: "planted", label: "Planted", timing: "Day 0" },
-          { key: "check-medium", label: "Check Medium", timing: "Daily" },
-          { key: "check-emergence", label: "Check Emergence", timing: "2-7 days" },
+          { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+          { key: "keep-moist", label: "Keep Moist", timing: "Day 1-3" },
+          { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "ROCKWOOL":
+      return {
+        title: "Rockwool",
+        tone: "orange",
+        iconName: "method-direct-sow",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "prep-cubes", label: "Prep Cubes", timing: "Day 0" },
+          { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+          { key: "keep-cubes-moist", label: "Keep Cubes Moist", timing: "Day 1-3" },
+          { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
+          { key: "complete", label: "Complete", timing: "When results are recorded" },
+        ],
+      };
+    case "RAPID_ROOTER":
+      return {
+        title: "Starter Plug",
+        tone: "orange",
+        iconName: "method-direct-sow",
+        stages: [
+          { key: "started", label: "Started", timing: "Session started" },
+          { key: "prep-plugs", label: "Prep Plugs", timing: "Day 0" },
+          { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+          { key: "keep-plugs-moist", label: "Keep Plugs Moist", timing: "Day 1-3" },
+          { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
     case "WATER_SOAK":
       return {
-        title: "Soak Only",
+        title: "Water Glass",
         tone: "cyan",
         iconName: "method-soak-only",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
-          { key: "soaking", label: "Soaking", timing: "0-24h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "18-48h" },
+          { key: "soaking", label: "Soak", timing: "0-12h" },
+          { key: "check-seeds", label: "Check Seeds", timing: "12-24h" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
@@ -94983,7 +95036,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
         iconName: "method-custom",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
-          { key: "tracking", label: "Tracking", timing: "As needed" },
+          { key: "seeds-started", label: "Seeds Started", timing: "As needed" },
           { key: "complete", label: "Complete", timing: "When results are recorded" },
         ],
       };
@@ -95018,7 +95071,9 @@ function getSessionCommandCenterRoadmapCurrentIndex(session = null, stages = [])
       "check-moisture",
       "check-medium",
       "check-seeds",
-      "tracking",
+      "first-check",
+      "watch-sprouts",
+      "seeds-started",
     ]);
     return germinationIndex >= 0 ? germinationIndex : Math.min(1, stages.length - 1);
   }
@@ -95028,7 +95083,10 @@ function getSessionCommandCenterRoadmapCurrentIndex(session = null, stages = [])
       "soaking",
       "paper-towel",
       "planted",
-      "tracking",
+      "seeds-planted",
+      "prep-cubes",
+      "prep-plugs",
+      "seeds-started",
     ]);
     return activeIndex >= 0 ? activeIndex : Math.min(1, stages.length - 1);
   }

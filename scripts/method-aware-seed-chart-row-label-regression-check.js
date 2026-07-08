@@ -13,8 +13,8 @@ function requireNeedle(needle, label = needle) {
 const expectedMethodLabels = [
   ["KAN", "Partition"],
   ["TRA", "Partition"],
-  ["PAPER_TOWEL", "Row"],
-  ["PAPER_TOWEL_SOAK", "Row"],
+  ["PAPER_TOWEL", "Towel"],
+  ["PAPER_TOWEL_SOAK", "Towel"],
   ["ROCKWOOL", "Cube"],
   ["RAPID_ROOTER", "Plug"],
   ["WATER_SOAK", "Glass"],
@@ -32,6 +32,8 @@ for (const [methodId, rowLabel] of expectedMethodLabels) {
 for (const needle of [
   "function syncMethodChartHeader(chartHeader, methodType = \"\")",
   "firstHeader.textContent = method.rowLabel;",
+  "const displayLabel = `${rowLabel} ${partition.id}`;",
+  "const displayLabel = `${rowLabel} ${displayIndex}`;",
   "function syncMethodSeedAgeCopy(scope, method)",
   "syncMethodSeedAgeCopy(scope, method);",
   "syncMethodSeedAgeCopy(form, getMethodConfig(form.elements?.systemType?.value || form.dataset.methodType || \"KAN\"));",
@@ -40,6 +42,9 @@ for (const needle of [
   "const rowLabel = method.rowLabel;",
   "Select seeds from your collection to auto-fill ${method.rowLabel.toLowerCase()} details.",
   "displayLabel: `${method.rowLabel} ${partitionNumber}`,",
+  "element.hidden = method.isStandardized;",
+  "button.textContent = `+ Add ${method.rowLabel}`;",
+  "if (method.isStandardized) {",
 ]) {
   requireNeedle(needle);
 }
