@@ -632,12 +632,29 @@
                   <option value="TRA">TRā</option>
                   <option value="PAPER_TOWEL">Paper Towel</option>
                   <option value="ROCKWOOL">Rockwool</option>
-                  <option value="WATER_SOAK">Water Soak</option>
-                  <option value="DIRECT_SOW">Direct Sow</option>
+                  <option value="RAPID_ROOTER">Starter Plug</option>
+                  <option value="WATER_SOAK">Water Glass</option>
+                  <option value="DIRECT_SOW">Direct Soil</option>
                   <option value="OTHER">Other</option>
                 </select>
                 <span class="system-type-chevron" aria-hidden="true"></span>
               </label>
+              <section id="paper-towel-setup-choice" class="paper-towel-setup-choice" aria-labelledby="paper-towel-setup-title" hidden>
+                <div>
+                  <p class="eyebrow">Paper Towel</p>
+                  <h3 id="paper-towel-setup-title">Choose Setup</h3>
+                </div>
+                <div class="paper-towel-setup-options" role="group" aria-label="Paper Towel setup">
+                  <button type="button" class="paper-towel-setup-option" data-paper-towel-setup="PAPER_TOWEL_SOAK">
+                    <strong>Soak + Paper Towel</strong>
+                    <span>Soak first, then move seeds to paper towel.</span>
+                  </button>
+                  <button type="button" class="paper-towel-setup-option" data-paper-towel-setup="PAPER_TOWEL">
+                    <strong>Paper Towel Only</strong>
+                    <span>Start directly on paper towel.</span>
+                  </button>
+                </div>
+              </section>
               <label class="system-id-field">
                 <span>Method ID (if using multiple)</span>
                 <select name="unitId">

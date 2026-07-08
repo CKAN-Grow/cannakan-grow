@@ -1541,8 +1541,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
   }),
   RAPID_ROOTER: Object.freeze({
     id: "RAPID_ROOTER",
-    name: "Rapid Rooter",
-    optionLabel: "Rapid Rooter / Starter Plug",
+    name: "Starter Plug",
+    optionLabel: "Starter Plug",
     modalDescription: "Starter plug planting timeline",
     isStandardized: false,
     supportsLayoutImage: false,
@@ -1554,8 +1554,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Plug",
-    chartEyebrow: "Rapid Rooter",
-    chartTitle: "Rapid Rooter Seed Chart",
+    chartEyebrow: "Starter Plug",
+    chartTitle: "Starter Plug Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
@@ -1621,6 +1621,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
   }),
 });
 const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL_SOAK", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
+const METHOD_TYPE_SELECTION_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
+const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWEL"]);
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({ key: "kan", accent: "#94d159", accentSoft: "rgba(148, 209, 89, 0.16)", glow: "rgba(148, 209, 89, 0.28)" }),
   TRA: Object.freeze({ key: "tra", accent: "#b8ff5c", accentSoft: "rgba(184, 255, 92, 0.16)", glow: "rgba(184, 255, 92, 0.3)" }),
@@ -1812,16 +1814,31 @@ function formatMethodTypeLabel(value = "") {
   return getMethodConfig(value).name;
 }
 
+function isPaperTowelSetupMethod(methodType = "") {
+  return PAPER_TOWEL_SETUP_METHODS.includes(normalizeMethodType(methodType));
+}
+
+function getMethodTypeSelectionLabel(methodType = "") {
+  const method = getMethodConfig(methodType);
+  return isPaperTowelSetupMethod(method.id) ? "Paper Towel" : method.optionLabel;
+}
+
 function syncMethodTypeSelectOptions(selectElement, selectedMethod = "") {
   if (!(selectElement instanceof HTMLSelectElement)) {
     return;
   }
 
   const nextMethod = normalizeMethodType(selectedMethod || selectElement.value || "KAN");
-  selectElement.innerHTML = METHOD_TYPE_ORDER.map((methodId) => {
+  const selectionOptions = METHOD_TYPE_SELECTION_ORDER.map((methodId) => {
     const method = METHOD_TYPE_CONFIG[methodId];
-    return `<option value="${escapeHtml(method.id)}">${escapeHtml(method.optionLabel)}</option>`;
-  }).join("");
+    return `<option value="${escapeHtml(method.id)}">${escapeHtml(getMethodTypeSelectionLabel(method.id))}</option>`;
+  });
+  if (!METHOD_TYPE_SELECTION_ORDER.includes(nextMethod)) {
+    selectionOptions.push(
+      `<option value="${escapeHtml(nextMethod)}" hidden>${escapeHtml(getMethodTypeSelectionLabel(nextMethod))}</option>`,
+    );
+  }
+  selectElement.innerHTML = selectionOptions.join("");
   selectElement.value = nextMethod;
 }
 const ACTIVE_PARTITION_STYLE = {
@@ -40636,11 +40653,11 @@ function ensureNewSessionSystemModal() {
   overlay.className = "new-session-system-modal-overlay";
   overlay.hidden = false;
   overlay.dataset.closing = "false";
-  const methodOptionsMarkup = METHOD_TYPE_ORDER.map((methodId) => {
+  const methodOptionsMarkup = METHOD_TYPE_SELECTION_ORDER.map((methodId) => {
     const method = METHOD_TYPE_CONFIG[methodId];
     return `
       <button type="button" class="new-session-system-option" data-system-type="${escapeHtml(method.id)}">
-        <strong>${escapeHtml(method.optionLabel)}</strong>
+        <strong>${escapeHtml(getMethodTypeSelectionLabel(method.id))}</strong>
         <span>${escapeHtml(method.modalDescription)}</span>
       </button>
     `;
@@ -82736,6 +82753,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const saveShortcut = document.querySelector(".timeline-save-shortcut");
   const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
   const addSeedRowButton = document.querySelector("#add-seed-row");
+  const paperTowelSetupChoice = document.querySelector("#paper-towel-setup-choice");
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
   const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
   const seedAgeSameInput = form.elements.sessionSeedAgeYears;
@@ -82780,6 +82798,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   syncMethodTypeSelectOptions(systemTypeField, normalizedSystemType);
   systemTypeField.value = normalizedSystemType;
   updateMethodTypeLayout(form, normalizedSystemType);
+  syncPaperTowelSetupChoice();
   if (notesField && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
     notesField.value = notesDraft.sessionNotes || "";
   }
@@ -82896,6 +82915,35 @@ function renderSessionForm(initialSystemType = "KAN") {
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
     applyStageEditingMode(form, sessionStatusField.value);
+  }
+
+  function syncPaperTowelSetupChoice() {
+    if (!(paperTowelSetupChoice instanceof HTMLElement)) {
+      return;
+    }
+
+    const methodType = normalizeMethodType(systemTypeField.value || form.dataset.methodType || "KAN");
+    const isPaperTowel = isPaperTowelSetupMethod(methodType);
+    paperTowelSetupChoice.hidden = !isPaperTowel;
+    paperTowelSetupChoice.dataset.methodType = methodType;
+    paperTowelSetupChoice.querySelectorAll("[data-paper-towel-setup]").forEach((button) => {
+      const setupMethod = normalizeMethodType(button.getAttribute("data-paper-towel-setup") || "");
+      const isSelected = isPaperTowel && setupMethod === methodType;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  }
+
+  function applyPaperTowelSetupChoice(methodType = "") {
+    const nextMethod = normalizeMethodType(methodType);
+    if (!isPaperTowelSetupMethod(nextMethod)) {
+      return;
+    }
+
+    syncMethodTypeSelectOptions(systemTypeField, nextMethod);
+    systemTypeField.value = nextMethod;
+    syncPaperTowelSetupChoice();
+    systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
@@ -83196,6 +83244,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       updateMethodTypeLayout(form, nextMethod);
       updateMethodTypeLayout(app, nextMethod);
+      syncPaperTowelSetupChoice();
       renderSystemLayoutReference(layoutReference, nextMethod);
       if (partitionWorkTitle) {
         updatePartitionWorkHeading(partitionWorkTitle, nextMethod);
@@ -83222,7 +83271,17 @@ function renderSessionForm(initialSystemType = "KAN") {
     refreshNewSessionTimelineViews();
     renderFormSuppliesCard();
     updateMethodTypeLayout(form, nextMethod);
+    syncPaperTowelSetupChoice();
   });
+    paperTowelSetupChoice?.addEventListener("click", (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-paper-towel-setup]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      applyPaperTowelSetupChoice(button.getAttribute("data-paper-towel-setup") || "");
+    });
     addSeedRowButton?.addEventListener("click", () => {
       const method = getMethodConfig(systemTypeField.value);
       if (!usesCustomMethodWorkflow(method.id)) {

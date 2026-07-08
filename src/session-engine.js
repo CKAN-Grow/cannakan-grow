@@ -264,7 +264,7 @@
     },
     RAPID_ROOTER: {
       key: "RAPID_ROOTER",
-      displayName: "Rapid Rooter",
+      displayName: "Starter Plug",
       extends: "DIRECT_SOW",
       tone: "green",
       iconName: "method-direct-sow",
