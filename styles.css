@@ -51534,9 +51534,9 @@ body.modal-open {
   --visual-timeline-accent-soft: rgba(148, 209, 89, 0.16);
   --visual-timeline-glow: rgba(148, 209, 89, 0.28);
   display: grid;
-  gap: 14px;
-  padding: 16px 18px 18px;
-  overflow: hidden;
+  gap: 12px;
+  padding: 24px 18px 20px;
+  overflow: visible;
   border: 1px solid color-mix(in srgb, var(--visual-timeline-accent) 22%, rgba(255, 255, 255, 0.08));
   border-radius: 18px;
   background:
@@ -51557,13 +51557,19 @@ body.modal-open {
 
 .session-engine-visual-timeline-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
 }
 
-.session-engine-visual-timeline-head .eyebrow {
+.session-engine-visual-timeline-title {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.session-engine-visual-timeline-title .eyebrow {
   width: auto;
   margin: 0;
   color: var(--visual-timeline-accent);
@@ -51571,8 +51577,17 @@ body.modal-open {
   letter-spacing: 0.14em;
 }
 
+.session-engine-visual-timeline-title h3 {
+  margin: 0;
+  color: #f4f8f0;
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
 .session-engine-visual-timeline-next {
   max-width: min(52ch, 60%);
+  margin-top: 2px;
   padding: 4px 9px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--visual-timeline-accent) 34%, rgba(255, 255, 255, 0.1));
@@ -51589,7 +51604,7 @@ body.modal-open {
 .session-engine-visual-timeline-scroll {
   min-width: 0;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   scrollbar-color: color-mix(in srgb, var(--visual-timeline-accent) 32%, rgba(255, 255, 255, 0.18)) transparent;
   scrollbar-width: thin;
 }
@@ -51599,7 +51614,7 @@ body.modal-open {
   grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(118px, 1fr));
   min-width: max(100%, calc(var(--visual-timeline-step-count) * 124px));
   margin: 0;
-  padding: 4px 2px 2px;
+  padding: 18px 2px 2px;
   list-style: none;
 }
 
@@ -51743,6 +51758,10 @@ body.modal-open {
 }
 
 @media (max-width: 720px) {
+  .session-engine-visual-timeline-card {
+    padding: 22px 14px 18px;
+  }
+
   .session-workspace-form #partition-chart-shell > .partition-work-header {
     padding: 14px;
   }

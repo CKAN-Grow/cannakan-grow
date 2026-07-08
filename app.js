@@ -83155,8 +83155,10 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
     });
     systemTypeField.addEventListener("change", () => {
+      const previousMethod = normalizeMethodType(appState.newSessionSystemType || form.dataset.methodType || systemTypeField.value || "KAN");
       const nextMethod = normalizeMethodType(systemTypeField.value);
       systemTypeField.value = nextMethod;
+      resetNewSessionMethodSpecificDraftState(form, previousMethod, nextMethod);
       appState.newSessionSystemType = nextMethod;
       form.__customMethodRowCount = getMethodConfig(nextMethod).isStandardized
         ? 0
@@ -84863,7 +84865,8 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   });
 
   scope.querySelectorAll('select[name="systemType"]').forEach((field) => {
-    field.disabled = !allowFullEditing;
+    const isCreateSessionMethodField = Boolean(field.closest("#session-form"));
+    field.disabled = isCreateSessionMethodField ? false : !allowFullEditing;
   });
 
   scope.querySelectorAll('input[name="seedAgeTrackingEnabled"], input[name="seedAgeMode"], input[name="sessionSeedAgeYears"]').forEach((field) => {
@@ -93261,6 +93264,42 @@ function primeUnitIdDefault(form) {
   }
 }
 
+function resetNewSessionMethodSpecificDraftState(form, previousMethodType = "", nextMethodType = "") {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const previousMethod = getMethodConfig(previousMethodType);
+  const nextMethod = getMethodConfig(nextMethodType);
+  const unitIdField = form.elements?.unitId;
+  const statusField = form.elements?.sessionStatus;
+
+  if (unitIdField instanceof HTMLInputElement || unitIdField instanceof HTMLSelectElement) {
+    if (previousMethod.isStandardized && !nextMethod.isStandardized) {
+      unitIdField.value = "";
+    } else if (nextMethod.isStandardized && !String(unitIdField.value || "").trim()) {
+      unitIdField.value = "A";
+    }
+  }
+
+  if (statusField instanceof HTMLInputElement || statusField instanceof HTMLSelectElement) {
+    const currentStatus = normalizeSessionStatus(statusField.value || "");
+    if (nextMethod.supportsStageTracking && !["unselected", "soaking", "germinating", "completed"].includes(currentStatus)) {
+      statusField.value = "";
+      form.dataset.currentStage = "unselected";
+      delete form.dataset.germinationStartedAt;
+      delete form.dataset.firstPlantedAt;
+      delete form.dataset.completedAt;
+    } else if (!nextMethod.supportsStageTracking && currentStatus !== "completed") {
+      statusField.value = getMethodDefaultSessionStatus(nextMethod.id);
+      form.dataset.currentStage = normalizeSessionStatus(statusField.value);
+      delete form.dataset.germinationStartedAt;
+      delete form.dataset.firstPlantedAt;
+      delete form.dataset.completedAt;
+    }
+  }
+}
+
 function buildFinalSessionName(inputName, firstPartition, sessionDate, options = {}) {
   const manualName = String(inputName || "").trim();
   const baseName = manualName || buildGeneratedSessionNameBase({
@@ -93947,7 +93986,10 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null) {
       style="--visual-timeline-accent: ${escapeHtml(theme.accent)}; --visual-timeline-accent-soft: ${escapeHtml(theme.accentSoft)}; --visual-timeline-glow: ${escapeHtml(theme.glow)}; --visual-timeline-step-count: ${stepCount};"
     >
       <div class="session-engine-visual-timeline-head">
-        <p class="eyebrow">Session Timeline</p>
+        <div class="session-engine-visual-timeline-title">
+          <p class="eyebrow">Timeline</p>
+          <h3>Session Progress</h3>
+        </div>
         <span class="session-engine-visual-timeline-next">${escapeHtml(getSessionEngineVisualTimelineNextLabel(engineState))}</span>
       </div>
       <div class="session-engine-visual-timeline-scroll" tabindex="0" aria-label="${escapeHtml(`${methodName} visual timeline`)}">
