@@ -36,6 +36,7 @@ for (const needle of [
   "function getMethodRowBadgePrefix(methodType = \"\", rowLabel = \"\")",
   "function getMethodRowBadgeLabel(methodType = \"\", rowId = 0, rowLabel = \"\")",
   "function getMethodRowBadgeAccent(methodType = \"\")",
+  "return `${getMethodRowBadgePrefix(methodType, rowLabel)} ${numericId}`;",
   "const displayLabel = `${rowLabel} ${partition.id}`;",
   "const badgeLabel = getMethodRowBadgeLabel(options.methodType || \"\", partition.id, rowLabel);",
   "<span class=\"partition-row-badge\">${escapeHtml(badgeLabel)}</span>",
@@ -78,6 +79,10 @@ for (const needle of [
   ".partition-row-badge",
   ".session-workspace-shell .partition-number--badge",
   "--partition-badge-accent",
+  "min-width: 46px;",
+  "min-height: 32px;",
+  "padding: 0 14px;",
+  "font-size: 0.82rem;",
 ]) {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing method-aware row badge style: ${needle}`);

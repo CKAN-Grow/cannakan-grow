@@ -1870,7 +1870,7 @@ function getMethodRowBadgePrefix(methodType = "", rowLabel = "") {
 
 function getMethodRowBadgeLabel(methodType = "", rowId = 0, rowLabel = "") {
   const numericId = Math.max(1, Number(rowId) || 1);
-  return `${getMethodRowBadgePrefix(methodType, rowLabel)}${numericId}`;
+  return `${getMethodRowBadgePrefix(methodType, rowLabel)} ${numericId}`;
 }
 
 function getMethodRowBadgeAccent(methodType = "") {
