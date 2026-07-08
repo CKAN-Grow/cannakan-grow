@@ -420,14 +420,8 @@
   function getPreparedMediaPhases(methodKey) {
     if (methodKey === "ROCKWOOL") {
       return [
-        phase("prep-cubes", "Prep Cubes", 0, 0, {
-          timing: "Already prepared",
-          tone: "preparation-complete",
-          preparationComplete: true,
-          statusLabel: "Already Complete",
-        }),
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
-        phase("seeds-planted", "Seeds Planted", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("seeds-planted", "Plant Seeds", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
         phase("keep-cubes-moist", "Keep Cubes Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
         phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
         phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),
@@ -436,14 +430,8 @@
 
     if (methodKey === "RAPID_ROOTER") {
       return [
-        phase("prep-plugs", "Prep Plugs", 0, 0, {
-          timing: "Already prepared",
-          tone: "preparation-complete",
-          preparationComplete: true,
-          statusLabel: "Already Complete",
-        }),
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green" }),
-        phase("seeds-planted", "Seeds Planted", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
+        phase("seeds-planted", "Plant Seeds", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
         phase("keep-plugs-moist", "Keep Plugs Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
         phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),
         phase("complete", "Complete", 5 * DAY_HOURS, null, { timing: "Day 5+", tone: "completed" }),

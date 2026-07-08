@@ -71,12 +71,13 @@ for (const needle of [
 
 requireNeedle(engineSource, 'displayName: "Starter Plug"');
 requireNeedle(engineSource, 'function getEffectiveMethodDefinition(definition, methodKey, session)');
-requireNeedle(engineSource, 'preparationComplete: true');
+requireNeedle(engineSource, 'function getPreparedMediaPhases(methodKey)');
 rejectNeedle(htmlSource, 'id="paper-towel-setup-choice"', "inline Paper Towel setup card");
 rejectNeedle(stylesSource, ".paper-towel-setup-choice", "inline Paper Towel setup styles");
 rejectNeedle(appSource, "function syncPaperTowelSetupChoice()", "inline Paper Towel setup sync");
 rejectNeedle(appSource, 'Rapid Rooter / Starter Plug');
 rejectNeedle(appSource, 'name: "Rapid Rooter"');
 rejectNeedle(engineSource, 'displayName: "Rapid Rooter"');
+rejectNeedle(engineSource, 'timing: "Already prepared"', "prepared media timeline pre-step");
 
 console.log("Method Type selection regression check passed.");

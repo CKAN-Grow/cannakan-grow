@@ -86,18 +86,18 @@ const preparedRockwool = stateFor("ROCKWOOL", 0, { choice: "prepared", preparedM
 assert.deepEqual(
   stepLabels("ROCKWOOL", { choice: "prepared", preparedMedia: true }),
   [
-    "Prep Cubes|Already prepared",
     "Start|Session started",
-    "Seeds Planted|Day 0",
+    "Plant Seeds|Day 0",
     "Keep Cubes Moist|Day 1-3",
     "Watch for Sprouts|Day 2-5",
     "Complete|Day 5+",
   ],
 );
 assert.equal(preparedRockwool.currentPhase.key, "seeds-planted");
-assert.equal(preparedRockwool.timelineSteps[0].preparationComplete, true);
-assert.equal(preparedRockwool.timelineSteps[0].statusLabel, "Already Complete");
 assert.equal(preparedRockwool.timelineSteps[0].isComplete, true);
+assert.equal(preparedRockwool.timelineSteps[1].isCurrent, true);
+assert.equal(preparedRockwool.timelineSteps.some((step) => step.key === "prep-cubes"), false);
+assert.equal(preparedRockwool.nextMilestone.title, "Keep moist");
 assert.deepEqual(
   stepLabels("RAPID_ROOTER"),
   [
@@ -113,18 +113,18 @@ const preparedStarterPlug = stateFor("RAPID_ROOTER", 0, { choice: "prepared", pr
 assert.deepEqual(
   stepLabels("RAPID_ROOTER", { choice: "prepared", preparedMedia: true }),
   [
-    "Prep Plugs|Already prepared",
     "Start|Session started",
-    "Seeds Planted|Day 0",
+    "Plant Seeds|Day 0",
     "Keep Plugs Moist|Day 1-3",
     "Watch for Sprouts|Day 2-5",
     "Complete|Day 5+",
   ],
 );
 assert.equal(preparedStarterPlug.currentPhase.key, "seeds-planted");
-assert.equal(preparedStarterPlug.timelineSteps[0].preparationComplete, true);
-assert.equal(preparedStarterPlug.timelineSteps[0].statusLabel, "Already Complete");
 assert.equal(preparedStarterPlug.timelineSteps[0].isComplete, true);
+assert.equal(preparedStarterPlug.timelineSteps[1].isCurrent, true);
+assert.equal(preparedStarterPlug.timelineSteps.some((step) => step.key === "prep-plugs"), false);
+assert.equal(preparedStarterPlug.nextMilestone.title, "Keep moist");
 assert.deepEqual(
   stepLabels("OTHER"),
   [
