@@ -52530,6 +52530,34 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     0 8px 14px rgba(0, 0, 0, 0.14);
 }
 
+.session-workspace-shell .partition-number--badge {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.partition-row-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--partition-badge-accent, #94d159) 56%, rgba(255, 255, 255, 0.16));
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--partition-badge-accent, #94d159) 14%, transparent), rgba(10, 14, 12, 0.92)),
+    rgba(12, 18, 14, 0.94);
+  color: color-mix(in srgb, var(--partition-badge-accent, #94d159) 82%, #f5fbf1);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 14px color-mix(in srgb, var(--partition-badge-accent, #94d159) 20%, transparent);
+}
+
 .session-workspace-shell .partition-btn--in-progress {
   background: rgba(240, 130, 55, 0.16);
   border-color: rgba(240, 130, 55, 0.34);
@@ -54176,6 +54204,24 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 .partition-btn:hover {
   transform: translateY(-1px);
   border-color: #94d159;
+}
+
+.partition-number--badge:hover {
+  border-color: transparent;
+}
+
+.partition-number--badge.partition-btn--in-progress,
+.partition-number--badge.partition-btn--complete {
+  background: transparent;
+  border-color: transparent;
+  color: inherit;
+}
+
+.partition-number--badge:hover .partition-row-badge {
+  border-color: color-mix(in srgb, var(--partition-badge-accent, #94d159) 72%, rgba(255, 255, 255, 0.2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 18px color-mix(in srgb, var(--partition-badge-accent, #94d159) 28%, transparent);
 }
 
 .partition-btn--in-progress {
@@ -62233,6 +62279,12 @@ body.theme-dark .session-workspace-shell .partition-btn {
   background: rgba(23, 30, 24, 0.92);
   border-color: rgba(148, 209, 89, 0.22);
   color: #edf4ee;
+}
+
+body.theme-dark .session-workspace-shell .partition-number--badge {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 body.theme-dark .session-workspace-shell .partition-btn--in-progress {

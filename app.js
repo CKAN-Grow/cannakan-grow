@@ -1825,6 +1825,59 @@ function isPreparedMediaSetupMethod(methodType = "") {
   return PREPARED_MEDIA_SETUP_METHODS.includes(normalizeMethodType(methodType));
 }
 
+function getMethodRowBadgePrefix(methodType = "", rowLabel = "") {
+  const method = normalizeMethodType(methodType);
+  switch (method) {
+    case "KAN":
+    case "TRA":
+      return "P";
+    case "PAPER_TOWEL":
+    case "PAPER_TOWEL_SOAK":
+      return "T";
+    case "WATER_SOAK":
+      return "G";
+    case "ROCKWOOL":
+      return "C";
+    case "RAPID_ROOTER":
+      return "PL";
+    case "DIRECT_SOW":
+      return "POT";
+    case "OTHER":
+      return "R";
+    default:
+      break;
+  }
+
+  switch (String(rowLabel || "").trim().toLowerCase()) {
+    case "partition":
+      return "P";
+    case "towel":
+      return "T";
+    case "glass":
+      return "G";
+    case "cube":
+      return "C";
+    case "plug":
+      return "PL";
+    case "pot":
+      return "POT";
+    case "row":
+      return "R";
+    default:
+      return "R";
+  }
+}
+
+function getMethodRowBadgeLabel(methodType = "", rowId = 0, rowLabel = "") {
+  const numericId = Math.max(1, Number(rowId) || 1);
+  return `${getMethodRowBadgePrefix(methodType, rowLabel)}${numericId}`;
+}
+
+function getMethodRowBadgeAccent(methodType = "") {
+  const theme = SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizeMethodType(methodType)] || SESSION_ENGINE_VISUAL_TIMELINE_THEMES.OTHER;
+  return theme.accent || SESSION_ENGINE_VISUAL_TIMELINE_THEMES.OTHER.accent;
+}
+
 function normalizePreparedMediaSetupChoice(value = "") {
   const normalized = String(value || "").trim().toLowerCase().replace(/[\s_]+/g, "-");
   if (["prepared", "ready", "yes", "already-prepared", "already-ready"].includes(normalized)) {
@@ -83913,6 +83966,8 @@ function buildPartitionFormCard(partition, index, options = {}) {
   const includeGerminationFields = options.includeGerminationFields !== false;
   const rowLabel = options.rowLabel || "Partition";
   const displayLabel = `${rowLabel} ${partition.id}`;
+  const badgeLabel = getMethodRowBadgeLabel(options.methodType || "", partition.id, rowLabel);
+  const badgeAccent = getMethodRowBadgeAccent(options.methodType || "");
   const row = document.createElement("article");
   row.className = "chart-row partition-row";
   row.classList.toggle("custom-method-row", !includeGerminationFields);
@@ -83920,7 +83975,9 @@ function buildPartitionFormCard(partition, index, options = {}) {
   row.dataset.partitionId = String(partition.id);
   row.tabIndex = -1;
   row.innerHTML = `
-    <div class="partition-number partition-btn" aria-label="${escapeHtml(displayLabel)}">${escapeHtml(displayLabel)}</div>
+    <div class="partition-number partition-btn partition-number--badge" aria-label="${escapeHtml(displayLabel)}" style="--partition-badge-accent: ${escapeHtml(badgeAccent)};">
+      <span class="partition-row-badge">${escapeHtml(badgeLabel)}</span>
+    </div>
     <label class="partition-identity-field" data-source-directory-autocomplete="true">
       <span class="mobile-field-label">Source</span>
         <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-label="${escapeHtml(rowLabel)} ${partition.id} source" aria-autocomplete="list">
@@ -85125,6 +85182,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
       shouldShowSeedAgeInput: (partition) => shouldShowPartitionSeedAgeFieldForPartition(partition),
       includeGerminationFields: method.supportsProgress !== false,
       rowLabel: method.rowLabel,
+      methodType: method.id,
     });
   } else {
     partitions.forEach((partition, index) => {
@@ -85134,6 +85192,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
         seedAgeReadOnly,
         includeGerminationFields: method.supportsProgress !== false,
         rowLabel: method.rowLabel,
+        methodType: method.id,
       }));
       hydratePartitionRow(partitionFields.lastElementChild, partition);
     });
@@ -90433,6 +90492,7 @@ function renderSessionDetail(sessionId) {
           session,
           includeGerminationFields: sessionMethod.supportsProgress !== false,
           rowLabel: sessionMethod.rowLabel,
+          methodType: sessionMethod.id,
         }));
       });
     } else {
@@ -90443,6 +90503,7 @@ function renderSessionDetail(sessionId) {
           seedAgeReadOnly: currentSeedAgeMetadata.mode === "same",
           includeGerminationFields: sessionMethod.supportsProgress !== false,
           rowLabel: sessionMethod.rowLabel,
+          methodType: sessionMethod.id,
         }));
         hydratePartitionRow(partitions.lastElementChild, partition);
       });
@@ -92162,6 +92223,8 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const includeGerminationFields = options.includeGerminationFields !== false;
   const rowLabel = options.rowLabel || "Partition";
   const displayLabel = `${rowLabel} ${displayIndex}`;
+  const badgeLabel = getMethodRowBadgeLabel(options.methodType || "", displayIndex, rowLabel);
+  const badgeAccent = getMethodRowBadgeAccent(options.methodType || "");
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
   const seedAgeValue = getEffectivePartitionSeedAgeYears(partition, options.session || null);
@@ -92195,7 +92258,9 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   row.dataset.partitionSeedAgeYears = seedAgeValue === null ? "" : String(seedAgeValue);
   row.dataset.partitionPlantedCount = String(partition?.plantedCount ?? "");
   row.innerHTML = `
-    <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="${escapeHtml(displayLabel)}">${escapeHtml(displayLabel)}</div>
+    <div class="partition-number partition-btn partition-number--badge ${getPartitionButtonClassName(partitionState)}" aria-label="${escapeHtml(displayLabel)}" style="--partition-badge-accent: ${escapeHtml(badgeAccent)};">
+      <span class="partition-row-badge">${escapeHtml(badgeLabel)}</span>
+    </div>
     <div class="detail-cell">
       <span class="mobile-field-label">Source</span>
       <p>${escapeHtml(sourceLabel)}</p>
