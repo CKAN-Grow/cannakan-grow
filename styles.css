@@ -4659,8 +4659,7 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-progress-companion-head .eyebrow,
-.session-progress-companion-hero .eyebrow,
-.session-progress-companion-reminder .eyebrow {
+.session-progress-companion-hero .eyebrow {
   color: var(--session-companion-accent);
 }
 
@@ -4687,7 +4686,6 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-title-svg,
 .session-progress-companion-metric-svg,
 .session-progress-companion-recommendation-svg,
-.session-progress-companion-reminder-svg,
 .session-progress-companion-roadmap-check {
   width: 24px;
   height: 24px;
@@ -4716,7 +4714,6 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-hero,
 .session-progress-companion-roadmap,
 .session-progress-companion-metric,
-.session-progress-companion-reminder,
 .session-progress-companion-empty {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
@@ -4804,8 +4801,7 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-ring-core small,
 .session-progress-companion-ring-panel p,
 .session-progress-companion-recommendation span,
-.session-progress-companion-metric small,
-.session-progress-companion-reminder span {
+.session-progress-companion-metric small {
   color: rgba(224, 232, 221, 0.74);
 }
 
@@ -5136,45 +5132,6 @@ body.theme-dark .spotlight-stat strong {
   line-height: 1.25;
 }
 
-.session-progress-companion-reminder {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 18px;
-  border-color: color-mix(in srgb, var(--session-companion-accent) 24%, transparent);
-}
-
-.session-progress-companion-reminder.is-empty {
-  opacity: 0.78;
-}
-
-.session-progress-companion-reminder-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 50px;
-  height: 50px;
-  border-radius: 14px;
-  color: var(--session-companion-accent);
-  background: var(--session-companion-accent-soft);
-}
-
-.session-progress-companion-reminder div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.session-progress-companion-reminder strong {
-  color: #ffffff;
-  font-size: clamp(1.05rem, 1.6vw, 1.38rem);
-  line-height: 1.15;
-}
-
-.session-progress-companion-reminder-button {
-  white-space: nowrap;
-}
-
 .session-progress-companion-action-panel {
   display: grid;
   gap: 10px;
@@ -5248,13 +5205,8 @@ body.theme-dark .spotlight-stat strong {
     width: 100%;
   }
 
-  .session-progress-companion-metrics,
-  .session-progress-companion-reminder {
+  .session-progress-companion-metrics {
     grid-template-columns: 1fr;
-  }
-
-  .session-progress-companion-reminder-button {
-    width: 100%;
   }
 }
 

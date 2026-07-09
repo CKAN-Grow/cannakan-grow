@@ -82,11 +82,9 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   "session-progress-companion-recommendation",
   "session-progress-companion-roadmap",
   "session-progress-companion-metrics",
-  "session-progress-companion-reminder",
   "getSessionEngineSessionTimeDisplay(engineState)",
   "getSessionEngineVisualTimelineTheme(engineState)",
   "renderSessionProgressCompanionRoadmapMarkup(engineState)",
-  'data-session-reminders-manage="true"',
 ].forEach((needle) => {
   if (!rendererSource.includes(needle)) {
     throw new Error(`Session Progress companion renderer is missing: ${needle}`);
@@ -99,7 +97,7 @@ if (rendererSource.includes('<aside class="session-progress-companion-recommenda
 
 [
   "const showReminder = options.showReminder !== false",
-  "${showReminder && hasReminder ? `",
+  "showReminder && hasReminder",
 ].forEach((needle) => {
   if (!rendererSource.includes(needle)) {
     throw new Error(`Session Progress companion reminder visibility is missing: ${needle}`);
@@ -177,9 +175,9 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 [
   'renderSessionProgressCompanionMetricMarkup("clock", "Elapsed Time"',
   'renderSessionProgressCompanionMetricMarkup("drop", "Next Check"',
-  'renderSessionProgressCompanionMetricMarkup("flag", sessionTimeDisplay.label',
   "No reminder scheduled",
   "Reminders will appear when the Session Engine schedules one.",
+  "session-progress-companion-reminder",
 ].forEach((needle) => {
   if (rendererSource.includes(needle)) {
     throw new Error(`Grow Companion should not repeat data already shown elsewhere: ${needle}`);
@@ -188,8 +186,10 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 
 [
   "const summaryMetricItems = [",
-  "!showReminder && milestone",
+  "milestone",
   'renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)',
+  'renderSessionProgressCompanionMetricMarkup("bell", "Next Reminder", milestoneTime, reminderPurpose || "Review the next session milestone.")',
+  'renderSessionProgressCompanionMetricMarkup("clock", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail)',
   '${summaryMetricItems ? `',
 ].forEach((needle) => {
   if (!rendererSource.includes(needle)) {
@@ -199,10 +199,8 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 
 [
   "label: \"Total Session Time\"",
-  "captionLabel: \"Total session time\"",
   "getElapsedDurationMs(startedAt, completedAt)",
   "label: \"Est. Session Time\"",
-  "captionLabel: \"Est. session time\"",
   "formatSessionEngineWindowOffsetLabel(engineState)",
   "Based on completed sessions",
   "Typical method range",
@@ -259,7 +257,6 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-progress-companion-recommendation",
   ".session-progress-companion-roadmap-list",
   ".session-progress-companion-metrics",
-  ".session-progress-companion-reminder",
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",

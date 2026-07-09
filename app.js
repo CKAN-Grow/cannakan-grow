@@ -95827,7 +95827,6 @@ function getSessionEngineSessionTimeDisplay(engineState = null, options = {}) {
     return {
       label: "Total Session Time",
       shortLabel: "Total Session Time",
-      captionLabel: "Total session time",
       value: Number.isFinite(durationMs) ? formatSessionEngineDurationLabel(durationMs) : "Unavailable",
       detail: "Start to completion",
       source: "actual",
@@ -95842,7 +95841,6 @@ function getSessionEngineSessionTimeDisplay(engineState = null, options = {}) {
   return {
     label: "Est. Session Time",
     shortLabel: "Est. Session Time",
-    captionLabel: "Est. session time",
     value: estimateValue && estimateValue !== "Not scheduled" ? estimateValue : "Not scheduled",
     detail: averageValue ? "Based on completed sessions" : "Typical method range",
     source: averageValue ? "average" : "method-default",
@@ -96139,9 +96137,13 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
   const reminderPurpose = milestone?.message || milestone?.actionText || milestone?.title || "";
   const hasReminder = Boolean(milestone);
   const summaryMetricItems = [
-    !showReminder && milestone
+    milestone
       ? renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)
       : "",
+    showReminder && hasReminder
+      ? renderSessionProgressCompanionMetricMarkup("bell", "Next Reminder", milestoneTime, reminderPurpose || "Review the next session milestone.")
+      : "",
+    renderSessionProgressCompanionMetricMarkup("clock", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail),
     engineState.communityAverage
       ? renderSessionProgressCompanionMetricMarkup("group", "Community Avg.", String(engineState.communityAverage), methodName)
       : "",
@@ -96179,7 +96181,6 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
             </div>
           </div>
           <span class="session-progress-companion-method-badge">${escapeHtml(methodName)}</span>
-          <p>${escapeHtml(`${sessionTimeDisplay.captionLabel}: ${sessionTimeDisplay.value}`)}</p>
         </section>
 
         <div class="session-progress-companion-right">
@@ -96214,18 +96215,6 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
         <section class="session-progress-companion-metrics" aria-label="Session supporting summary">
           ${summaryMetricItems}
         </section>
-      ` : ""}
-
-      ${showReminder && hasReminder ? `
-      <section class="session-progress-companion-reminder" aria-label="Next reminder">
-        <span class="session-progress-companion-reminder-icon">${renderSessionProgressCompanionIconMarkup("bell", "session-progress-companion-reminder-svg")}</span>
-        <div>
-          <p class="eyebrow">Next Reminder</p>
-          <strong>${escapeHtml(milestoneTime)}</strong>
-          <span>${escapeHtml(reminderPurpose || "Review the next session milestone.")}</span>
-        </div>
-        <button type="button" class="button button-secondary session-progress-companion-reminder-button" data-session-reminders-manage="true">Manage Reminders</button>
-      </section>
       ` : ""}
 
       ${actionMarkup ? `
