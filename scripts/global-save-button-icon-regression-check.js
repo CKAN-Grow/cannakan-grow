@@ -48,6 +48,8 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").
   ".action-button-icon",
   ".action-button-icon-svg",
   ".save-button-icon",
+  "width: 22px;",
+  "stroke-width: 2.65;",
 ].forEach((needle) => {
   assert(stylesSource.includes(needle), `Missing shared action icon styling: ${needle}`);
 });

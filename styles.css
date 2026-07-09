@@ -54273,9 +54273,12 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .complete-button-icon,
 .detail-save-shortcut-icon {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-0.5px);
 }
 
 .action-button-icon svg,
@@ -54287,7 +54290,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   height: 100%;
   stroke: currentColor;
   fill: none;
-  stroke-width: 2;
+  stroke-width: 2.65;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
