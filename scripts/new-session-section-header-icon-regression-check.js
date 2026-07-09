@@ -5,11 +5,12 @@ const repoRoot = path.resolve(__dirname, "..");
 const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 const requiredNeedles = [
-  ".session-workspace-shell .progress-chart-heading,\n.session-workspace-shell .session-images-heading > div,\n.session-workspace-shell .session-notes-section > .session-notes-field {\n  display: grid;\n  grid-template-columns: 64px minmax(0, 1fr);",
+  ".session-workspace-shell .progress-chart-heading,\n.session-workspace-shell .session-images-heading > div {\n  display: grid;\n  grid-template-columns: 64px minmax(0, 1fr);",
   "grid-template-areas:\n    \"icon eyebrow\"\n    \"icon title\";",
-  ".session-workspace-shell .progress-chart-heading > .section-title-with-icon,\n.session-workspace-shell .session-images-heading .section-title-with-icon,\n.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon {\n  display: contents;",
-  ".session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,\n.session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon,\n.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > svg.section-title-icon {\n  grid-area: icon;\n  width: 64px;",
-  ".session-workspace-shell .session-notes-section > .session-notes-field:has(> .session-detail-lower-heading)",
+  ".session-workspace-shell .progress-chart-heading > .section-title-with-icon,\n.session-workspace-shell .session-images-heading .section-title-with-icon {\n  display: contents;",
+  ".session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,\n.session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon {\n  grid-area: icon;\n  width: 64px;",
+  ".session-notes-step-badge",
+  ".session-notes-header",
 ];
 
 for (const needle of requiredNeedles) {
@@ -19,7 +20,7 @@ for (const needle of requiredNeedles) {
 }
 
 const workspaceHeaderBlock = stylesSource.match(
-  /\.session-workspace-shell \.progress-chart-heading,\n\.session-workspace-shell \.session-images-heading > div,\n\.session-workspace-shell \.session-notes-section > \.session-notes-field \{[\s\S]*?\n\}/,
+  /\.session-workspace-shell \.progress-chart-heading,\n\.session-workspace-shell \.session-images-heading > div \{[\s\S]*?\n\}/,
 );
 
 if (!workspaceHeaderBlock) {
@@ -31,7 +32,7 @@ if (!workspaceHeaderBlock[0].includes("64px minmax(0, 1fr)") || !workspaceHeader
 }
 
 const titleWithIconBlock = stylesSource.match(
-  /\.session-workspace-shell \.progress-chart-heading > \.section-title-with-icon,[\s\S]*?\.session-workspace-shell \.session-notes-section > \.session-notes-field > \.section-title-with-icon \{[\s\S]*?\n\}/,
+  /\.session-workspace-shell \.progress-chart-heading > \.section-title-with-icon,[\s\S]*?\.session-workspace-shell \.session-images-heading \.section-title-with-icon \{[\s\S]*?\n\}/,
 );
 
 if (!titleWithIconBlock || !titleWithIconBlock[0].includes("display: contents")) {

@@ -28395,6 +28395,18 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   color: #f0c56a;
 }
 
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .session-notes-field {
   display: grid;
   gap: 10px;
@@ -54272,8 +54284,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .progress-chart-heading,
-.session-workspace-shell .session-images-heading > div,
-.session-workspace-shell .session-notes-section > .session-notes-field {
+.session-workspace-shell .session-images-heading > div {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   grid-template-areas:
@@ -54290,8 +54301,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .progress-chart-heading > .eyebrow,
-.session-workspace-shell .session-images-heading > div > .eyebrow,
-.session-workspace-shell .session-notes-section > .session-notes-field > .eyebrow {
+.session-workspace-shell .session-images-heading > div > .eyebrow {
   grid-area: eyebrow;
   align-self: end;
   margin: 0;
@@ -54299,15 +54309,13 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon,
-.session-workspace-shell .session-images-heading .section-title-with-icon,
-.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon {
+.session-workspace-shell .session-images-heading .section-title-with-icon {
   display: contents;
   min-width: 0;
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,
-.session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon,
-.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > svg.section-title-icon {
+.session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon {
   grid-area: icon;
   width: 64px;
   height: 64px;
@@ -54326,8 +54334,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon > span,
-.session-workspace-shell .session-images-heading .section-title-with-icon > span,
-.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > span {
+.session-workspace-shell .session-images-heading .section-title-with-icon > span {
   grid-area: title;
   align-self: start;
   min-width: 0;
@@ -54342,26 +54349,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .session-workspace-shell .session-public-note-field > span {
   color: #f6f8f5;
-}
-
-.session-workspace-shell .session-notes-section > .session-notes-field {
-  grid-template-areas:
-    "icon eyebrow"
-    "icon title"
-    "textarea textarea";
-}
-
-.session-workspace-shell .session-notes-section > .session-notes-field > .eyebrow {
-  grid-area: eyebrow;
-}
-
-.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon {
-  grid-area: title;
-}
-
-.session-workspace-shell .session-notes-section > .session-notes-field > textarea {
-  grid-area: textarea;
-  margin-top: 8px;
 }
 
 .session-workspace-shell .session-images-heading {
@@ -54493,6 +54480,215 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 0 0 1px rgba(148, 209, 89, 0.07),
     0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.session-workspace-shell .session-notes-section {
+  display: grid;
+  gap: 12px;
+  padding: clamp(16px, 2vw, 22px);
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(5, 13, 10, 0.82);
+}
+
+.session-notes-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-notes-step-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #081108;
+  font-size: 1rem;
+  font-weight: 950;
+  background: linear-gradient(180deg, #b7ff70, #86d84f);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 0 18px rgba(148, 209, 89, 0.24);
+}
+
+.session-notes-heading-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.session-notes-heading-copy .eyebrow {
+  margin: 0;
+  color: #b7ff70;
+  line-height: 1;
+}
+
+.session-notes-heading-copy > span {
+  color: rgba(232, 238, 229, 0.82);
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.session-notes-privacy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(232, 238, 229, 0.76);
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.session-notes-privacy svg,
+.session-note-sharing-card-icon svg,
+.session-notes-autosave-state svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-workspace-shell .session-notes-section > .session-notes-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "textarea";
+  gap: 0;
+}
+
+.session-workspace-shell .session-notes-section > .session-notes-field > textarea {
+  grid-area: textarea;
+  min-height: 112px;
+  margin: 0;
+  padding: 13px 14px;
+  border-radius: 8px;
+  border-color: rgba(148, 209, 89, 0.18);
+  background: rgba(2, 8, 6, 0.64);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.session-workspace-shell .session-private-notes-help {
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.session-workspace-shell .session-public-note-block {
+  gap: 12px;
+  margin-top: 8px;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-note-sharing-head .eyebrow small {
+  color: rgba(223, 231, 221, 0.72);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.session-workspace-shell .session-note-sharing-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.session-workspace-shell .session-note-sharing-option {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-height: 102px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.session-workspace-shell .session-note-sharing-option input {
+  position: static;
+  width: 14px;
+  height: 14px;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+  transform: none;
+}
+
+.session-note-sharing-card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #94d159;
+}
+
+.session-note-sharing-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.session-workspace-shell .session-note-sharing-option .session-note-sharing-copy strong {
+  color: #f3f7f0;
+  font-size: 0.86rem;
+  font-weight: 850;
+  line-height: 1.24;
+}
+
+.session-workspace-shell .session-note-sharing-option .session-note-sharing-copy small {
+  color: rgba(220, 229, 218, 0.7);
+  font-size: 0.78rem;
+  line-height: 1.28;
+}
+
+.session-workspace-shell .session-note-sharing-option:has(input:checked) {
+  border-color: rgba(148, 209, 89, 0.78);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.1), rgba(148, 209, 89, 0.026)),
+    rgba(5, 13, 10, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 0 1px rgba(148, 209, 89, 0.1),
+    0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.session-workspace-shell .session-public-note-field-shell {
+  margin-top: 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.session-notes-autosave-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(224, 232, 221, 0.76);
+  font-size: 0.86rem;
+}
+
+.session-notes-autosave-state svg {
+  color: #94d159;
+}
+
+.session-workspace-shell .session-notes-actions {
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.session-workspace-shell .session-notes-actions .button {
+  min-height: 38px;
+  padding-block: 9px;
+  color: #081108;
+  border-color: rgba(148, 209, 89, 0.78);
+  background: linear-gradient(180deg, #b7ff70, #86d84f);
 }
 
 .session-workspace-shell .session-notes-field textarea {
@@ -54685,7 +54881,29 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
   .session-public-note-block,
   .session-workspace-shell .session-public-note-block {
-    padding: 14px;
+    padding: 12px 0 0;
+  }
+
+  .session-notes-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .session-notes-privacy {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .session-workspace-shell .session-note-sharing-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-workspace-shell .session-note-sharing-option {
+    min-height: 86px;
+  }
+
+  .session-workspace-shell .session-notes-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .detail-session-action-copy {
@@ -54747,7 +54965,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
   .session-workspace-shell .progress-chart-heading,
   .session-workspace-shell .session-images-heading > div,
-  .session-workspace-shell .session-notes-section > .session-notes-field,
   .session-workspace-shell .session-detail-lower-heading,
   .session-workspace-shell .session-images-heading > .session-detail-lower-heading {
     grid-template-columns: 56px minmax(0, 1fr);
@@ -54756,7 +54973,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
   .session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,
   .session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon,
-  .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > svg.section-title-icon,
   .session-workspace-shell .session-detail-lower-heading > svg.section-title-icon {
     width: 56px;
     height: 56px;

@@ -21,6 +21,29 @@ assert(
   "Expected Community Grow Note labels in create and detail note sections.",
 );
 assert(
+  indexSource.match(/class="session-notes-step-badge" aria-hidden="true">1<\/span>/g)?.length >= 2,
+  "Expected numbered Notes step badges in create and detail note sections.",
+);
+assert(
+  indexSource.match(/Private to you/g)?.length >= 2,
+  "Expected Notes privacy indicators in create and detail note sections.",
+);
+assert(
+  indexSource.match(/Private session notes/g)?.length >= 4,
+  "Expected private session notes subtitle and accessible labels in both note sections.",
+);
+for (const copy of [
+  "Keep note private",
+  "Only you can see this note",
+  "Create separate Community Grow note",
+  "Keep your private note separate",
+  "Share this note with Community Grow snapshot",
+  "Include this note in your snapshot",
+  "Your note is saved automatically",
+]) {
+  assert(indexSource.includes(copy), `Expected redesigned Notes copy: ${copy}`);
+}
+assert(
   indexSource.match(/This note can be shown with your Community Grow snapshot\./g)?.length >= 2,
   "Expected public Community Grow note helper text in both note sections.",
 );
@@ -53,6 +76,17 @@ assert(
   styleSource.includes("@keyframes public-note-field-reveal"),
   "Expected polished reveal styling for the separate Community Grow note field.",
 );
+for (const selector of [
+  ".session-notes-header",
+  ".session-notes-step-badge",
+  ".session-notes-privacy",
+  ".session-note-sharing-card-icon",
+  ".session-note-sharing-copy",
+  ".session-notes-autosave-state",
+  ".session-workspace-shell .session-note-sharing-options {\n  grid-template-columns: repeat(3, minmax(0, 1fr));",
+]) {
+  assert(styleSource.includes(selector), `Expected redesigned Notes style: ${selector}`);
+}
 assert(
   migrationSource.includes("add column if not exists include_public_grow_note")
     && migrationSource.includes("add column if not exists public_grow_note"),

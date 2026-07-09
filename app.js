@@ -90542,7 +90542,7 @@ function getSessionDetailElements(scope = document) {
     statusHelp: scope.querySelector(".session-status-help"),
     suppliesAnchor: scope.querySelector("#detail-supplies-anchor"),
     notesField: scope.querySelector("#detail-session-notes"),
-    notesLabel: scope.querySelector("#detail-session-notes-label span:last-child"),
+    notesLabel: scope.querySelector("#detail-session-notes-label + span") || scope.querySelector("#detail-session-notes-label span:last-child"),
     notesHelp: scope.querySelector(".session-private-notes-help"),
     notesSaveButton: scope.querySelector("#detail-session-notes-save"),
     notesMessage: scope.querySelector("#detail-session-notes-message"),

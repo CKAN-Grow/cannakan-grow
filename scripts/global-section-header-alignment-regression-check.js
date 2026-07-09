@@ -21,7 +21,8 @@ for (const needle of requiredAppNeedles) {
 
 const requiredStyleNeedles = [
   ".app-section-header-main {\n  width: 100%;\n  flex: 1 1 360px;\n  min-width: 0;\n  display: grid;\n  grid-template-columns: auto minmax(0, 1fr);",
-  ".session-workspace-shell .progress-chart-heading,\n.session-workspace-shell .session-images-heading > div,\n.session-workspace-shell .session-notes-section > .session-notes-field {\n  display: grid;\n  grid-template-columns: 64px minmax(0, 1fr);",
+  ".session-workspace-shell .progress-chart-heading,\n.session-workspace-shell .session-images-heading > div {\n  display: grid;\n  grid-template-columns: 64px minmax(0, 1fr);",
+  ".session-notes-header",
   ".partition-work-heading {\n    grid-template-columns: 56px minmax(0, 1fr);\n    grid-template-areas:\n      \"icon eyebrow\"\n      \"icon title\";",
 ];
 
