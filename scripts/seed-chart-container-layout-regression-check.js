@@ -21,13 +21,18 @@ if (!(chartStart < instructionStart && instructionStart < chartHeaderStart && ch
 }
 
 const chartShellMarkup = indexSource.slice(chartStart, saveShortcutStart);
+const instructionStyleStart = stylesSource.indexOf(".seed-chart-instruction-callout {");
+const instructionStyleEnd = stylesSource.indexOf(".chart-header {", instructionStyleStart);
+const instructionStyles = instructionStyleStart >= 0 && instructionStyleEnd > instructionStyleStart
+  ? stylesSource.slice(instructionStyleStart, instructionStyleEnd)
+  : "";
 [
   'class="partition-work-header',
   'class="session-setup-tools-card"',
   'class="seed-chart-instruction-callout"',
   'id="seed-chart-instruction-title"',
-  "Build Your Session",
-  "Save your session to unlock germination tracking and session results.",
+  "BUILD YOUR SESSION",
+  "Save your session to unlock germination tracking and completion results.",
   'id="partition-chart-header"',
   'id="partition-fields"',
   'class="custom-seed-row-actions"',
@@ -71,11 +76,11 @@ if (indexSource.includes('</div>\n          <div class="custom-seed-row-actions'
   ".seed-chart-instruction-icon",
   ".seed-chart-instruction-callout {\n  display: flex;",
   ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 12px;",
-  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 6px;\n  margin: 0 18px 16px;\n  min-width: 0;\n  padding:",
-  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 6px;\n  margin: 0 18px 16px;\n  min-width: 0;\n  border:",
-  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 6px;\n  margin: 0 18px 16px;\n  min-width: 0;\n  background:",
+  "padding: 13px 16px;",
+  "border: 1px solid rgba(148, 209, 89, 0.2);",
+  "background:\n    linear-gradient(135deg, rgba(148, 209, 89, 0.105)",
 ].forEach((needle) => {
-  if (chartShellMarkup.includes(needle) || stylesSource.includes(needle)) {
+  if (chartShellMarkup.includes(needle) || instructionStyles.includes(needle)) {
     throw new Error(`Seed Chart instruction should not retain old card/icon treatment: ${needle}`);
   }
 });
