@@ -19,7 +19,7 @@ for (const needle of requiredNeedles) {
   }
 }
 
-const changeHandlerMatch = appSource.match(/systemTypeField\.addEventListener\("change", \(\) => \{[\s\S]*?\n  \}\);/);
+const changeHandlerMatch = appSource.match(/systemTypeField\.addEventListener\("change", \((?:event)?\) => \{[\s\S]*?\n  \}\);/);
 if (!changeHandlerMatch) {
   throw new Error("Could not locate new-session Method Type change handler.");
 }

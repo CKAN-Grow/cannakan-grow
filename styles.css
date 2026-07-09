@@ -51670,6 +51670,7 @@ body.modal-open {
 }
 
 .session-workspace-shell .session-chart-header > label,
+.session-workspace-shell .hardware-session-fields > label,
 .session-workspace-shell .detail-header .meta-card {
   min-width: 0;
   padding: 14px 16px;
@@ -51684,7 +51685,9 @@ body.modal-open {
 }
 
 .session-workspace-shell .session-chart-header > label > span,
+.session-workspace-shell .hardware-session-fields > label > span,
 .session-workspace-shell .session-chart-header .field-label-row > span,
+.session-workspace-shell .hardware-session-fields .field-label-row > span,
 .session-workspace-shell .detail-header .meta-card strong {
   font-size: 0.75rem;
   font-weight: 800;
@@ -52105,6 +52108,132 @@ body.modal-open {
   min-height: 150px;
   align-items: center;
   padding: 6px 0 2px;
+}
+
+.session-workspace-shell .hardware-method-card {
+  position: relative;
+  grid-template-columns: minmax(300px, 0.38fr) minmax(420px, 0.62fr);
+  align-items: stretch;
+  justify-items: stretch;
+  gap: 24px;
+  padding: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(148, 209, 89, 0.17), rgba(148, 209, 89, 0) 44%),
+    linear-gradient(135deg, rgba(12, 18, 14, 0.96), rgba(18, 28, 20, 0.88));
+  border-color: rgba(148, 209, 89, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 44px rgba(0, 0, 0, 0.24),
+    0 0 34px rgba(148, 209, 89, 0.08);
+}
+
+.session-workspace-shell .hardware-method-hero {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.session-workspace-shell .hardware-method-copy {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.session-workspace-shell .hardware-method-card .system-layout-label {
+  text-align: left;
+  color: #a7ef75;
+}
+
+.session-workspace-shell .hardware-method-title {
+  margin: 0;
+  color: #f3f8f1;
+  font-size: clamp(1.7rem, 2.2vw, 2.35rem);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.session-workspace-shell .hardware-method-description {
+  max-width: 34ch;
+  margin: 0;
+  color: #c9d5c8;
+  font-size: 0.96rem;
+  line-height: 1.45;
+}
+
+.session-workspace-shell .hardware-method-visual {
+  min-height: 280px;
+  padding: 0;
+}
+
+.session-workspace-shell .hardware-session-panel {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0) 32%),
+    rgba(3, 9, 6, 0.28);
+}
+
+.session-workspace-shell .hardware-session-label {
+  margin: 0;
+  color: #9cad9d;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell .hardware-session-fields {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(150px, 0.85fr) minmax(150px, 0.85fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.session-workspace-shell .hardware-unit-field {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 16px;
+  background: rgba(3, 9, 6, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.session-workspace-shell .hardware-unit-field span {
+  color: #94d159;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell .hardware-unit-field select {
+  min-height: 48px;
+}
+
+.session-workspace-shell .hardware-unit-field .system-id-chevron {
+  right: 30px;
+  bottom: 33px;
+}
+
+.session-workspace-shell .hardware-method-tagline {
+  color: #aebbae;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.session-workspace-shell .hardware-method-card .session-lifecycle-supplies-anchor {
+  margin-top: 0;
 }
 
 .session-workspace-shell .layout-reference-copy {
@@ -54072,6 +54201,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   }
 
   .session-workspace-shell .session-chart-header > label,
+  .session-workspace-shell .hardware-session-fields > label,
   .session-workspace-shell .detail-header .meta-card {
     padding: 12px 14px;
   }
@@ -54130,6 +54260,11 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   align-items: end;
 }
 
+.session-workspace-form[data-method-standardized="true"] .session-chart-header {
+  grid-template-columns: minmax(240px, 340px);
+  justify-content: start;
+}
+
 .session-chart-header > label {
   min-width: 0;
 }
@@ -54138,7 +54273,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   line-height: 1.2;
 }
 
-.session-workspace-shell .session-chart-header > label.session-name-field {
+.session-workspace-shell .session-chart-header > label.session-name-field,
+.session-workspace-shell .hardware-session-fields > label.session-name-field {
   position: relative;
   padding: 16px 18px;
   border-color: rgba(148, 209, 89, 0.32);
@@ -54159,7 +54295,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   gap: 10px;
 }
 
-.session-workspace-shell .session-chart-header > label.session-name-field > .session-name-label-row {
+.session-workspace-shell .session-chart-header > label.session-name-field > .session-name-label-row,
+.session-workspace-shell .hardware-session-fields > label.session-name-field > .session-name-label-row {
   color: #c7dcc6;
 }
 
@@ -54591,6 +54728,29 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 .system-layout-image-tra {
   width: 100%;
   max-width: 1200px;
+}
+
+.hardware-method-card .system-layout-image {
+  filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.34));
+}
+
+.hardware-method-card .system-layout-image-kan {
+  width: min(100%, 430px);
+}
+
+.hardware-method-card .system-layout-image-tra {
+  width: min(100%, 520px);
+}
+
+.hardware-method-card .partition-node {
+  cursor: pointer;
+}
+
+.hardware-method-card .partition-node:focus-visible {
+  outline: none;
+  stroke: #f2ff4d;
+  stroke-width: 16px;
+  filter: drop-shadow(0 0 18px rgba(180, 255, 60, 0.75));
 }
 
 .layout-reference-copy {
@@ -62770,6 +62930,7 @@ body.theme-dark .session-workspace-shell #detail-lifecycle-section.session-lifec
 }
 
 body.theme-dark .session-workspace-shell .session-chart-header > label,
+body.theme-dark .session-workspace-shell .hardware-session-fields > label,
 body.theme-dark .session-workspace-shell .detail-header .meta-card,
 body.theme-dark .session-workspace-shell .session-status-card,
 body.theme-dark .session-workspace-shell .lifecycle-event,
@@ -62848,6 +63009,46 @@ body.theme-dark .session-workspace-shell .system-id-field:hover select,
 body.theme-dark .session-workspace-shell .system-id-field:focus-within select {
   border-color: rgba(148, 209, 89, 0.44);
   background: rgba(18, 24, 19, 0.92);
+}
+
+@media (max-width: 980px) {
+  .session-workspace-shell .hardware-method-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .session-workspace-shell .hardware-method-card .system-layout-label,
+  .session-workspace-shell .hardware-method-description {
+    text-align: center;
+  }
+
+  .session-workspace-shell .hardware-method-description {
+    max-width: 42ch;
+  }
+
+  .session-workspace-shell .hardware-session-panel {
+    width: min(100%, 460px);
+  }
+
+  .session-workspace-shell .hardware-session-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .session-workspace-shell .hardware-method-card {
+    padding: 18px;
+  }
+
+  .session-workspace-shell .hardware-method-visual {
+    min-height: 240px;
+  }
+
+  .hardware-method-card .system-layout-image-kan,
+  .hardware-method-card .system-layout-image-tra {
+    width: min(100%, 330px);
+  }
 }
 
 body.theme-dark .session-workspace-shell .custom-select-menu {

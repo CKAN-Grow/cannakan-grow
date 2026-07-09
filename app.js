@@ -1703,6 +1703,28 @@ function getMethodConfig(value = "") {
   return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
 }
 
+function getHardwareMethodCardCopy(methodType = "") {
+  const method = getMethodConfig(methodType);
+
+  if (method.id === "TRA") {
+    return {
+      eyebrow: "Method",
+      title: "TRā System",
+      unitLabel: "TRā Unit",
+      description: "Sixteen-part hardware-assisted germination for larger standardized runs.",
+      tagline: "Each unit is its own TRā. Track results per unit.",
+    };
+  }
+
+  return {
+    eyebrow: "Method",
+    title: "KAN System",
+    unitLabel: "KAN Unit",
+    description: "Controlled hardware-assisted germination.",
+    tagline: "Each unit is its own KAN. Track results per unit.",
+  };
+}
+
 function usesCustomMethodWorkflow(methodType = "") {
   return getMethodConfig(methodType).id === "OTHER";
 }
@@ -86114,6 +86136,39 @@ function syncMethodChartHeader(chartHeader, methodType = "") {
   chartHeader.dataset.methodStandardized = String(method.isStandardized);
 }
 
+function syncHardwareMethodSetupFields(scope, method) {
+  const form = scope?.matches?.("#session-form")
+    ? scope
+    : scope?.querySelector?.("#session-form");
+  if (!form) {
+    return;
+  }
+
+  const setupContainer = form.querySelector("[data-session-setup-fields]");
+  const hardwareContainer = form.querySelector("[data-hardware-session-fields]");
+  const methodField = form.querySelector(".system-type-field");
+  const setupFields = [
+    form.querySelector(".session-name-field"),
+    form.querySelector(".session-date-field"),
+    form.querySelector(".time-format-field"),
+  ].filter(Boolean);
+
+  if (!setupContainer || !hardwareContainer || !methodField || !setupFields.length) {
+    return;
+  }
+
+  if (method.isStandardized) {
+    setupFields.forEach((field) => {
+      hardwareContainer.appendChild(field);
+    });
+    return;
+  }
+
+  setupFields.forEach((field) => {
+    setupContainer.insertBefore(field, methodField);
+  });
+}
+
 function updateMethodTypeLayout(scope, methodType = "") {
   if (!scope) {
     return;
@@ -86122,6 +86177,7 @@ function updateMethodTypeLayout(scope, methodType = "") {
   const method = getMethodConfig(methodType);
   scope.dataset.methodType = method.id;
   scope.dataset.methodStandardized = String(method.isStandardized);
+  syncHardwareMethodSetupFields(scope, method);
 
   const systemTypeField = scope.elements?.systemType;
   if (systemTypeField instanceof HTMLSelectElement) {
@@ -86157,6 +86213,24 @@ function updateMethodTypeLayout(scope, methodType = "") {
   scope.querySelectorAll(".system-id-field").forEach((element) => {
     element.hidden = !method.isStandardized;
   });
+  if (method.isStandardized) {
+    const hardwareCopy = getHardwareMethodCardCopy(method.id);
+    scope.querySelectorAll("[data-hardware-method-eyebrow]").forEach((element) => {
+      element.textContent = hardwareCopy.eyebrow;
+    });
+    scope.querySelectorAll("[data-hardware-method-title]").forEach((element) => {
+      element.textContent = hardwareCopy.title;
+    });
+    scope.querySelectorAll("[data-hardware-method-description]").forEach((element) => {
+      element.textContent = hardwareCopy.description;
+    });
+    scope.querySelectorAll("[data-hardware-unit-label]").forEach((element) => {
+      element.textContent = hardwareCopy.unitLabel;
+    });
+    scope.querySelectorAll("[data-hardware-method-tagline]").forEach((element) => {
+      element.textContent = hardwareCopy.tagline;
+    });
+  }
   scope.querySelectorAll("[data-custom-method-actions]").forEach((element) => {
     element.hidden = method.isStandardized;
     element.querySelectorAll("#add-seed-row, [data-add-seed-row]").forEach((button) => {
@@ -93074,17 +93148,10 @@ async function renderSystemLayoutReference(container, systemType) {
     return;
   }
 
-  if (SYSTEM_LAYOUT_ASSETS[method.id]) {
-    const markup = await buildSystemLayoutImage(method.id);
-    if (container.dataset.pendingSystem === method.id) {
-      container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(method.id);
-      attachSystemLayoutReady(container);
-    }
-    return;
-  }
-
+  const markup = await buildSystemLayoutImage(method.id);
   if (container.dataset.pendingSystem === method.id) {
-    container.innerHTML = buildSystemLayoutUnavailableMarkup(method.id);
+    container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(method.id);
+    attachSystemLayoutReady(container);
   }
 }
 
@@ -94095,6 +94162,7 @@ function getSystemLayoutNodes(scope) {
 function attachSystemLayoutReady(container) {
   const objectElement = container.querySelector(".system-layout-object");
   if (!objectElement) {
+    bindSystemLayoutNodeSelection(container);
     updatePartitionDebugState(container, {
       renderMode: "inline",
       nodeCount: getSystemLayoutNodes(container).length,
@@ -94109,10 +94177,63 @@ function attachSystemLayoutReady(container) {
       renderMode: "object",
       nodeCount: getSystemLayoutNodes(container).length,
     });
+    bindSystemLayoutNodeSelection(container);
     if (activeRow) {
       setActiveSystemLayoutPartition(form, activeRow.dataset.partitionId);
     }
   }, { once: true });
+}
+
+function bindSystemLayoutNodeSelection(container) {
+  if (!container || container.dataset.layoutSelectionBound === "true") {
+    return;
+  }
+
+  container.addEventListener("click", (event) => {
+    const node = event.target instanceof Element ? event.target.closest(".partition-node") : null;
+    if (!node) {
+      return;
+    }
+
+    activatePartitionRowFromLayoutNode(container, node);
+  });
+
+  container.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    const node = event.target instanceof Element ? event.target.closest(".partition-node") : null;
+    if (!node) {
+      return;
+    }
+
+    event.preventDefault();
+    activatePartitionRowFromLayoutNode(container, node);
+  });
+
+  container.dataset.layoutSelectionBound = "true";
+}
+
+function activatePartitionRowFromLayoutNode(container, node) {
+  const partitionId = String(node?.dataset?.partition || "");
+  const form = container.closest("form");
+  if (!partitionId || !form) {
+    return;
+  }
+
+  const row = [...form.querySelectorAll(".partition-row")]
+    .find((candidate) => candidate.dataset.partitionId === partitionId);
+  if (!row) {
+    setActiveSystemLayoutPartition(form, partitionId);
+    return;
+  }
+
+  const focusTarget = row.querySelector("input, select, textarea, button") || row;
+  if (focusTarget instanceof HTMLElement) {
+    focusTarget.focus({ preventScroll: true });
+  }
+  setActiveSystemLayoutPartition(form, partitionId);
 }
 
 function applySystemLayoutNodeState(node, state) {

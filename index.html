@@ -602,7 +602,7 @@
       <form id="session-form" class="session-form session-workspace-form" novalidate>
         <section class="session-overview-panel session-workspace-overview">
           <section class="session-top-grid">
-            <div class="session-chart-header">
+            <div class="session-chart-header" data-session-setup-fields>
               <label class="session-name-field" data-session-name-field>
                 <span class="session-name-label-row">
                   <span>Session Name</span>
@@ -610,7 +610,7 @@
                 <input type="text" name="sessionName" placeholder="Untitled Grow Session" maxlength="80" autocomplete="off" aria-describedby="session-name-helper">
                 <small id="session-name-helper" class="session-name-helper">Name this first so the session is easy to find later.</small>
               </label>
-              <label>
+              <label class="session-date-field">
                 <span>Date</span>
                 <input type="date" name="date" required>
               </label>
@@ -639,8 +639,19 @@
                 </select>
                 <span class="system-type-chevron" aria-hidden="true"></span>
               </label>
-              <label class="system-id-field">
-                <span>Method ID (if using multiple)</span>
+            </div>
+          </section>
+
+          <section class="system-layout-block hardware-method-card session-glass-panel" aria-labelledby="system-layout-title">
+            <div class="hardware-method-hero">
+              <div class="hardware-method-copy">
+                <p id="system-layout-label" class="system-layout-label" data-hardware-method-eyebrow>Method</p>
+                <h3 id="system-layout-title" class="hardware-method-title" data-hardware-method-title>KAN System</h3>
+                <p class="hardware-method-description" data-hardware-method-description>Controlled hardware-assisted germination.</p>
+              </div>
+              <div id="system-layout-reference" class="system-layout-visual hardware-method-visual"></div>
+              <label class="system-id-field hardware-unit-field">
+                <span data-hardware-unit-label>KAN Unit</span>
                 <select name="unitId">
                   <option value="">Not selected</option>
                   <option value="A">A</option>
@@ -656,19 +667,19 @@
                 </select>
                 <span class="system-id-chevron" aria-hidden="true"></span>
               </label>
+              <small class="hardware-method-tagline" data-hardware-method-tagline>Each unit is its own KAN. Track results per unit.</small>
             </div>
-          </section>
-
-          <section class="system-layout-block session-glass-panel" aria-labelledby="system-layout-label">
-            <p id="system-layout-label" class="system-layout-label">Method Layout</p>
-            <div id="system-layout-reference" class="system-layout-visual"></div>
+            <div class="hardware-session-panel">
+              <p class="hardware-session-label">Session Details</p>
+              <div class="hardware-session-fields" data-hardware-session-fields></div>
+              <div id="session-lifecycle-supplies-anchor" class="session-lifecycle-supplies-anchor"></div>
+            </div>
           </section>
 
           <section id="session-lifecycle-section" class="session-lifecycle-section session-lifecycle-section--companion" aria-label="Session Progress">
             <div id="session-lifecycle-summary" class="session-lifecycle-summary session-lifecycle-detail-layout">
               <div class="session-lifecycle-detail-main">
                 <div id="session-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
-                <div id="session-lifecycle-supplies-anchor" class="session-lifecycle-supplies-anchor"></div>
               </div>
               <div class="session-lifecycle-status-column">
                 <div class="session-status-panel">
