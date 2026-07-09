@@ -40,7 +40,7 @@ function getMarkupSlice(startNeedle, endNeedle) {
 
 const sessionLifecycleSection = getMarkupSlice(
   'id="session-lifecycle-section"',
-  'id="session-timing-section"',
+  'id="partition-progress-section"',
 );
 const detailLifecycleSection = getMarkupSlice(
   'id="detail-lifecycle-section"',
@@ -54,6 +54,17 @@ if (!sessionLifecycleSection.includes("session-lifecycle-section--companion")) {
 if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   throw new Error("Detail lifecycle host should be flattened for the Grow Companion panel.");
 }
+
+[
+  'id="session-timing-section"',
+  'id="detail-timing-section"',
+  'id="session-timing-title"',
+  'id="detail-timing-title"',
+].forEach((needle) => {
+  if (indexSource.includes(needle)) {
+    throw new Error(`Obsolete lower timing/timeline section should not render: ${needle}`);
+  }
+});
 
 [
   sessionLifecycleSection,

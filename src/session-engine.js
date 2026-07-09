@@ -682,7 +682,8 @@
     const paperTowelStartAt = getPaperTowelStartAt(session, methodKey, startAt);
     const resultSummary = getResultSummary(session, options.results);
     const context = { startAt, germinationStartedAt, firstPlantedAt, paperTowelStartAt };
-    const elapsedMs = startAt ? Math.max(0, now.getTime() - startAt.getTime()) : 0;
+    const elapsedEndAt = completedAt || now;
+    const elapsedMs = startAt ? Math.max(0, elapsedEndAt.getTime() - startAt.getTime()) : 0;
     const elapsedHours = elapsedMs / HOUR_MS;
     const currentPhase = resolveCurrentPhase(definition, context, now, completedAt);
     const completionWindowStartAt = addHours(getAnchorAt(definition.completionWindow?.from || "start", context), definition.completionWindow?.startHour || 0);

@@ -4,6 +4,7 @@ const assert = require("assert");
 
 const repoRoot = path.resolve(__dirname, "..");
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
+const engineSource = fs.readFileSync(path.join(repoRoot, "src", "session-engine.js"), "utf8");
 
 for (const needle of [
   "function getSessionDurationStartAt(session = null)",
@@ -45,6 +46,16 @@ if (
   > durationStartFunction.indexOf("parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || \"\")")
 ) {
   throw new Error("Session timeline duration calculations must prefer sessionStartedAt before soakStartedAt.");
+}
+
+for (const needle of [
+  "const completedAt = parseTimestamp(session?.completedAt || session?.completed_at || \"\");",
+  "const elapsedEndAt = completedAt || now;",
+  "const elapsedMs = startAt ? Math.max(0, elapsedEndAt.getTime() - startAt.getTime()) : 0;",
+]) {
+  if (!engineSource.includes(needle)) {
+    throw new Error(`Session Engine elapsed time must use start/completion timestamps: ${needle}`);
+  }
 }
 
 const formatElapsedMinutesShorthand = (totalMinutes) => {
