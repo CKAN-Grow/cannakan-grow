@@ -12,9 +12,11 @@ if (indexSource.includes("Method ID (if using multiple)")) {
 
 for (const needle of [
   'class="system-layout-block hardware-method-card session-glass-panel"',
+  'class="hardware-overview-metrics"',
   'data-hardware-method-title',
   'data-hardware-unit-label',
   'data-hardware-session-fields',
+  'class="hardware-session-column"',
   'id="session-lifecycle-supplies-anchor"',
   '<select name="unitId">',
 ]) {
@@ -24,20 +26,48 @@ for (const needle of [
 }
 
 const hardwareCardStart = indexSource.indexOf('class="system-layout-block hardware-method-card session-glass-panel"');
+const hardwareSessionColumnStart = indexSource.indexOf('class="hardware-session-column"');
 const lifecycleStart = indexSource.indexOf('id="session-lifecycle-section"');
-const hardwareCardMarkup = indexSource.slice(hardwareCardStart, lifecycleStart);
+const visualTimelineStart = indexSource.indexOf('id="session-engine-visual-timeline"');
+const suppliesAnchorStart = indexSource.indexOf('id="session-lifecycle-supplies-anchor"');
+const chartShellStart = indexSource.indexOf('id="partition-chart-shell"');
+const hardwareCardEnd = indexSource.indexOf("</section>", suppliesAnchorStart);
+const hardwareCardMarkup = hardwareCardStart >= 0 && hardwareCardEnd > hardwareCardStart
+  ? indexSource.slice(hardwareCardStart, hardwareCardEnd)
+  : "";
 if (!hardwareCardMarkup.includes('<select name="unitId">')) {
   throw new Error("KAN/TRā unit selector must live inside the hardware method card.");
 }
+if (!hardwareCardMarkup.includes('id="session-engine-visual-timeline"')) {
+  throw new Error("Session Timeline should live in the right side of the KAN/TRā hardware setup card.");
+}
 if (!hardwareCardMarkup.includes('id="session-lifecycle-supplies-anchor"')) {
-  throw new Error("KAN filter paper setup anchor must live inside the hardware method card.");
+  throw new Error("KAN filter paper setup anchor should live below the Session Timeline in the hardware setup right column.");
+}
+if (!(hardwareSessionColumnStart >= 0 && visualTimelineStart > hardwareSessionColumnStart)) {
+  throw new Error("Session Timeline should render inside the hardware session right column.");
+}
+if (!(visualTimelineStart >= 0 && suppliesAnchorStart > visualTimelineStart)) {
+  throw new Error("KAN filter paper supply should render directly below Session Progress/Timeline.");
+}
+if (!(suppliesAnchorStart >= 0 && chartShellStart > suppliesAnchorStart)) {
+  throw new Error("Seed chart should render below the KAN filter paper supply anchor.");
+}
+if (!(chartShellStart >= 0 && lifecycleStart > chartShellStart)) {
+  throw new Error("Grow Companion should remain outside the hardware setup flow and render after the seed chart.");
+}
+if (appSource.includes('class="active-session-supplies-reminder"')) {
+  throw new Error("KAN setup Filter Paper Supply card should not render the extra helper text line.");
 }
 
 for (const needle of [
   "function getHardwareMethodCardCopy(methodType = \"\")",
+  "function getHardwareMethodOverviewCopy(methodType = \"\")",
   "function syncHardwareMethodSetupFields(scope, method)",
+  "function syncHardwareMethodOverview(scope, method)",
   "unitLabel: \"KAN Unit\"",
   "unitLabel: \"TRā Unit\"",
+  "element.dataset.hardwareActive = String(method.supportsLayoutImage)",
   "const svgMarkup = await getInlineSvgMarkup(systemType);",
   "function bindSystemLayoutNodeSelection(container)",
   "function activatePartitionRowFromLayoutNode(container, node)",
@@ -52,6 +82,10 @@ for (const forbidden of [
   "function buildHardwareRadialLayoutImage",
   "hardware-layout-slice",
   "data-hardware-partition-count",
+  "hardware-session-steps-preview",
+  "hardware-session-steps-card",
+  "active-session-setup-next",
+  "Set Up Filter Paper",
 ]) {
   if (appSource.includes(forbidden) || indexSource.includes(forbidden) || stylesSource.includes(forbidden)) {
     throw new Error(`Hardware setup must not use the old radial diagram implementation: ${forbidden}`);
@@ -77,6 +111,13 @@ if (!traConfig.includes("supportsFilterInventory: false")) {
 
 for (const needle of [
   ".session-workspace-shell .hardware-method-card",
+  ".session-workspace-shell .hardware-session-column",
+  ".session-workspace-form[data-method-standardized=\"false\"] .hardware-method-card",
+  "grid-template-areas:",
+  "\"hero timeline\"",
+  "\"supplies supplies\"",
+  ".session-workspace-shell .hardware-session-column > .session-engine-visual-timeline",
+  ".session-workspace-shell .hardware-overview-metrics",
   ".session-workspace-shell .hardware-session-fields",
   ".hardware-method-card .system-layout-image-kan",
   ".hardware-method-card .partition-node:focus-visible",

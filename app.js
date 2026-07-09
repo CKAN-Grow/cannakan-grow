@@ -1442,7 +1442,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
   KAN: Object.freeze({
     id: "KAN",
     name: "KAN",
-    optionLabel: "KAN ⭐ Recommended",
+    optionLabel: "KAN (8) ⭐ Recommended",
     modalDescription: "Standardized 8-part KAN workflow",
     isStandardized: true,
     supportsLayoutImage: true,
@@ -1462,7 +1462,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
   TRA: Object.freeze({
     id: "TRA",
     name: "TRā",
-    optionLabel: "TRā",
+    optionLabel: "TRā (16)",
     modalDescription: "Standardized 16-part TRā workflow",
     isStandardized: true,
     supportsLayoutImage: true,
@@ -1722,6 +1722,20 @@ function getHardwareMethodCardCopy(methodType = "") {
     unitLabel: "KAN Unit",
     description: "Controlled hardware-assisted germination.",
     tagline: "Each unit is its own KAN. Track results per unit.",
+  };
+}
+
+function getHardwareMethodOverviewCopy(methodType = "") {
+  const method = getMethodConfig(methodType);
+  const partitionCount = Number(method.defaultRowCount) || 0;
+  const timeline = method.id === "TRA" ? "48-72h" : "48-72h";
+
+  return {
+    partitions: String(partitionCount),
+    timeline,
+    methodName: method.id === "TRA" ? "TRā System" : "KAN System",
+    methodSummary: "Standardized Hardware Method",
+    helper: "Choose the germination method for this session.",
   };
 }
 
@@ -48776,7 +48790,6 @@ function renderActiveSessionFilterPaperCardMarkup() {
             <p class="eyebrow">Supplies</p>
             <h4 id="active-session-supplies-title">Global Filter Paper Supply</h4>
             <p class="active-session-supplies-count">${escapeHtml(supply.countLabel)}</p>
-            <p class="active-session-supplies-reminder">${escapeHtml(supply.helperText)}</p>
             ${renderFilterPaperInventoryErrorMarkup("active-session-supplies-error")}
           </div>
         </div>
@@ -83097,7 +83110,6 @@ function renderSessionForm(initialSystemType = "KAN") {
   const sessionSequenceLabel = document.querySelector("#session-sequence-label");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
-  const saveShortcut = document.querySelector(".timeline-save-shortcut");
   const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
   const addSeedRowButton = document.querySelector("#add-seed-row");
   let applyingPaperTowelSetupChoice = false;
@@ -83221,9 +83233,6 @@ function renderSessionForm(initialSystemType = "KAN") {
   });
   form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
   appState.growthStage = sessionStatusField.value || null;
-  if (lifecycleSection && saveShortcut) {
-    saveShortcut.before(lifecycleSection);
-  }
   syncSessionStatusControlDatasets(sessionStatusField, {
     startedAt: parseSessionStartDateTime(form.elements.date.value, form.elements.time.value)?.toISOString() || "",
     germinationStartedAt: form.dataset.germinationStartedAt || "",
@@ -86169,6 +86178,29 @@ function syncHardwareMethodSetupFields(scope, method) {
   });
 }
 
+function syncHardwareMethodOverview(scope, method) {
+  if (!scope) {
+    return;
+  }
+
+  const overview = getHardwareMethodOverviewCopy(method.id);
+  scope.querySelectorAll("[data-method-overview-helper]").forEach((element) => {
+    element.textContent = overview.helper;
+  });
+  scope.querySelectorAll("[data-method-overview-partitions]").forEach((element) => {
+    element.textContent = overview.partitions;
+  });
+  scope.querySelectorAll("[data-method-overview-timeline]").forEach((element) => {
+    element.textContent = overview.timeline;
+  });
+  scope.querySelectorAll("[data-method-overview-name]").forEach((element) => {
+    element.textContent = overview.methodName;
+  });
+  scope.querySelectorAll("[data-method-overview-summary]").forEach((element) => {
+    element.textContent = overview.methodSummary;
+  });
+}
+
 function updateMethodTypeLayout(scope, methodType = "") {
   if (!scope) {
     return;
@@ -86178,6 +86210,7 @@ function updateMethodTypeLayout(scope, methodType = "") {
   scope.dataset.methodType = method.id;
   scope.dataset.methodStandardized = String(method.isStandardized);
   syncHardwareMethodSetupFields(scope, method);
+  syncHardwareMethodOverview(scope, method);
 
   const systemTypeField = scope.elements?.systemType;
   if (systemTypeField instanceof HTMLSelectElement) {
@@ -86193,6 +86226,14 @@ function updateMethodTypeLayout(scope, methodType = "") {
   }
 
   scope.querySelectorAll(".system-layout-block").forEach((element) => {
+    if (element.classList.contains("hardware-method-card")) {
+      element.hidden = false;
+      element.dataset.hardwareActive = String(method.supportsLayoutImage);
+      element.querySelectorAll(".hardware-method-hero, .hardware-session-panel").forEach((hardwareElement) => {
+        hardwareElement.hidden = !method.supportsLayoutImage;
+      });
+      return;
+    }
     element.hidden = !method.supportsLayoutImage;
   });
   scope.querySelectorAll("#session-lifecycle-section, #detail-lifecycle-section, .timeline-debug-panel").forEach((element) => {
