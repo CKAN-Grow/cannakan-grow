@@ -15048,7 +15048,7 @@ async function bootstrapApp() {
   initializeSiteVisitorTracking();
   bindBackToTopVisibilityObservers();
   initializeTopbarControls();
-  initializeGlobalSaveButtonIcons();
+  initializeGlobalActionButtonIcons();
   await rehydratePersistentBrowserState("bootstrap:start");
   updateAuthStatus();
   syncInstallPromptBanner();
@@ -41553,7 +41553,7 @@ function setSessionSaveButtonLabel(button, label) {
     return;
   }
 
-  const labelNode = button.querySelector("[data-session-save-button-label], [data-save-button-label]");
+  const labelNode = button.querySelector("[data-action-button-label], [data-session-save-button-label], [data-save-button-label]");
   if (labelNode) {
     labelNode.textContent = label;
     return;
@@ -41562,27 +41562,52 @@ function setSessionSaveButtonLabel(button, label) {
   button.textContent = label;
 }
 
-function getSaveButtonIconMarkup() {
+const ACTION_BUTTON_ICON_CONFIG = Object.freeze({
+  save: Object.freeze({
+    iconName: "check",
+    className: "save-button",
+    dataAttribute: "saveIconButton",
+    labelAttribute: "data-save-button-label",
+  }),
+  complete: Object.freeze({
+    iconName: "journeyFlag",
+    className: "complete-button",
+    dataAttribute: "completeIconButton",
+    labelAttribute: "data-complete-button-label",
+  }),
+});
+
+function getActionButtonIconMarkup(actionType = "save") {
+  const config = ACTION_BUTTON_ICON_CONFIG[actionType] || ACTION_BUTTON_ICON_CONFIG.save;
   return `
-    <span class="save-button-icon" data-save-button-icon aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-        <path d="M5 4.75h11.2L19.25 7.8v11.45H5V4.75Z"></path>
-        <path d="M8 4.75v5h7.5v-5"></path>
-        <path d="M8 19.25v-5.5h8v5.5"></path>
-        <path d="M13.6 6.25v2"></path>
-      </svg>
+    <span class="action-button-icon ${escapeHtml(config.className)}-icon" data-action-button-icon="${escapeHtml(actionType)}" aria-hidden="true">
+      ${renderAppIconSvgMarkup(config.iconName, { className: "action-button-icon-svg" })}
     </span>
   `;
 }
 
-function isSaveButtonIconCandidate(button) {
-  if (!(button instanceof HTMLButtonElement)) {
-    return false;
+function getActionButtonLabel(button) {
+  if (!(button instanceof HTMLButtonElement) && !(button instanceof HTMLAnchorElement)) {
+    return "";
   }
-  if (button.matches("[data-save-icon-exempt='true'], .button-danger, .gallery-admin-reject")) {
-    return false;
+  return button.textContent.replace(/\s+/g, " ").trim();
+}
+
+function isActionButtonIconExempt(button) {
+  return (
+    !(button instanceof HTMLButtonElement) && !(button instanceof HTMLAnchorElement)
+  ) || button.matches("[data-action-icon-exempt='true'], [data-save-icon-exempt='true'], .button-danger, .gallery-admin-reject");
+}
+
+function getActionButtonIconType(button) {
+  if (isActionButtonIconExempt(button)) {
+    return "";
   }
-  const label = button.textContent.replace(/\s+/g, " ").trim().toLowerCase();
+  const explicitType = String(button.getAttribute("data-action-icon") || "").trim().toLowerCase();
+  if (ACTION_BUTTON_ICON_CONFIG[explicitType]) {
+    return explicitType;
+  }
+  const label = getActionButtonLabel(button).toLowerCase();
   const explicitSaveAction = button.matches([
     "[data-save-icon-button='true']",
     "[data-new-session-save-button='true']",
@@ -41592,66 +41617,82 @@ function isSaveButtonIconCandidate(button) {
     "[data-unsaved-action='save']",
   ].join(", "));
   if (explicitSaveAction) {
-    return true;
+    return "save";
+  }
+  const explicitCompleteAction = button.matches([
+    "[data-complete-icon-button='true']",
+    "[data-new-session-complete-button='true']",
+    "[data-session-complete-button='true']",
+  ].join(", "));
+  if (explicitCompleteAction) {
+    return "complete";
   }
   if (button.closest("[data-seed-vault-entry-form]") && label === "add seeds") {
-    return true;
+    return "save";
   }
-  if (/(^|\s)save(\s|$|[&:])/.test(label)) {
-    return true;
+  if (/(^|\s)save(\s|$|[&:])/.test(label) || label === "update password") {
+    return "save";
   }
-  return label === "update password";
+  if (/(^|\s)complete(\s|$|[&:])/.test(label) || /^mark\s+.+\s+complete$/.test(label)) {
+    return "complete";
+  }
+  return "";
 }
 
-function enhanceSaveButtonIcon(button) {
-  if (!isSaveButtonIconCandidate(button)) {
-    return;
+function enhanceActionButtonIcon(button) {
+  const actionType = getActionButtonIconType(button);
+  if (!actionType) {
+    return false;
   }
 
-  button.dataset.saveIconButton = "true";
-  button.classList.add("save-button");
-  const hasIcon = Boolean(button.querySelector("[data-save-button-icon], .detail-save-shortcut-icon"));
-  const labelNode = button.querySelector("[data-save-button-label], [data-session-save-button-label]");
+  const config = ACTION_BUTTON_ICON_CONFIG[actionType];
+  button.dataset[config.dataAttribute] = "true";
+  button.classList.add("action-button", config.className);
+  button.setAttribute("data-action-icon-active", actionType);
+  const hasIcon = button.querySelector(`[data-action-button-icon="${actionType}"]`);
+  const labelNode = button.querySelector("[data-action-button-label], [data-save-button-label], [data-session-save-button-label], [data-complete-button-label]");
   if (hasIcon && labelNode) {
-    return;
+    return true;
   }
 
-  const label = button.textContent.replace(/\s+/g, " ").trim() || NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
-  button.innerHTML = `${getSaveButtonIconMarkup()}<span data-save-button-label>${escapeHtml(label)}</span>`;
+  const fallbackLabel = actionType === "complete" ? SESSION_COMPLETE_BUTTON_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
+  const label = getActionButtonLabel(button) || fallbackLabel;
+  button.innerHTML = `${getActionButtonIconMarkup(actionType)}<span data-action-button-label ${config.labelAttribute}>${escapeHtml(label)}</span>`;
+  return true;
 }
 
-function enhanceGlobalSaveButtonIcons(scope = document) {
+function enhanceGlobalActionButtonIcons(scope = document) {
   const root = scope instanceof Element || scope instanceof Document ? scope : document;
-  if (root instanceof HTMLButtonElement) {
-    enhanceSaveButtonIcon(root);
+  if (root instanceof HTMLButtonElement || root instanceof HTMLAnchorElement) {
+    enhanceActionButtonIcon(root);
     return;
   }
-  root.querySelectorAll?.("button").forEach((button) => {
-    enhanceSaveButtonIcon(button);
+  root.querySelectorAll?.("button, a.button").forEach((button) => {
+    enhanceActionButtonIcon(button);
   });
 }
 
-function initializeGlobalSaveButtonIcons() {
-  if (!document.body || document.body.dataset.saveButtonIconsBound === "true") {
+function initializeGlobalActionButtonIcons() {
+  if (!document.body || document.body.dataset.actionButtonIconsBound === "true") {
     return;
   }
 
-  document.body.dataset.saveButtonIconsBound = "true";
-  enhanceGlobalSaveButtonIcons(document);
+  document.body.dataset.actionButtonIconsBound = "true";
+  enhanceGlobalActionButtonIcons(document);
   const observer = new MutationObserver((mutations) => {
     const shouldRefresh = mutations.some((mutation) => (
       mutation.type === "childList"
       || mutation.type === "characterData"
-      || (mutation.type === "attributes" && mutation.target instanceof HTMLButtonElement)
+      || (mutation.type === "attributes" && (mutation.target instanceof HTMLButtonElement || mutation.target instanceof HTMLAnchorElement))
     ));
     if (!shouldRefresh) {
       return;
     }
-    window.requestAnimationFrame(() => enhanceGlobalSaveButtonIcons(document));
+    window.requestAnimationFrame(() => enhanceGlobalActionButtonIcons(document));
   });
   observer.observe(document.body, {
     attributes: true,
-    attributeFilter: ["class", "data-save-icon-button", "data-save-state"],
+    attributeFilter: ["class", "data-action-icon", "data-save-icon-button", "data-complete-icon-button", "data-save-state", "hidden"],
     childList: true,
     characterData: true,
     subtree: true,

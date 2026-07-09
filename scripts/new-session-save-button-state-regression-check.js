@@ -68,8 +68,8 @@ if (!stylesSource.includes(".session-complete-confirm-modal-actions")) {
   throw new Error("Missing Complete Session confirmation modal action layout.");
 }
 
-if (!stylesSource.includes('content: "✓";')) {
-  throw new Error("Saved state should include a visible check icon.");
+if (!appSource.includes('iconName: "check"') || !appSource.includes('data-action-button-icon="')) {
+  throw new Error("Saved state should include a visible check icon from the shared action button helper.");
 }
 
 if (!indexSource.includes('data-session-complete-button="true"')) {
