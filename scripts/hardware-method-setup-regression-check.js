@@ -13,6 +13,8 @@ if (indexSource.includes("Method ID (if using multiple)")) {
 for (const needle of [
   'class="system-layout-block hardware-method-card session-glass-panel"',
   'class="hardware-overview-metrics"',
+  'data-method-overview-count-label',
+  'data-method-overview-count-helper',
   'data-hardware-method-title',
   'data-hardware-unit-label',
   'data-hardware-session-fields',
@@ -63,6 +65,10 @@ if (appSource.includes('class="active-session-supplies-reminder"')) {
 for (const needle of [
   "function getHardwareMethodCardCopy(methodType = \"\")",
   "function getHardwareMethodOverviewCopy(methodType = \"\")",
+  "function getMethodOverviewCountLabel(methodType = \"\")",
+  "function getVisibleMethodEntryCount(scope = null, methodType = \"\")",
+  "function getWorkflowMethodSetupSummary(methodType = \"\", scope = null)",
+  "function buildWorkflowMethodVisualMarkup(method, form = null)",
   "function syncHardwareMethodSetupFields(scope, method)",
   "function syncHardwareMethodOverview(scope, method)",
   "unitLabel: \"KAN Unit\"",
@@ -72,6 +78,8 @@ for (const needle of [
   "function bindSystemLayoutNodeSelection(container)",
   "function activatePartitionRowFromLayoutNode(container, node)",
   "scope.querySelectorAll(\"[data-hardware-unit-label]\")",
+  "scope.querySelectorAll(\"[data-method-overview-count-label]\")",
+  "scope.querySelectorAll(\"[data-method-overview-count-helper]\")",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing hardware setup behavior: ${needle}`);
@@ -112,7 +120,8 @@ if (!traConfig.includes("supportsFilterInventory: false")) {
 for (const needle of [
   ".session-workspace-shell .hardware-method-card",
   ".session-workspace-shell .hardware-session-column",
-  ".session-workspace-form[data-method-standardized=\"false\"] .hardware-method-card",
+  ".session-workspace-form .session-chart-header",
+  ".workflow-method-visual-card",
   "grid-template-areas:",
   "\"hero timeline\"",
   "\"supplies supplies\"",
@@ -127,6 +136,16 @@ for (const needle of [
 ]) {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing hardware card styling: ${needle}`);
+  }
+}
+
+for (const forbidden of [
+  '.session-workspace-form[data-method-standardized="false"] .hardware-method-card',
+  '.session-workspace-form[data-method-standardized="false"] .hardware-overview-metrics',
+  '.session-workspace-form[data-method-standardized="false"] .hardware-method-hero',
+]) {
+  if (stylesSource.includes(forbidden)) {
+    throw new Error(`Non-KAN methods must not fall back to the old collapsed layout: ${forbidden}`);
   }
 }
 

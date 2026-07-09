@@ -1716,6 +1716,16 @@ function getHardwareMethodCardCopy(methodType = "") {
     };
   }
 
+  if (!method.isStandardized) {
+    return {
+      eyebrow: "Method",
+      title: method.name,
+      unitLabel: "",
+      description: method.modalDescription || `${method.name} workflow.`,
+      tagline: getWorkflowMethodSetupSummary(method.id),
+    };
+  }
+
   return {
     eyebrow: "Method",
     title: "KAN System",
@@ -1727,16 +1737,118 @@ function getHardwareMethodCardCopy(methodType = "") {
 
 function getHardwareMethodOverviewCopy(methodType = "") {
   const method = getMethodConfig(methodType);
-  const partitionCount = Number(method.defaultRowCount) || 0;
-  const timeline = method.id === "TRA" ? "48-72h" : "48-72h";
+  const partitionCount = getVisibleMethodEntryCount(document.querySelector("#session-form"), method.id);
+  const timeline = getMethodOverviewTimelineLabel(method.id);
 
   return {
+    countLabel: getMethodOverviewCountLabel(method.id),
     partitions: String(partitionCount),
     timeline,
-    methodName: method.id === "TRA" ? "TRā System" : "KAN System",
-    methodSummary: "Standardized Hardware Method",
+    countHelper: method.isStandardized ? "Available" : "Visible",
+    methodName: method.isStandardized
+      ? (method.id === "TRA" ? "TRā System" : "KAN System")
+      : method.name,
+    methodSummary: method.isStandardized ? "Standardized Hardware Method" : "Manual Workflow Method",
     helper: "Choose the germination method for this session.",
   };
+}
+
+function getMethodOverviewCountLabel(methodType = "") {
+  const method = getMethodConfig(methodType);
+  switch (method.id) {
+    case "KAN":
+    case "TRA":
+      return "Partitions";
+    case "PAPER_TOWEL":
+    case "PAPER_TOWEL_SOAK":
+      return "Towels";
+    case "WATER_SOAK":
+      return "Glasses";
+    case "ROCKWOOL":
+      return "Cubes";
+    case "RAPID_ROOTER":
+      return "Plugs";
+    case "DIRECT_SOW":
+      return "Pots";
+    case "OTHER":
+    default:
+      return "Rows";
+  }
+}
+
+function getVisibleMethodEntryCount(scope = null, methodType = "") {
+  const method = getMethodConfig(methodType);
+  const form = scope?.matches?.("#session-form")
+    ? scope
+    : scope?.querySelector?.("#session-form")
+      || document.querySelector("#session-form");
+  const rowCount = form?.querySelectorAll?.("#partition-fields .partition-row").length || 0;
+  return Math.max(1, rowCount || Number(method.defaultRowCount) || 1);
+}
+
+function getMethodOverviewTimelineLabel(methodType = "") {
+  const method = getMethodConfig(methodType);
+  switch (method.id) {
+    case "KAN":
+    case "TRA":
+    case "PAPER_TOWEL_SOAK":
+      return "48-72h";
+    case "PAPER_TOWEL":
+      return "24-72h";
+    case "WATER_SOAK":
+      return "24-48h";
+    case "ROCKWOOL":
+    case "RAPID_ROOTER":
+      return "5-7d";
+    case "DIRECT_SOW":
+      return "5d+";
+    case "OTHER":
+    default:
+      return "Custom";
+  }
+}
+
+function getWorkflowMethodSetupSummary(methodType = "", scope = null) {
+  const method = getMethodConfig(methodType);
+  const form = scope?.matches?.("#session-form")
+    ? scope
+    : scope?.querySelector?.("#session-form")
+      || document.querySelector("#session-form");
+  const count = getVisibleMethodEntryCount(form, method.id);
+  const countLabel = `${count} ${count === 1 ? method.rowLabel : getMethodOverviewCountLabel(method.id)}`;
+
+  if (method.id === "PAPER_TOWEL_SOAK") {
+    return "Soak + Paper Towel";
+  }
+  if (method.id === "PAPER_TOWEL") {
+    return form?.dataset?.paperTowelSetupChoice === "PAPER_TOWEL_SOAK"
+      ? "Soak + Paper Towel"
+      : "Paper Towel Only";
+  }
+  if (method.id === "ROCKWOOL") {
+    const setup = getMethodSetupStateFromForm(form);
+    if (setup.preparedMedia === true) {
+      return "Cubes already prepared";
+    }
+    if (setup.preparedMedia === false) {
+      return "Prepare cubes before planting";
+    }
+    return countLabel;
+  }
+  if (method.id === "RAPID_ROOTER") {
+    const setup = getMethodSetupStateFromForm(form);
+    if (setup.preparedMedia === true) {
+      return "Plugs already prepared";
+    }
+    if (setup.preparedMedia === false) {
+      return "Prepare plugs before planting";
+    }
+    return countLabel;
+  }
+  if (method.id === "OTHER") {
+    return "Custom Workflow";
+  }
+  return countLabel;
 }
 
 function usesCustomMethodWorkflow(methodType = "") {
@@ -83333,6 +83445,7 @@ function renderSessionForm(initialSystemType = "KAN") {
 
   function rerenderPartitionsForSeedVaultApply() {
     renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+    renderSystemLayoutReference(layoutReference, systemTypeField.value);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
     applyStageEditingMode(form, sessionStatusField.value);
@@ -83522,6 +83635,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   ensureSourceCatalogDatalist();
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+  renderSystemLayoutReference(layoutReference, systemTypeField.value);
   refreshNewSessionSeedVaultPicker();
   bindNewSessionSeedVaultPicker(seedVaultSessionSection, form, {
     rerenderPartitions: rerenderPartitionsForSeedVaultApply,
@@ -83610,6 +83724,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const rerenderSeedAgePartitions = () => {
     syncSeedAgeSetupUi(form);
     renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+    renderSystemLayoutReference(layoutReference, systemTypeField.value);
     updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
@@ -83848,6 +83963,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         updatePartitionWorkHeading(partitionWorkTitle, nextMethod);
       }
       renderPartitionRows(form, nextMethod, sessionStatusField.value);
+      renderSystemLayoutReference(layoutReference, nextMethod);
       refreshNewSessionSeedVaultPicker();
       updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
@@ -83880,6 +83996,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       const currentRows = Math.max(method.defaultRowCount, form.querySelectorAll("#partition-fields .partition-row").length);
       form.__customMethodRowCount = currentRows + 1;
       renderPartitionRows(form, method.id, sessionStatusField.value);
+      renderSystemLayoutReference(layoutReference, method.id);
       refreshNewSessionSeedVaultPicker();
       updateMethodTypeLayout(form, method.id);
       updateNewSessionNameDefaultSuggestion(form);
@@ -86216,15 +86333,8 @@ function syncHardwareMethodSetupFields(scope, method) {
     return;
   }
 
-  if (method.isStandardized) {
-    setupFields.forEach((field) => {
-      hardwareContainer.appendChild(field);
-    });
-    return;
-  }
-
   setupFields.forEach((field) => {
-    setupContainer.insertBefore(field, methodField);
+    hardwareContainer.appendChild(field);
   });
 }
 
@@ -86236,6 +86346,12 @@ function syncHardwareMethodOverview(scope, method) {
   const overview = getHardwareMethodOverviewCopy(method.id);
   scope.querySelectorAll("[data-method-overview-helper]").forEach((element) => {
     element.textContent = overview.helper;
+  });
+  scope.querySelectorAll("[data-method-overview-count-label]").forEach((element) => {
+    element.textContent = overview.countLabel;
+  });
+  scope.querySelectorAll("[data-method-overview-count-helper]").forEach((element) => {
+    element.textContent = overview.countHelper;
   });
   scope.querySelectorAll("[data-method-overview-partitions]").forEach((element) => {
     element.textContent = overview.partitions;
@@ -86279,9 +86395,6 @@ function updateMethodTypeLayout(scope, methodType = "") {
     if (element.classList.contains("hardware-method-card")) {
       element.hidden = false;
       element.dataset.hardwareActive = String(method.supportsLayoutImage);
-      element.querySelectorAll(".hardware-method-hero, .hardware-session-panel").forEach((hardwareElement) => {
-        hardwareElement.hidden = !method.supportsLayoutImage;
-      });
       return;
     }
     element.hidden = !method.supportsLayoutImage;
@@ -86304,24 +86417,22 @@ function updateMethodTypeLayout(scope, methodType = "") {
   scope.querySelectorAll(".system-id-field").forEach((element) => {
     element.hidden = !method.isStandardized;
   });
-  if (method.isStandardized) {
-    const hardwareCopy = getHardwareMethodCardCopy(method.id);
-    scope.querySelectorAll("[data-hardware-method-eyebrow]").forEach((element) => {
-      element.textContent = hardwareCopy.eyebrow;
-    });
-    scope.querySelectorAll("[data-hardware-method-title]").forEach((element) => {
-      element.textContent = hardwareCopy.title;
-    });
-    scope.querySelectorAll("[data-hardware-method-description]").forEach((element) => {
-      element.textContent = hardwareCopy.description;
-    });
-    scope.querySelectorAll("[data-hardware-unit-label]").forEach((element) => {
-      element.textContent = hardwareCopy.unitLabel;
-    });
-    scope.querySelectorAll("[data-hardware-method-tagline]").forEach((element) => {
-      element.textContent = hardwareCopy.tagline;
-    });
-  }
+  const hardwareCopy = getHardwareMethodCardCopy(method.id);
+  scope.querySelectorAll("[data-hardware-method-eyebrow]").forEach((element) => {
+    element.textContent = hardwareCopy.eyebrow;
+  });
+  scope.querySelectorAll("[data-hardware-method-title]").forEach((element) => {
+    element.textContent = hardwareCopy.title;
+  });
+  scope.querySelectorAll("[data-hardware-method-description]").forEach((element) => {
+    element.textContent = hardwareCopy.description;
+  });
+  scope.querySelectorAll("[data-hardware-unit-label]").forEach((element) => {
+    element.textContent = hardwareCopy.unitLabel;
+  });
+  scope.querySelectorAll("[data-hardware-method-tagline]").forEach((element) => {
+    element.textContent = hardwareCopy.tagline;
+  });
   scope.querySelectorAll("[data-custom-method-actions]").forEach((element) => {
     element.hidden = method.isStandardized;
     element.querySelectorAll("#add-seed-row, [data-add-seed-row]").forEach((button) => {
@@ -93235,7 +93346,7 @@ async function renderSystemLayoutReference(container, systemType) {
   container.dataset.pendingSystem = method.id;
 
   if (!method.supportsLayoutImage) {
-    container.innerHTML = "";
+    container.innerHTML = buildWorkflowMethodVisualMarkup(method, container.closest("#session-form"));
     return;
   }
 
@@ -93244,6 +93355,23 @@ async function renderSystemLayoutReference(container, systemType) {
     container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(method.id);
     attachSystemLayoutReady(container);
   }
+}
+
+function buildWorkflowMethodVisualMarkup(method, form = null) {
+  const summary = getWorkflowMethodSetupSummary(method.id, form);
+  const iconMarkup = renderCommandCenterIconMarkup(
+    method.id === "WATER_SOAK" ? "stage-soaking"
+      : method.id === "DIRECT_SOW" ? "stage-first-germinated"
+        : "header",
+    "workflow-method-icon-symbol",
+  );
+
+  return `
+    <div class="workflow-method-visual-card" data-workflow-method="${escapeHtml(method.id)}">
+      <span class="workflow-method-icon" aria-hidden="true">${iconMarkup}</span>
+      <span class="workflow-method-summary">${escapeHtml(summary)}</span>
+    </div>
+  `;
 }
 
 async function buildSystemLayoutImage(systemType) {
