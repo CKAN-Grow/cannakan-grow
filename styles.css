@@ -62742,6 +62742,22 @@ body.theme-dark .session-workspace-shell .share-snapshot-section {
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+.session-workspace-shell #session-lifecycle-section.session-lifecycle-section--companion,
+.session-workspace-shell #detail-lifecycle-section.session-lifecycle-section--companion,
+body.theme-dark .session-workspace-shell #session-lifecycle-section.session-lifecycle-section--companion,
+body.theme-dark .session-workspace-shell #detail-lifecycle-section.session-lifecycle-section--companion {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-workspace-shell #session-lifecycle-section.session-lifecycle-section--companion,
+.session-workspace-shell #detail-lifecycle-section.session-lifecycle-section--companion {
+  margin-top: var(--space-section);
+}
+
 body.theme-dark .session-workspace-shell .session-chart-header > label,
 body.theme-dark .session-workspace-shell .detail-header .meta-card,
 body.theme-dark .session-workspace-shell .session-status-card,

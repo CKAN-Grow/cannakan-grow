@@ -2039,6 +2039,7 @@ function setFormPreparedMediaSetupChoice(form, methodType = "", choice = "", sou
   form.dataset.methodSetupChoice = normalizedChoice;
   form.dataset.methodSetupPreparedMedia = normalizedChoice === "prepared" ? "true" : "false";
   form.dataset.methodSetupSource = source || "session";
+  form.dataset.methodType = normalizedMethod;
 }
 
 function clearFormPreparedMediaSetupChoice(form) {
@@ -2057,10 +2058,14 @@ function getMethodSetupStateFromForm(form) {
   }
   const methodType = normalizeMethodType(form.elements?.systemType?.value || form.dataset.methodType || "");
   const choice = normalizePreparedMediaSetupChoice(form.dataset.methodSetupChoice || "");
-  if (!isPreparedMediaSetupMethod(methodType) || form.dataset.methodSetupMethod !== methodType || !choice) {
+  const setupMethod = normalizeMethodType(form.dataset.methodSetupMethod || methodType);
+  if (!isPreparedMediaSetupMethod(methodType) || setupMethod !== methodType || !choice) {
     return {};
   }
-  return normalizeMethodSetupState(methodType, { choice });
+  return normalizeMethodSetupState(methodType, {
+    choice,
+    preparedMedia: form.dataset.methodSetupPreparedMedia === "true",
+  });
 }
 
 function getMethodTypeSelectionLabel(methodType = "") {
@@ -83077,7 +83082,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const savedPreparedMediaChoice = getSavedPreparedMediaSetupPreference(normalizedSystemType);
   if (savedPreparedMediaChoice) {
     setFormPreparedMediaSetupChoice(form, normalizedSystemType, savedPreparedMediaChoice, "preference");
-  } else if (!isPreparedMediaSetupMethod(normalizedSystemType)) {
+  } else {
     clearFormPreparedMediaSetupChoice(form);
   }
   if (notesField && notesDraft && normalizeMethodType(notesDraft.systemType || "KAN") === normalizedSystemType) {
@@ -83337,6 +83342,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       syncMethodTypeSelectOptions(systemTypeField, nextMethod);
       systemTypeField.value = nextMethod;
       systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));
+      refreshNewSessionTimelineViews();
     } finally {
       applyingPreparedMediaSetupChoice = false;
     }
@@ -83635,16 +83641,16 @@ function renderSessionForm(initialSystemType = "KAN") {
         delete form.dataset.paperTowelSetupChoice;
         closePaperTowelSetupModal();
       }
+      if (form.dataset.methodSetupMethod && normalizeMethodType(form.dataset.methodSetupMethod) !== nextMethod) {
+        clearFormPreparedMediaSetupChoice(form);
+      }
       if (isPreparedMediaSetupMethod(nextMethod)) {
         const savedChoice = getSavedPreparedMediaSetupPreference(nextMethod);
         if (savedChoice && !applyingPreparedMediaSetupChoice) {
           setFormPreparedMediaSetupChoice(form, nextMethod, savedChoice, "preference");
         } else if (
           !applyingPreparedMediaSetupChoice
-          && (
-            form.dataset.methodSetupMethod !== nextMethod
-            || !normalizePreparedMediaSetupChoice(form.dataset.methodSetupChoice || "")
-          )
+          && !normalizePreparedMediaSetupChoice(form.dataset.methodSetupChoice || "")
         ) {
           openPreparedMediaSetupModal(nextMethod);
           return;
