@@ -2068,6 +2068,38 @@ function getMethodSetupStateFromForm(form) {
   });
 }
 
+function logPreparedMediaSetupDebugState(form, context = {}, lifecycleState = null) {
+  if (!(form instanceof HTMLFormElement) || typeof console === "undefined" || typeof console.debug !== "function") {
+    return;
+  }
+
+  const setupState = getMethodSetupStateFromForm(form);
+  const state = lifecycleState || buildFormLifecycleState(form);
+  console.debug("[Prepared Media Setup]", {
+    selectedMethodId: normalizeMethodType(form.elements?.systemType?.value || form.dataset.methodType || ""),
+    modalChoice: context.choice || "",
+    preparedMediaValue: setupState.preparedMedia,
+    preparedMediaValueType: typeof setupState.preparedMedia,
+    methodSetupChoice: form.dataset.methodSetupChoice || "",
+    methodSetupPreparedMedia: form.dataset.methodSetupPreparedMedia || "",
+    methodSetupMethod: form.dataset.methodSetupMethod || "",
+    methodSetupState: setupState,
+    lifecycle: {
+      methodKey: state?.engineState?.methodKey || "",
+      currentPhase: state?.engineState?.currentPhase || null,
+      timeline: Array.isArray(state?.engineState?.timelineSteps)
+        ? state.engineState.timelineSteps.map((step) => ({
+            key: step.key,
+            label: step.label,
+            isComplete: Boolean(step.isComplete),
+            isCurrent: Boolean(step.isCurrent),
+            isFuture: Boolean(step.isFuture),
+          }))
+        : [],
+    },
+  });
+}
+
 function getMethodTypeSelectionLabel(methodType = "") {
   const method = getMethodConfig(methodType);
   return isPaperTowelSetupMethod(method.id) ? "Paper Towel" : method.optionLabel;
@@ -83164,7 +83196,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     renderNewSessionSeedVaultPicker(seedVaultSessionSection, systemTypeField.value, form);
   }
 
-  function refreshNewSessionTimelineViews() {
+  function refreshNewSessionTimelineViews(debugContext = null) {
     const lifecycleState = buildFormLifecycleState(form);
     updateSessionEngineVisualTimeline(visualTimeline, lifecycleState);
     updateSessionLifecycleTimeline(
@@ -83172,6 +83204,10 @@ function renderSessionForm(initialSystemType = "KAN") {
       lifecycleSection,
       lifecycleState,
     );
+    if (debugContext?.preparedMedia === true) {
+      logPreparedMediaSetupDebugState(form, debugContext, lifecycleState);
+    }
+    return lifecycleState;
   }
 
   function refreshNewSessionAfterVaultApply() {
@@ -83344,7 +83380,17 @@ function renderSessionForm(initialSystemType = "KAN") {
       syncMethodTypeSelectOptions(systemTypeField, nextMethod);
       systemTypeField.value = nextMethod;
       systemTypeField.dispatchEvent(new Event("change", { bubbles: true }));
-      refreshNewSessionTimelineViews();
+      setFormPreparedMediaSetupChoice(form, nextMethod, normalizedChoice, remember ? "preference" : "session");
+      appState.newSessionSystemType = nextMethod;
+      if (!getMethodConfig(nextMethod).supportsStageTracking && sessionStatusField.value !== "completed") {
+        sessionStatusField.value = getMethodDefaultSessionStatus(nextMethod);
+        form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
+      }
+      refreshNewSessionTimelineViews({
+        preparedMedia: true,
+        methodType: nextMethod,
+        choice: normalizedChoice,
+      });
     } finally {
       applyingPreparedMediaSetupChoice = false;
     }
