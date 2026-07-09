@@ -99,7 +99,7 @@ if (rendererSource.includes('<aside class="session-progress-companion-recommenda
 
 [
   "const showReminder = options.showReminder !== false",
-  "${showReminder ? `",
+  "${showReminder && hasReminder ? `",
 ].forEach((needle) => {
   if (!rendererSource.includes(needle)) {
     throw new Error(`Session Progress companion reminder visibility is missing: ${needle}`);
@@ -175,6 +175,29 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 });
 
 [
+  'renderSessionProgressCompanionMetricMarkup("clock", "Elapsed Time"',
+  'renderSessionProgressCompanionMetricMarkup("drop", "Next Check"',
+  'renderSessionProgressCompanionMetricMarkup("flag", sessionTimeDisplay.label',
+  "No reminder scheduled",
+  "Reminders will appear when the Session Engine schedules one.",
+].forEach((needle) => {
+  if (rendererSource.includes(needle)) {
+    throw new Error(`Grow Companion should not repeat data already shown elsewhere: ${needle}`);
+  }
+});
+
+[
+  "const summaryMetricItems = [",
+  "!showReminder && milestone",
+  'renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)',
+  '${summaryMetricItems ? `',
+].forEach((needle) => {
+  if (!rendererSource.includes(needle)) {
+    throw new Error(`Grow Companion supporting summary should be consolidated: ${needle}`);
+  }
+});
+
+[
   "label: \"Total Session Time\"",
   "captionLabel: \"Total session time\"",
   "getElapsedDurationMs(startedAt, completedAt)",
@@ -241,6 +264,7 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
   "grid-template-columns: 1fr;",
+  "grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));",
   "width: min(100%, 640px);",
   "border: 1px solid color-mix(in srgb, var(--session-companion-accent) 18%, transparent);",
   "background: color-mix(in srgb, var(--session-companion-accent) 7%, rgba(255, 255, 255, 0.024));",

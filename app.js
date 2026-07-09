@@ -96138,6 +96138,17 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
   const elapsedLabel = formatSessionEngineDurationLabel(engineState.elapsedMs);
   const reminderPurpose = milestone?.message || milestone?.actionText || milestone?.title || "";
   const hasReminder = Boolean(milestone);
+  const summaryMetricItems = [
+    !showReminder && milestone
+      ? renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)
+      : "",
+    engineState.communityAverage
+      ? renderSessionProgressCompanionMetricMarkup("group", "Community Avg.", String(engineState.communityAverage), methodName)
+      : "",
+    engineState.insight
+      ? renderSessionProgressCompanionMetricMarkup("bulb", "Insight", String(engineState.insight), "")
+      : "",
+  ].filter(Boolean).join("");
   const actionMarkup = getSessionEngineActionList(engineState).length
     ? renderSessionProgressActionMarkup(engineState)
     : "";
@@ -96199,24 +96210,21 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
         </div>
       </div>
 
-      <section class="session-progress-companion-metrics" aria-label="Session progress metrics">
-        ${renderSessionProgressCompanionMetricMarkup("clock", "Elapsed Time", elapsedLabel, "Since start")}
-        ${renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)}
-        ${renderSessionProgressCompanionMetricMarkup("drop", "Next Check", milestoneTime, milestoneTitle)}
-        ${renderSessionProgressCompanionMetricMarkup("flag", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail)}
-        ${engineState.communityAverage ? renderSessionProgressCompanionMetricMarkup("group", "Community Avg.", String(engineState.communityAverage), methodName) : ""}
-        ${engineState.insight ? renderSessionProgressCompanionMetricMarkup("bulb", "Insight", String(engineState.insight), "") : ""}
-      </section>
+      ${summaryMetricItems ? `
+        <section class="session-progress-companion-metrics" aria-label="Session supporting summary">
+          ${summaryMetricItems}
+        </section>
+      ` : ""}
 
-      ${showReminder ? `
-      <section class="session-progress-companion-reminder ${hasReminder ? "" : "is-empty"}" aria-label="Next reminder">
+      ${showReminder && hasReminder ? `
+      <section class="session-progress-companion-reminder" aria-label="Next reminder">
         <span class="session-progress-companion-reminder-icon">${renderSessionProgressCompanionIconMarkup("bell", "session-progress-companion-reminder-svg")}</span>
         <div>
           <p class="eyebrow">Next Reminder</p>
-          <strong>${escapeHtml(hasReminder ? milestoneTime : "No reminder scheduled")}</strong>
-          <span>${escapeHtml(hasReminder ? (reminderPurpose || "Review the next session milestone.") : "Reminders will appear when the Session Engine schedules one.")}</span>
+          <strong>${escapeHtml(milestoneTime)}</strong>
+          <span>${escapeHtml(reminderPurpose || "Review the next session milestone.")}</span>
         </div>
-        <button type="button" class="button button-secondary session-progress-companion-reminder-button" ${hasReminder ? 'data-session-reminders-manage="true"' : "disabled"}>Manage Reminders</button>
+        <button type="button" class="button button-secondary session-progress-companion-reminder-button" data-session-reminders-manage="true">Manage Reminders</button>
       </section>
       ` : ""}
 
