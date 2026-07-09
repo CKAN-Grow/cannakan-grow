@@ -53710,18 +53710,24 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .chart-header {
-  padding: 14px 28px 14px 18px;
+  min-height: 58px;
+  padding: 17px 32px 17px 22px;
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.04)),
-    rgba(255, 255, 255, 0.02);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  color: #c8d7c9;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+    linear-gradient(180deg, rgba(148, 209, 89, 0.22), rgba(74, 120, 54, 0.12)),
+    radial-gradient(circle at 12% 0%, rgba(184, 239, 137, 0.16), transparent 42%),
+    rgba(18, 26, 19, 0.9);
+  border-bottom-color: rgba(148, 209, 89, 0.28);
+  color: #eef8e9;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(148, 209, 89, 0.16),
+    0 10px 22px rgba(0, 0, 0, 0.12);
 }
 
 .session-workspace-shell .chart-header span:not(:last-child)::after {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(184, 239, 137, 0.18);
 }
 
 .session-workspace-shell .tra-section + .tra-section {
@@ -63748,14 +63754,19 @@ body.theme-dark .session-workspace-shell .custom-select-menu {
 
 body.theme-dark .session-workspace-shell .chart-header {
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.04)),
-    rgba(255, 255, 255, 0.02);
-  color: #c8d7c9;
-  border-bottom-color: rgba(255, 255, 255, 0.08);
+    linear-gradient(180deg, rgba(148, 209, 89, 0.22), rgba(74, 120, 54, 0.12)),
+    radial-gradient(circle at 12% 0%, rgba(184, 239, 137, 0.16), transparent 42%),
+    rgba(18, 26, 19, 0.9);
+  color: #eef8e9;
+  border-bottom-color: rgba(148, 209, 89, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(148, 209, 89, 0.16),
+    0 10px 22px rgba(0, 0, 0, 0.12);
 }
 
 body.theme-dark .session-workspace-shell .chart-header span:not(:last-child)::after {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(184, 239, 137, 0.18);
 }
 
 body.theme-dark .session-workspace-shell .tra-section-label {
@@ -63836,12 +63847,17 @@ body.theme-dark .session-workspace-shell .partition-row:focus-within .custom-sel
 
 .session-workspace-form #partition-chart-shell > .chart-header {
   margin: 0;
-  border-top: 1px solid rgba(148, 209, 89, 0.1);
-  border-bottom: 1px solid rgba(148, 209, 89, 0.08);
+  min-height: 58px;
+  border-top: 1px solid rgba(184, 239, 137, 0.16);
+  border-bottom: 1px solid rgba(148, 209, 89, 0.3);
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.055), rgba(148, 209, 89, 0.022)),
-    rgba(255, 255, 255, 0.012);
-  box-shadow: none;
+    linear-gradient(180deg, rgba(148, 209, 89, 0.24), rgba(74, 120, 54, 0.13)),
+    radial-gradient(circle at 12% 0%, rgba(184, 239, 137, 0.18), transparent 44%),
+    rgba(17, 26, 18, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(148, 209, 89, 0.14),
+    0 12px 24px rgba(0, 0, 0, 0.14);
 }
 
 .session-workspace-form #partition-chart-shell > .partition-table {
