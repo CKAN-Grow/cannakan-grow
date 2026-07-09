@@ -95379,7 +95379,7 @@ function requestSessionProgressCompanionCurrentStepScroll(summaryElement = null,
     return;
   }
 
-  window.requestAnimationFrame(() => {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
     const roadmap = summaryElement.querySelector(".session-progress-companion-roadmap");
     const currentStep = roadmap?.querySelector?.("[data-current-roadmap-step='true']")
       || roadmap?.querySelector?.(".session-progress-companion-roadmap-step.is-current")
@@ -95390,14 +95390,35 @@ function requestSessionProgressCompanionCurrentStepScroll(summaryElement = null,
 
     const currentKey = currentStep.dataset.roadmapStepKey || currentStep.textContent?.trim() || "";
     const previousKey = summaryElement.dataset.companionRoadmapCurrentKey || "";
-    const shouldPreserveUserScroll = options.preserveUserScroll === true && previousKey === currentKey;
+    const timelineSignature = Array.from(roadmap.querySelectorAll(".session-progress-companion-roadmap-step"))
+      .map((step) => `${step.dataset.roadmapStepKey || ""}:${step.className || ""}`)
+      .join("|");
+    const previousSignature = summaryElement.dataset.companionRoadmapSignature || "";
+    const shouldPreserveUserScroll = options.preserveUserScroll === true
+      && previousKey === currentKey
+      && previousSignature === timelineSignature;
     summaryElement.dataset.companionRoadmapCurrentKey = currentKey;
+    summaryElement.dataset.companionRoadmapSignature = timelineSignature;
 
     if (shouldPreserveUserScroll) {
       roadmap.scrollLeft = Math.max(0, Number(options.previousScrollLeft) || 0);
     } else {
-      const targetLeft = currentStep.offsetLeft - Math.max(0, (roadmap.clientWidth - currentStep.offsetWidth) / 2);
-      roadmap.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
+      const maxScrollLeft = Math.max(0, roadmap.scrollWidth - roadmap.clientWidth);
+      const visibilityPadding = Math.min(18, Math.max(8, roadmap.clientWidth * 0.04));
+      const centeredLeft = currentStep.offsetLeft + (currentStep.offsetWidth / 2) - (roadmap.clientWidth / 2);
+      const stepStart = currentStep.offsetLeft;
+      const stepEnd = currentStep.offsetLeft + currentStep.offsetWidth;
+      let targetLeft = Math.min(maxScrollLeft, Math.max(0, centeredLeft));
+      const visibleStart = targetLeft + visibilityPadding;
+      const visibleEnd = targetLeft + roadmap.clientWidth - visibilityPadding;
+
+      if (stepStart < visibleStart) {
+        targetLeft = Math.max(0, stepStart - visibilityPadding);
+      } else if (stepEnd > visibleEnd) {
+        targetLeft = Math.min(maxScrollLeft, stepEnd - roadmap.clientWidth + visibilityPadding);
+      }
+
+      roadmap.scrollTo({ left: Math.min(maxScrollLeft, Math.max(0, targetLeft)), behavior: "auto" });
       summaryElement.dataset.companionRoadmapUserScrolled = "false";
     }
 
@@ -95417,7 +95438,7 @@ function requestSessionProgressCompanionCurrentStepScroll(summaryElement = null,
       }, { passive: true });
       roadmap.dataset.companionScrollBound = "true";
     }
-  });
+  }));
 }
 
 function updateSessionLifecycleTimeline(summaryElement, sectionElement, state, options = {}) {

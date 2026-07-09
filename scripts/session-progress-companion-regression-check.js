@@ -175,8 +175,13 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 [
   '.session-progress-companion-roadmap',
   "[data-current-roadmap-step='true']",
-  "currentStep.offsetLeft",
-  "roadmap.scrollTo({ left: Math.max(0, targetLeft), behavior: \"auto\" });",
+  "timelineSignature",
+  "previousSignature === timelineSignature",
+  "currentStep.offsetLeft + (currentStep.offsetWidth / 2) - (roadmap.clientWidth / 2)",
+  "Math.max(0, roadmap.scrollWidth - roadmap.clientWidth)",
+  "stepStart < visibleStart",
+  "stepEnd > visibleEnd",
+  "roadmap.scrollTo({ left: Math.min(maxScrollLeft, Math.max(0, targetLeft)), behavior: \"auto\" });",
   "companionRoadmapUserScrolled",
 ].forEach((needle) => {
   if (!companionScrollSource.includes(needle)) {
