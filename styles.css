@@ -52407,6 +52407,16 @@ body.modal-open {
   height: 58px;
 }
 
+.session-workspace-shell .hardware-session-column > .session-lifecycle-supplies-anchor .active-session-supplies-card .command-icon--supply {
+  width: 55px;
+  height: 55px;
+}
+
+.session-workspace-shell .hardware-session-column > .session-lifecycle-supplies-anchor .active-session-supplies-card .command-icon-svg {
+  width: 34px;
+  height: 34px;
+}
+
 .session-workspace-shell .hardware-session-column > .session-lifecycle-supplies-anchor .active-session-supplies-copy h4 {
   font-size: 1.08rem;
 }
@@ -52418,6 +52428,11 @@ body.modal-open {
 
 .session-workspace-shell .hardware-session-column > .session-lifecycle-supplies-anchor .active-session-supplies-actions {
   gap: 12px;
+}
+
+.session-workspace-shell .hardware-session-column > .session-lifecycle-supplies-anchor .filter-paper-supply-button {
+  min-height: 34px;
+  padding-block: 0;
 }
 
 
