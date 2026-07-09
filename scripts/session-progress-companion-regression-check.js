@@ -20,6 +20,7 @@ const rendererSource = getFunctionSource(appSource, "renderSessionProgressComman
 const roadmapSource = getFunctionSource(appSource, "renderSessionProgressCompanionRoadmapMarkup");
 const lifecycleUpdaterSource = getFunctionSource(appSource, "updateSessionLifecycleTimeline");
 const companionScrollSource = getFunctionSource(appSource, "requestSessionProgressCompanionCurrentStepScroll");
+const sessionTimeDisplaySource = getFunctionSource(appSource, "getSessionEngineSessionTimeDisplay");
 const homeRendererSource = getFunctionSource(appSource, "renderHome");
 const commandCenterListSource = getFunctionSource(appSource, "renderMySessionsCommandCenterListMarkup");
 const commandCenterSectionSource = getFunctionSource(appSource, "renderMySessionsCommandCenterSectionMarkup");
@@ -71,6 +72,7 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   "session-progress-companion-roadmap",
   "session-progress-companion-metrics",
   "session-progress-companion-reminder",
+  "getSessionEngineSessionTimeDisplay(engineState)",
   "getSessionEngineVisualTimelineTheme(engineState)",
   "renderSessionProgressCompanionRoadmapMarkup(engineState)",
   'data-session-reminders-manage="true"',
@@ -149,6 +151,8 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
   "<dt>Elapsed</dt>",
   "<dt>Next Milestone</dt>",
   "<dt>Expected Completion</dt>",
+  "Est. Completion",
+  "Estimated completion",
   "<dt>Overdue Status</dt>",
   "<dt>Required Action</dt>",
   "Timeline Steps",
@@ -156,6 +160,21 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 ].forEach((needle) => {
   if (rendererSource.includes(needle)) {
     throw new Error(`Session Progress companion renderer still contains old dashboard markup: ${needle}`);
+  }
+});
+
+[
+  "label: \"Total Session Time\"",
+  "captionLabel: \"Total session time\"",
+  "getElapsedDurationMs(startedAt, completedAt)",
+  "label: \"Est. Session Time\"",
+  "captionLabel: \"Est. session time\"",
+  "formatSessionEngineWindowOffsetLabel(engineState)",
+  "Based on completed sessions",
+  "Typical method range",
+].forEach((needle) => {
+  if (!sessionTimeDisplaySource.includes(needle)) {
+    throw new Error(`Session time display helper is missing: ${needle}`);
   }
 });
 

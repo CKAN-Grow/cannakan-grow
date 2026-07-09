@@ -95776,10 +95776,7 @@ function renderSessionEngineSummaryMarkup(engineState = null) {
   const nextMilestoneLabel = nextMilestone
     ? `${nextMilestone.title || nextMilestone.message || "Review session"}${engineState.activeMilestone ? " (due now)" : ""}`
     : "No milestone scheduled";
-  const expectedCompletion = [
-    engineState.expectedCompletionWindow?.startAt ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.startAt) : "",
-    engineState.expectedCompletionWindow?.endAt ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.endAt) : "",
-  ].filter(Boolean).join(" - ") || "Not scheduled";
+  const sessionTimeDisplay = getSessionEngineSessionTimeDisplay(engineState);
   const requiredAction = engineState.requiredUserActions?.[0]?.label || "No action needed";
 
   return `
@@ -95788,7 +95785,7 @@ function renderSessionEngineSummaryMarkup(engineState = null) {
         <div><dt>Current Phase</dt><dd>${escapeHtml(engineState.phaseLabel || "Tracking")}</dd></div>
         <div><dt>Elapsed Time</dt><dd>${escapeHtml(formatSessionEngineDurationLabel(engineState.elapsedMs))}</dd></div>
         <div><dt>Next Milestone</dt><dd>${escapeHtml(nextMilestoneLabel)}</dd></div>
-        <div><dt>Expected Completion</dt><dd>${escapeHtml(expectedCompletion)}</dd></div>
+        <div><dt>${escapeHtml(sessionTimeDisplay.label)}</dt><dd>${escapeHtml(sessionTimeDisplay.value)}</dd></div>
         <div><dt>Progress</dt><dd>${escapeHtml(`${Math.max(0, Math.min(100, Number(engineState.progressPercentage) || 0))}%`)}</dd></div>
         <div><dt>Overdue Status</dt><dd>${escapeHtml(engineState.overdueStatus?.label || "On track")}</dd></div>
         <div><dt>Required Action</dt><dd>${escapeHtml(requiredAction)}</dd></div>
@@ -96036,20 +96033,6 @@ function getSessionProgressCompanionRecommendation(engineState = null) {
   return { title: "No action needed yet.", detail: "The session is tracking normally." };
 }
 
-function getSessionProgressCompanionWindowLabel(engineState = null) {
-  const offsetLabel = formatSessionEngineWindowOffsetLabel(engineState);
-  if (offsetLabel && offsetLabel !== "Not scheduled") {
-    return offsetLabel;
-  }
-  const startLabel = engineState?.expectedCompletionWindow?.startAt
-    ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.startAt)
-    : "";
-  const endLabel = engineState?.expectedCompletionWindow?.endAt
-    ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.endAt)
-    : "";
-  return [startLabel, endLabel].filter(Boolean).join(" - ") || "Not scheduled";
-}
-
 function getSessionProgressCompanionMilestone(engineState = null) {
   return engineState?.activeMilestone || engineState?.nextMilestone || null;
 }
@@ -96158,7 +96141,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
   const milestone = getSessionProgressCompanionMilestone(engineState);
   const milestoneTitle = milestone?.title || milestone?.actionText || milestone?.message || nextStep?.label || "No milestone scheduled";
   const milestoneTime = getSessionProgressCompanionMilestoneTimeLabel(engineState, milestone);
-  const expectedCompletion = getSessionProgressCompanionWindowLabel(engineState);
+  const sessionTimeDisplay = getSessionEngineSessionTimeDisplay(engineState);
   const theme = getSessionEngineVisualTimelineTheme(engineState);
   const isOverdue = Boolean(engineState.overdueStatus?.isOverdue);
   const ringDegrees = Math.round(progress * 3.6);
@@ -96195,7 +96178,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
             </div>
           </div>
           <span class="session-progress-companion-method-badge">${escapeHtml(methodName)}</span>
-          <p>${escapeHtml(`Estimated completion: ${expectedCompletion}`)}</p>
+          <p>${escapeHtml(`${sessionTimeDisplay.captionLabel}: ${sessionTimeDisplay.value}`)}</p>
         </section>
 
         <div class="session-progress-companion-right">
@@ -96230,7 +96213,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
         ${renderSessionProgressCompanionMetricMarkup("clock", "Elapsed Time", elapsedLabel, "Since start")}
         ${renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)}
         ${renderSessionProgressCompanionMetricMarkup("drop", "Next Check", milestoneTime, milestoneTitle)}
-        ${renderSessionProgressCompanionMetricMarkup("flag", "Est. Completion", expectedCompletion, methodName)}
+        ${renderSessionProgressCompanionMetricMarkup("flag", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail)}
         ${engineState.communityAverage ? renderSessionProgressCompanionMetricMarkup("group", "Community Avg.", String(engineState.communityAverage), methodName) : ""}
         ${engineState.insight ? renderSessionProgressCompanionMetricMarkup("bulb", "Insight", String(engineState.insight), "") : ""}
       </section>
