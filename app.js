@@ -8992,14 +8992,15 @@ function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
 }
 
 function syncLocalDevQaBypassBanner() {
-  const appShell = document.querySelector(".app-shell");
-  const topbar = document.querySelector(".topbar");
-  if (!appShell || !topbar) {
+  const existingBanner = document.querySelector("#local-dev-qa-bypass-banner");
+  if (!isLocalDevQaBypassActive()) {
+    existingBanner?.remove();
+    syncLocalDevToolsSection();
     return;
   }
 
-  const existingBanner = appShell.querySelector("#local-dev-qa-bypass-banner");
-  if (!isLocalDevQaBypassActive()) {
+  const content = getLocalDevToolsContentElement();
+  if (!content) {
     existingBanner?.remove();
     return;
   }
@@ -9020,9 +9021,10 @@ function syncLocalDevQaBypassBanner() {
     </div>
   `;
 
-  const installBanner = appShell.querySelector("#install-grow-app-banner");
   if (!existingBanner) {
-    (installBanner || topbar).insertAdjacentElement("afterend", banner);
+    content.prepend(banner);
+  } else if (banner.parentElement !== content) {
+    content.prepend(banner);
   }
 
   banner.querySelector("[data-dev-qa-bypass-disable='true']")?.addEventListener("click", () => {
@@ -41518,6 +41520,47 @@ function waitForNewSessionSavedStateVisibility() {
   });
 }
 
+function syncLocalDevToolsSection() {
+  const existingSection = document.querySelector("#local-dev-tools-section");
+  if (!isLocalDevQaBypassActive() || isDownloadRouteActive()) {
+    existingSection?.remove();
+    return null;
+  }
+
+  if (!appFooter) {
+    return null;
+  }
+
+  const section = existingSection || document.createElement("section");
+  section.id = "local-dev-tools-section";
+  section.className = "local-dev-tools-section";
+  section.setAttribute("aria-label", "Developer Tools (Local Only)");
+  if (!section.innerHTML.trim()) {
+    section.innerHTML = `
+      <details class="card local-dev-tools-panel">
+        <summary class="local-dev-tools-summary">
+          <span class="local-dev-tools-summary-copy">
+            <span class="eyebrow">Developer Tools</span>
+            <strong>Developer Tools (Local Only)</strong>
+          </span>
+          <span class="local-dev-tools-summary-toggle" aria-hidden="true">Expand</span>
+        </summary>
+        <div class="local-dev-tools-content" data-local-dev-tools-content="true"></div>
+      </details>
+    `;
+  }
+
+  if (!existingSection) {
+    appFooter.insertAdjacentElement("afterend", section);
+  }
+  return section;
+}
+
+function getLocalDevToolsContentElement() {
+  const section = syncLocalDevToolsSection();
+  return section?.querySelector("[data-local-dev-tools-content='true']") || null;
+}
+
 function setSeedChartResultsUnlocked(chartShell, chartHeader, partitionContainer, unlocked, options = {}) {
   if (!chartShell || !chartHeader || !partitionContainer) {
     return;
@@ -72709,16 +72752,15 @@ function renderHome() {
 }
 
 function syncMockDataBanner() {
-  if (!app) {
+  const existingBanner = document.querySelector("#mock-data-banner");
+  if (isDownloadRouteActive() || !isLocalDevQaBypassActive() || !isMockDataEnabled()) {
+    existingBanner?.remove();
+    syncLocalDevToolsSection();
     return;
   }
 
-  const existingBanner = app.querySelector("#mock-data-banner");
-  if (isDownloadRouteActive()) {
-    existingBanner?.remove();
-    return;
-  }
-  if (!isMockDataEnabled()) {
+  const content = getLocalDevToolsContentElement();
+  if (!content) {
     existingBanner?.remove();
     return;
   }
@@ -72736,7 +72778,9 @@ function syncMockDataBanner() {
     <span class="mock-data-banner-copy">${escapeHtml(MOCK_DATA_ACTIVE_NOTICE)}</span>
   `;
   if (!existingBanner) {
-    app.prepend(banner);
+    content.append(banner);
+  } else if (banner.parentElement !== content) {
+    content.append(banner);
   }
 }
 
