@@ -1451,7 +1451,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsStageTracking: true,
     supportsProgress: true,
     supportsFilterInventory: true,
-    defaultSessionStatus: "",
+    defaultSessionStatus: "active",
     defaultRowCount: 8,
     rowLabel: "Partition",
     chartEyebrow: "KAN",
@@ -1471,7 +1471,7 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     supportsStageTracking: true,
     supportsProgress: true,
     supportsFilterInventory: false,
-    defaultSessionStatus: "",
+    defaultSessionStatus: "active",
     defaultRowCount: 16,
     rowLabel: "Partition",
     chartEyebrow: "TRā",
@@ -83536,6 +83536,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const pendingSeedVaultStarterIntent = getPendingNewSessionSeedVaultStarterIntent();
   const starterSeedVaultEntry = getSeedVaultEntryForSessionStart(pendingSeedVaultStarterIntent?.entryId || "");
   appState.newSessionSystemType = normalizedSystemType;
+  sessionStatusField.value = getMethodDefaultSessionStatus(normalizedSystemType);
   appState.newSessionSeedVaultExpanded = Boolean(pendingSeedVaultStarterIntent || starterSeedVaultEntry);
   appState.newSessionSeedVaultActivePartitionId = Math.max(1, Number(pendingSeedVaultStarterIntent?.activePartitionId) || 1);
   if (pendingSeedVaultStarterIntent?.entryId) {
@@ -84083,8 +84084,6 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (handleSessionEnginePrimaryAction(sessionStatusField)) {
         return;
       }
-      appState.growthStageModalDismissed = false;
-      openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
     });
     form.addEventListener("change", (event) => {
       const target = event.target;
@@ -84105,33 +84104,6 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (target.name === "sessionSeedAgeYears") {
         validateSeedAgeSettings(form);
         rerenderSeedAgePartitions();
-      }
-    });
-    chartShell.addEventListener("click", (event) => {
-      if (!event.target.closest("#partition-fields")) {
-        return;
-      }
-
-      if (maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)) {
-        event.preventDefault();
-      }
-    });
-    partitionFields.addEventListener("focusin", (event) => {
-      if (!event.target.closest("input, select, textarea")) {
-        return;
-      }
-
-      if (maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)) {
-        event.target.blur();
-      }
-    });
-    partitionFields.addEventListener("keydown", (event) => {
-      if (!event.target.closest(".partition-input")) {
-        return;
-      }
-
-      if (maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)) {
-        event.preventDefault();
       }
     });
     systemTypeField.addEventListener("change", (event) => {
@@ -84168,6 +84140,10 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       resetNewSessionMethodSpecificDraftState(form, previousMethod, nextMethod);
       appState.newSessionSystemType = nextMethod;
+      if (normalizeSessionStatus(sessionStatusField.value) !== "completed") {
+        sessionStatusField.value = getMethodDefaultSessionStatus(nextMethod);
+        form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
+      }
       form.__customMethodRowCount = getMethodConfig(nextMethod).isStandardized
         ? 0
         : getMethodConfig(nextMethod).defaultRowCount;
@@ -84369,15 +84345,16 @@ function renderSessionForm(initialSystemType = "KAN") {
       return null;
     }
     if (!validateSessionStatus(sessionStatusField, sessionStatusError)) {
-      formMessage.textContent = "";
-      setUnsavedChangesLastSaveError(new Error(sessionStatusError?.textContent || "Please select a growth stage before saving."), "Please select a growth stage before saving.");
-      openGrowthStageModal({
-        stageField: sessionStatusField,
-        stageTrigger: sessionStatusTrigger,
-        message: "Choose a growth stage before saving this session.",
-        focusStageOptions: true,
+      const defaultStatus = getMethodDefaultSessionStatus(form.elements.systemType?.value || systemTypeField.value || "KAN") || "active";
+      sessionStatusField.value = defaultStatus;
+      form.dataset.currentStage = normalizeSessionStatus(defaultStatus);
+      clearSessionStatusError(sessionStatusField, sessionStatusError);
+      syncSessionStatusControlDatasets(sessionStatusField, {
+        germinationStartedAt: form.dataset.germinationStartedAt || "",
+        firstPlantedAt: form.dataset.firstPlantedAt || "",
+        completedAt: form.dataset.completedAt || "",
       });
-      return null;
+      updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
     }
 
     const seedAgeValidation = validateSeedAgeSettings(form);
@@ -91575,8 +91552,6 @@ function renderSessionDetail(sessionId) {
       if (handleSessionEnginePrimaryAction(detail.statusField)) {
         return;
       }
-      appState.growthStageModalDismissed = false;
-      openGrowthStageModal({ stageField: detail.statusField, stageTrigger: detail.statusTrigger });
     });
     detail.actionStageTrigger?.addEventListener("click", () => {
       detail.statusTrigger?.click();

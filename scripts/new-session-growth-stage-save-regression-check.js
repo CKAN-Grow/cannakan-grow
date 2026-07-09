@@ -3,17 +3,13 @@ const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
-const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
 
 const requiredAppNeedles = [
-  'function openGrowthStageModal({ stageField, stageTrigger, message = "", focusStageOptions = false } = {})',
-  'data-growth-stage-modal-helper',
-  'helper.textContent = String(message || "").trim();',
-  'helper.hidden = !helper.textContent;',
-  'message: "Choose a growth stage before saving this session.",',
-  "focusStageOptions: true,",
-  'const focusTarget = focusStageOptions',
-  '? overlay.querySelector("[data-growth-stage-value]")',
+  'defaultSessionStatus: "active",',
+  'sessionStatusField.value = getMethodDefaultSessionStatus(normalizedSystemType);',
+  'sessionStatusField.value = getMethodDefaultSessionStatus(nextMethod);',
+  'const defaultStatus = getMethodDefaultSessionStatus(form.elements.systemType?.value || systemTypeField.value || "KAN") || "active";',
+  "updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);",
 ];
 
 for (const needle of requiredAppNeedles) {
@@ -28,15 +24,29 @@ if (!saveValidationBlock) {
 }
 
 if (!saveValidationBlock[0].includes("openGrowthStageModal({")) {
-  throw new Error("Missing Growth Stage modal prompt when saving without a stage.");
+  // Expected: save now derives a method default status instead of opening the retired stage modal.
+} else {
+  throw new Error("Save without a growth stage should not open the retired stage modal.");
 }
 
-if (saveValidationBlock[0].includes("sessionStatusTrigger?.focus();")) {
-  throw new Error("Save without a growth stage should open the stage modal, not only focus the trigger.");
+[
+  "maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)",
+  "appState.growthStageModalDismissed = false;\n      openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });",
+  "message: \"Choose a growth stage before saving this session.\"",
+  "focusStageOptions: true,",
+].forEach((needle) => {
+  if (appSource.includes(needle)) {
+    throw new Error(`Retired chart/save growth-stage modal trigger is still active: ${needle}`);
+  }
+});
+
+const detailStatusTriggerBlock = appSource.match(/detail\.statusTrigger\?\.addEventListener\("click", \(\) => \{[\s\S]*?\n    \}\);/);
+if (!detailStatusTriggerBlock) {
+  throw new Error("Could not find detail status trigger block.");
 }
 
-if (!stylesSource.includes(".growth-stage-modal-helper")) {
-  throw new Error("Missing Growth Stage modal helper styling.");
+if (detailStatusTriggerBlock[0].includes("openGrowthStageModal({")) {
+  throw new Error("Saved session detail status trigger should not open the retired stage modal.");
 }
 
-console.log("New session growth-stage save regression check passed.");
+console.log("New session automated status regression check passed.");
