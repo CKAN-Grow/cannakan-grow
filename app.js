@@ -41587,7 +41587,7 @@ function setSeedChartResultsUnlocked(chartShell, chartHeader, partitionContainer
     chartShell.classList.remove("seed-chart-results-unlocked-glow");
     partitionContainer.classList.remove("seed-chart-results-unlocked-glow");
     glowTargets.forEach((target) => target.classList.remove("seed-chart-result-column-unlocked"));
-  }, 4200);
+  }, 3000);
 }
 
 function syncNewSessionSeedChartResultsUnlockState(form, options = {}) {
@@ -41620,7 +41620,9 @@ function showSeedChartExpandedModal() {
       <div class="seed-chart-expanded-modal" role="dialog" aria-modal="true" aria-labelledby="seed-chart-expanded-modal-title" aria-describedby="seed-chart-expanded-modal-description">
         <p class="seed-chart-expanded-modal-eyebrow">Seed Chart</p>
         <h2 id="seed-chart-expanded-modal-title">Seed Chart Expanded</h2>
-        <p id="seed-chart-expanded-modal-description">You have expanded your Seed Chart. New result columns are now unlocked: # Germinated and Success %. Return here when seeds germinate to complete your session results.</p>
+        <p id="seed-chart-expanded-modal-description">Your session has been started.</p>
+        <p>The Germinated Seeds and Success % columns are now unlocked.</p>
+        <p>Return here during your session to record germination results and complete your session.</p>
         <button type="button" class="button button-primary" data-seed-chart-expanded-continue>Continue</button>
       </div>
     `;

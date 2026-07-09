@@ -11,7 +11,10 @@ for (const needle of [
   'function syncNewSessionSeedChartResultsUnlockState(form, options = {})',
   'function showSeedChartExpandedModal()',
   'Seed Chart Expanded',
-  'New result columns are now unlocked: # Germinated and Success %.',
+  'Your session has been started.',
+  'The Germinated Seeds and Success % columns are now unlocked.',
+  'Return here during your session to record germination results and complete your session.',
+  '}, 3000);',
   'form.dataset.seedChartExpandedModalShown = "true";',
   'form.dataset.seedChartResultsUnlocked = "true";',
   'syncNewSessionSeedChartResultsUnlockState(form, { highlight: true });',
@@ -32,15 +35,31 @@ for (const needle of [
 }
 
 for (const needle of [
-  '.chart-shell[data-results-unlocked="false"] .chart-header [data-partition-header="germinated"]',
-  '.partition-table[data-results-unlocked="false"] .partition-row label:has(input[name="plantedCount"])',
+  '.chart-shell:not([data-results-unlocked="true"]) .chart-header [data-partition-header="germinated"]',
+  '.partition-table:not([data-results-unlocked="true"]) .partition-row label:has(input[name="plantedCount"])',
+  '.chart-shell[data-results-unlocked="true"] .chart-row',
+  '.partition-table[data-results-unlocked="true"] .chart-row',
+  '.partition-table[data-results-unlocked="true"] .partition-row label:has(input[name="plantedCount"])',
   '.seed-chart-result-column-unlocked',
+  'animation: seed-chart-result-column-unlock-glow 3s ease-out both;',
+  'transform: translateX(12px);',
   '@keyframes seed-chart-result-column-unlock-glow',
   '.seed-chart-expanded-modal-overlay',
   '.seed-chart-expanded-modal',
 ]) {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing seed chart unlock styling: ${needle}`);
+  }
+}
+
+for (const retiredNeedle of [
+  '.chart-shell[data-results-unlocked="false"] .chart-header [data-partition-header="germinated"]',
+  '.partition-table[data-method-standardized="false"][data-session-status="active"] .partition-row label:has(input[name="plantedCount"])',
+  '.partition-table[data-method-standardized="false"] .partition-row {\n    grid-template-areas:',
+  'New result columns are now unlocked: # Germinated and Success %.',
+]) {
+  if (stylesSource.includes(retiredNeedle) || appSource.includes(retiredNeedle)) {
+    throw new Error(`Retired seed chart workflow behavior remains: ${retiredNeedle}`);
   }
 }
 
