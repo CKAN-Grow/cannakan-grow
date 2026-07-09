@@ -52096,6 +52096,8 @@ body.modal-open {
 }
 
 .session-workspace-shell .session-top-grid {
+  position: relative;
+  z-index: 20;
   display: grid;
   grid-template-columns: minmax(300px, 0.32fr) minmax(520px, 0.68fr);
   gap: 20px;
@@ -52193,8 +52195,11 @@ body.modal-open {
 }
 
 .session-workspace-form[data-method-standardized="true"] .system-type-field {
+  position: relative;
+  z-index: 4;
   align-self: stretch;
   justify-content: center;
+  pointer-events: auto;
 }
 
 .session-workspace-form[data-method-standardized="true"] .system-type-field small {

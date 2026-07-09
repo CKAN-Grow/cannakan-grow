@@ -2177,6 +2177,55 @@ function syncMethodTypeSelectOptions(selectElement, selectedMethod = "") {
   selectElement.innerHTML = selectionOptions.join("");
   selectElement.value = nextMethod;
 }
+
+function bindCreateSessionMethodTypeSelector(selectElement) {
+  if (!(selectElement instanceof HTMLSelectElement) || selectElement.dataset.methodSelectorBound === "true") {
+    return;
+  }
+
+  const field = selectElement.closest(".system-type-field");
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  field.addEventListener("pointerdown", (event) => {
+    if (selectElement.disabled || event.target === selectElement) {
+      return;
+    }
+
+    event.preventDefault();
+    selectElement.focus({ preventScroll: true });
+    if (typeof selectElement.showPicker === "function") {
+      try {
+        selectElement.showPicker();
+      } catch (error) {
+        selectElement.click();
+      }
+    } else {
+      selectElement.click();
+    }
+  });
+
+  field.addEventListener("keydown", (event) => {
+    if (selectElement.disabled || (event.key !== "Enter" && event.key !== " ")) {
+      return;
+    }
+
+    event.preventDefault();
+    selectElement.focus({ preventScroll: true });
+    if (typeof selectElement.showPicker === "function") {
+      try {
+        selectElement.showPicker();
+      } catch (error) {
+        selectElement.click();
+      }
+    } else {
+      selectElement.click();
+    }
+  });
+
+  selectElement.dataset.methodSelectorBound = "true";
+}
 const ACTIVE_PARTITION_STYLE = {
   fill: "#f2ff4d",
   stroke: "#0d5b1f",
@@ -83157,6 +83206,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   applyNewSessionTimestampEditAccess(form);
   syncMethodTypeSelectOptions(systemTypeField, normalizedSystemType);
   systemTypeField.value = normalizedSystemType;
+  bindCreateSessionMethodTypeSelector(systemTypeField);
   updateMethodTypeLayout(form, normalizedSystemType);
   if (normalizedSystemType === "PAPER_TOWEL_SOAK") {
     form.dataset.paperTowelSetupChoice = normalizedSystemType;

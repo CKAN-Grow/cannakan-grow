@@ -9,6 +9,9 @@ const requiredNeedles = [
   "resetNewSessionMethodSpecificDraftState(form, previousMethod, nextMethod);",
   "const isCreateSessionMethodField = Boolean(field.closest(\"#session-form\"));",
   "field.disabled = isCreateSessionMethodField ? false : !allowFullEditing;",
+  "function bindCreateSessionMethodTypeSelector(selectElement)",
+  "bindCreateSessionMethodTypeSelector(systemTypeField);",
+  "selectElement.showPicker();",
   "previousMethod.isStandardized && !nextMethod.isStandardized",
   "nextMethod.isStandardized && !String(unitIdField.value || \"\").trim()",
 ];
