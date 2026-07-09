@@ -95045,12 +95045,203 @@ function renderSessionProgressStepsMarkup(engineState = null) {
   `;
 }
 
+function getSessionProgressCompanionStatus(engineState = null) {
+  if (!engineState) {
+    return { key: "idle", label: "Not Started", detail: "Choose a method and save the session to begin." };
+  }
+  if (engineState.completedAt || engineState.status === "completed") {
+    return { key: "complete", label: "Complete", detail: "This session has been completed." };
+  }
+  if (engineState.overdueStatus?.isOverdue || getSessionEngineActionList(engineState).some((action) => action.priority === "high")) {
+    return { key: "attention", label: "Attention Needed", detail: engineState.overdueStatus?.label || "A session action is due." };
+  }
+  return { key: "on-track", label: "On Track", detail: "Everything looks good." };
+}
+
+function getSessionProgressCompanionTimeHero(engineState = null) {
+  const elapsedHours = Math.max(0, Number(engineState?.elapsedHours) || 0);
+  const methodKey = getSessionEngineMethodKey(engineState?.methodKey || engineState?.definition?.key || "");
+  const dayBasedMethods = new Set(["ROCKWOOL", "RAPID_ROOTER", "DIRECT_SOW"]);
+  if (dayBasedMethods.has(methodKey) || elapsedHours >= 24) {
+    return {
+      label: "Day",
+      value: String(Math.max(1, Math.floor(elapsedHours / 24) + 1)).padStart(2, "0"),
+    };
+  }
+  return {
+    label: "Hour",
+    value: String(Math.max(0, Math.floor(elapsedHours))).padStart(2, "0"),
+  };
+}
+
+function getSessionProgressCompanionGuidance(engineState = null) {
+  const phaseKey = String(engineState?.currentPhase?.key || getSessionEngineCurrentStep(engineState)?.key || "").toLowerCase();
+  const phaseLabel = engineState?.phaseLabel || getSessionEngineCurrentStep(engineState)?.label || "Tracking";
+  if (engineState?.completedAt || engineState?.status === "completed") {
+    return "Review the final germination results and keep this record for your grow history.";
+  }
+  if (["seeds-planted", "plant-seeds", "plant-seed", "planted"].includes(phaseKey)) {
+    return "Plant seeds into the prepared medium and keep conditions steady.";
+  }
+  if (["keep-moist", "keep-cubes-moist", "keep-plugs-moist"].includes(phaseKey)) {
+    return "Keep the medium evenly moist without oversaturating it.";
+  }
+  if (["watch-sprouts", "check-sprouts", "emergence"].includes(phaseKey)) {
+    return "Watch for sprouts and maintain a stable, gentle environment.";
+  }
+  if (["check-window", "check-seeds", "first-check"].includes(phaseKey)) {
+    return "Check seeds carefully and record any germination results.";
+  }
+  if (["ready-transfer", "move-germination", "move-paper-towel"].includes(phaseKey)) {
+    return "Move seeds into the next germination stage when they are ready.";
+  }
+  if (["soak", "soaking"].includes(phaseKey)) {
+    return "Let seeds soak while you prepare the next step.";
+  }
+  if (phaseLabel && phaseLabel !== "Tracking") {
+    return `Focus on ${phaseLabel.toLowerCase()} and follow the method timing.`;
+  }
+  return "Follow the current method step and keep the session conditions steady.";
+}
+
+function getSessionProgressCompanionRecommendation(engineState = null) {
+  const actionLabel = getSessionEngineActionList(engineState)[0]?.label || "";
+  if (actionLabel) {
+    return {
+      title: actionLabel.endsWith(".") ? actionLabel : `${actionLabel}.`,
+      detail: "This is the most important action for the current session stage.",
+    };
+  }
+
+  const phaseKey = String(engineState?.currentPhase?.key || getSessionEngineCurrentStep(engineState)?.key || "").toLowerCase();
+  if (["seeds-planted", "plant-seeds", "plant-seed", "planted"].includes(phaseKey)) {
+    return { title: "Plant seeds now.", detail: "Place seeds into the prepared medium and begin monitoring." };
+  }
+  if (["keep-moist", "keep-cubes-moist", "keep-plugs-moist"].includes(phaseKey)) {
+    return { title: "Keep the medium moist.", detail: "Maintain steady moisture and avoid drying out." };
+  }
+  if (["watch-sprouts", "check-sprouts", "emergence"].includes(phaseKey)) {
+    return { title: "Watch for sprouts.", detail: "Check gently and keep the environment consistent." };
+  }
+  if (["check-window", "check-seeds", "first-check"].includes(phaseKey)) {
+    return { title: "Check seeds.", detail: "Look for taproots or sprouts and update results when ready." };
+  }
+  if (["ready-transfer", "move-germination", "move-paper-towel"].includes(phaseKey)) {
+    return { title: "Move to the next stage.", detail: "Transition seeds when the method timing indicates they are ready." };
+  }
+  if (["soak", "soaking"].includes(phaseKey)) {
+    return { title: "Continue soaking.", detail: "Prepare the next stage before the soak window ends." };
+  }
+  if (engineState?.completedAt || engineState?.status === "completed") {
+    return { title: "Session complete.", detail: "Confirm the final result data is recorded." };
+  }
+  return { title: "No action needed yet.", detail: "The session is tracking normally." };
+}
+
+function getSessionProgressCompanionWindowLabel(engineState = null) {
+  const offsetLabel = formatSessionEngineWindowOffsetLabel(engineState);
+  if (offsetLabel && offsetLabel !== "Not scheduled") {
+    return offsetLabel;
+  }
+  const startLabel = engineState?.expectedCompletionWindow?.startAt
+    ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.startAt)
+    : "";
+  const endLabel = engineState?.expectedCompletionWindow?.endAt
+    ? formatSessionEngineTimestampLabel(engineState.expectedCompletionWindow.endAt)
+    : "";
+  return [startLabel, endLabel].filter(Boolean).join(" - ") || "Not scheduled";
+}
+
+function getSessionProgressCompanionMilestone(engineState = null) {
+  return engineState?.activeMilestone || engineState?.nextMilestone || null;
+}
+
+function getSessionProgressCompanionMilestoneTimeLabel(engineState = null, milestone = null) {
+  if (!milestone) {
+    return "Not scheduled";
+  }
+  if (engineState?.activeMilestone && milestone.key === engineState.activeMilestone.key) {
+    return "Now";
+  }
+  if (milestone.dueAt) {
+    return formatSessionEngineTimestampLabel(milestone.dueAt);
+  }
+  const atHours = Number(milestone.atHours ?? milestone.hours);
+  return Number.isFinite(atHours) ? formatSessionEngineHourOffsetLabel(atHours) : "Not scheduled";
+}
+
+function renderSessionProgressCompanionIconMarkup(iconKey = "info", className = "") {
+  const paths = {
+    pulse: '<path d="M4 13h3l2-6 4 11 2-5h5" /><path d="M4 19V5" />',
+    hand: '<path d="M8 15.5 6.8 13a2 2 0 0 1 3.5-1.9L12 14.3V6.5a1.5 1.5 0 0 1 3 0V12" /><path d="M15 11.5v-2a1.5 1.5 0 0 1 3 0V14" /><path d="M18 12.5v-1a1.5 1.5 0 0 1 3 0V15c0 4-2.5 6-6.2 6H13c-2.1 0-3.9-1-5-2.6L5.4 14" />',
+    clock: '<circle cx="12" cy="12" r="8" /><path d="M12 7.5V12l3 2" />',
+    calendar: '<rect x="4" y="5.5" width="16" height="14" rx="2" /><path d="M8 3.5v4M16 3.5v4M4 10h16" />',
+    drop: '<path d="M12 3.8c3.8 4.5 5.7 7.8 5.7 10.1a5.7 5.7 0 0 1-11.4 0C6.3 11.6 8.2 8.3 12 3.8Z" />',
+    flag: '<path d="M6 20V5" /><path d="M6 5h10l-1.5 3L16 11H6" />',
+    group: '<path d="M8.5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path d="M15.5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path d="M3.5 20c.7-3 2.5-4.5 5-4.5s4.3 1.5 5 4.5" /><path d="M10.5 20c.6-2.6 2.3-4 5-4 2.4 0 4.1 1.4 5 4" />',
+    bulb: '<path d="M9 18h6" /><path d="M10 21h4" /><path d="M8 11a4 4 0 1 1 8 0c0 1.8-1.1 2.8-2 4H10c-.9-1.2-2-2.2-2-4Z" /><path d="M12 2v2M4.9 4.9l1.4 1.4M19.1 4.9l-1.4 1.4" />',
+    bell: '<path d="M6 16h12l-1.2-2V10a4.8 4.8 0 0 0-9.6 0v4L6 16Z" /><path d="M10 19a2 2 0 0 0 4 0" />',
+    check: '<path d="M5 12.3 9.2 16.4 19 7" />',
+  };
+  return `
+    <svg class="${escapeHtml(className)}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      ${paths[iconKey] || paths.pulse}
+    </svg>
+  `;
+}
+
+function renderSessionProgressCompanionRoadmapMarkup(engineState = null) {
+  const steps = Array.isArray(engineState?.timelineSteps)
+    ? engineState.timelineSteps.filter((step) => String(step?.label || "").trim())
+    : [];
+  if (!steps.length) {
+    return "";
+  }
+
+  return `
+    <ol class="session-progress-companion-roadmap-list" aria-label="Session roadmap">
+      ${steps.map((step, index) => {
+        const status = getSessionEngineVisualTimelineStatus(step, engineState);
+        const nodeLabel = status.key === "complete" || status.key === "preparation-complete"
+          ? renderSessionProgressCompanionIconMarkup("check", "session-progress-companion-roadmap-check")
+          : escapeHtml(String(index + 1));
+        return `
+          <li class="session-progress-companion-roadmap-step is-${escapeHtml(status.key)}">
+            <span class="session-progress-companion-roadmap-node">${nodeLabel}</span>
+            <span class="session-progress-companion-roadmap-copy">
+              <strong>${escapeHtml(step.label || "Step")}</strong>
+              <small>${escapeHtml(step.isCurrent ? "Now" : (step.timing || status.label))}</small>
+            </span>
+          </li>
+        `;
+      }).join("")}
+    </ol>
+  `;
+}
+
+function renderSessionProgressCompanionMetricMarkup(iconKey = "clock", label = "", value = "", detail = "") {
+  return `
+    <article class="session-progress-companion-metric">
+      <span class="session-progress-companion-metric-icon">${renderSessionProgressCompanionIconMarkup(iconKey, "session-progress-companion-metric-svg")}</span>
+      <span class="session-progress-companion-metric-label">${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value || "Unavailable")}</strong>
+      ${detail ? `<small>${escapeHtml(detail)}</small>` : ""}
+    </article>
+  `;
+}
+
 function renderSessionProgressCommandCenterMarkup(engineState = null) {
   if (!engineState) {
     return `
-      <article class="session-progress-command-card session-progress-command-card--empty" aria-label="Session Progress">
-        <div class="session-progress-command-head">
-          <span class="session-progress-command-kicker">Session Progress</span>
+      <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="Session Progress">
+        <header class="session-progress-companion-head">
+          <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
+          <div>
+            <p class="eyebrow">Session Progress</p>
+            <h3>Your Grow Companion</h3>
+          </div>
+        </header>
+        <div class="session-progress-companion-empty">
           <strong>Timeline unavailable</strong>
           <p>Select a method and start time to calculate session progress.</p>
         </div>
@@ -95060,86 +95251,107 @@ function renderSessionProgressCommandCenterMarkup(engineState = null) {
 
   const progress = Math.max(0, Math.min(100, Number(engineState.progressPercentage) || 0));
   const methodName = engineState.methodName || engineState.definition?.displayName || "Session Method";
-  const requiredAction = getSessionEngineActionList(engineState)[0]?.label || "No action needed yet.";
+  const currentStep = getSessionEngineCurrentStep(engineState);
+  const nextStep = getSessionEngineNextStep(engineState);
+  const companionStatus = getSessionProgressCompanionStatus(engineState);
+  const timeHero = getSessionProgressCompanionTimeHero(engineState);
+  const recommendation = getSessionProgressCompanionRecommendation(engineState);
+  const milestone = getSessionProgressCompanionMilestone(engineState);
+  const milestoneTitle = milestone?.title || milestone?.actionText || milestone?.message || nextStep?.label || "No milestone scheduled";
+  const milestoneTime = getSessionProgressCompanionMilestoneTimeLabel(engineState, milestone);
+  const expectedCompletion = getSessionProgressCompanionWindowLabel(engineState);
+  const theme = getSessionEngineVisualTimelineTheme(engineState);
   const isOverdue = Boolean(engineState.overdueStatus?.isOverdue);
-  const overdueLabel = engineState.overdueStatus?.label || "On track";
-  const overdueDetail = isOverdue && engineState.overdueStatus?.overdueAt
-    ? `Since ${formatSessionEngineTimestampLabel(engineState.overdueStatus.overdueAt)}`
-    : "Within expected timing";
+  const ringDegrees = Math.round(progress * 3.6);
+  const elapsedLabel = formatSessionEngineDurationLabel(engineState.elapsedMs);
+  const reminderPurpose = milestone?.message || milestone?.actionText || milestone?.title || "";
+  const hasReminder = Boolean(milestone);
+  const actionMarkup = getSessionEngineActionList(engineState).length
+    ? renderSessionProgressActionMarkup(engineState)
+    : "";
 
   return `
-    <article class="session-progress-command-card ${isOverdue ? "is-overdue" : ""}" aria-label="Session Progress">
-      <div class="session-progress-command-head">
-        <span class="session-progress-command-kicker">Session Progress</span>
-        <strong>${escapeHtml(methodName)}</strong>
+    <article
+      class="session-progress-companion-card ${isOverdue ? "is-overdue" : ""}"
+      aria-label="Session Progress"
+      data-method-theme="${escapeHtml(theme.key)}"
+      style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;"
+    >
+      <header class="session-progress-companion-head">
+        <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
+        <div>
+          <p class="eyebrow">Session Progress</p>
+          <h3>Your Grow Companion</h3>
+        </div>
+      </header>
+
+      <div class="session-progress-companion-main">
+        <section class="session-progress-companion-ring-panel" aria-label="Estimated progress">
+          <div class="session-progress-companion-ring" role="img" aria-label="${escapeHtml(`Estimated progress ${progress}%`)}">
+            <div class="session-progress-companion-ring-core">
+              <span>${escapeHtml(timeHero.label)}</span>
+              <strong>${escapeHtml(timeHero.value)}</strong>
+              <em>${escapeHtml(elapsedLabel)}</em>
+              <small>Elapsed time</small>
+            </div>
+          </div>
+          <span class="session-progress-companion-method-badge">${escapeHtml(methodName)}</span>
+          <p>${escapeHtml(`Estimated completion: ${expectedCompletion}`)}</p>
+        </section>
+
+        <div class="session-progress-companion-right">
+          <section class="session-progress-companion-hero" aria-label="Current phase">
+            <div class="session-progress-companion-phase-copy">
+              <p class="eyebrow">Current Phase</p>
+              <h4>${escapeHtml(engineState.phaseLabel || currentStep?.label || "Tracking")}</h4>
+              <p>${escapeHtml(getSessionProgressCompanionGuidance(engineState))}</p>
+              <div class="session-progress-companion-status-row">
+                <span class="session-progress-companion-status is-${escapeHtml(companionStatus.key)}">
+                  <span aria-hidden="true"></span>${escapeHtml(companionStatus.label)}
+                </span>
+                <small>${escapeHtml(companionStatus.detail)}</small>
+              </div>
+            </div>
+            <aside class="session-progress-companion-recommendation" aria-label="Recommendation">
+              <span class="session-progress-companion-recommendation-icon">${renderSessionProgressCompanionIconMarkup("hand", "session-progress-companion-recommendation-svg")}</span>
+              <div>
+                <p class="eyebrow">Recommendation</p>
+                <strong>${escapeHtml(recommendation.title)}</strong>
+                <span>${escapeHtml(recommendation.detail)}</span>
+              </div>
+            </aside>
+          </section>
+
+          <section class="session-progress-companion-roadmap" aria-label="Compact session roadmap">
+            ${renderSessionProgressCompanionRoadmapMarkup(engineState)}
+          </section>
+        </div>
       </div>
 
-      <dl class="session-progress-command-metrics">
-        <div>
-          <dt>Method</dt>
-          <dd>${escapeHtml(methodName)}</dd>
-        </div>
-        <div>
-          <dt>Current Phase</dt>
-          <dd>${escapeHtml(engineState.phaseLabel || "Tracking")}</dd>
-        </div>
-        <div>
-          <dt>Elapsed</dt>
-          <dd>${escapeHtml(formatSessionEngineDurationLabel(engineState.elapsedMs))}</dd>
-        </div>
-        <div>
-          <dt>Next Milestone</dt>
-          <dd>${escapeHtml(getSessionEngineMilestoneSummary(engineState))}</dd>
-        </div>
-        <div>
-          <dt>Expected Completion</dt>
-          <dd>${escapeHtml(formatSessionEngineWindowOffsetLabel(engineState))}</dd>
-        </div>
-        <div>
-          <dt>Overdue Status</dt>
-          <dd>
-            <span class="session-progress-command-status ${isOverdue ? "is-warning" : "is-ok"}">${escapeHtml(overdueLabel)}</span>
-            <small>${escapeHtml(overdueDetail)}</small>
-          </dd>
-        </div>
-        <div class="session-progress-command-metric-wide">
-          <dt>Progress</dt>
-          <dd>
-            <div class="session-progress-command-progress" aria-label="${escapeHtml(`Progress ${progress}%`)}">
-              <span style="width: ${progress}%;"></span>
-            </div>
-            <strong>${escapeHtml(`${progress}%`)}</strong>
-          </dd>
-        </div>
-        <div class="session-progress-command-metric-wide">
-          <dt>Required Action</dt>
-          <dd>${escapeHtml(requiredAction)}</dd>
-        </div>
-        ${engineState.requiresResultEntry ? `
-          <div class="session-progress-command-metric-wide session-progress-command-result-alert">
-            <dt>Results</dt>
-            <dd>Record germination results</dd>
-          </div>
-        ` : ""}
-      </dl>
+      <section class="session-progress-companion-metrics" aria-label="Session progress metrics">
+        ${renderSessionProgressCompanionMetricMarkup("clock", "Elapsed Time", elapsedLabel, "Since start")}
+        ${renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)}
+        ${renderSessionProgressCompanionMetricMarkup("drop", "Next Check", milestoneTime, milestoneTitle)}
+        ${renderSessionProgressCompanionMetricMarkup("flag", "Est. Completion", expectedCompletion, methodName)}
+        ${engineState.communityAverage ? renderSessionProgressCompanionMetricMarkup("group", "Community Avg.", String(engineState.communityAverage), methodName) : ""}
+        ${engineState.insight ? renderSessionProgressCompanionMetricMarkup("bulb", "Insight", String(engineState.insight), "") : ""}
+      </section>
 
-      ${isOverdue ? `
-        <div class="session-progress-command-warning" role="status">
-          <strong>Overdue warning</strong>
-          <span>This session has passed its expected completion window.</span>
+      <section class="session-progress-companion-reminder ${hasReminder ? "" : "is-empty"}" aria-label="Next reminder">
+        <span class="session-progress-companion-reminder-icon">${renderSessionProgressCompanionIconMarkup("bell", "session-progress-companion-reminder-svg")}</span>
+        <div>
+          <p class="eyebrow">Next Reminder</p>
+          <strong>${escapeHtml(hasReminder ? milestoneTime : "No reminder scheduled")}</strong>
+          <span>${escapeHtml(hasReminder ? (reminderPurpose || "Review the next session milestone.") : "Reminders will appear when the Session Engine schedules one.")}</span>
         </div>
+        <button type="button" class="button button-secondary session-progress-companion-reminder-button" ${hasReminder ? 'data-session-reminders-manage="true"' : "disabled"}>Manage Reminders</button>
+      </section>
+
+      ${actionMarkup ? `
+        <section class="session-progress-companion-action-panel" aria-label="Session progress actions">
+          ${actionMarkup}
+        </section>
       ` : ""}
-
-      <section class="session-progress-command-action-panel" aria-label="Session progress action">
-        ${renderSessionProgressActionMarkup(engineState)}
-      </section>
-
-      <section class="session-progress-command-step-panel" aria-label="Timeline steps">
-        <div class="session-progress-command-step-head">
-          <span>Timeline Steps</span>
-        </div>
-        ${renderSessionProgressStepsMarkup(engineState)}
-      </section>
     </article>
   `;
 }
@@ -95172,6 +95384,15 @@ function bindSessionProgressCommandActions(summaryElement = null) {
     return;
   }
   summaryElement.addEventListener("click", (event) => {
+    const reminderTrigger = event.target instanceof Element
+      ? event.target.closest("[data-session-reminders-manage='true']")
+      : null;
+    if (reminderTrigger) {
+      event.preventDefault();
+      navigateToProfilePreferences();
+      return;
+    }
+
     const trigger = event.target instanceof Element
       ? event.target.closest("[data-session-engine-action-trigger]")
       : null;

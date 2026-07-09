@@ -4423,6 +4423,637 @@ body.theme-dark .spotlight-stat strong {
   }
 }
 
+.session-progress-companion-card {
+  --session-companion-accent: #94d159;
+  --session-companion-accent-soft: rgba(148, 209, 89, 0.16);
+  --session-companion-glow: rgba(148, 209, 89, 0.28);
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  padding: clamp(18px, 2.2vw, 28px);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 34%, transparent);
+  border-radius: 16px;
+  color: #f5f8f2;
+  background:
+    radial-gradient(circle at 12% 12%, var(--session-companion-accent-soft), transparent 34%),
+    radial-gradient(circle at 88% 0%, rgba(255, 255, 255, 0.055), transparent 28%),
+    linear-gradient(135deg, rgba(11, 21, 14, 0.96), rgba(3, 10, 10, 0.98) 58%, rgba(0, 5, 7, 0.98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 46px rgba(0, 0, 0, 0.34),
+    0 0 38px color-mix(in srgb, var(--session-companion-glow) 58%, transparent);
+}
+
+.session-progress-companion-card.is-overdue {
+  --session-companion-accent: #f59e0b;
+  --session-companion-accent-soft: rgba(245, 158, 11, 0.16);
+  --session-companion-glow: rgba(245, 158, 11, 0.3);
+}
+
+.session-progress-companion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.session-progress-companion-head > div {
+  min-width: 0;
+  margin-right: auto;
+}
+
+.session-progress-companion-head .eyebrow,
+.session-progress-companion-hero .eyebrow,
+.session-progress-companion-recommendation .eyebrow,
+.session-progress-companion-reminder .eyebrow {
+  color: var(--session-companion-accent);
+}
+
+.session-progress-companion-head h3 {
+  margin: 2px 0 0;
+  color: #f8faf6;
+  font-size: clamp(1.35rem, 2.8vw, 2rem);
+  line-height: 1.05;
+}
+
+.session-progress-companion-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 34%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 18%, var(--session-companion-accent-soft), transparent 62%),
+    rgba(255, 255, 255, 0.04);
+}
+
+.session-progress-companion-title-svg,
+.session-progress-companion-metric-svg,
+.session-progress-companion-recommendation-svg,
+.session-progress-companion-reminder-svg,
+.session-progress-companion-roadmap-check {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-progress-companion-title-svg {
+  width: 34px;
+  height: 34px;
+  color: var(--session-companion-accent);
+  filter: drop-shadow(0 0 10px var(--session-companion-glow));
+}
+
+.session-progress-companion-main {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.75fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.session-progress-companion-ring-panel,
+.session-progress-companion-hero,
+.session-progress-companion-roadmap,
+.session-progress-companion-metric,
+.session-progress-companion-reminder,
+.session-progress-companion-empty {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(5, 13, 10, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.session-progress-companion-ring-panel {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+  padding: clamp(18px, 2vw, 26px);
+  text-align: center;
+}
+
+.session-progress-companion-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 292px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    conic-gradient(from -90deg, var(--session-companion-accent) 0deg var(--session-progress-ring-degrees), rgba(255, 255, 255, 0.09) var(--session-progress-ring-degrees) 360deg);
+  filter: drop-shadow(0 0 22px var(--session-companion-glow));
+}
+
+.session-progress-companion-ring::before,
+.session-progress-companion-ring::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+}
+
+.session-progress-companion-ring::before {
+  inset: 13px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.055), transparent 48%),
+    #07100d;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.session-progress-companion-ring::after {
+  inset: 0;
+  background:
+    repeating-conic-gradient(from -90deg, rgba(2, 8, 6, 0.72) 0 1deg, transparent 1deg 35deg);
+  mix-blend-mode: multiply;
+  opacity: 0.46;
+}
+
+.session-progress-companion-ring-core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.session-progress-companion-ring-core span {
+  color: var(--session-companion-accent);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-progress-companion-ring-core strong {
+  color: #ffffff;
+  font-size: clamp(3.1rem, 6vw, 5rem);
+  line-height: 0.95;
+  text-shadow: 0 0 24px rgba(255, 255, 255, 0.12);
+}
+
+.session-progress-companion-ring-core em {
+  margin-top: 10px;
+  color: #f8faf6;
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.session-progress-companion-ring-core small,
+.session-progress-companion-ring-panel p,
+.session-progress-companion-recommendation span,
+.session-progress-companion-metric small,
+.session-progress-companion-reminder span {
+  color: rgba(224, 232, 221, 0.74);
+}
+
+.session-progress-companion-ring-core small {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.session-progress-companion-method-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  max-width: 100%;
+  padding: 8px 18px;
+  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 44%, transparent);
+  border-radius: 999px;
+  color: var(--session-companion-accent);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--session-companion-accent-soft);
+}
+
+.session-progress-companion-ring-panel p {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+.session-progress-companion-right {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.session-progress-companion-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.62fr);
+  gap: 18px;
+  align-items: center;
+  padding: clamp(18px, 2vw, 26px);
+}
+
+.session-progress-companion-phase-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.session-progress-companion-phase-copy h4 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.02;
+}
+
+.session-progress-companion-phase-copy p:not(.eyebrow) {
+  max-width: 58ch;
+  margin: 0;
+  color: rgba(244, 248, 240, 0.86);
+  font-size: clamp(1rem, 1.5vw, 1.16rem);
+  line-height: 1.45;
+}
+
+.session-progress-companion-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 4px;
+}
+
+.session-progress-companion-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 46%, transparent);
+  border-radius: 999px;
+  color: var(--session-companion-accent);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--session-companion-accent-soft);
+}
+
+.session-progress-companion-status span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.session-progress-companion-status.is-attention {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.44);
+  background: rgba(180, 83, 9, 0.18);
+}
+
+.session-progress-companion-status.is-complete {
+  color: #9ee86f;
+}
+
+.session-progress-companion-status-row small {
+  color: rgba(224, 232, 221, 0.78);
+  font-size: 0.92rem;
+}
+
+.session-progress-companion-recommendation {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 28%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 20% 18%, var(--session-companion-accent-soft), transparent 58%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.session-progress-companion-recommendation-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  color: var(--session-companion-accent);
+  background: var(--session-companion-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--session-companion-accent) 28%, transparent);
+}
+
+.session-progress-companion-recommendation-svg {
+  width: 34px;
+  height: 34px;
+}
+
+.session-progress-companion-recommendation div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.session-progress-companion-recommendation strong {
+  color: #ffffff;
+  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+  line-height: 1.15;
+}
+
+.session-progress-companion-recommendation span {
+  font-size: 0.98rem;
+  line-height: 1.38;
+}
+
+.session-progress-companion-roadmap {
+  padding: clamp(16px, 2vw, 22px);
+  overflow-x: auto;
+}
+
+.session-progress-companion-roadmap-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(112px, 1fr);
+  align-items: start;
+  min-width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-progress-companion-roadmap-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 112px;
+  padding: 0 12px;
+  text-align: center;
+}
+
+.session-progress-companion-roadmap-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 21px;
+  left: calc(50% + 24px);
+  width: calc(100% - 48px);
+  border-top: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.session-progress-companion-roadmap-step.is-complete:not(:last-child)::after,
+.session-progress-companion-roadmap-step.is-preparation-complete:not(:last-child)::after {
+  border-color: color-mix(in srgb, var(--session-companion-accent) 72%, transparent);
+  box-shadow: 0 0 12px var(--session-companion-glow);
+}
+
+.session-progress-companion-roadmap-node {
+  position: relative;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  color: rgba(245, 248, 242, 0.78);
+  font-weight: 900;
+  background: #07100d;
+  box-shadow: 0 0 0 4px rgba(6, 12, 9, 0.88);
+}
+
+.session-progress-companion-roadmap-step.is-complete .session-progress-companion-roadmap-node,
+.session-progress-companion-roadmap-step.is-preparation-complete .session-progress-companion-roadmap-node {
+  color: #07100d;
+  border-color: var(--session-companion-accent);
+  background: var(--session-companion-accent);
+}
+
+.session-progress-companion-roadmap-step.is-current .session-progress-companion-roadmap-node {
+  width: 54px;
+  height: 54px;
+  margin-top: -5px;
+  color: #ffffff;
+  border-color: var(--session-companion-accent);
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--session-companion-accent) 42%, transparent), transparent 64%),
+    #07100d;
+  box-shadow:
+    0 0 0 4px rgba(6, 12, 9, 0.88),
+    0 0 0 7px color-mix(in srgb, var(--session-companion-accent) 24%, transparent),
+    0 0 26px var(--session-companion-glow);
+}
+
+.session-progress-companion-roadmap-step.is-overdue .session-progress-companion-roadmap-node {
+  color: #fff7db;
+  border-color: #f59e0b;
+  box-shadow:
+    0 0 0 4px rgba(6, 12, 9, 0.88),
+    0 0 26px rgba(245, 158, 11, 0.38);
+}
+
+.session-progress-companion-roadmap-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.session-progress-companion-roadmap-copy strong {
+  color: #f7faf4;
+  font-size: 0.9rem;
+  line-height: 1.18;
+}
+
+.session-progress-companion-roadmap-copy small {
+  color: rgba(224, 232, 221, 0.68);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.session-progress-companion-roadmap-step.is-upcoming {
+  opacity: 0.68;
+}
+
+.session-progress-companion-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.session-progress-companion-metric {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 16px;
+}
+
+.session-progress-companion-metric-icon {
+  display: inline-grid;
+  place-items: center;
+  grid-row: span 3;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--session-companion-accent);
+  background: var(--session-companion-accent-soft);
+}
+
+.session-progress-companion-metric-svg {
+  width: 21px;
+  height: 21px;
+}
+
+.session-progress-companion-metric-label {
+  color: rgba(229, 236, 226, 0.78);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.session-progress-companion-metric strong {
+  color: #ffffff;
+  font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.session-progress-companion-metric small {
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.session-progress-companion-reminder {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  border-color: color-mix(in srgb, var(--session-companion-accent) 24%, transparent);
+}
+
+.session-progress-companion-reminder.is-empty {
+  opacity: 0.78;
+}
+
+.session-progress-companion-reminder-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  color: var(--session-companion-accent);
+  background: var(--session-companion-accent-soft);
+}
+
+.session-progress-companion-reminder div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.session-progress-companion-reminder strong {
+  color: #ffffff;
+  font-size: clamp(1.05rem, 1.6vw, 1.38rem);
+  line-height: 1.15;
+}
+
+.session-progress-companion-reminder-button {
+  white-space: nowrap;
+}
+
+.session-progress-companion-action-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.session-progress-companion-card .session-progress-command-no-action {
+  border-color: color-mix(in srgb, var(--session-companion-accent) 20%, transparent);
+  color: rgba(226, 234, 224, 0.76);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.session-progress-companion-card .session-progress-command-action {
+  border-color: color-mix(in srgb, var(--session-companion-accent) 42%, transparent);
+  color: #f8faf6;
+  background: var(--session-companion-accent-soft);
+}
+
+.session-progress-companion-card .session-progress-command-action--primary {
+  color: #07100d;
+  background: var(--session-companion-accent);
+}
+
+.session-progress-companion-empty {
+  display: grid;
+  gap: 5px;
+  padding: 18px;
+}
+
+.session-progress-companion-empty strong {
+  color: #ffffff;
+  font-size: 1.2rem;
+}
+
+.session-progress-companion-empty p {
+  margin: 0;
+  color: rgba(224, 232, 221, 0.76);
+}
+
+@media (max-width: 1120px) {
+  .session-progress-companion-main,
+  .session-progress-companion-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .session-progress-companion-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .session-progress-companion-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .session-progress-companion-head {
+    align-items: flex-start;
+  }
+
+  .session-progress-companion-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  .session-progress-companion-ring {
+    width: min(100%, 238px);
+  }
+
+  .session-progress-companion-recommendation {
+    grid-template-columns: 1fr;
+  }
+
+  .session-progress-companion-metrics,
+  .session-progress-companion-reminder {
+    grid-template-columns: 1fr;
+  }
+
+  .session-progress-companion-reminder-button {
+    width: 100%;
+  }
+}
+
 .session-command-stage-grid,
 .stage-progress-row {
   position: relative;
