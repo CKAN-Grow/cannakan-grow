@@ -19,6 +19,7 @@ function getFunctionSource(source, functionName) {
 const rendererSource = getFunctionSource(appSource, "renderSessionProgressCommandCenterMarkup");
 const roadmapSource = getFunctionSource(appSource, "renderSessionProgressCompanionRoadmapMarkup");
 const lifecycleUpdaterSource = getFunctionSource(appSource, "updateSessionLifecycleTimeline");
+const companionScrollSource = getFunctionSource(appSource, "requestSessionProgressCompanionCurrentStepScroll");
 const homeRendererSource = getFunctionSource(appSource, "renderHome");
 const commandCenterListSource = getFunctionSource(appSource, "renderMySessionsCommandCenterListMarkup");
 const commandCenterSectionSource = getFunctionSource(appSource, "renderMySessionsCommandCenterSectionMarkup");
@@ -159,6 +160,37 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 }
 
 [
+  'data-current-roadmap-step="true"',
+  'data-roadmap-step-key="${escapeHtml(step.key || `step-${index}`)}"',
+].forEach((needle) => {
+  if (!roadmapSource.includes(needle)) {
+    throw new Error(`Companion roadmap should mark current steps for auto-scroll: ${needle}`);
+  }
+});
+
+[
+  '.session-progress-companion-roadmap',
+  "[data-current-roadmap-step='true']",
+  "currentStep.offsetLeft",
+  "roadmap.scrollTo({ left: Math.max(0, targetLeft), behavior: \"auto\" });",
+  "companionRoadmapUserScrolled",
+].forEach((needle) => {
+  if (!companionScrollSource.includes(needle)) {
+    throw new Error(`Missing companion current-step auto-scroll behavior: ${needle}`);
+  }
+});
+
+[
+  "requestSessionProgressCompanionCurrentStepScroll(summaryElement",
+  "previousScrollLeft",
+  "preserveUserScroll",
+].forEach((needle) => {
+  if (!lifecycleUpdaterSource.includes(needle)) {
+    throw new Error(`Lifecycle updater should preserve user scroll while centering current companion step: ${needle}`);
+  }
+});
+
+[
   ".session-progress-companion-card",
   ".session-progress-companion-ring",
   ".session-progress-companion-hero",
@@ -169,6 +201,7 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
+  "scroll-padding-inline: 50%",
   "@media (max-width: 720px)",
 ].forEach((needle) => {
   if (!stylesSource.includes(needle)) {

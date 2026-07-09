@@ -4847,8 +4847,8 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.62fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.54fr);
+  gap: 14px;
   align-items: center;
   padding: clamp(18px, 2vw, 26px);
 }
@@ -4924,31 +4924,32 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-recommendation {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
   align-items: center;
   min-width: 0;
-  padding: 18px;
-  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 28%, transparent);
-  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 18%, transparent);
+  border-radius: 12px;
   background:
-    radial-gradient(circle at 20% 18%, var(--session-companion-accent-soft), transparent 58%),
-    rgba(255, 255, 255, 0.035);
+    linear-gradient(135deg, color-mix(in srgb, var(--session-companion-accent) 8%, transparent), transparent 58%),
+    rgba(255, 255, 255, 0.026);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
 .session-progress-companion-recommendation-icon {
   display: inline-grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   color: var(--session-companion-accent);
-  background: var(--session-companion-accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--session-companion-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--session-companion-accent) 10%, rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--session-companion-accent) 18%, transparent);
 }
 
 .session-progress-companion-recommendation-svg {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
 }
 
 .session-progress-companion-recommendation div {
@@ -4959,18 +4960,19 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-recommendation strong {
   color: #ffffff;
-  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
-  line-height: 1.15;
+  font-size: clamp(1rem, 1.35vw, 1.24rem);
+  line-height: 1.18;
 }
 
 .session-progress-companion-recommendation span {
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   line-height: 1.38;
 }
 
 .session-progress-companion-roadmap {
   padding: clamp(16px, 2vw, 22px);
   overflow-x: auto;
+  scroll-padding-inline: 50%;
 }
 
 .session-progress-companion-roadmap-list {
@@ -5005,8 +5007,8 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-roadmap-step.is-complete:not(:last-child)::after,
 .session-progress-companion-roadmap-step.is-preparation-complete:not(:last-child)::after {
-  border-color: color-mix(in srgb, var(--session-companion-accent) 72%, transparent);
-  box-shadow: 0 0 12px var(--session-companion-glow);
+  border-color: color-mix(in srgb, var(--session-companion-accent) 58%, transparent);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--session-companion-accent) 20%, transparent);
 }
 
 .session-progress-companion-roadmap-node {
@@ -5032,18 +5034,26 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-progress-companion-roadmap-step.is-current .session-progress-companion-roadmap-node {
-  width: 54px;
-  height: 54px;
-  margin-top: -5px;
+  width: 48px;
+  height: 48px;
+  margin-top: -2px;
   color: #ffffff;
   border-color: var(--session-companion-accent);
   background:
-    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--session-companion-accent) 42%, transparent), transparent 64%),
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--session-companion-accent) 30%, transparent), transparent 64%),
     #07100d;
   box-shadow:
-    0 0 0 4px rgba(6, 12, 9, 0.88),
-    0 0 0 7px color-mix(in srgb, var(--session-companion-accent) 24%, transparent),
-    0 0 26px var(--session-companion-glow);
+    0 0 0 3px rgba(6, 12, 9, 0.88),
+    0 0 0 5px color-mix(in srgb, var(--session-companion-accent) 18%, transparent),
+    0 0 16px color-mix(in srgb, var(--session-companion-accent) 32%, transparent);
+}
+
+.session-progress-companion-roadmap-step.is-current .session-progress-companion-roadmap-copy strong {
+  color: #ffffff;
+}
+
+.session-progress-companion-roadmap-step.is-current .session-progress-companion-roadmap-copy small {
+  color: var(--session-companion-accent);
 }
 
 .session-progress-companion-roadmap-step.is-overdue .session-progress-companion-roadmap-node {

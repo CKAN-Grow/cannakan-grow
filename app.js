@@ -95374,6 +95374,52 @@ function updateSessionEngineVisualTimeline(timelineElement = null, state = {}) {
   timelineElement.hidden = !markup;
 }
 
+function requestSessionProgressCompanionCurrentStepScroll(summaryElement = null, options = {}) {
+  if (!(summaryElement instanceof HTMLElement)) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    const roadmap = summaryElement.querySelector(".session-progress-companion-roadmap");
+    const currentStep = roadmap?.querySelector?.("[data-current-roadmap-step='true']")
+      || roadmap?.querySelector?.(".session-progress-companion-roadmap-step.is-current")
+      || roadmap?.querySelector?.(".session-progress-companion-roadmap-step.is-overdue");
+    if (!(roadmap instanceof HTMLElement) || !(currentStep instanceof HTMLElement)) {
+      return;
+    }
+
+    const currentKey = currentStep.dataset.roadmapStepKey || currentStep.textContent?.trim() || "";
+    const previousKey = summaryElement.dataset.companionRoadmapCurrentKey || "";
+    const shouldPreserveUserScroll = options.preserveUserScroll === true && previousKey === currentKey;
+    summaryElement.dataset.companionRoadmapCurrentKey = currentKey;
+
+    if (shouldPreserveUserScroll) {
+      roadmap.scrollLeft = Math.max(0, Number(options.previousScrollLeft) || 0);
+    } else {
+      const targetLeft = currentStep.offsetLeft - Math.max(0, (roadmap.clientWidth - currentStep.offsetWidth) / 2);
+      roadmap.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
+      summaryElement.dataset.companionRoadmapUserScrolled = "false";
+    }
+
+    roadmap.dataset.autoScrollPending = "true";
+    window.setTimeout(() => {
+      if (roadmap.isConnected) {
+        delete roadmap.dataset.autoScrollPending;
+      }
+    }, 80);
+
+    if (roadmap.dataset.companionScrollBound !== "true") {
+      roadmap.addEventListener("scroll", () => {
+        if (roadmap.dataset.autoScrollPending === "true") {
+          return;
+        }
+        summaryElement.dataset.companionRoadmapUserScrolled = "true";
+      }, { passive: true });
+      roadmap.dataset.companionScrollBound = "true";
+    }
+  });
+}
+
 function updateSessionLifecycleTimeline(summaryElement, sectionElement, state, options = {}) {
   if (!summaryElement || !sectionElement) {
     return;
@@ -95389,8 +95435,15 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state, o
     return;
   }
 
+  const previousRoadmap = summaryElement.querySelector(".session-progress-companion-roadmap");
+  const previousScrollLeft = previousRoadmap instanceof HTMLElement ? previousRoadmap.scrollLeft : 0;
+  const preserveUserScroll = summaryElement.dataset.companionRoadmapUserScrolled === "true";
   summaryElement.innerHTML = renderSessionProgressCommandCenterMarkup(state.engineState || null, renderOptions);
   bindSessionProgressCommandActions(summaryElement);
+  requestSessionProgressCompanionCurrentStepScroll(summaryElement, {
+    preserveUserScroll,
+    previousScrollLeft,
+  });
   sectionElement.hidden = false;
 }
 
@@ -95997,7 +96050,7 @@ function renderSessionProgressCompanionRoadmapMarkup(engineState = null) {
           ? renderSessionProgressCompanionIconMarkup("check", "session-progress-companion-roadmap-check")
           : escapeHtml(String(index + 1));
         return `
-          <li class="session-progress-companion-roadmap-step is-${escapeHtml(status.key)}">
+          <li class="session-progress-companion-roadmap-step is-${escapeHtml(status.key)}" data-roadmap-step-key="${escapeHtml(step.key || `step-${index}`)}"${step.isCurrent ? ' data-current-roadmap-step="true"' : ""}>
             <span class="session-progress-companion-roadmap-node">${nodeLabel}</span>
             <span class="session-progress-companion-roadmap-copy">
               <strong>${escapeHtml(step.label || "Step")}</strong>
