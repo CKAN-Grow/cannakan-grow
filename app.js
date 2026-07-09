@@ -1968,22 +1968,89 @@ function buildSessionEngineState(session = null, options = {}) {
   }
 }
 
+function isFormSessionOfficiallyStarted(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return false;
+  }
+  return Boolean(
+    String(form.dataset.savedSessionId || "").trim()
+    || String(form.dataset.sessionStartedAt || "").trim()
+    || String(form.dataset.completedAt || "").trim()
+  );
+}
+
+function decorateDraftFormSessionEngineState(engineState = null) {
+  if (!engineState) {
+    return engineState;
+  }
+
+  const timelineSteps = Array.isArray(engineState.timelineSteps)
+    ? engineState.timelineSteps.map((step, index) => {
+        const isStartStep = index === 0 || step.key === "started";
+        return {
+          ...step,
+          startAt: "",
+          endAt: "",
+          isCurrent: isStartStep,
+          isComplete: false,
+          isFuture: !isStartStep,
+        };
+      })
+    : [];
+  const startStep = timelineSteps.find((step) => step.isCurrent) || timelineSteps[0] || null;
+
+  return {
+    ...engineState,
+    isDraftSession: true,
+    currentPhase: startStep
+      ? {
+          key: startStep.key,
+          label: startStep.label,
+          timing: startStep.timing || "",
+          tone: startStep.tone || engineState.definition?.tone || "green",
+        }
+      : engineState.currentPhase,
+    phaseLabel: "Session Setup",
+    startedAt: "",
+    elapsedMs: 0,
+    elapsedHours: 0,
+    nextMilestone: null,
+    activeMilestone: null,
+    dueMilestones: [],
+    expectedCompletionWindow: {
+      startAt: "",
+      endAt: "",
+    },
+    overdueStatus: {
+      isOverdue: false,
+      level: "none",
+      label: "Not started",
+      overdueAt: "",
+    },
+    progressPercentage: 0,
+    requiredUserActions: [],
+    timelineSteps,
+  };
+}
+
 function buildFormSessionEngineState(form, options = {}) {
   if (!SESSION_ENGINE?.calculateSessionState || !(form instanceof HTMLFormElement)) {
     return null;
   }
   const methodType = form.elements?.systemType?.value || form.dataset.methodType || "KAN";
+  const hasOfficialStart = isFormSessionOfficiallyStarted(form);
+  const completedAt = form.dataset.completedAt || "";
   const session = {
     methodType,
-    date: form.elements?.date?.value || "",
-    time: form.elements?.time?.value || "",
+    date: hasOfficialStart ? form.elements?.date?.value || "" : "",
+    time: hasOfficialStart ? form.elements?.time?.value || "" : "",
     sessionStatus: form.dataset.currentStage || form.elements?.sessionStatus?.value || "",
     sessionStartedAt: form.dataset.sessionStartedAt || "",
-    soakStartedAt: form.dataset.soakStartedAt || form.dataset.timerStartAt || "",
-    timerStartAt: form.dataset.timerStartAt || "",
-    germinationStartedAt: form.dataset.germinationStartedAt || "",
-    firstPlantedAt: form.dataset.firstPlantedAt || "",
-    completedAt: form.dataset.completedAt || "",
+    soakStartedAt: hasOfficialStart ? form.dataset.soakStartedAt || form.dataset.timerStartAt || "" : "",
+    timerStartAt: hasOfficialStart ? form.dataset.timerStartAt || "" : "",
+    germinationStartedAt: hasOfficialStart ? form.dataset.germinationStartedAt || "" : "",
+    firstPlantedAt: hasOfficialStart ? form.dataset.firstPlantedAt || "" : "",
+    completedAt,
     methodSetup: getMethodSetupStateFromForm(form),
     partitions: buildPartitionDraftValuesFromContainer(
       form.querySelector("#partition-fields")
@@ -1991,7 +2058,10 @@ function buildFormSessionEngineState(form, options = {}) {
       || form,
     ),
   };
-  return buildSessionEngineState(session, options);
+  const engineState = buildSessionEngineState(session, options);
+  return hasOfficialStart || completedAt
+    ? engineState
+    : decorateDraftFormSessionEngineState(engineState);
 }
 
 function getMethodSessionStatusLabel(status = "", methodType = "") {
@@ -84587,6 +84657,13 @@ function renderSessionForm(initialSystemType = "KAN") {
       await refreshUserSessionsAfterSave(isUpdatingExistingSession ? "new-session:update" : "new-session:save");
       markUnsavedChangesSaved();
       form.dataset.savedSessionId = savedSession.id || session.id || "";
+      form.dataset.sessionStartedAt = savedSession.sessionStartedAt || savedSession.session_started_at || session.sessionStartedAt || "";
+      form.dataset.soakStartedAt = savedSession.soakStartedAt || savedSession.soak_started_at || session.soakStartedAt || "";
+      form.dataset.timerStartAt = savedSession.timerStartAt || savedSession.timer_start_at || session.timerStartAt || "";
+      form.dataset.germinationStartedAt = savedSession.germinationStartedAt || savedSession.germination_started_at || session.germinationStartedAt || "";
+      form.dataset.firstPlantedAt = savedSession.firstPlantedAt || savedSession.first_planted_at || session.firstPlantedAt || "";
+      form.dataset.completedAt = savedSession.completedAt || savedSession.completed_at || session.completedAt || "";
+      form.dataset.currentStage = normalizeSessionStatus(savedSession.sessionStatus || savedSession.session_status || session.sessionStatus || "");
       setNewSessionSaveButtonState(form, "saved");
       if (!isUpdatingExistingSession && form.dataset.seedChartExpandedModalShown !== "true") {
         form.dataset.seedChartExpandedModalShown = "true";
@@ -84597,6 +84674,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         form.dataset.seedChartResultsUnlocked = "true";
         syncNewSessionSeedChartResultsUnlockState(form);
       }
+      refreshNewSessionTimelineViews();
       if (navigateOnSuccess) {
         await waitForNewSessionSavedStateVisibility();
         navigateWithUnsavedChangesBypass(unlockedGrowNetworkNow ? "#home" : `#sessions/${savedSession.id}`);
@@ -95527,7 +95605,7 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state, o
     renderOptions.showReminder = false;
   }
 
-  if (!state.startedAt && !state.showEmptyTimeline) {
+  if (!state.startedAt && !state.showEmptyTimeline && !state.engineState?.isDraftSession) {
     summaryElement.innerHTML = "";
     sectionElement.hidden = true;
     return;
@@ -96019,6 +96097,9 @@ function getSessionProgressCompanionStatus(engineState = null) {
   if (!engineState) {
     return { key: "idle", label: "Not Started", detail: "Choose a method and save the session to begin." };
   }
+  if (engineState.isDraftSession) {
+    return { key: "idle", label: "Setup", detail: "Save this session to begin automated tracking." };
+  }
   if (engineState.completedAt || engineState.status === "completed") {
     return { key: "complete", label: "Complete", detail: "This session has been completed." };
   }
@@ -96047,6 +96128,9 @@ function getSessionProgressCompanionTimeHero(engineState = null) {
 function getSessionProgressCompanionGuidance(engineState = null) {
   const phaseKey = String(engineState?.currentPhase?.key || getSessionEngineCurrentStep(engineState)?.key || "").toLowerCase();
   const phaseLabel = engineState?.phaseLabel || getSessionEngineCurrentStep(engineState)?.label || "Tracking";
+  if (engineState?.isDraftSession) {
+    return "Build your seed chart and setup details, then save to start automated timing.";
+  }
   if (engineState?.completedAt || engineState?.status === "completed") {
     return "Review the final germination results and keep this record for your grow history.";
   }
@@ -96075,6 +96159,13 @@ function getSessionProgressCompanionGuidance(engineState = null) {
 }
 
 function getSessionProgressCompanionRecommendation(engineState = null) {
+  if (engineState?.isDraftSession) {
+    return {
+      title: "Save the session to begin.",
+      detail: "The timeline will advance after the official start timestamp is created.",
+    };
+  }
+
   const actionLabel = getSessionEngineActionList(engineState)[0]?.label || "";
   if (actionLabel) {
     return {
@@ -96109,6 +96200,9 @@ function getSessionProgressCompanionRecommendation(engineState = null) {
 }
 
 function getSessionProgressCompanionMilestone(engineState = null) {
+  if (engineState?.isDraftSession) {
+    return null;
+  }
   return engineState?.activeMilestone || engineState?.nextMilestone || null;
 }
 
@@ -98382,11 +98476,16 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
 function buildFormLifecycleState(form) {
   const normalizedStatus = normalizeSessionStatus(form.dataset.currentStage || form.elements.sessionStatus?.value || "");
   const engineState = buildFormSessionEngineState(form);
+  const hasOfficialStart = isFormSessionOfficiallyStarted(form);
+  const startedAt = hasOfficialStart
+    ? parseCompletedAtValue(form.dataset.sessionStartedAt || "")
+      || parseSessionStartDateTime(form.elements.date.value, form.elements.time.value)
+    : null;
   if (normalizedStatus === "unselected") {
     return {
       showEmptyTimeline: true,
       engineState,
-      startedAt: null,
+      startedAt,
       germinationStartedAt: null,
       firstPlantedAt: null,
       completedAt: null,
@@ -98403,7 +98502,7 @@ function buildFormLifecycleState(form) {
       firstPlantedAt: form.dataset.firstPlantedAt || "",
       completedAt: form.dataset.completedAt || "",
     }),
-    startedAt: parseSessionStartDateTime(form.elements.date.value, form.elements.time.value),
+    startedAt,
     germinationStartedAt: parseCompletedAtValue(form.dataset.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(form.dataset.firstPlantedAt || ""),
     completedAt: parseCompletedAtValue(form.dataset.completedAt || ""),

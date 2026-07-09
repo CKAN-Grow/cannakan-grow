@@ -96,6 +96,10 @@ async function runPreparedScenario(page, baseUrl, methodType, choice, expected) 
         methodSetupPreparedMedia: form.dataset.methodSetupPreparedMedia || "",
       },
       setup,
+      isDraftSession: lifecycle.engineState?.isDraftSession === true,
+      phaseLabel: lifecycle.engineState?.phaseLabel || "",
+      lifecycleStartedAt: lifecycle.startedAt ? lifecycle.startedAt.toISOString() : "",
+      engineStartedAt: lifecycle.engineState?.startedAt || "",
       currentPhaseKey: lifecycle.engineState?.currentPhase?.key || "",
       timelineStepKeys: (lifecycle.engineState?.timelineSteps || []).map((step) => step.key),
       timelineStepLabels: (lifecycle.engineState?.timelineSteps || []).map((step) => step.label),
@@ -111,6 +115,10 @@ async function runPreparedScenario(page, baseUrl, methodType, choice, expected) 
     assert.equal(result.dataset.methodSetupPreparedMedia, choice === "prepared" ? "true" : "false");
     assert.equal(result.setup.choice, choice);
     assert.equal(result.setup.preparedMedia, choice === "prepared");
+    assert.equal(result.isDraftSession, true);
+    assert.equal(result.phaseLabel, "Session Setup");
+    assert.equal(result.lifecycleStartedAt, "");
+    assert.equal(result.engineStartedAt, "");
     assert.equal(result.currentPhaseKey, expected.currentKey);
     assert.equal(result.timelineStepKeys.includes(expected.absentKey), false);
     assert.equal(result.timelineStepKeys.includes(expected.presentKey), true);
@@ -141,30 +149,30 @@ async function runPreparedScenario(page, baseUrl, methodType, choice, expected) 
   await prepareLocalQaStorage(page);
   try {
     await runPreparedScenario(page, baseUrl, "ROCKWOOL", "prepared", {
-      currentKey: "seeds-planted",
+      currentKey: "started",
       presentKey: "seeds-planted",
       absentKey: "prep-cubes",
-      visibleLabel: "Plant Seeds",
+      visibleLabel: "Start",
       hiddenLabel: "Prep Cubes",
     });
     await runPreparedScenario(page, baseUrl, "ROCKWOOL", "needs-prep", {
-      currentKey: "prep-cubes",
+      currentKey: "started",
       presentKey: "prep-cubes",
       absentKey: "not-a-real-step",
-      visibleLabel: "Prep Cubes",
+      visibleLabel: "Start",
     });
     await runPreparedScenario(page, baseUrl, "RAPID_ROOTER", "prepared", {
-      currentKey: "seeds-planted",
+      currentKey: "started",
       presentKey: "seeds-planted",
       absentKey: "prep-plugs",
-      visibleLabel: "Plant Seeds",
+      visibleLabel: "Start",
       hiddenLabel: "Prep Plugs",
     });
     await runPreparedScenario(page, baseUrl, "RAPID_ROOTER", "needs-prep", {
-      currentKey: "prep-plugs",
+      currentKey: "started",
       presentKey: "prep-plugs",
       absentKey: "not-a-real-step",
-      visibleLabel: "Prep Plugs",
+      visibleLabel: "Start",
     });
   } finally {
     await browser.close();
