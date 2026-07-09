@@ -18,6 +18,7 @@ function getFunctionSource(source, functionName) {
 
 const rendererSource = getFunctionSource(appSource, "renderSessionProgressCommandCenterMarkup");
 const roadmapSource = getFunctionSource(appSource, "renderSessionProgressCompanionRoadmapMarkup");
+const nextActionDisplaySource = getFunctionSource(appSource, "getSessionProgressCompanionNextActionDisplay");
 const lifecycleUpdaterSource = getFunctionSource(appSource, "updateSessionLifecycleTimeline");
 const companionScrollSource = getFunctionSource(appSource, "requestSessionProgressCompanionCurrentStepScroll");
 const sessionTimeDisplaySource = getFunctionSource(appSource, "getSessionEngineSessionTimeDisplay");
@@ -96,15 +97,6 @@ if (rendererSource.includes('<aside class="session-progress-companion-recommenda
 }
 
 [
-  "const showReminder = options.showReminder !== false",
-  "showReminder && hasReminder",
-].forEach((needle) => {
-  if (!rendererSource.includes(needle)) {
-    throw new Error(`Session Progress companion reminder visibility is missing: ${needle}`);
-  }
-});
-
-[
   'sectionElement.closest?.("#session-form")',
   "renderOptions.showReminder = false",
 ].forEach((needle) => {
@@ -175,6 +167,10 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 [
   'renderSessionProgressCompanionMetricMarkup("clock", "Elapsed Time"',
   'renderSessionProgressCompanionMetricMarkup("drop", "Next Check"',
+  'renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone"',
+  'renderSessionProgressCompanionMetricMarkup("bell", "Next Reminder"',
+  'renderSessionProgressCompanionMetricMarkup("group", "Community Avg."',
+  'renderSessionProgressCompanionMetricMarkup("bulb", "Insight"',
   "No reminder scheduled",
   "Reminders will appear when the Session Engine schedules one.",
   "session-progress-companion-reminder",
@@ -186,14 +182,28 @@ if (!appSource.includes("navigateToProfilePreferences();")) {
 
 [
   "const summaryMetricItems = [",
-  "milestone",
-  'renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)',
-  'renderSessionProgressCompanionMetricMarkup("bell", "Next Reminder", milestoneTime, reminderPurpose || "Review the next session milestone.")',
+  "const nextActionDisplay = getSessionProgressCompanionNextActionDisplay(engineState);",
+  "renderSessionProgressCompanionMetricMarkup(nextActionDisplay.iconKey, nextActionDisplay.label, nextActionDisplay.value, nextActionDisplay.detail)",
   'renderSessionProgressCompanionMetricMarkup("clock", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail)',
   '${summaryMetricItems ? `',
 ].forEach((needle) => {
   if (!rendererSource.includes(needle)) {
     throw new Error(`Grow Companion supporting summary should be consolidated: ${needle}`);
+  }
+});
+
+[
+  'value: "Save Session to begin"',
+  'detail: "Automated timing starts after the session is saved."',
+  'value: "Session Complete"',
+  'detail: "Results recorded."',
+  "getSessionEngineActionList(engineState)[0]",
+  "engineState.activeMilestone || engineState.nextMilestone",
+  "getSessionEngineCurrentStep(engineState)",
+  "getSessionProgressCompanionRecommendation(engineState)",
+].forEach((needle) => {
+  if (!nextActionDisplaySource.includes(needle)) {
+    throw new Error(`Next Action display should stay synchronized with Session Engine state: ${needle}`);
   }
 });
 

@@ -96327,6 +96327,111 @@ function getSessionProgressCompanionMilestoneTimeLabel(engineState = null, miles
   return Number.isFinite(atHours) ? formatSessionEngineHourOffsetLabel(atHours) : "Not scheduled";
 }
 
+function formatSessionProgressNextActionValue(value = "") {
+  const normalized = normalizeSessionCommandCenterNextUpText(value)
+    .replace(/[.。]+$/g, "")
+    .trim();
+  if (!normalized) {
+    return "";
+  }
+  const actionByLabel = {
+    Complete: "Complete Session",
+    Started: "Begin Session",
+    Soak: "Continue soaking",
+    Soaking: "Continue soaking",
+    Germination: "Monitor Germination",
+    "Paper Towel": "Monitor Paper Towel",
+    "First Check": "First Check",
+    "Prep Cubes": "Prepare Cubes",
+    "Prep Plugs": "Prepare Plugs",
+    "Seeds Planted": "Plant Seeds",
+    Planted: "Plant Seeds",
+    "Keep Moist": "Keep Moist",
+    "Keep Cubes Moist": "Keep Cubes Moist",
+    "Keep Plugs Moist": "Keep Plugs Moist",
+    "Watch Sprouts": "Watch for Sprouts",
+    "Watch for Sprouts": "Watch for Sprouts",
+  };
+  return actionByLabel[normalized] || normalized;
+}
+
+function getSessionProgressNextActionTimingLabel(engineState = null, milestone = null, step = null) {
+  if (engineState?.activeMilestone && milestone) {
+    return "Due now";
+  }
+  if (milestone?.dueAt) {
+    const dueAt = parseCompletedAtValue(milestone.dueAt);
+    if (dueAt) {
+      const remainingMs = dueAt.getTime() - Date.now();
+      return remainingMs <= 0
+        ? "Due now"
+        : `In ${formatDurationMsShort(remainingMs) || "soon"}`;
+    }
+  }
+  const atHours = Number(milestone?.atHours ?? milestone?.hours);
+  const maxHours = Number(milestone?.maxHours);
+  if (Number.isFinite(atHours) && Number.isFinite(maxHours) && maxHours > atHours) {
+    return `Window ${formatSessionEngineHourOffsetLabel(atHours)} - ${formatSessionEngineHourOffsetLabel(maxHours)}`;
+  }
+  if (Number.isFinite(atHours)) {
+    return `At ${formatSessionEngineHourOffsetLabel(atHours)}`;
+  }
+  if (step?.timing) {
+    return step.timing;
+  }
+  return "Follow the current method stage.";
+}
+
+function getSessionProgressCompanionNextActionDisplay(engineState = null) {
+  if (!engineState) {
+    return {
+      iconKey: "flag",
+      label: "Next Action",
+      value: "Select a method",
+      detail: "Session guidance will appear after setup begins.",
+    };
+  }
+  if (engineState.isDraftSession) {
+    return {
+      iconKey: "flag",
+      label: "Next Action",
+      value: "Save Session to begin",
+      detail: "Automated timing starts after the session is saved.",
+    };
+  }
+  if (engineState.completedAt || engineState.status === "completed") {
+    return {
+      iconKey: "check",
+      label: "Next Action",
+      value: "Session Complete",
+      detail: "Results recorded.",
+    };
+  }
+
+  const action = getSessionEngineActionList(engineState)[0] || null;
+  const milestone = engineState.activeMilestone || engineState.nextMilestone || null;
+  const currentStep = getSessionEngineCurrentStep(engineState);
+  const nextStep = getSessionEngineNextStep(engineState);
+  const recommendation = getSessionProgressCompanionRecommendation(engineState);
+  const actionSourceLabel = action?.label
+    || milestone?.actionText
+    || milestone?.title
+    || recommendation?.title
+    || currentStep?.label
+    || nextStep?.label
+    || "";
+  const detail = action?.detail
+    || action?.description
+    || getSessionProgressNextActionTimingLabel(engineState, milestone, currentStep || nextStep);
+
+  return {
+    iconKey: engineState.overdueStatus?.isOverdue ? "bell" : "flag",
+    label: "Next Action",
+    value: formatSessionProgressNextActionValue(actionSourceLabel) || "No action needed yet",
+    detail,
+  };
+}
+
 function renderSessionProgressCompanionIconMarkup(iconKey = "info", className = "") {
   const paths = {
     pulse: '<path d="M4 13h3l2-6 4 11 2-5h5" /><path d="M4 19V5" />',
@@ -96388,7 +96493,6 @@ function renderSessionProgressCompanionMetricMarkup(iconKey = "clock", label = "
 }
 
 function renderSessionProgressCommandCenterMarkup(engineState = null, options = {}) {
-  const showReminder = options.showReminder !== false;
   if (!engineState) {
     return `
       <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="Session Progress">
@@ -96414,30 +96518,15 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
   const companionStatus = getSessionProgressCompanionStatus(engineState);
   const timeHero = getSessionProgressCompanionTimeHero(engineState);
   const recommendation = getSessionProgressCompanionRecommendation(engineState);
-  const milestone = getSessionProgressCompanionMilestone(engineState);
-  const milestoneTitle = milestone?.title || milestone?.actionText || milestone?.message || nextStep?.label || "No milestone scheduled";
-  const milestoneTime = getSessionProgressCompanionMilestoneTimeLabel(engineState, milestone);
+  const nextActionDisplay = getSessionProgressCompanionNextActionDisplay(engineState);
   const sessionTimeDisplay = getSessionEngineSessionTimeDisplay(engineState);
   const theme = getSessionEngineVisualTimelineTheme(engineState);
   const isOverdue = Boolean(engineState.overdueStatus?.isOverdue);
   const ringDegrees = Math.round(progress * 3.6);
   const elapsedLabel = formatSessionEngineDurationLabel(engineState.elapsedMs);
-  const reminderPurpose = milestone?.message || milestone?.actionText || milestone?.title || "";
-  const hasReminder = Boolean(milestone);
   const summaryMetricItems = [
-    milestone
-      ? renderSessionProgressCompanionMetricMarkup("calendar", "Next Milestone", milestoneTitle, milestoneTime)
-      : "",
-    showReminder && hasReminder
-      ? renderSessionProgressCompanionMetricMarkup("bell", "Next Reminder", milestoneTime, reminderPurpose || "Review the next session milestone.")
-      : "",
+    renderSessionProgressCompanionMetricMarkup(nextActionDisplay.iconKey, nextActionDisplay.label, nextActionDisplay.value, nextActionDisplay.detail),
     renderSessionProgressCompanionMetricMarkup("clock", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail),
-    engineState.communityAverage
-      ? renderSessionProgressCompanionMetricMarkup("group", "Community Avg.", String(engineState.communityAverage), methodName)
-      : "",
-    engineState.insight
-      ? renderSessionProgressCompanionMetricMarkup("bulb", "Insight", String(engineState.insight), "")
-      : "",
   ].filter(Boolean).join("");
   const actionMarkup = getSessionEngineActionList(engineState).length
     ? renderSessionProgressActionMarkup(engineState)
