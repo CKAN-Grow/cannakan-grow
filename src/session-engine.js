@@ -252,11 +252,11 @@
       key: "ROCKWOOL",
       displayName: "Rockwool",
       extends: "DIRECT_SOW",
-      tone: "gray",
+      tone: "orange",
       iconName: "method-direct-sow",
       startLabel: "Prep cubes",
       phases: [
-        phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
+        phase("started", "Start", 0, 0, { timing: "Session started", tone: "orange" }),
         phase("prep-cubes", "Prep Cubes", 0, 2, { timing: "Day 0", tone: "soaking" }),
         phase("seeds-planted", "Plant Seeds", 2, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
         phase("keep-cubes-moist", "Keep Cubes Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
@@ -420,7 +420,7 @@
   function getPreparedMediaPhases(methodKey) {
     if (methodKey === "ROCKWOOL") {
       return [
-        phase("started", "Start", 0, 0, { timing: "Session started", tone: "gray" }),
+        phase("started", "Start", 0, 0, { timing: "Session started", tone: "orange" }),
         phase("seeds-planted", "Plant Seeds", 0, DAY_HOURS, { timing: "Day 0", tone: "germination" }),
         phase("keep-cubes-moist", "Keep Moist", DAY_HOURS, 2 * DAY_HOURS, { timing: "Day 1-3", tone: "germination" }),
         phase("watch-sprouts", "Watch for Sprouts", 2 * DAY_HOURS, 5 * DAY_HOURS, { timing: "Day 2-5", tone: "green" }),

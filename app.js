@@ -1632,7 +1632,7 @@ const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
   PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
   WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)" }),
-  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#8f9aa3", accentSoft: "rgba(143, 154, 163, 0.16)", glow: "rgba(143, 154, 163, 0.24)" }),
+  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#d88947", accentSoft: "rgba(216, 137, 71, 0.16)", glow: "rgba(216, 137, 71, 0.28)" }),
   RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)" }),
   DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)" }),
   OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)" }),
@@ -96482,7 +96482,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetu
     case "ROCKWOOL":
       return {
         title: "Rockwool",
-        tone: "gray",
+        tone: "orange",
         iconName: "method-direct-sow",
         stages: preparedMedia
           ? [

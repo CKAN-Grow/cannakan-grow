@@ -29,19 +29,19 @@ function assertMethodTone(methodKey, expectedTone) {
 [
   'PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" })',
   'PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" })',
-  'ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#8f9aa3", accentSoft: "rgba(143, 154, 163, 0.16)", glow: "rgba(143, 154, 163, 0.24)" })',
+  'ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#d88947", accentSoft: "rgba(216, 137, 71, 0.16)", glow: "rgba(216, 137, 71, 0.28)" })',
   'case "SOAK_PAPER_TOWEL":\n      return {\n        title: "Soak + Paper Towel",\n        tone: "silver"',
   'case "PAPER_TOWEL":\n      return {\n        title: "Paper Towel Only",\n        tone: "silver"',
-  'case "ROCKWOOL":\n      return {\n        title: "Rockwool",\n        tone: "gray"',
+  'case "ROCKWOOL":\n      return {\n        title: "Rockwool",\n        tone: "orange"',
 ].forEach((needle) => requireNeedle(appSource, needle));
 
 [
   ".session-command-roadmap-card--silver",
   "--roadmap-accent: #f4f6f2;",
   "--roadmap-accent-strong: #ffffff;",
-  ".session-command-roadmap-card--gray",
-  "--roadmap-accent: #8f9aa3;",
-  "--roadmap-accent-strong: #c7d0d7;",
+  ".session-command-roadmap-card--orange",
+  "--roadmap-accent: #d88947;",
+  "--roadmap-accent-strong: #f0ad6c;",
   "border: 1px solid rgba(244, 246, 242, 0.24);",
   "radial-gradient(circle at top right, rgba(244, 246, 242, 0.14), transparent 48%)",
   "border-color: rgba(244, 246, 242, 0.6);",
@@ -49,7 +49,7 @@ function assertMethodTone(methodKey, expectedTone) {
 
 assertMethodTone("PAPER_TOWEL_SOAK", "silver");
 assertMethodTone("PAPER_TOWEL", "silver");
-assertMethodTone("ROCKWOOL", "gray");
+assertMethodTone("ROCKWOOL", "orange");
 
 [
   "#e9c84b",
