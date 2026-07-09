@@ -34,10 +34,15 @@ function stateFor(method, setup) {
   'readyLabel: "Yes, my plugs are ready"',
   'form.dataset.methodSetupPreparedMedia = normalizedChoice === "prepared" ? "true" : "false";',
   'preparedMedia: form.dataset.methodSetupPreparedMedia === "true"',
+  'clearPreparedMediaSetupPreference(nextMethod);',
+  'const savedChoice = event.isTrusted === true ? "" : getSavedPreparedMediaSetupPreference(nextMethod);',
   'if (form.dataset.methodSetupMethod && normalizeMethodType(form.dataset.methodSetupMethod) !== nextMethod) {\n        clearFormPreparedMediaSetupChoice(form);\n      }',
   'openPreparedMediaSetupModal(nextMethod);',
   'refreshNewSessionTimelineViews();',
   'if (isPreparedMediaSetupMethod(pendingMethodType) && !getMethodSetupStateFromForm(form).choice) {',
+  'function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetup = {})',
+  'const preparedMedia = normalizeMethodSetupState(methodKey, methodSetup).preparedMedia === true;',
+  'getSessionCommandCenterMethodRoadmapTemplate(methodKey, session?.methodSetup || session?.method_setup || {})',
 ].forEach((needle) => requireSource(needle));
 
 const preparedRockwool = stateFor("ROCKWOOL", { choice: "prepared", preparedMedia: true });

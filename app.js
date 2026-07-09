@@ -83336,6 +83336,8 @@ function renderSessionForm(initialSystemType = "KAN") {
     setFormPreparedMediaSetupChoice(form, nextMethod, normalizedChoice, remember ? "preference" : "session");
     if (remember) {
       savePreparedMediaSetupPreference(nextMethod, normalizedChoice);
+    } else {
+      clearPreparedMediaSetupPreference(nextMethod);
     }
     closePreparedMediaSetupModal();
     try {
@@ -83627,7 +83629,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         event.preventDefault();
       }
     });
-    systemTypeField.addEventListener("change", () => {
+    systemTypeField.addEventListener("change", (event) => {
       const previousMethod = normalizeMethodType(appState.newSessionSystemType || form.dataset.methodType || systemTypeField.value || "KAN");
       const nextMethod = normalizeMethodType(systemTypeField.value);
       systemTypeField.value = nextMethod;
@@ -83645,7 +83647,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         clearFormPreparedMediaSetupChoice(form);
       }
       if (isPreparedMediaSetupMethod(nextMethod)) {
-        const savedChoice = getSavedPreparedMediaSetupPreference(nextMethod);
+        const savedChoice = event.isTrusted === true ? "" : getSavedPreparedMediaSetupPreference(nextMethod);
         if (savedChoice && !applyingPreparedMediaSetupChoice) {
           setFormPreparedMediaSetupChoice(form, nextMethod, savedChoice, "preference");
         } else if (
@@ -95609,7 +95611,8 @@ function getSessionCommandCenterMethodKey(session = null) {
   return getSessionMethodType(session);
 }
 
-function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
+function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetup = {}) {
+  const preparedMedia = normalizeMethodSetupState(methodKey, methodSetup).preparedMedia === true;
   switch (methodKey) {
     case "KAN":
       return {
@@ -95684,28 +95687,44 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "") {
         title: "Rockwool",
         tone: "orange",
         iconName: "method-direct-sow",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "prep-cubes", label: "Prep Cubes", timing: "Day 0" },
-          { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-          { key: "keep-cubes-moist", label: "Keep Cubes Moist", timing: "Day 1-3" },
-          { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
+        stages: preparedMedia
+          ? [
+              { key: "started", label: "Started", timing: "Session started" },
+              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+              { key: "keep-cubes-moist", label: "Keep Cubes Moist", timing: "Day 1-3" },
+              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
+              { key: "complete", label: "Complete", timing: "When results are recorded" },
+            ]
+          : [
+              { key: "started", label: "Started", timing: "Session started" },
+              { key: "prep-cubes", label: "Prep Cubes", timing: "Day 0" },
+              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+              { key: "keep-cubes-moist", label: "Keep Cubes Moist", timing: "Day 1-3" },
+              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
+              { key: "complete", label: "Complete", timing: "When results are recorded" },
+            ],
       };
     case "RAPID_ROOTER":
       return {
         title: "Starter Plug",
         tone: "orange",
         iconName: "method-direct-sow",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "prep-plugs", label: "Prep Plugs", timing: "Day 0" },
-          { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-          { key: "keep-plugs-moist", label: "Keep Plugs Moist", timing: "Day 1-3" },
-          { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
+        stages: preparedMedia
+          ? [
+              { key: "started", label: "Started", timing: "Session started" },
+              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+              { key: "keep-plugs-moist", label: "Keep Plugs Moist", timing: "Day 1-3" },
+              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
+              { key: "complete", label: "Complete", timing: "When results are recorded" },
+            ]
+          : [
+              { key: "started", label: "Started", timing: "Session started" },
+              { key: "prep-plugs", label: "Prep Plugs", timing: "Day 0" },
+              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
+              { key: "keep-plugs-moist", label: "Keep Plugs Moist", timing: "Day 1-3" },
+              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
+              { key: "complete", label: "Complete", timing: "When results are recorded" },
+            ],
       };
     case "WATER_SOAK":
       return {
@@ -95809,7 +95828,7 @@ function getSessionCommandCenterRoadmapState(session = null) {
   }
 
   const methodKey = getSessionCommandCenterMethodKey(session);
-  const template = getSessionCommandCenterMethodRoadmapTemplate(methodKey);
+  const template = getSessionCommandCenterMethodRoadmapTemplate(methodKey, session?.methodSetup || session?.method_setup || {});
   const currentIndex = getSessionCommandCenterRoadmapCurrentIndex(session, template.stages);
   const isCompleted = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "") === "completed"
     || getSessionProgressKeyFromSession(session) === "completed";
