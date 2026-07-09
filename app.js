@@ -2062,6 +2062,20 @@ function getMethodSetupStateFromForm(form) {
   if (!isPreparedMediaSetupMethod(methodType) || setupMethod !== methodType || !choice) {
     return {};
   }
+  if (choice === "prepared" || form.dataset.methodSetupPreparedMedia === "true") {
+    return {
+      methodType,
+      choice: "prepared",
+      preparedMedia: true,
+    };
+  }
+  if (choice === "needs-prep" || form.dataset.methodSetupPreparedMedia === "false") {
+    return {
+      methodType,
+      choice: "needs-prep",
+      preparedMedia: false,
+    };
+  }
   return normalizeMethodSetupState(methodType, {
     choice,
     preparedMedia: form.dataset.methodSetupPreparedMedia === "true",
@@ -2077,13 +2091,17 @@ function logPreparedMediaSetupDebugState(form, context = {}, lifecycleState = nu
   const state = lifecycleState || buildFormLifecycleState(form);
   console.debug("[Prepared Media Setup]", {
     selectedMethodId: normalizeMethodType(form.elements?.systemType?.value || form.dataset.methodType || ""),
-    modalChoice: context.choice || "",
+    modalChoice: context.choice || form.dataset.methodSetupChoice || "",
     preparedMediaValue: setupState.preparedMedia,
     preparedMediaValueType: typeof setupState.preparedMedia,
     methodSetupChoice: form.dataset.methodSetupChoice || "",
     methodSetupPreparedMedia: form.dataset.methodSetupPreparedMedia || "",
     methodSetupMethod: form.dataset.methodSetupMethod || "",
     methodSetupState: setupState,
+    finalTimelineStepNames: Array.isArray(state?.engineState?.timelineSteps)
+      ? state.engineState.timelineSteps.map((step) => step.label || step.key || "")
+      : [],
+    currentStepName: state?.engineState?.currentPhase?.label || getSessionEngineCurrentStep(state?.engineState)?.label || "",
     lifecycle: {
       methodKey: state?.engineState?.methodKey || "",
       currentPhase: state?.engineState?.currentPhase || null,
@@ -83198,15 +83216,15 @@ function renderSessionForm(initialSystemType = "KAN") {
 
   function refreshNewSessionTimelineViews(debugContext = null) {
     const lifecycleState = buildFormLifecycleState(form);
+    if (isPreparedMediaSetupMethod(systemTypeField.value)) {
+      logPreparedMediaSetupDebugState(form, debugContext || { choice: form.dataset.methodSetupChoice || "" }, lifecycleState);
+    }
     updateSessionEngineVisualTimeline(visualTimeline, lifecycleState);
     updateSessionLifecycleTimeline(
       lifecycleSummary,
       lifecycleSection,
       lifecycleState,
     );
-    if (debugContext?.preparedMedia === true) {
-      logPreparedMediaSetupDebugState(form, debugContext, lifecycleState);
-    }
     return lifecycleState;
   }
 
@@ -95737,7 +95755,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetu
           ? [
               { key: "started", label: "Started", timing: "Session started" },
               { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-              { key: "keep-cubes-moist", label: "Keep Cubes Moist", timing: "Day 1-3" },
+              { key: "keep-cubes-moist", label: "Keep Moist", timing: "Day 1-3" },
               { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
               { key: "complete", label: "Complete", timing: "When results are recorded" },
             ]
@@ -95759,7 +95777,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetu
           ? [
               { key: "started", label: "Started", timing: "Session started" },
               { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-              { key: "keep-plugs-moist", label: "Keep Plugs Moist", timing: "Day 1-3" },
+              { key: "keep-plugs-moist", label: "Keep Moist", timing: "Day 1-3" },
               { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
               { key: "complete", label: "Complete", timing: "When results are recorded" },
             ]

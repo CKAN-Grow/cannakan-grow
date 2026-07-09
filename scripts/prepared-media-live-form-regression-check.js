@@ -61,23 +61,33 @@ async function prepareLocalQaStorage(page) {
   });
 }
 
-async function runPreparedScenario(page, baseUrl, methodType, absentStepKey) {
-  await page.goto(`${baseUrl}/#new/WATER_SOAK`, { waitUntil: "domcontentloaded" });
+async function runPreparedScenario(page, baseUrl, methodType, choice, expected) {
+  await page.goto(`${baseUrl}/#new/${methodType}`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector("form#session-form select[name='systemType']", { timeout: 10000 });
   await page.evaluate(() => {
     localStorage.setItem("cannakanGrowMethodSetupPreferences", "{}");
     localStorage.removeItem("cannakanGrowSessionMethodSetup");
   });
 
-  await page.selectOption("form#session-form select[name='systemType']", methodType);
-  await page.waitForSelector("#prepared-media-setup-modal-overlay [data-prepared-media-choice='prepared']", { timeout: 10000 });
-  await page.click("#prepared-media-setup-modal-overlay [data-prepared-media-choice='prepared']");
+  await page.waitForSelector(`#prepared-media-setup-modal-overlay [data-prepared-media-choice='${choice}']`, { timeout: 10000 });
+  await page.click(`#prepared-media-setup-modal-overlay [data-prepared-media-choice='${choice}']`);
   await page.waitForFunction(() => !document.querySelector("#prepared-media-setup-modal-overlay"));
+  await page.waitForTimeout(250);
 
   return page.evaluate(() => {
     const form = document.querySelector("form#session-form");
     const lifecycle = buildFormLifecycleState(form);
     const setup = getMethodSetupStateFromForm(form);
+    const visualSteps = [...document.querySelectorAll("#session-engine-visual-timeline .session-engine-visual-timeline-step")]
+      .map((step) => ({
+        text: step.innerText || "",
+        className: step.className || "",
+      }));
+    const companionSteps = [...document.querySelectorAll("#session-lifecycle-progress .session-progress-companion-roadmap-step")]
+      .map((step) => ({
+        text: step.innerText || "",
+        className: step.className || "",
+      }));
     return {
       selectedMethod: form.elements.systemType.value,
       dataset: {
@@ -88,22 +98,38 @@ async function runPreparedScenario(page, baseUrl, methodType, absentStepKey) {
       setup,
       currentPhaseKey: lifecycle.engineState?.currentPhase?.key || "",
       timelineStepKeys: (lifecycle.engineState?.timelineSteps || []).map((step) => step.key),
+      timelineStepLabels: (lifecycle.engineState?.timelineSteps || []).map((step) => step.label),
       visualTimelineText: document.querySelector("#session-engine-visual-timeline")?.innerText || "",
       companionText: document.querySelector("#session-lifecycle-progress")?.innerText || "",
+      visualSteps,
+      companionSteps,
     };
   }).then((result) => {
     assert.equal(result.selectedMethod, methodType);
     assert.equal(result.dataset.methodSetupMethod, methodType);
-    assert.equal(result.dataset.methodSetupChoice, "prepared");
-    assert.equal(result.dataset.methodSetupPreparedMedia, "true");
-    assert.equal(result.setup.choice, "prepared");
-    assert.equal(result.setup.preparedMedia, true);
-    assert.equal(result.currentPhaseKey, "seeds-planted");
-    assert.equal(result.timelineStepKeys.includes(absentStepKey), false);
-    assert.equal(result.timelineStepKeys.includes("seeds-planted"), true);
-    assert.match(result.visualTimelineText, /Plant Seeds/);
-    assert.doesNotMatch(result.visualTimelineText, new RegExp(absentStepKey === "prep-cubes" ? "Prep Cubes" : "Prep Plugs"));
-    assert.match(result.companionText, /Plant Seeds/);
+    assert.equal(result.dataset.methodSetupChoice, choice);
+    assert.equal(result.dataset.methodSetupPreparedMedia, choice === "prepared" ? "true" : "false");
+    assert.equal(result.setup.choice, choice);
+    assert.equal(result.setup.preparedMedia, choice === "prepared");
+    assert.equal(result.currentPhaseKey, expected.currentKey);
+    assert.equal(result.timelineStepKeys.includes(expected.absentKey), false);
+    assert.equal(result.timelineStepKeys.includes(expected.presentKey), true);
+    assert.match(result.visualTimelineText, new RegExp(expected.visibleLabel));
+    assert.match(result.companionText, new RegExp(expected.visibleLabel));
+    assert.equal(
+      result.visualSteps.some((step) => step.className.includes("is-current") && step.text.includes(expected.visibleLabel)),
+      true,
+      `${methodType} ${choice} should render ${expected.visibleLabel} as current in visual timeline.`,
+    );
+    assert.equal(
+      result.companionSteps.some((step) => step.className.includes("is-current") && step.text.includes(expected.visibleLabel)),
+      true,
+      `${methodType} ${choice} should render ${expected.visibleLabel} as current in Grow Companion.`,
+    );
+    if (expected.hiddenLabel) {
+      assert.doesNotMatch(result.visualTimelineText, new RegExp(expected.hiddenLabel));
+      assert.doesNotMatch(result.companionText, new RegExp(expected.hiddenLabel));
+    }
     return result;
   });
 }
@@ -114,8 +140,32 @@ async function runPreparedScenario(page, baseUrl, methodType, absentStepKey) {
   const page = await browser.newPage();
   await prepareLocalQaStorage(page);
   try {
-    await runPreparedScenario(page, baseUrl, "ROCKWOOL", "prep-cubes");
-    await runPreparedScenario(page, baseUrl, "RAPID_ROOTER", "prep-plugs");
+    await runPreparedScenario(page, baseUrl, "ROCKWOOL", "prepared", {
+      currentKey: "seeds-planted",
+      presentKey: "seeds-planted",
+      absentKey: "prep-cubes",
+      visibleLabel: "Plant Seeds",
+      hiddenLabel: "Prep Cubes",
+    });
+    await runPreparedScenario(page, baseUrl, "ROCKWOOL", "needs-prep", {
+      currentKey: "prep-cubes",
+      presentKey: "prep-cubes",
+      absentKey: "not-a-real-step",
+      visibleLabel: "Prep Cubes",
+    });
+    await runPreparedScenario(page, baseUrl, "RAPID_ROOTER", "prepared", {
+      currentKey: "seeds-planted",
+      presentKey: "seeds-planted",
+      absentKey: "prep-plugs",
+      visibleLabel: "Plant Seeds",
+      hiddenLabel: "Prep Plugs",
+    });
+    await runPreparedScenario(page, baseUrl, "RAPID_ROOTER", "needs-prep", {
+      currentKey: "prep-plugs",
+      presentKey: "prep-plugs",
+      absentKey: "not-a-real-step",
+      visibleLabel: "Prep Plugs",
+    });
   } finally {
     await browser.close();
     server.close();

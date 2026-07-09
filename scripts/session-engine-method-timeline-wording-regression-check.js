@@ -89,7 +89,7 @@ assert.deepEqual(
   [
     "Start|Session started",
     "Plant Seeds|Day 0",
-    "Keep Cubes Moist|Day 1-3",
+    "Keep Moist|Day 1-3",
     "Watch for Sprouts|Day 2-5",
     "Complete|Day 5+",
   ],
@@ -122,7 +122,7 @@ assert.deepEqual(
   [
     "Start|Session started",
     "Plant Seeds|Day 0",
-    "Keep Plugs Moist|Day 1-3",
+    "Keep Moist|Day 1-3",
     "Watch for Sprouts|Day 2-5",
     "Complete|Day 5+",
   ],
