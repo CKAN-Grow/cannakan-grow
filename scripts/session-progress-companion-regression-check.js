@@ -201,6 +201,9 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
+  "grid-template-columns: minmax(0, 1fr) minmax(176px, 0.34fr);",
+  "border-left: 1px solid color-mix(in srgb, var(--session-companion-accent) 24%, transparent);",
+  "box-shadow: none;",
   "scroll-padding-inline: 50%",
   "@media (max-width: 720px)",
 ].forEach((needle) => {

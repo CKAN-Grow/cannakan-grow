@@ -4841,37 +4841,38 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-right {
   display: grid;
-  gap: 18px;
+  gap: 20px;
   min-width: 0;
 }
 
 .session-progress-companion-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.54fr);
-  gap: 14px;
-  align-items: center;
-  padding: clamp(18px, 2vw, 26px);
+  grid-template-columns: minmax(0, 1fr) minmax(176px, 0.34fr);
+  gap: clamp(24px, 3vw, 40px);
+  align-items: start;
+  padding: clamp(22px, 2.5vw, 32px);
 }
 
 .session-progress-companion-phase-copy {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   min-width: 0;
 }
 
 .session-progress-companion-phase-copy h4 {
   margin: 0;
   color: #ffffff;
-  font-size: clamp(2rem, 4vw, 3.25rem);
-  line-height: 1.02;
+  font-size: clamp(2.35rem, 5vw, 4.15rem);
+  line-height: 0.98;
+  max-width: 11ch;
 }
 
 .session-progress-companion-phase-copy p:not(.eyebrow) {
-  max-width: 58ch;
+  max-width: 64ch;
   margin: 0;
   color: rgba(244, 248, 240, 0.86);
-  font-size: clamp(1rem, 1.5vw, 1.16rem);
-  line-height: 1.45;
+  font-size: clamp(1.02rem, 1.55vw, 1.2rem);
+  line-height: 1.52;
 }
 
 .session-progress-companion-status-row {
@@ -4879,7 +4880,7 @@ body.theme-dark .spotlight-stat strong {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px 14px;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .session-progress-companion-status {
@@ -4923,50 +4924,49 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-recommendation {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-self: stretch;
+  align-items: start;
   min-width: 0;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--session-companion-accent) 18%, transparent);
-  border-radius: 12px;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--session-companion-accent) 8%, transparent), transparent 58%),
-    rgba(255, 255, 255, 0.026);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  padding: 4px 0 4px clamp(14px, 1.5vw, 20px);
+  border-left: 1px solid color-mix(in srgb, var(--session-companion-accent) 24%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .session-progress-companion-recommendation-icon {
   display: inline-grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   color: var(--session-companion-accent);
-  background: color-mix(in srgb, var(--session-companion-accent) 10%, rgba(255, 255, 255, 0.025));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--session-companion-accent) 18%, transparent);
+  background: color-mix(in srgb, var(--session-companion-accent) 8%, rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--session-companion-accent) 14%, transparent);
 }
 
 .session-progress-companion-recommendation-svg {
-  width: 26px;
-  height: 26px;
+  width: 21px;
+  height: 21px;
 }
 
 .session-progress-companion-recommendation div {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
 .session-progress-companion-recommendation strong {
   color: #ffffff;
-  font-size: clamp(1rem, 1.35vw, 1.24rem);
-  line-height: 1.18;
+  font-size: clamp(0.98rem, 1.05vw, 1.08rem);
+  line-height: 1.22;
 }
 
 .session-progress-companion-recommendation span {
-  font-size: 0.9rem;
-  line-height: 1.38;
+  font-size: 0.84rem;
+  line-height: 1.44;
 }
 
 .session-progress-companion-roadmap {
@@ -5018,9 +5018,9 @@ body.theme-dark .spotlight-stat strong {
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 2px solid rgba(255, 255, 255, 0.28);
+  border: 2px solid rgba(255, 255, 255, 0.36);
   border-radius: 50%;
-  color: rgba(245, 248, 242, 0.78);
+  color: rgba(245, 248, 242, 0.88);
   font-weight: 900;
   background: #07100d;
   box-shadow: 0 0 0 4px rgba(6, 12, 9, 0.88);
@@ -5044,8 +5044,8 @@ body.theme-dark .spotlight-stat strong {
     #07100d;
   box-shadow:
     0 0 0 3px rgba(6, 12, 9, 0.88),
-    0 0 0 5px color-mix(in srgb, var(--session-companion-accent) 18%, transparent),
-    0 0 16px color-mix(in srgb, var(--session-companion-accent) 32%, transparent);
+    0 0 0 5px color-mix(in srgb, var(--session-companion-accent) 14%, transparent),
+    0 0 12px color-mix(in srgb, var(--session-companion-accent) 24%, transparent);
 }
 
 .session-progress-companion-roadmap-step.is-current .session-progress-companion-roadmap-copy strong {
@@ -5071,19 +5071,19 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-progress-companion-roadmap-copy strong {
-  color: #f7faf4;
+  color: rgba(247, 250, 244, 0.9);
   font-size: 0.9rem;
   line-height: 1.18;
 }
 
 .session-progress-companion-roadmap-copy small {
-  color: rgba(224, 232, 221, 0.68);
+  color: rgba(224, 232, 221, 0.74);
   font-size: 0.78rem;
   font-weight: 750;
 }
 
 .session-progress-companion-roadmap-step.is-upcoming {
-  opacity: 0.68;
+  opacity: 0.78;
 }
 
 .session-progress-companion-metrics {
@@ -5246,7 +5246,11 @@ body.theme-dark .spotlight-stat strong {
   }
 
   .session-progress-companion-recommendation {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    padding: 12px 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--session-companion-accent) 18%, transparent);
+    border-left: 0;
   }
 
   .session-progress-companion-metrics,
