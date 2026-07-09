@@ -55032,7 +55032,6 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   grid-template-columns: 104px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px);
 }
 
-[data-method-standardized="false"] .system-layout-block,
 [data-method-standardized="false"] .timeline-debug-panel,
 [data-method-standardized="false"] .system-id-field,
 [data-method-standardized="false"] [data-standardized-method-only] {

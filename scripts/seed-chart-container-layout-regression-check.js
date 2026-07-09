@@ -7,8 +7,12 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").
 
 const chartStart = indexSource.indexOf('id="partition-chart-shell"');
 const saveShortcutStart = indexSource.indexOf('class="timeline-save-shortcut', chartStart);
+const lifecycleStart = indexSource.indexOf('id="session-lifecycle-section"', chartStart);
 if (chartStart === -1 || saveShortcutStart === -1) {
   throw new Error("Could not locate New Session seed chart shell boundaries.");
+}
+if (!(chartStart < saveShortcutStart && saveShortcutStart < lifecycleStart)) {
+  throw new Error("Save Session bar must render directly after the Seed Chart and before Grow Companion.");
 }
 
 const chartShellMarkup = indexSource.slice(chartStart, saveShortcutStart);

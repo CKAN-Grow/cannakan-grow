@@ -33,7 +33,7 @@ function getMarkupSlice(startNeedle, endNeedle) {
 
 const sessionLifecycleSection = getMarkupSlice(
   'id="session-lifecycle-section"',
-  'class="timeline-save-shortcut',
+  'id="session-timing-section"',
 );
 const detailLifecycleSection = getMarkupSlice(
   'id="detail-lifecycle-section"',

@@ -140,6 +140,7 @@ for (const needle of [
 }
 
 for (const forbidden of [
+  '[data-method-standardized="false"] .system-layout-block',
   '.session-workspace-form[data-method-standardized="false"] .hardware-method-card',
   '.session-workspace-form[data-method-standardized="false"] .hardware-overview-metrics',
   '.session-workspace-form[data-method-standardized="false"] .hardware-method-hero',
