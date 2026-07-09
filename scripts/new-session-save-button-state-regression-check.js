@@ -25,9 +25,24 @@ for (const needle of [
   'function setNewSessionSaveButtonState(form, state = "default")',
   "const defaultLabel = isStarted ? SESSION_UPDATE_BUTTON_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;",
   "setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : defaultLabel);",
-  "button.hidden = !isStarted;",
+  "const isCompleted = normalizeSessionStatus(form?.elements?.sessionStatus?.value || form?.dataset?.currentStage || \"\") === \"completed\";",
+  "button.hidden = !isStarted || isCompleted;",
   'button.disabled = isSaved;',
+  "button.disabled = isSaved || isCompleted;",
   'setNewSessionSaveButtonState(form, "default");',
+  "resetNewSessionSaveButtonState(form);",
+  "function confirmSessionCompletion()",
+  'id="session-complete-confirm-modal-title">Complete Session?</h2>',
+  "Once completed, this session will be locked as finished. You can review the results, but active tracking and reminders will stop.",
+  'data-session-complete-cancel',
+  'data-session-complete-confirm',
+  "const requestedSessionStatus = normalizeSessionStatus(formData.get(\"sessionStatus\"));",
+  'const normalizedInitialStatus = requestedSessionStatus === "completed"',
+  'const confirmed = await confirmSessionCompletion();',
+  "clearSessionTimerInterval();",
+  "syncSessionProgressionReminderNotifications(getSessions());",
+  'queueDueGrowReminderEvaluation("session-completed:new-session");',
+  'queueDueGrowReminderEvaluation("session-completed:detail");',
   'function setSessionDetailSaveButtonState(detail, state = "default", options = {})',
   "function syncSessionDetailCompletionActions(detail, session = null)",
   'setSessionDetailSaveButtonState(detail, "saved", {',
@@ -46,6 +61,12 @@ if (!stylesSource.includes('[data-new-session-save-button="true"].is-saved')) {
 if (!stylesSource.includes('[data-session-save-button="true"].is-saved')) {
   throw new Error("Missing visual saved state styling for shared session save buttons.");
 }
+if (!stylesSource.includes(".session-complete-confirm-modal-overlay")) {
+  throw new Error("Missing Complete Session confirmation modal overlay styles.");
+}
+if (!stylesSource.includes(".session-complete-confirm-modal-actions")) {
+  throw new Error("Missing Complete Session confirmation modal action layout.");
+}
 
 if (!stylesSource.includes('content: "✓";')) {
   throw new Error("Saved state should include a visible check icon.");
@@ -57,6 +78,10 @@ if (!indexSource.includes('data-session-complete-button="true"')) {
 
 if (!indexSource.includes('data-new-session-complete-button="true"')) {
   throw new Error("New Session action bars should expose a post-save Complete Session button hook.");
+}
+
+if (appSource.includes("navigateWithUnsavedChangesBypass(`#sessions/${savedSessionId}`);")) {
+  throw new Error("New Session Complete Session should open the completion flow, not just route to the detail page.");
 }
 
 console.log("New session save button state regression check passed.");

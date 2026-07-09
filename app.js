@@ -41490,16 +41490,17 @@ function setNewSessionSaveButtonState(form, state = "default") {
   clearNewSessionSaveButtonTimer(form);
   const isSaved = state === "saved";
   const isStarted = String(form?.dataset?.savedSessionId || "").trim() !== "";
+  const isCompleted = normalizeSessionStatus(form?.elements?.sessionStatus?.value || form?.dataset?.currentStage || "") === "completed";
   buttons.forEach((button) => {
     button.classList.toggle("is-saved", isSaved);
     button.setAttribute("data-save-state", isSaved ? "saved" : "default");
-    button.disabled = isSaved;
+    button.disabled = isSaved || isCompleted;
     const defaultLabel = isStarted ? SESSION_UPDATE_BUTTON_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
     setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : defaultLabel);
   });
   getNewSessionCompleteButtons(form).forEach((button) => {
-    button.hidden = !isStarted;
-    button.disabled = isSaved;
+    button.hidden = !isStarted || isCompleted;
+    button.disabled = isSaved || isCompleted;
     button.textContent = SESSION_COMPLETE_BUTTON_LABEL;
   });
 
@@ -41645,6 +41646,56 @@ function showSeedChartExpandedModal() {
     document.body.appendChild(overlay);
     document.body.classList.add("modal-open");
     overlay.querySelector("[data-seed-chart-expanded-continue]")?.focus();
+  });
+}
+
+function confirmSessionCompletion() {
+  return new Promise((resolve) => {
+    const existingOverlay = document.querySelector("#session-complete-confirm-modal-overlay");
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "session-complete-confirm-modal-overlay";
+    overlay.className = "session-complete-confirm-modal-overlay";
+    overlay.innerHTML = `
+      <div class="session-complete-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="session-complete-confirm-modal-title" aria-describedby="session-complete-confirm-modal-description">
+        <p class="session-complete-confirm-modal-eyebrow">Session Completion</p>
+        <h2 id="session-complete-confirm-modal-title">Complete Session?</h2>
+        <p id="session-complete-confirm-modal-description">Once completed, this session will be locked as finished. You can review the results, but active tracking and reminders will stop.</p>
+        <div class="session-complete-confirm-modal-actions">
+          <button type="button" class="button button-secondary" data-session-complete-cancel>Cancel</button>
+          <button type="button" class="button button-primary" data-session-complete-confirm>Complete Session</button>
+        </div>
+      </div>
+    `;
+
+    const closeModal = (confirmed = false) => {
+      overlay.remove();
+      document.body.classList.remove("modal-open");
+      resolve(Boolean(confirmed));
+    };
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || (event.target instanceof Element && event.target.closest("[data-session-complete-cancel]"))) {
+        closeModal(false);
+        return;
+      }
+      if (event.target instanceof Element && event.target.closest("[data-session-complete-confirm]")) {
+        closeModal(true);
+      }
+    });
+    overlay.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeModal(false);
+      }
+    });
+
+    document.body.appendChild(overlay);
+    document.body.classList.add("modal-open");
+    overlay.querySelector("[data-session-complete-cancel]")?.focus();
   });
 }
 
@@ -84377,9 +84428,12 @@ function renderSessionForm(initialSystemType = "KAN") {
       || createdAt;
     const selectedMethod = getMethodConfig(formData.get("systemType"));
     const methodSetup = getMethodSetupStateFromForm(form);
-    const normalizedInitialStatus = selectedMethod.supportsStageTracking
-      ? normalizeSessionStatus(formData.get("sessionStatus"))
-      : getMethodDefaultSessionStatus(selectedMethod.id);
+    const requestedSessionStatus = normalizeSessionStatus(formData.get("sessionStatus"));
+    const normalizedInitialStatus = requestedSessionStatus === "completed"
+      ? "completed"
+      : selectedMethod.supportsStageTracking
+        ? requestedSessionStatus
+        : getMethodDefaultSessionStatus(selectedMethod.id);
     const soakStartedAt = selectedMethod.supportsStageTracking
       ? getInitialSoakStartedAt(sessionStartedAt, createdAt, normalizedInitialStatus)
       : "";
@@ -84541,14 +84595,56 @@ function renderSessionForm(initialSystemType = "KAN") {
     await persistNewSession();
   });
   getNewSessionCompleteButtons(form).forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       const savedSessionId = String(form.dataset.savedSessionId || "").trim();
       if (!savedSessionId) {
+        resetNewSessionSaveButtonState(form);
         return;
       }
-      navigateWithUnsavedChangesBypass(`#sessions/${savedSessionId}`);
+      const sessionResults = {
+        partitions: buildPartitionDraftValuesFromContainer(partitionFields),
+      };
+      if (!areSessionSeedResultsFullyAccountedFor(sessionResults)) {
+        showSessionCompletionResultsWarning(formMessage);
+        focusSessionResultEntry(chartShell || form);
+        return;
+      }
+      const confirmed = await confirmSessionCompletion();
+      if (!confirmed) {
+        return;
+      }
+
+      const previousStatus = sessionStatusField.value || "";
+      const previousCurrentStage = form.dataset.currentStage || "";
+      const previousCompletedAt = form.dataset.completedAt || "";
+      const completedAt = new Date().toISOString();
+      form.dataset.completedAt = completedAt;
+      sessionStatusField.value = "completed";
+      sessionStatusField.dispatchEvent(new Event("change", { bubbles: true }));
+      setNewSessionSaveButtonState(form, "default");
+      const savedSession = await persistNewSession({ navigateOnSuccess: false });
+      if (!savedSession) {
+        sessionStatusField.value = previousStatus;
+        form.dataset.currentStage = previousCurrentStage;
+        if (previousCompletedAt) {
+          form.dataset.completedAt = previousCompletedAt;
+        } else {
+          delete form.dataset.completedAt;
+        }
+        sessionStatusField.dispatchEvent(new Event("change", { bubbles: true }));
+        resetNewSessionSaveButtonState(form);
+        return;
+      }
+
+      setNewSessionSaveButtonState(form, "saved");
+      formMessage.textContent = "Session completed.";
+      formMessage.classList.remove("is-error");
+      clearSessionTimerInterval();
+      syncSessionProgressionReminderNotifications(getSessions());
+      queueDueGrowReminderEvaluation("session-completed:new-session");
     });
   });
+  resetNewSessionSaveButtonState(form);
 
   queueMicrotask(() => {
     openNewSessionNamePrompt(form);
@@ -91652,6 +91748,10 @@ function renderSessionDetail(sessionId) {
       focusSessionResultEntry(detail.chartShell || app);
       return null;
     }
+    const confirmed = await confirmSessionCompletion();
+    if (!confirmed) {
+      return null;
+    }
 
     const completedAt = new Date().toISOString();
     session.sessionStatus = "completed";
@@ -91693,6 +91793,9 @@ function renderSessionDetail(sessionId) {
 
     setFeedbackMessage(detail.saveMessage, "Session completed.", "success");
     syncSessionDetailCompletionActions(detail, savedSession);
+    clearSessionTimerInterval();
+    syncSessionProgressionReminderNotifications(getSessions());
+    queueDueGrowReminderEvaluation("session-completed:detail");
     return savedSession;
   };
 
