@@ -96150,6 +96150,13 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
               <p class="eyebrow">Current Phase</p>
               <h4>${escapeHtml(engineState.phaseLabel || currentStep?.label || "Tracking")}</h4>
               <p>${escapeHtml(getSessionProgressCompanionGuidance(engineState))}</p>
+              <div class="session-progress-companion-recommendation" aria-label="Recommendation">
+                <span class="session-progress-companion-recommendation-icon">${renderSessionProgressCompanionIconMarkup("hand", "session-progress-companion-recommendation-svg")}</span>
+                <div>
+                  <strong>${escapeHtml(recommendation.title)}</strong>
+                  <span>${escapeHtml(recommendation.detail)}</span>
+                </div>
+              </div>
               <div class="session-progress-companion-status-row">
                 <span class="session-progress-companion-status is-${escapeHtml(companionStatus.key)}">
                   <span aria-hidden="true"></span>${escapeHtml(companionStatus.label)}
@@ -96157,14 +96164,6 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
                 <small>${escapeHtml(companionStatus.detail)}</small>
               </div>
             </div>
-            <aside class="session-progress-companion-recommendation" aria-label="Recommendation">
-              <span class="session-progress-companion-recommendation-icon">${renderSessionProgressCompanionIconMarkup("hand", "session-progress-companion-recommendation-svg")}</span>
-              <div>
-                <p class="eyebrow">Recommendation</p>
-                <strong>${escapeHtml(recommendation.title)}</strong>
-                <span>${escapeHtml(recommendation.detail)}</span>
-              </div>
-            </aside>
           </section>
 
           <section class="session-progress-companion-roadmap" aria-label="Compact session roadmap">

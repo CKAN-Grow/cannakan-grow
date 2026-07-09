@@ -80,6 +80,10 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   }
 });
 
+if (rendererSource.includes('<aside class="session-progress-companion-recommendation"')) {
+  throw new Error("Recommendation should be integrated into Current Phase, not rendered as a separate side panel.");
+}
+
 [
   "const showReminder = options.showReminder !== false",
   "${showReminder ? `",
@@ -201,8 +205,10 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
-  "grid-template-columns: minmax(0, 1fr) minmax(176px, 0.34fr);",
-  "border-left: 1px solid color-mix(in srgb, var(--session-companion-accent) 24%, transparent);",
+  "grid-template-columns: 1fr;",
+  "width: min(100%, 640px);",
+  "border: 1px solid color-mix(in srgb, var(--session-companion-accent) 18%, transparent);",
+  "background: color-mix(in srgb, var(--session-companion-accent) 7%, rgba(255, 255, 255, 0.024));",
   "box-shadow: none;",
   "scroll-padding-inline: 50%",
   "@media (max-width: 720px)",
