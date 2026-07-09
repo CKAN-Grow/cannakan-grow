@@ -3046,6 +3046,8 @@ const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
 const FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS = Object.freeze([1, 2, 3, 4, 5]);
 const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
 const NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL = "Save Session";
+const SESSION_UPDATE_BUTTON_LABEL = "Update Session";
+const SESSION_COMPLETE_BUTTON_LABEL = "Complete Session";
 const SESSION_SAVE_BUTTON_SAVED_LABEL = "Session Saved.";
 const NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS = 1200;
 const SESSION_SAVE_BUTTON_SAVED_RESET_MS = 2200;
@@ -41314,6 +41316,11 @@ function getNewSessionSaveButtons(form) {
     .filter((button) => button instanceof HTMLButtonElement);
 }
 
+function getNewSessionCompleteButtons(form) {
+  return [...(form?.querySelectorAll?.('[data-new-session-complete-button="true"]') || [])]
+    .filter((button) => button instanceof HTMLButtonElement);
+}
+
 function setSessionSaveButtonLabel(button, label) {
   if (!(button instanceof HTMLButtonElement)) {
     return;
@@ -41439,11 +41446,18 @@ function setNewSessionSaveButtonState(form, state = "default") {
 
   clearNewSessionSaveButtonTimer(form);
   const isSaved = state === "saved";
+  const isStarted = String(form?.dataset?.savedSessionId || "").trim() !== "";
   buttons.forEach((button) => {
     button.classList.toggle("is-saved", isSaved);
     button.setAttribute("data-save-state", isSaved ? "saved" : "default");
     button.disabled = isSaved;
-    setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL);
+    const defaultLabel = isStarted ? SESSION_UPDATE_BUTTON_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
+    setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : defaultLabel);
+  });
+  getNewSessionCompleteButtons(form).forEach((button) => {
+    button.hidden = !isStarted;
+    button.disabled = isSaved;
+    button.textContent = SESSION_COMPLETE_BUTTON_LABEL;
   });
 
   if (isSaved) {
@@ -84180,8 +84194,15 @@ function renderSessionForm(initialSystemType = "KAN") {
       setUnsavedChangesLastSaveError(new Error(seedVaultUsageValidation.message), seedVaultUsageValidation.message);
       return null;
     }
+    const existingSessionId = String(form.dataset.savedSessionId || "").trim();
+    const existingSessionForUpdate = existingSessionId
+      ? getSessions().find((entry) => String(entry?.id || "").trim() === existingSessionId) || null
+      : null;
+    const isUpdatingExistingSession = Boolean(existingSessionId);
     const createdAt = new Date().toISOString();
-    const sessionStartedAt = parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString() || createdAt;
+    const sessionStartedAt = existingSessionForUpdate?.sessionStartedAt
+      || parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString()
+      || createdAt;
     const selectedMethod = getMethodConfig(formData.get("systemType"));
     const methodSetup = getMethodSetupStateFromForm(form);
     const normalizedInitialStatus = selectedMethod.supportsStageTracking
@@ -84193,7 +84214,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     const rawUnitId = String(formData.get("unitId") || "").trim();
     const normalizedUnitId = normalizeUnitIdValue(formData.get("unitId"));
     const session = {
-      id: crypto.randomUUID(),
+      id: existingSessionId || crypto.randomUUID(),
       date: formData.get("date"),
       time: formData.get("time"),
       methodType: normalizeMethodType(formData.get("systemType")),
@@ -84214,7 +84235,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       ),
       customSessionName: String(formData.get("sessionName") || "").trim(),
       sessionNotes: String(formData.get("sessionNotes") || "").trim(),
-      sessionImages: [],
+      sessionImages: normalizePersistedSessionImages(existingSessionForUpdate?.sessionImages || []),
       snapshotState: normalizePersistedSessionSnapshotState(snapshotSection?.__snapshotState?.pendingSnapshotState),
       sessionStatus: normalizedInitialStatus || "soaking",
       germinationStartedAt:
@@ -84229,12 +84250,12 @@ function renderSessionForm(initialSystemType = "KAN") {
       seedAgeTrackingEnabled: seedAgeState.trackingEnabled,
       seedAgeMode: seedAgeState.mode,
       sessionSeedAgeYears: seedAgeState.sessionSeedAgeYears,
-      filterPaperDeducted: false,
+      filterPaperDeducted: Boolean(existingSessionForUpdate?.filterPaperDeducted),
       partitions: partitionEntries,
-      createdAt,
+      createdAt: existingSessionForUpdate?.createdAt || createdAt,
       sessionStartedAt,
       soakStartedAt,
-      timerStartAt: selectedMethod.supportsStageTracking ? soakStartedAt : "",
+      timerStartAt: existingSessionForUpdate?.timerStartAt || (selectedMethod.supportsStageTracking ? soakStartedAt : ""),
     };
     const requestedCompleted = normalizeSessionStatus(session.sessionStatus || "") === "completed";
     if (requestedCompleted && !areSessionSeedResultsFullyAccountedFor(session)) {
@@ -84242,7 +84263,9 @@ function renderSessionForm(initialSystemType = "KAN") {
       setUnsavedChangesLastSaveError(new Error(SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE), SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE);
       return null;
     }
-    autoCompleteSessionWhenResultsAccounted(session);
+    if (!isUpdatingExistingSession) {
+      autoCompleteSessionWhenResultsAccounted(session);
+    }
     const timelineValidation = validateGrowSessionTimelineOrder({
       sessionStartedAt: session.sessionStartedAt,
       soakStartedAt: session.soakStartedAt,
@@ -84267,40 +84290,50 @@ function renderSessionForm(initialSystemType = "KAN") {
         return null;
       }
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
-      const savedSession = await createCloudSession(session);
+      const savedSession = isUpdatingExistingSession
+        ? await saveSessionUpdate(session, { allowAutoComplete: false })
+        : await createCloudSession(session);
+      if (!savedSession) {
+        throw appState.unsavedChanges.lastSaveError || new Error("Could not save session.");
+      }
       void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
       void recordVarietyDirectoryUsages(getVarietyDirectoryUsageRecordsFromSession(savedSession || session));
-      try {
-        await applySeedVaultSessionQuantityUsage(partitionEntries);
-      } catch (seedVaultError) {
-        console.warn("[My Seed Vault] Session saved, but inventory quantity could not be updated.", seedVaultError);
-        showNavigationLockToast({
-          title: "My Seed Vault",
-          message: "Session saved, but Vault quantity could not be updated. Review your Seed Vault when you can.",
-        });
+      if (!isUpdatingExistingSession) {
+        try {
+          await applySeedVaultSessionQuantityUsage(partitionEntries);
+        } catch (seedVaultError) {
+          console.warn("[My Seed Vault] Session saved, but inventory quantity could not be updated.", seedVaultError);
+          showNavigationLockToast({
+            title: "My Seed Vault",
+            message: "Session saved, but Vault quantity could not be updated. Review your Seed Vault when you can.",
+          });
+        }
       }
       const unlockedGrowNetworkNow = !wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession);
       if (unlockedGrowNetworkNow) {
         markGrowNetworkUnlocked({ showNotice: true });
       }
-      if (isFirstRealGrowReminderSession(savedSession, existingSessionsBeforeSave)) {
+      if (!isUpdatingExistingSession && isFirstRealGrowReminderSession(savedSession, existingSessionsBeforeSave)) {
         queueGrowRemindersPromptForUser(appState.user?.id || "");
       }
-      processSessionNotificationTriggers(savedSession, {
-        existingSessions: existingSessionsBeforeSave,
-        previousSession: null,
-        isNewSession: true,
-      });
+      if (!isUpdatingExistingSession) {
+        processSessionNotificationTriggers(savedSession, {
+          existingSessions: existingSessionsBeforeSave,
+          previousSession: null,
+          isNewSession: true,
+        });
+      }
       clearNewSessionNotesDraft();
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
         savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
       }
-      if (shouldAutoDeductFilterPaperForSessionStart(savedSession)) {
+      if (!isUpdatingExistingSession && shouldAutoDeductFilterPaperForSessionStart(savedSession)) {
         applyFilterPaperDeductionForStartedSession(savedSession);
       }
-      await refreshUserSessionsAfterSave("new-session:save");
+      await refreshUserSessionsAfterSave(isUpdatingExistingSession ? "new-session:update" : "new-session:save");
       markUnsavedChangesSaved();
+      form.dataset.savedSessionId = savedSession.id || session.id || "";
       setNewSessionSaveButtonState(form, "saved");
       if (navigateOnSuccess) {
         await waitForNewSessionSavedStateVisibility();
@@ -84325,6 +84358,15 @@ function renderSessionForm(initialSystemType = "KAN") {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await persistNewSession();
+  });
+  getNewSessionCompleteButtons(form).forEach((button) => {
+    button.addEventListener("click", () => {
+      const savedSessionId = String(form.dataset.savedSessionId || "").trim();
+      if (!savedSessionId) {
+        return;
+      }
+      navigateWithUnsavedChangesBypass(`#sessions/${savedSessionId}`);
+    });
   });
 
   queueMicrotask(() => {
@@ -90240,6 +90282,7 @@ function getSessionDetailElements(scope = document) {
     customCompletionActions: scope.querySelector("[data-custom-method-completion-actions]"),
     customCompleteButton: scope.querySelector("#detail-mark-custom-complete"),
     saveButton: scope.querySelector("#detail-save-session"),
+    completeButton: scope.querySelector("#detail-complete-session"),
     saveMessage: scope.querySelector("#detail-save-message"),
     imageSection: scope.querySelector(".session-images-section"),
     imageHeading: scope.querySelector("#detail-session-images-label span:last-child"),
@@ -90293,6 +90336,11 @@ function getSessionDetailSaveButtons(detail) {
     .filter((button) => button instanceof HTMLButtonElement);
 }
 
+function getSessionDetailCompleteButtons(detail) {
+  return [detail?.completeButton]
+    .filter((button) => button instanceof HTMLButtonElement);
+}
+
 function clearSessionDetailSaveButtonTimer(detail) {
   if (detail?.__saveButtonStateTimer) {
     window.clearTimeout(detail.__saveButtonStateTimer);
@@ -90312,7 +90360,7 @@ function setSessionDetailSaveButtonState(detail, state = "default", options = {}
     button.classList.toggle("is-saved", isSaved);
     button.setAttribute("data-save-state", isSaved ? "saved" : "default");
     button.disabled = isSaved;
-    setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL);
+    setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : SESSION_UPDATE_BUTTON_LABEL);
   });
 
   if (isSaved && options.persist !== true) {
@@ -91118,6 +91166,7 @@ function renderSessionDetail(sessionId) {
     refreshDetailUnsavedChanges();
   };
   refreshDetailDerivedViews();
+  syncSessionDetailCompletionActions(detail, session);
   if (detail.seedAgeForm instanceof HTMLFormElement && detail.seedAgeForm.dataset.bound !== "true") {
     detail.seedAgeForm.addEventListener("change", (event) => {
       const target = event.target;
@@ -91294,10 +91343,12 @@ function renderSessionDetail(sessionId) {
     applyStageEditingMode(app, detail.statusField.value);
     syncDetailSeedAgeVisibility();
     refreshDetailDerivedViews();
+    syncSessionDetailCompletionActions(detail, session);
 
     const savedSession = await saveSessionUpdate(session);
     if (savedSession) {
       markUnsavedChangesSaved();
+      syncSessionDetailCompletionActions(detail, savedSession);
     }
   });
 
@@ -91350,7 +91401,7 @@ function renderSessionDetail(sessionId) {
     );
     refreshDetailDerivedViews();
     setSessionDetailSaveButtonState(detail, "default");
-    const savedSession = await saveSessionUpdate(session);
+    const savedSession = await saveSessionUpdate(session, { allowAutoComplete: false });
     setFeedbackMessage(
       detail.saveMessage,
       savedSession
@@ -91379,6 +91430,7 @@ function renderSessionDetail(sessionId) {
       populateSessionDetailEditorForm(detail.detailsForm, session);
       populateSessionSeedAgeForm(detail.seedAgeForm, session);
       syncDetailSeedAgeVisibility();
+      syncSessionDetailCompletionActions(detail, session);
       setSessionDetailEditorOpen(detail, false);
       markUnsavedChangesSaved();
     } else if (detail.detailsPanel && !detail.detailsPanel.hidden) {
@@ -91387,17 +91439,31 @@ function renderSessionDetail(sessionId) {
     return savedSession;
   };
 
-  const completeCustomMethodSession = async () => {
-    if (!usesCustomMethodWorkflow(sessionMethod.id) || sessionMethod.supportsStageTracking || normalizeSessionStatus(session.sessionStatus || "") === "completed") {
+  const completeActiveSession = async () => {
+    if (normalizeSessionStatus(session.sessionStatus || "") === "completed") {
       return null;
     }
 
     const previousStatus = session.sessionStatus || getMethodDefaultSessionStatus(sessionMethod.id);
     const previousCompletedAt = session.completedAt || "";
+    clearSessionDetailEditorMessage(detail);
+    if (!applySessionDetailEditorValues(detail.detailsForm, session)) {
+      setFeedbackMessage(detail.detailsMessage, "Please enter a session name to continue.", "error");
+      return null;
+    }
+    const seedAgeValidation = detail.seedAgeForm?.hidden
+      ? { isValid: true, message: "", firstInvalidField: null }
+      : validateSeedAgeSettings(detail.seedAgeForm);
+    if (!seedAgeValidation.isValid) {
+      setFeedbackMessage(detail.saveMessage, seedAgeValidation.message, "error");
+      seedAgeValidation.firstInvalidField?.focus();
+      return null;
+    }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     if (!areSessionSeedResultsFullyAccountedFor(session)) {
       showSessionCompletionResultsWarning(detail.saveMessage);
+      focusSessionResultEntry(detail.chartShell || app);
       return null;
     }
 
@@ -91417,6 +91483,7 @@ function renderSessionDetail(sessionId) {
     bindDetailPartitionInputListeners();
     applyStageEditingMode(app, detail.statusField.value);
     refreshDetailDerivedViews();
+    syncSessionDetailCompletionActions(detail, session);
 
     const savedSession = await persistDetailSession();
     if (!savedSession) {
@@ -91434,11 +91501,20 @@ function renderSessionDetail(sessionId) {
       applyStageEditingMode(app, detail.statusField.value);
       refreshDetailDerivedViews();
       syncSessionDetailHeaderMeta(detail, session);
+      syncSessionDetailCompletionActions(detail, session);
       return null;
     }
 
     setFeedbackMessage(detail.saveMessage, "Session completed.", "success");
+    syncSessionDetailCompletionActions(detail, savedSession);
     return savedSession;
+  };
+
+  const completeCustomMethodSession = async () => {
+    if (!usesCustomMethodWorkflow(sessionMethod.id) || sessionMethod.supportsStageTracking) {
+      return null;
+    }
+    return completeActiveSession();
   };
 
   registerUnsavedChangesContext({
@@ -91457,6 +91533,7 @@ function renderSessionDetail(sessionId) {
 
   detail.saveShortcutButton?.addEventListener("click", persistDetailSession);
   detail.saveButton?.addEventListener("click", persistDetailSession);
+  detail.completeButton?.addEventListener("click", completeActiveSession);
   detail.customCompleteButton?.addEventListener("click", completeCustomMethodSession);
   detail.detailsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -93361,6 +93438,15 @@ async function renderSystemLayoutReference(container, systemType) {
     container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(method.id);
     attachSystemLayoutReady(container);
   }
+}
+
+function syncSessionDetailCompletionActions(detail, session = null) {
+  const isCompleted = normalizeSessionStatus(session?.sessionStatus || "") === "completed";
+  getSessionDetailCompleteButtons(detail).forEach((button) => {
+    button.hidden = isCompleted;
+    button.disabled = isCompleted;
+    button.textContent = SESSION_COMPLETE_BUTTON_LABEL;
+  });
 }
 
 function buildWorkflowMethodVisualMarkup(method, form = null) {
@@ -98172,7 +98258,7 @@ function applyDebugEventToSession(session, stageField, action) {
   }
 }
 
-async function saveSessionUpdate(session) {
+async function saveSessionUpdate(session, options = {}) {
   try {
     const previousSession = getSessions().find((entry) => String(entry?.id || "").trim() === String(session?.id || "").trim()) || null;
     const previousStatus = previousSession?.sessionStatus || "";
@@ -98181,7 +98267,11 @@ async function saveSessionUpdate(session) {
     if (isNewCompletion && !areSessionSeedResultsFullyAccountedFor(session)) {
       throw new Error(SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE);
     }
-    autoCompleteSessionWhenResultsAccounted(session);
+    const shouldAutoCompleteAccountedResults = options.allowAutoComplete !== false
+      || normalizeSessionStatus(session?.sessionStatus || "") === "completed";
+    if (shouldAutoCompleteAccountedResults) {
+      autoCompleteSessionWhenResultsAccounted(session);
+    }
     session.unitId = normalizeUnitIdValue(session.unitId);
     const savedSession = await updateCloudSession(session);
     void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));

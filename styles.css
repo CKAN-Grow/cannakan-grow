@@ -53832,6 +53832,34 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   padding: 16px 18px;
 }
 
+.session-action-button-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.session-action-button-row .button {
+  min-width: 160px;
+}
+
+.session-workspace-shell .session-complete-button,
+.session-action-button-row .session-complete-button {
+  border-color: rgba(181, 138, 97, 0.34);
+  background: rgba(181, 138, 97, 0.14);
+  color: #f3dfc3;
+}
+
+.session-workspace-shell .session-complete-button:hover,
+.session-workspace-shell .session-complete-button:focus-visible,
+.session-action-button-row .session-complete-button:hover,
+.session-action-button-row .session-complete-button:focus-visible {
+  border-color: rgba(181, 138, 97, 0.52);
+  background: rgba(181, 138, 97, 0.2);
+  color: #fff0d7;
+}
+
 .session-workspace-shell .detail-session-action-bar {
   display: grid;
   grid-template-columns: minmax(360px, 1.45fr) minmax(190px, 0.9fr) auto;
@@ -54582,6 +54610,15 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   .session-workspace-shell .timeline-save-shortcut {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .session-action-button-row {
+    justify-content: stretch;
+  }
+
+  .session-action-button-row .button {
+    flex: 1 1 180px;
+    justify-content: center;
   }
 
   .session-workspace-shell .detail-session-action-bar {

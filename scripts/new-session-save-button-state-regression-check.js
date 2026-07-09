@@ -17,13 +17,19 @@ if (sharedSaveButtonMatches.length < 4) {
 
 for (const needle of [
   'const SESSION_SAVE_BUTTON_SAVED_LABEL = "Session Saved.";',
+  'const SESSION_UPDATE_BUTTON_LABEL = "Update Session";',
+  'const SESSION_COMPLETE_BUTTON_LABEL = "Complete Session";',
   "const SESSION_SAVE_BUTTON_SAVED_RESET_MS = 2200;",
   "function setSessionSaveButtonLabel(button, label)",
+  "function getNewSessionCompleteButtons(form)",
   'function setNewSessionSaveButtonState(form, state = "default")',
-  "setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL);",
+  "const defaultLabel = isStarted ? SESSION_UPDATE_BUTTON_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;",
+  "setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : defaultLabel);",
+  "button.hidden = !isStarted;",
   'button.disabled = isSaved;',
   'setNewSessionSaveButtonState(form, "default");',
   'function setSessionDetailSaveButtonState(detail, state = "default", options = {})',
+  "function syncSessionDetailCompletionActions(detail, session = null)",
   'setSessionDetailSaveButtonState(detail, "saved", {',
   'setNewSessionSaveButtonState(form, "saved");',
   'await waitForNewSessionSavedStateVisibility();',
@@ -43,6 +49,14 @@ if (!stylesSource.includes('[data-session-save-button="true"].is-saved')) {
 
 if (!stylesSource.includes('content: "✓";')) {
   throw new Error("Saved state should include a visible check icon.");
+}
+
+if (!indexSource.includes('data-session-complete-button="true"')) {
+  throw new Error("Saved Session detail actions should expose a Complete Session button.");
+}
+
+if (!indexSource.includes('data-new-session-complete-button="true"')) {
+  throw new Error("New Session action bars should expose a post-save Complete Session button hook.");
 }
 
 console.log("New session save button state regression check passed.");

@@ -14,12 +14,16 @@ for (const needle of [
   "const summary = getSessionResultSummary(session);",
   "totalFailed: summary.overall.totalFailed",
   "autoCompleteSessionWhenResultsAccounted(session);",
+  "async function saveSessionUpdate(session, options = {})",
+  "options.allowAutoComplete !== false",
+  "saveSessionUpdate(session, { allowAutoComplete: false })",
+  "const completeActiveSession = async () => {",
   "isNewCompletion && !areSessionSeedResultsFullyAccountedFor(session)",
   "showSessionCompletionResultsWarning(detail.saveMessage);",
   "showSessionCompletionResultsWarning(formMessage);",
   "previousStatus !== \"completed\" && nextStatus === \"completed\"",
   "buildPartitionDraftValuesFromContainer(partitionFields)",
-  "detail.statusField.value = session.sessionStatus || \"soaking\";",
+  "detail.statusField.value = session.sessionStatus || (sessionMethod.supportsStageTracking ? \"soaking\" : getMethodDefaultSessionStatus(sessionMethod.id));",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing accounted-results completion behavior: ${needle}`);
