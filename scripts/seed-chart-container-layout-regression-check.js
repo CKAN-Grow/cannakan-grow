@@ -35,8 +35,13 @@ if (indexSource.includes('</div>\n          <div class="custom-seed-row-actions'
 
 [
   ".session-workspace-shell .chart-shell {\n  display: grid;\n  gap: 0;",
+  ".session-workspace-form #partition-chart-shell > .partition-work-header {\n  padding: 20px 18px 18px;\n  border: 0;\n  background: transparent;\n}",
+  ".session-workspace-form .session-setup-tools-card {\n  --session-setup-age-accent: #d9a74e;",
+  "  border: 0;\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;",
+  ".session-workspace-form #partition-chart-shell > .chart-header {",
+  ".session-workspace-form #partition-chart-shell > .partition-table {",
   ".custom-seed-row-actions {\n  display: flex;",
-  "border-top: 1px solid rgba(148, 209, 89, 0.12);",
+  ".session-workspace-form #partition-chart-shell > .custom-seed-row-actions {\n  padding: 16px 22px 24px;\n  border-top: 0;\n  background: transparent;\n  box-shadow: none;\n}",
 ].forEach((needle) => {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing unified seed chart container style: ${needle}`);
