@@ -24,12 +24,19 @@ for (const needle of [
   'optionLabel: "Starter Plug"',
   'chartEyebrow: "Starter Plug"',
   'chartTitle: "Starter Plug Seed Chart"',
+  'name: "Soak + Paper Towel"',
+  'optionLabel: "Soak + Paper Towel"',
+  'chartTitle: "Soak + Paper Towel Seed Chart"',
+  'name: "Paper Towel Only"',
+  'optionLabel: "Paper Towel Only"',
+  'chartTitle: "Paper Towel Only Seed Chart"',
+  'function standardizeMethodDisplayLabel(value = "")',
   'const METHOD_TYPE_SELECTION_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);',
   'const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWEL"]);',
   'const PREPARED_MEDIA_SETUP_METHODS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER"]);',
   'const METHOD_SETUP_PREFERENCE_STORAGE_KEY = "cannakanGrowMethodSetupPreferences";',
   'function getMethodTypeSelectionLabel(methodType = "")',
-  'isPaperTowelSetupMethod(method.id) ? "Paper Towel" : method.optionLabel',
+  'return standardizeMethodDisplayLabel(method.optionLabel);',
   'function getPreparedMediaSetupConfig(methodType = "")',
   'function savePreparedMediaSetupPreference(methodType = "", choice = "")',
   'function getSavedPreparedMediaSetupPreference(methodType = "")',
@@ -70,6 +77,8 @@ for (const needle of [
 }
 
 requireNeedle(engineSource, 'displayName: "Starter Plug"');
+requireNeedle(engineSource, 'displayName: "Soak + Paper Towel"');
+requireNeedle(engineSource, 'displayName: "Paper Towel Only"');
 requireNeedle(engineSource, 'function getEffectiveMethodDefinition(definition, methodKey, session)');
 requireNeedle(engineSource, 'function getPreparedMediaPhases(methodKey)');
 rejectNeedle(htmlSource, 'id="paper-towel-setup-choice"', "inline Paper Towel setup card");
@@ -77,7 +86,11 @@ rejectNeedle(stylesSource, ".paper-towel-setup-choice", "inline Paper Towel setu
 rejectNeedle(appSource, "function syncPaperTowelSetupChoice()", "inline Paper Towel setup sync");
 rejectNeedle(appSource, 'Rapid Rooter / Starter Plug');
 rejectNeedle(appSource, 'name: "Rapid Rooter"');
+rejectNeedle(appSource, 'name: "Paper Towel + Soak"', "old recommended Paper Towel method name");
+rejectNeedle(appSource, 'optionLabel: "Paper Towel + Soak"', "old recommended Paper Towel option label");
+rejectNeedle(appSource, 'chartTitle: "Paper Towel + Soak Seed Chart"', "old recommended Paper Towel chart title");
 rejectNeedle(engineSource, 'displayName: "Rapid Rooter"');
+rejectNeedle(engineSource, 'displayName: "Paper Towel + Soak"', "old recommended Paper Towel engine display name");
 rejectNeedle(engineSource, 'timing: "Already prepared"', "prepared media timeline pre-step");
 
 console.log("Method Type selection regression check passed.");

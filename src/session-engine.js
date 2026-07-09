@@ -182,7 +182,7 @@
     },
     PAPER_TOWEL_SOAK: {
       key: "PAPER_TOWEL_SOAK",
-      displayName: "Paper Towel + Soak",
+      displayName: "Soak + Paper Towel",
       tone: "purple",
       iconName: "method-soak-paper",
       startLabel: "Soak begins",
@@ -214,7 +214,7 @@
     },
     PAPER_TOWEL: {
       key: "PAPER_TOWEL",
-      displayName: "Paper Towel",
+      displayName: "Paper Towel Only",
       tone: "blue",
       iconName: "method-paper-towel",
       startLabel: "Paper towel begins",

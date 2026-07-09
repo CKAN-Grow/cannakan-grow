@@ -791,7 +791,7 @@ const GALLERY_EXPLORE_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "kan", label: "KAN" }),
   Object.freeze({ key: "tra", label: "TRā" }),
   Object.freeze({ key: "all", label: "All Methods" }),
-  Object.freeze({ key: "paper-towel", label: "Paper Towel" }),
+  Object.freeze({ key: "paper-towel", label: "Soak + Paper Towel / Paper Towel Only" }),
   Object.freeze({ key: "rockwool", label: "Rockwool" }),
   Object.freeze({ key: "water-soak", label: "Water Soak" }),
   Object.freeze({ key: "direct-sow", label: "Direct Sow" }),
@@ -1481,9 +1481,9 @@ const METHOD_TYPE_CONFIG = Object.freeze({
   }),
   PAPER_TOWEL: Object.freeze({
     id: "PAPER_TOWEL",
-    name: "Paper Towel",
-    optionLabel: "Paper Towel",
-    modalDescription: "Paper towel germination timeline",
+    name: "Paper Towel Only",
+    optionLabel: "Paper Towel Only",
+    modalDescription: "Paper towel only germination timeline",
     isStandardized: false,
     supportsLayoutImage: false,
     supportsPartitions: false,
@@ -1494,15 +1494,15 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Towel",
-    chartEyebrow: "Paper Towel",
-    chartTitle: "Paper Towel Seed Chart",
+    chartEyebrow: "Paper Towel Only",
+    chartTitle: "Paper Towel Only Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
   PAPER_TOWEL_SOAK: Object.freeze({
     id: "PAPER_TOWEL_SOAK",
-    name: "Paper Towel + Soak",
-    optionLabel: "Paper Towel + Soak",
+    name: "Soak + Paper Towel",
+    optionLabel: "Soak + Paper Towel",
     modalDescription: "Soak first, then move seeds to paper towel",
     isStandardized: false,
     supportsLayoutImage: false,
@@ -1514,8 +1514,8 @@ const METHOD_TYPE_CONFIG = Object.freeze({
     defaultSessionStatus: "active",
     defaultRowCount: 1,
     rowLabel: "Towel",
-    chartEyebrow: "Paper Towel + Soak",
-    chartTitle: "Paper Towel + Soak Seed Chart",
+    chartEyebrow: "Soak + Paper Towel",
+    chartTitle: "Soak + Paper Towel Seed Chart",
     iconAlt: "Grow App icon",
     headerIconSrc: CUSTOM_METHOD_HEADER_ICON_ASSET,
   }),
@@ -1703,6 +1703,46 @@ function getMethodConfig(value = "") {
   return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
 }
 
+function standardizeMethodDisplayLabel(value = "") {
+  const label = String(value || "").trim();
+  if (!label) {
+    return "";
+  }
+  const separatorMatch = label.match(/^(.+?)(\s+[•/]\s+)(.+)$/);
+  if (separatorMatch) {
+    const standardizedPrefix = standardizeMethodDisplayLabel(separatorMatch[1]);
+    return `${standardizedPrefix}${separatorMatch[2]}${separatorMatch[3]}`;
+  }
+  const normalizedLabel = label
+    .normalize("NFKD")
+    .replace(/[ā]/gi, "a")
+    .replace(/&/g, "and")
+    .replace(/\+/g, " plus ")
+    .replace(/[^a-z0-9]+/gi, " ")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+  if ([
+    "PAPER_TOWEL_SOAK",
+    "PAPER_TOWEL_PLUS_SOAK",
+    "PAPER_TOWEL_AND_SOAK",
+    "SOAK_PAPER_TOWEL",
+    "SOAK_PLUS_PAPER_TOWEL",
+    "SOAK_AND_PAPER_TOWEL",
+    "WATER_SOAK_PAPER_TOWEL",
+  ].includes(normalizedLabel)) {
+    return "Soak + Paper Towel";
+  }
+  if ([
+    "PAPER_TOWEL",
+    "PAPER_TOWEL_ONLY",
+    "PAPER_TOWELS",
+  ].includes(normalizedLabel)) {
+    return "Paper Towel Only";
+  }
+  return label;
+}
+
 function getHardwareMethodCardCopy(methodType = "") {
   const method = getMethodConfig(methodType);
 
@@ -1717,11 +1757,12 @@ function getHardwareMethodCardCopy(methodType = "") {
   }
 
   if (!method.isStandardized) {
+    const methodLabel = formatMethodTypeLabel(method.id);
     return {
       eyebrow: "Method",
-      title: method.name,
+      title: methodLabel,
       unitLabel: "",
-      description: method.modalDescription || `${method.name} workflow.`,
+      description: method.modalDescription || `${methodLabel} workflow.`,
       tagline: getWorkflowMethodSetupSummary(method.id),
     };
   }
@@ -1747,7 +1788,7 @@ function getHardwareMethodOverviewCopy(methodType = "") {
     countHelper: method.isStandardized ? "Available" : "Visible",
     methodName: method.isStandardized
       ? (method.id === "TRA" ? "TRā System" : "KAN System")
-      : method.name,
+      : formatMethodTypeLabel(method.id),
     methodSummary: method.isStandardized ? "Standardized Hardware Method" : "Manual Workflow Method",
     helper: "Choose the germination method for this session.",
   };
@@ -1862,7 +1903,7 @@ function getMethodHeaderIconConfig(value = "") {
       ? method.headerIconSrc || PARTITION_HEADER_ICON_ASSETS[method.id] || ""
       : CUSTOM_METHOD_HEADER_ICON_ASSET,
     alt: method.isStandardized
-      ? method.iconAlt || `${method.name} partition icon`
+      ? method.iconAlt || `${formatMethodTypeLabel(method.id)} partition icon`
       : "Grow App icon",
   };
 }
@@ -1963,7 +2004,7 @@ function getMethodSessionStatusLabel(status = "", methodType = "") {
 }
 
 function formatMethodTypeLabel(value = "") {
-  return getMethodConfig(value).name;
+  return standardizeMethodDisplayLabel(getMethodConfig(value).name);
 }
 
 function isPaperTowelSetupMethod(methodType = "") {
@@ -2268,7 +2309,7 @@ function logPreparedMediaSetupDebugState(form, context = {}, lifecycleState = nu
 
 function getMethodTypeSelectionLabel(methodType = "") {
   const method = getMethodConfig(methodType);
-  return isPaperTowelSetupMethod(method.id) ? "Paper Towel" : method.optionLabel;
+  return standardizeMethodDisplayLabel(method.optionLabel);
 }
 
 function syncMethodTypeSelectOptions(selectElement, selectedMethod = "") {
@@ -24004,7 +24045,7 @@ function normalizeCommunityActivityMetadata(metadata) {
     germinationRateLabel: String(metadata.germinationRateLabel || "").trim(),
     sourceLabel: String(metadata.sourceLabel || "").trim(),
     sessionDateLabel: String(metadata.sessionDateLabel || "").trim(),
-    systemLabel: String(metadata.systemLabel || "").trim(),
+    systemLabel: standardizeMethodDisplayLabel(metadata.systemLabel || ""),
     activityTypeLabel: String(metadata.activityTypeLabel || "").trim(),
     seedAgeTrackingEnabled: Boolean(metadata.seedAgeTrackingEnabled),
     seedAgeMode: normalizeSeedAgeMode(metadata.seedAgeMode || ""),
@@ -24145,7 +24186,7 @@ function buildCommunityActivityFeedEntry(activity) {
     sessionDateLabel: metadata.sessionDateLabel || "",
     sourceLabel: metadata.sourceLabel || "",
     germinationRateLabel: metadata.germinationRateLabel || fallbackRateLabel,
-    systemLabel: metadata.systemLabel || "",
+    systemLabel: standardizeMethodDisplayLabel(metadata.systemLabel || ""),
     seedAgeSummaryKey: metadata.seedAgeSummaryKey || "unknown",
     seedAgeLabel,
   };
@@ -24366,7 +24407,7 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
     germinationRateLabel: `${safeRate}%`,
     sourceLabel: safeSourceLabel,
     sessionDateLabel: safeDateLabel,
-    systemLabel: formatSnapshotSystemLabel(normalizedSnapshot.systemType || "KAN"),
+    systemLabel: standardizeMethodDisplayLabel(formatSnapshotSystemLabel(normalizedSnapshot.systemType || "KAN")),
     seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
     seedAgeMode: seedAgeMetadata.mode || "",
     sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
@@ -36396,7 +36437,7 @@ function getGallerySnapshotFeedDetails(snapshot) {
     totalPlanted,
     resultSummary,
     seedCountLabel: totalSeeds > 0 ? `${totalPlanted} / ${totalSeeds} seeds` : "",
-    systemLabel: `${formatSnapshotSystemLabel(snapshot.systemType)} • ${resolvedUnitId}`,
+    systemLabel: standardizeMethodDisplayLabel(`${formatSnapshotSystemLabel(snapshot.systemType)} • ${resolvedUnitId}`),
   };
 }
 
@@ -36418,7 +36459,7 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
   const sexValue = String(firstPartition?.feminized || "").trim();
 
   return {
-    systemLabel: feedDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN"),
+    systemLabel: standardizeMethodDisplayLabel(feedDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN")),
     sourceLabel: metadata.sourceName || "Not shared",
     seedVarietyLabel: metadata.seedVarietyName || "Not shared",
     seedTypeLabel: metadata.seedTypeName || "Not shared",
@@ -36460,7 +36501,7 @@ function getMockPublicSessionDetails(snapshot, scenario) {
   const startedSessionDate = startedAt ? startedAt.slice(0, 10) : "";
 
   return {
-    systemLabel: formatSnapshotSystemLabel(snapshot?.systemType || "KAN"),
+    systemLabel: standardizeMethodDisplayLabel(formatSnapshotSystemLabel(snapshot?.systemType || "KAN")),
     sourceLabel: scenario.sourceName,
     seedVarietyLabel: scenario.seedVarietyName,
     seedTypeLabel: getSeedTypeLabel(scenario.seedTypeName) || scenario.seedTypeName,
@@ -39281,7 +39322,7 @@ function buildSnapshotData(source) {
     firstPlantedAt: source.firstPlantedAt || source.first_planted_at || "",
     completedAt: source.completedAt || source.completed_at || "",
     systemType: snapshotSystemType,
-    systemLabel: formatSnapshotSystemLabel(snapshotSystemType),
+    systemLabel: standardizeMethodDisplayLabel(formatSnapshotSystemLabel(snapshotSystemType)),
     sourceId: sourceDetails.sourceId,
     sourceName: sourceDetails.sourceName,
     sourceCanonicalId: sourceDetails.sourceCanonicalId,
@@ -39400,7 +39441,7 @@ function formatSnapshotSystemLabel(systemType) {
     return "KAN®";
   }
 
-  return method.name;
+  return formatMethodTypeLabel(method.id);
 }
 
 async function buildSessionSnapshotBlob(data, imageSource = "") {
@@ -89441,6 +89482,7 @@ function renderGrowNetworkPage() {
     return rows.map((session) => {
       const lifecycle = normalizeGrowSessionLifecycleState(session);
       const method = getMyGrowSessionMethod(session);
+      const methodLabel = formatMethodTypeLabel(method.id);
       const totals = getSessionSeedTotals(session);
       const rate = getProfileAnalyticsSessionRate(session);
       const statusLabel = lifecycle === "active"
@@ -89451,7 +89493,7 @@ function renderGrowNetworkPage() {
           <span class="my-grow-session-thumb" aria-hidden="true">${renderAppIconSvgMarkup(method.isStandardized ? "partitionWheel" : "seedSprout")}</span>
           <span class="my-grow-session-copy">
             <strong>${escapeHtml(getMyGrowSessionTitle(session))}</strong>
-            <small>${escapeHtml(`${method.name} • ${getMyGrowActiveSessionRowCount(session)} ${method.isStandardized ? "Partitions" : "Varieties"}`)}</small>
+            <small>${escapeHtml(`${methodLabel} • ${getMyGrowActiveSessionRowCount(session)} ${method.isStandardized ? "Partitions" : "Varieties"}`)}</small>
           </span>
           <span class="my-grow-session-meta">
             <strong>${escapeHtml(statusLabel)}</strong>
@@ -89470,6 +89512,7 @@ function renderGrowNetworkPage() {
       `;
     }
     const method = getMyGrowSessionMethod(myGrowActiveSession);
+    const methodLabel = formatMethodTypeLabel(method.id);
     const rowCount = getMyGrowActiveSessionRowCount(myGrowActiveSession);
     const stageLabel = getMethodSessionStatusLabel(myGrowActiveSession.sessionStatus || "active", method.id);
     const startedAt = getSessionDurationStartAt(myGrowActiveSession);
@@ -89485,10 +89528,10 @@ function renderGrowNetworkPage() {
         <div class="my-grow-active-session-copy">
           <div class="my-grow-card-kicker">
             <span>${escapeHtml(stageLabel)}</span>
-            <span>${escapeHtml(method.name)}</span>
+            <span>${escapeHtml(methodLabel)}</span>
           </div>
           <h3>${escapeHtml(getMyGrowSessionTitle(myGrowActiveSession))}</h3>
-          <p>${escapeHtml(`${method.name} • ${rowCount} ${method.isStandardized ? "Partitions" : "Varieties"}`)}</p>
+          <p>${escapeHtml(`${methodLabel} • ${rowCount} ${method.isStandardized ? "Partitions" : "Varieties"}`)}</p>
           <dl class="my-grow-mini-details">
             <div><dt>Started</dt><dd>${escapeHtml(formatProfileActivityDateLabel(myGrowActiveSession.createdAt || myGrowActiveSession.date || ""))}</dd></div>
             <div><dt>Stage</dt><dd>${escapeHtml(stageLabel)}</dd></div>
@@ -90423,9 +90466,10 @@ function getSessionDetailEditableName(session = null) {
 function buildSessionDetailMetaCards(session = null) {
   const seedAgeMetadata = getSessionSeedAgeMetadata(session);
   const method = getMethodConfig(getSessionMethodType(session));
+  const methodLabel = formatMethodTypeLabel(method.id);
   const cards = [
     { label: "Status", value: getMethodSessionStatusLabel(session?.sessionStatus || "", method.id) },
-    { label: "Method Type", value: session ? method.name : "Not set" },
+    { label: "Method Type", value: session ? methodLabel : "Not set" },
     { label: "Date", value: session?.date || "Not set" },
     { label: "Time", value: formatStoredTime(session?.time || "") || "Not set" },
   ];
@@ -91844,13 +91888,14 @@ function getSessionSuccessRate(session) {
 
 function getSessionSystemSummary(session) {
   const method = getMethodConfig(getSessionMethodType(session));
+  const methodLabel = formatMethodTypeLabel(method.id);
   const unitId = normalizeUnitIdValue(session.unitId);
 
-  if (method.isStandardized && method.name && unitId) {
-    return `${method.name} / ${unitId}`;
+  if (method.isStandardized && methodLabel && unitId) {
+    return `${methodLabel} / ${unitId}`;
   }
 
-  return method.name || unitId || "Not provided";
+  return methodLabel || unitId || "Not provided";
 }
 
 function formatSessionRateBadgeLabel(session) {
@@ -94330,25 +94375,27 @@ function formatSessionNameDate(sessionDate) {
 
 function buildSystemLayoutPlaceholder(systemType) {
   const method = getMethodConfig(systemType);
+  const methodLabel = formatMethodTypeLabel(method.id);
   const label = method.id === "TRA" ? "TRā layout reference coming next" : "Choose a method type";
   return `
     <div class="layout-reference-copy">
       <p>${label}</p>
     </div>
     <div class="layout-placeholder" aria-label="${label}">
-      <span>${method.name || "Method"}</span>
+      <span>${methodLabel || "Method"}</span>
     </div>
   `;
 }
 
 function buildSystemLayoutUnavailableMarkup(systemType) {
   const method = getMethodConfig(systemType);
+  const methodLabel = formatMethodTypeLabel(method.id);
   return `
     <div class="layout-reference-copy">
       <p>Layout image unavailable</p>
     </div>
-    <div class="layout-placeholder" aria-label="${method.name || "Method"} layout image unavailable">
-      <span>${method.name || "Method"}</span>
+    <div class="layout-placeholder" aria-label="${methodLabel || "Method"} layout image unavailable">
+      <span>${methodLabel || "Method"}</span>
     </div>
   `;
 }
@@ -96464,11 +96511,12 @@ function getSessionCommandCenterElapsedLabel(session = null) {
 
 function getSessionCommandCenterMethodSummary(session = null) {
   const method = getMethodConfig(getSessionMethodType(session));
+  const methodLabel = formatMethodTypeLabel(method.id);
   const unitId = normalizeUnitIdValue(session?.unitId || session?.unit_id || "", "");
   if (method.isStandardized && unitId) {
-    return `${method.name} • Unit ${unitId}`;
+    return `${methodLabel} • Unit ${unitId}`;
   }
-  return method.name || "Grow Session";
+  return methodLabel || "Grow Session";
 }
 
 function getSessionCommandCenterResultStatus(session = null) {
@@ -97263,7 +97311,7 @@ function renderPublicSessionHeroMarkup(snapshot = null, publicDetails = {}) {
     ? publicDetails.sourceLabel
     : getGallerySnapshotSourceLabel(snapshot);
   const method = getPublicSessionMethodConfig(snapshot, publicDetails);
-  const methodLabel = publicDetails?.systemLabel || formatSnapshotSystemLabel(method.id);
+  const methodLabel = standardizeMethodDisplayLabel(publicDetails?.systemLabel || formatSnapshotSystemLabel(method.id));
   const heroImageUrl = getPublicSessionHeroImageUrl(snapshot);
   const noteText = String(snapshot?.publicGrowNote || snapshot?.caption || snapshot?.summary || "").trim();
   const description = noteText || "A public Community Grow report with shared germination evidence, source context, and session documentation.";
@@ -97285,7 +97333,7 @@ function renderPublicSessionHeroMarkup(snapshot = null, publicDetails = {}) {
           <div class="public-session-hero-meta">
             <span>${renderAppIconMarkup("profileUser", { variant: "plain" })} ${escapeHtml(growerLabel)}</span>
             <span>${renderAppIconMarkup("sourceDirectoryBars", { variant: "plain" })} ${escapeHtml(sourceLabel || "Source not shared")}</span>
-            <span>${renderAppIconMarkup("seedVault", { variant: "plain" })} ${escapeHtml(methodLabel || method.name)}</span>
+            <span>${renderAppIconMarkup("seedVault", { variant: "plain" })} ${escapeHtml(methodLabel || formatMethodTypeLabel(method.id))}</span>
           </div>
           <p>${escapeHtml(description)}</p>
           ${renderPublicSessionHeroRecognitionSeal(snapshot, publicDetails)}
@@ -97455,7 +97503,7 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
   );
   const optionalDetails = getPublicSessionOptionalOverviewRows(snapshot, publicDetails);
   const rows = [
-    { label: "Method", value: publicDetails.systemLabel || method.name, icon: "sourceHeroSprout", isMethod: true },
+    { label: "Method", value: standardizeMethodDisplayLabel(publicDetails.systemLabel || formatMethodTypeLabel(method.id)), icon: "sourceHeroSprout", isMethod: true },
     { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared", icon: "calendar" },
     { label: "Duration", value: durationLabel, icon: "clock" },
     { label: method.supportsPartitions ? "Partitions Shared" : "Varieties Shared", value: countedResults.length ? String(countedResults.length) : "Not shared", icon: method.supportsPartitions ? "sourceDirectoryBars" : "seedVault" },
@@ -97623,7 +97671,7 @@ function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDet
     ? formatPublicTimelineElapsedDuration(lifecycleState.startedAt, lifecycleState.completedAt)
     : (isCompleted ? formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) : "");
   const rows = [
-    { label: "Method Type", value: method.name, icon: "sourceHeroSprout", isMethod: true },
+    { label: "Method Type", value: formatMethodTypeLabel(method.id), icon: "sourceHeroSprout", isMethod: true },
     { label: "Status", value: statusLabel, icon: isCompleted ? "sourceHeroShieldCheck" : "activeSessionWaveform", isMethod: true },
     { label: "Started", value: startedLabel, icon: "calendar" },
     { label: "Completed", value: completedLabel, icon: "check" },
@@ -97785,7 +97833,7 @@ function getPublicSessionSummaryRows(snapshot = null, publicDetails = {}) {
     : "";
   const mixedContext = publicDetails?.mixedSessionContext || summary?.mixedContext || {};
   const rows = [
-    { label: "Method", value: publicDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN") },
+    { label: "Method", value: standardizeMethodDisplayLabel(publicDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN")) },
     { label: "Total Seed Count", value: publicDetails.seedCountLabel || "Not shared" },
     { label: "Total Germinated", value: publicDetails.germinatedLabel || "Not shared" },
     { label: "Success Rate", value: publicDetails.germinationRateLabel || "Not shared", featured: true },
