@@ -95829,6 +95829,39 @@ function formatSessionEngineWindowOffsetLabel(engineState = null) {
     : formatSessionEngineHourOffsetLabel(endHour);
 }
 
+function getSessionEngineSessionTimeDisplay(engineState = null, options = {}) {
+  const averages = options.averages || options.methodAverages || null;
+  const methodKey = engineState?.methodKey || engineState?.definition?.key || "";
+  const completedAt = parseCompletedAtValue(engineState?.completedAt || "");
+  const startedAt = parseCompletedAtValue(engineState?.startedAt || "");
+
+  if (completedAt && startedAt) {
+    const durationMs = getElapsedDurationMs(startedAt, completedAt);
+    return {
+      label: "Total Session Time",
+      shortLabel: "Total Session Time",
+      captionLabel: "Total session time",
+      value: Number.isFinite(durationMs) ? formatSessionEngineDurationLabel(durationMs) : "Unavailable",
+      detail: "Start to completion",
+      source: "actual",
+    };
+  }
+
+  const averageValue = methodKey && averages && typeof averages === "object"
+    ? averages[methodKey] || averages[String(methodKey).toLowerCase()] || ""
+    : "";
+  const estimateValue = averageValue || formatSessionEngineWindowOffsetLabel(engineState);
+
+  return {
+    label: "Est. Session Time",
+    shortLabel: "Est. Session Time",
+    captionLabel: "Est. session time",
+    value: estimateValue && estimateValue !== "Not scheduled" ? estimateValue : "Not scheduled",
+    detail: averageValue ? "Based on completed sessions" : "Typical method range",
+    source: averageValue ? "average" : "method-default",
+  };
+}
+
 function getSessionEngineMilestoneSummary(engineState = null) {
   const milestone = engineState?.activeMilestone || engineState?.nextMilestone || null;
   if (!milestone) {
