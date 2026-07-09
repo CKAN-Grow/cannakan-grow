@@ -41518,6 +41518,93 @@ function waitForNewSessionSavedStateVisibility() {
   });
 }
 
+function setSeedChartResultsUnlocked(chartShell, chartHeader, partitionContainer, unlocked, options = {}) {
+  if (!chartShell || !chartHeader || !partitionContainer) {
+    return;
+  }
+
+  const isUnlocked = unlocked === true;
+  chartShell.dataset.resultsUnlocked = isUnlocked ? "true" : "false";
+  chartHeader.dataset.resultsUnlocked = isUnlocked ? "true" : "false";
+  partitionContainer.dataset.resultsUnlocked = isUnlocked ? "true" : "false";
+
+  if (!isUnlocked || options.highlight !== true) {
+    return;
+  }
+
+  const glowTargets = [
+    ...chartHeader.querySelectorAll('[data-partition-header="germinated"], [data-partition-header="success"]'),
+    ...partitionContainer.querySelectorAll('.partition-row label:has(input[name="plantedCount"]), .partition-row .success-cell'),
+  ];
+  chartShell.classList.add("seed-chart-results-unlocked-glow");
+  partitionContainer.classList.add("seed-chart-results-unlocked-glow");
+  glowTargets.forEach((target) => target.classList.add("seed-chart-result-column-unlocked"));
+  window.setTimeout(() => {
+    chartShell.classList.remove("seed-chart-results-unlocked-glow");
+    partitionContainer.classList.remove("seed-chart-results-unlocked-glow");
+    glowTargets.forEach((target) => target.classList.remove("seed-chart-result-column-unlocked"));
+  }, 4200);
+}
+
+function syncNewSessionSeedChartResultsUnlockState(form, options = {}) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const unlocked = form.dataset.seedChartResultsUnlocked === "true"
+    || String(form.dataset.savedSessionId || "").trim() !== "";
+  setSeedChartResultsUnlocked(
+    form.querySelector("#partition-chart-shell"),
+    form.querySelector("#partition-chart-header"),
+    form.querySelector("#partition-fields"),
+    unlocked,
+    options,
+  );
+}
+
+function showSeedChartExpandedModal() {
+  return new Promise((resolve) => {
+    const existingOverlay = document.querySelector("#seed-chart-expanded-modal-overlay");
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "seed-chart-expanded-modal-overlay";
+    overlay.className = "seed-chart-expanded-modal-overlay";
+    overlay.innerHTML = `
+      <div class="seed-chart-expanded-modal" role="dialog" aria-modal="true" aria-labelledby="seed-chart-expanded-modal-title" aria-describedby="seed-chart-expanded-modal-description">
+        <p class="seed-chart-expanded-modal-eyebrow">Seed Chart</p>
+        <h2 id="seed-chart-expanded-modal-title">Seed Chart Expanded</h2>
+        <p id="seed-chart-expanded-modal-description">You have expanded your Seed Chart. New result columns are now unlocked: # Germinated and Success %. Return here when seeds germinate to complete your session results.</p>
+        <button type="button" class="button button-primary" data-seed-chart-expanded-continue>Continue</button>
+      </div>
+    `;
+
+    const closeModal = () => {
+      overlay.remove();
+      document.body.classList.remove("modal-open");
+      resolve();
+    };
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay || (event.target instanceof Element && event.target.closest("[data-seed-chart-expanded-continue]"))) {
+        closeModal();
+      }
+    });
+    overlay.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeModal();
+      }
+    });
+
+    document.body.appendChild(overlay);
+    document.body.classList.add("modal-open");
+    overlay.querySelector("[data-seed-chart-expanded-continue]")?.focus();
+  });
+}
+
 function closeNewSessionNamePrompt({ focusField = false } = {}) {
   const overlay = document.querySelector("#new-session-name-modal-overlay");
   if (!overlay || overlay.dataset.closing === "true") {
@@ -84376,6 +84463,15 @@ function renderSessionForm(initialSystemType = "KAN") {
       markUnsavedChangesSaved();
       form.dataset.savedSessionId = savedSession.id || session.id || "";
       setNewSessionSaveButtonState(form, "saved");
+      if (!isUpdatingExistingSession && form.dataset.seedChartExpandedModalShown !== "true") {
+        form.dataset.seedChartExpandedModalShown = "true";
+        await showSeedChartExpandedModal();
+        form.dataset.seedChartResultsUnlocked = "true";
+        syncNewSessionSeedChartResultsUnlockState(form, { highlight: true });
+      } else {
+        form.dataset.seedChartResultsUnlocked = "true";
+        syncNewSessionSeedChartResultsUnlockState(form);
+      }
       if (navigateOnSuccess) {
         await waitForNewSessionSavedStateVisibility();
         navigateWithUnsavedChangesBypass(unlockedGrowNetworkNow ? "#home" : `#sessions/${savedSession.id}`);
@@ -85665,6 +85761,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     partitionFields,
     sessionStatus,
   );
+  syncNewSessionSeedChartResultsUnlockState(form);
   updateMethodTypeLayout(form, method.id);
   applyPartitionSeedAgeLayout(
     form.querySelector("#partition-chart-shell"),
@@ -91057,6 +91154,7 @@ function renderSessionDetail(sessionId) {
 
     bindPartitionRowVisualState(partitions);
     applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
+    setSeedChartResultsUnlocked(detail.chartShell, detail.chartHeader, partitions, true);
     applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, partitions, currentSeedAgeMetadata.mode);
     updateMethodTypeLayout(app, sessionMethod.id);
     syncPartitionButtonStates(partitions, detail.statusField.value);
