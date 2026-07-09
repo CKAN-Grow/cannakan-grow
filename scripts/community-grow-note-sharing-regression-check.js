@@ -104,6 +104,23 @@ for (const selector of [
 ]) {
   assert(styleSource.includes(selector), `Expected redesigned Notes style: ${selector}`);
 }
+
+const darkPublicNoteBlockMatch = styleSource.match(/body\.theme-dark \.session-workspace-shell \.session-public-note-block \{[\s\S]*?\n\}/);
+assert(
+  darkPublicNoteBlockMatch,
+  "Expected dark theme public note block override.",
+);
+assert(
+  darkPublicNoteBlockMatch[0].includes("border-top: 1px solid rgba(148, 209, 89, 0.16);")
+    && darkPublicNoteBlockMatch[0].includes("background: transparent;")
+    && darkPublicNoteBlockMatch[0].includes("box-shadow: none;"),
+  "Expected Community Grow Sharing divider to stay clean in dark theme.",
+);
+assert(
+  !darkPublicNoteBlockMatch[0].includes("radial-gradient")
+    && !darkPublicNoteBlockMatch[0].includes("linear-gradient"),
+  "Community Grow Sharing divider must not use glow or gradient effects.",
+);
 assert(
   migrationSource.includes("add column if not exists include_public_grow_note")
     && migrationSource.includes("add column if not exists public_grow_note"),
