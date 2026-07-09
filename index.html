@@ -999,24 +999,14 @@
             <div id="session-images-grid" class="session-images-grid"></div>
           </section>
         <section id="share-snapshot-section" class="share-snapshot-section session-glass-panel" aria-labelledby="share-snapshot-title">
-          <div class="snapshot-hero">
-            <div class="snapshot-hero-copy">
-              <div class="progress-chart-heading">
-                <p class="eyebrow">Share</p>
-                  <h4 id="share-snapshot-title" class="section-title-with-icon">
-                    <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                      <path d="M12 16V4"></path>
-                      <path d="M7.5 8.5L12 4l4.5 4.5"></path>
-                      <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
-                    </svg>
-                    <span>Share Your Grow Snapshot</span>
-                  </h4>
-                </div>
-                <p class="snapshot-help">Turn your session into a shareable snapshot</p>
-              </div>
+          <header class="snapshot-workflow-header">
+            <span class="snapshot-workflow-step-badge" aria-hidden="true">3</span>
+            <div class="snapshot-workflow-heading-copy">
+              <h4 id="share-snapshot-title" class="eyebrow">Share Your Grow Snapshot <small>(Optional)</small></h4>
+              <span>Turn your session into a shareable snapshot</span>
             </div>
+          </header>
           <div class="snapshot-gallery-controls">
-            <p class="snapshot-destination-label">Share to</p>
             <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
               <label class="snapshot-destination-option">
                 <input id="snapshot-destination-social-gallery" type="radio" name="snapshot-destination" value="social-gallery" checked>
@@ -1035,7 +1025,7 @@
               <input id="snapshot-include-profile" type="checkbox" name="snapshot-include-profile" checked>
               <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
               <span class="snapshot-profile-toggle-text">
-                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in Community Grow</span>
+                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image</span>
                 <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
               </span>
             </label>
@@ -1058,7 +1048,7 @@
                 <p class="snapshot-action-description" data-snapshot-action-description>Capture and share your grow session.</p>
                 <div class="learn-empty-state-cta learn-empty-state-cta--inline">
                   <span>Need help getting started?</span>
-                  <button type="button" class="learn-empty-state-cta-button" data-learn-empty-tutorial="generating-grow-snapshots">Generating Grow Snapshots</button>
+                  <button type="button" class="learn-empty-state-cta-button" data-learn-empty-tutorial="generating-grow-snapshots">Generating Grow Snapshots?</button>
                 </div>
                 <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
               </div>
@@ -1078,6 +1068,13 @@
                 <p class="snapshot-explore-description">Explore shared grow sessions.</p>
               </div>
               <a class="button button-secondary snapshot-explore-button" href="#gallery">Browse Community Grow</a>
+            </div>
+            <div class="snapshot-help-footer">
+              <span class="snapshot-help-footer-copy">Learn how snapshots work and best practices.</span>
+              <span class="snapshot-help-footer-actions">
+                <button type="button" class="button button-secondary snapshot-help-footer-button" data-learn-empty-tutorial="generating-grow-snapshots">Watch Tutorial</button>
+                <button type="button" class="button button-secondary snapshot-help-footer-button" data-learn-empty-tutorial="community-grow-basics">Learn More</button>
+              </span>
             </div>
           </div>
           <p id="snapshot-message" class="snapshot-message" aria-live="polite"></p>
@@ -1554,24 +1551,14 @@
           <div id="detail-session-images-grid" class="session-images-grid"></div>
         </section>
         <section id="detail-share-snapshot-section" class="share-snapshot-section session-glass-panel" aria-labelledby="detail-share-snapshot-title">
-          <div class="snapshot-hero">
-            <div class="snapshot-hero-copy">
-              <div class="progress-chart-heading session-detail-lower-heading">
-                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                  <path d="M12 16V4"></path>
-                  <path d="M7.5 8.5L12 4l4.5 4.5"></path>
-                  <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
-                </svg>
-                <div class="session-detail-lower-heading-copy">
-                  <p class="eyebrow">Share</p>
-                  <h4 id="detail-share-snapshot-title">Share Your Grow Snapshot</h4>
-                </div>
-              </div>
-              <p class="snapshot-help">Turn your session into a shareable snapshot</p>
+          <header class="snapshot-workflow-header">
+            <span class="snapshot-workflow-step-badge" aria-hidden="true">3</span>
+            <div class="snapshot-workflow-heading-copy">
+              <h4 id="detail-share-snapshot-title" class="eyebrow">Share Your Grow Snapshot <small>(Optional)</small></h4>
+              <span>Turn your session into a shareable snapshot</span>
             </div>
-          </div>
+          </header>
           <div class="snapshot-gallery-controls">
-            <p class="snapshot-destination-label">Share to</p>
             <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
               <label class="snapshot-destination-option">
                 <input id="detail-snapshot-destination-social-gallery" type="radio" name="detail-snapshot-destination" value="social-gallery" checked>
@@ -1590,7 +1577,7 @@
               <input id="detail-snapshot-include-profile" type="checkbox" name="detail-snapshot-include-profile" checked>
               <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
               <span class="snapshot-profile-toggle-text">
-                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in Community Grow</span>
+                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image</span>
                 <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
               </span>
             </label>
@@ -1613,7 +1600,7 @@
                 <p class="snapshot-action-description" data-snapshot-action-description>Capture and share your grow session.</p>
                 <div class="learn-empty-state-cta learn-empty-state-cta--inline">
                   <span>Need help getting started?</span>
-                  <button type="button" class="learn-empty-state-cta-button" data-learn-empty-tutorial="generating-grow-snapshots">Generating Grow Snapshots</button>
+                  <button type="button" class="learn-empty-state-cta-button" data-learn-empty-tutorial="generating-grow-snapshots">Generating Grow Snapshots?</button>
                 </div>
                 <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
               </div>
@@ -1633,6 +1620,13 @@
                 <p class="snapshot-explore-description">Explore shared grow sessions.</p>
               </div>
               <a class="button button-secondary snapshot-explore-button" href="#gallery">Browse Community Grow</a>
+            </div>
+            <div class="snapshot-help-footer">
+              <span class="snapshot-help-footer-copy">Learn how snapshots work and best practices.</span>
+              <span class="snapshot-help-footer-actions">
+                <button type="button" class="button button-secondary snapshot-help-footer-button" data-learn-empty-tutorial="generating-grow-snapshots">Watch Tutorial</button>
+                <button type="button" class="button button-secondary snapshot-help-footer-button" data-learn-empty-tutorial="community-grow-basics">Learn More</button>
+              </span>
             </div>
           </div>
           <p id="detail-snapshot-message" class="snapshot-message" aria-live="polite"></p>
