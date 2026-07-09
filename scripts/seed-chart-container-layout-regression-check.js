@@ -8,17 +8,25 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").
 const chartStart = indexSource.indexOf('id="partition-chart-shell"');
 const saveShortcutStart = indexSource.indexOf('class="timeline-save-shortcut', chartStart);
 const lifecycleStart = indexSource.indexOf('id="session-lifecycle-section"', chartStart);
+const instructionStart = indexSource.indexOf('class="seed-chart-instruction-callout"', chartStart);
+const chartHeaderStart = indexSource.indexOf('id="partition-chart-header"', chartStart);
 if (chartStart === -1 || saveShortcutStart === -1) {
   throw new Error("Could not locate New Session seed chart shell boundaries.");
 }
 if (!(chartStart < saveShortcutStart && saveShortcutStart < lifecycleStart)) {
   throw new Error("Save Session bar must render directly after the Seed Chart and before Grow Companion.");
 }
+if (!(chartStart < instructionStart && instructionStart < chartHeaderStart && chartHeaderStart < saveShortcutStart)) {
+  throw new Error("Seed Chart instructional callout must render inside the chart shell directly above the table header.");
+}
 
 const chartShellMarkup = indexSource.slice(chartStart, saveShortcutStart);
 [
   'class="partition-work-header',
   'class="session-setup-tools-card"',
+  'class="seed-chart-instruction-callout"',
+  "Build Your Session",
+  "After saving your session, you'll unlock germination results and completion tracking.",
   'id="partition-chart-header"',
   'id="partition-fields"',
   'class="custom-seed-row-actions"',
@@ -42,6 +50,10 @@ if (indexSource.includes('</div>\n          <div class="custom-seed-row-actions'
   ".session-workspace-form #partition-chart-shell > .partition-work-header {\n  padding: 20px 18px 18px;\n  border: 0;\n  background: transparent;\n}",
   ".session-workspace-form .session-setup-tools-card {\n  --session-setup-age-accent: #d9a74e;",
   "  border: 0;\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;",
+  ".seed-chart-instruction-callout {",
+  ".seed-chart-instruction-icon {",
+  ".seed-chart-instruction-copy strong {",
+  ".session-workspace-form #partition-chart-shell > .seed-chart-instruction-callout {",
   ".session-workspace-form #partition-chart-shell > .chart-header {",
   ".session-workspace-form #partition-chart-shell > .partition-table {",
   ".custom-seed-row-actions {\n  display: flex;",

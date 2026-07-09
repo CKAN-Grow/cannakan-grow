@@ -55540,6 +55540,62 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   display: none !important;
 }
 
+.seed-chart-instruction-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 18px 14px;
+  padding: 13px 16px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.105), rgba(148, 209, 89, 0.035) 58%),
+    rgba(255, 255, 255, 0.024);
+  color: rgba(232, 238, 225, 0.82);
+}
+
+.seed-chart-instruction-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  border-radius: 14px;
+  background: rgba(148, 209, 89, 0.1);
+  color: #aee77c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.seed-chart-instruction-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.seed-chart-instruction-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seed-chart-instruction-copy strong {
+  color: #eef7e6;
+  font-size: 0.96rem;
+  line-height: 1.2;
+}
+
+.seed-chart-instruction-copy span {
+  color: rgba(232, 238, 225, 0.76);
+  font-size: 0.88rem;
+  line-height: 1.38;
+}
+
 .chart-header {
   padding: 14px 22px 14px 16px;
   background: #edf3ec;
@@ -63255,6 +63311,19 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     grid-template-columns: repeat(2, minmax(220px, 1fr));
   }
 
+  .seed-chart-instruction-callout {
+    align-items: flex-start;
+    margin-right: 14px;
+    margin-left: 14px;
+    padding: 12px 13px;
+  }
+
+  .seed-chart-instruction-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+  }
+
   .session-top-grid {
     width: 100%;
   }
@@ -63974,6 +64043,7 @@ body.theme-dark .session-workspace-shell .partition-row:focus-within .custom-sel
 }
 
 .session-workspace-form #partition-chart-shell > .partition-work-header,
+.session-workspace-form #partition-chart-shell > .seed-chart-instruction-callout,
 .session-workspace-form #partition-chart-shell > .chart-header,
 .session-workspace-form #partition-chart-shell > .partition-table,
 .session-workspace-form #partition-chart-shell > .custom-seed-row-actions {
@@ -63983,6 +64053,10 @@ body.theme-dark .session-workspace-shell .partition-row:focus-within .custom-sel
 
 .session-workspace-form #partition-chart-shell > .partition-work-header {
   padding-bottom: 14px;
+}
+
+.session-workspace-form #partition-chart-shell > .seed-chart-instruction-callout {
+  margin-top: 0;
 }
 
 .session-workspace-form #partition-chart-shell > .chart-header {
