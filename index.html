@@ -984,28 +984,17 @@
             </div>
           </section>
           <section class="session-images-section session-glass-panel" aria-labelledby="session-images-label">
-            <div class="session-images-heading">
-              <div>
-                <p class="eyebrow">Images</p>
-                <h4 id="session-images-label" class="section-title-with-icon">
-                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <rect x="4" y="6" width="16" height="12" rx="2"></rect>
-                    <circle cx="9" cy="10" r="1.5"></circle>
-                    <path d="m20 15-4.5-4.5L8 18"></path>
-                  </svg>
-                  <span>Session Images</span>
-                </h4>
+            <div class="session-images-heading session-images-workflow-heading">
+              <span class="session-images-step-badge" aria-hidden="true">2</span>
+              <div class="session-images-heading-copy">
+                <p id="session-images-label" class="eyebrow">Images</p>
+                <span>Add up to 3 images for this session</span>
               </div>
               <span class="session-images-limit">Up to 3 images</span>
             </div>
-            <label class="session-images-upload">
-              <span>Add images</span>
-              <span class="file-upload-control">
-                <span class="file-upload-button">Choose Image</span>
-                <span class="file-upload-name">No file selected</span>
-                <input id="session-images-input" class="file-upload-input" type="file" accept="image/*" multiple>
-              </span>
-            </label>
+            <span class="session-images-input-home" hidden>
+              <input id="session-images-input" class="file-upload-input" type="file" accept="image/*" multiple>
+            </span>
             <p id="session-images-message" class="session-images-message" aria-live="polite"></p>
             <div id="session-images-grid" class="session-images-grid"></div>
           </section>
@@ -1550,28 +1539,17 @@
           </div>
         </section>
         <section class="session-images-section session-glass-panel" aria-labelledby="detail-session-images-label">
-          <div class="session-images-heading">
-            <div class="session-detail-lower-heading">
-              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <rect x="4" y="6" width="16" height="12" rx="2"></rect>
-                <circle cx="9" cy="10" r="1.5"></circle>
-                <path d="m20 15-4.5-4.5L8 18"></path>
-              </svg>
-              <div class="session-detail-lower-heading-copy">
-                <p class="eyebrow">Images</p>
-                <h4 id="detail-session-images-label">Session Images</h4>
-              </div>
+          <div class="session-images-heading session-images-workflow-heading">
+            <span class="session-images-step-badge" aria-hidden="true">2</span>
+            <div class="session-images-heading-copy">
+              <p id="detail-session-images-label" class="eyebrow">Images</p>
+              <span>Add up to 3 images for this session</span>
             </div>
             <span class="session-images-limit">Up to 3 images</span>
           </div>
-          <label class="session-images-upload">
-            <span>Add images</span>
-            <span class="file-upload-control">
-              <span class="file-upload-button">Choose Image</span>
-              <span class="file-upload-name">No file selected</span>
-              <input id="detail-session-images-input" class="file-upload-input" type="file" accept="image/*" multiple>
-            </span>
-          </label>
+          <span class="session-images-input-home" hidden>
+            <input id="detail-session-images-input" class="file-upload-input" type="file" accept="image/*" multiple>
+          </span>
           <p id="detail-session-images-message" class="session-images-message" aria-live="polite"></p>
           <div id="detail-session-images-grid" class="session-images-grid"></div>
         </section>

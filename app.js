@@ -4393,6 +4393,11 @@ function updateFileUploadName(input, files = input?.files) {
     return;
   }
 
+  if (control?.classList.contains("session-image-upload-control") && (!files || !files.length)) {
+    nameElement.textContent = "JPG, PNG up to 10MB";
+    return;
+  }
+
   nameElement.textContent = getFileUploadNameLabel(input, files);
 }
 
@@ -37237,21 +37242,62 @@ async function handleSessionImageSelection(state, fileList) {
   renderSessionImageGrid(state);
 }
 
+function renderSessionImagePlaceholderIconMarkup() {
+  return `
+    <svg class="session-image-placeholder-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <rect x="4.5" y="5.5" width="15" height="13" rx="2"></rect>
+      <circle cx="9" cy="10" r="1.35"></circle>
+      <path d="m5 17 4.6-4.8 3.2 3.1 2.2-2.4 4 4.1"></path>
+    </svg>
+  `;
+}
+
+function parkSessionImageInput(state) {
+  const parking = state?.scope?.querySelector?.(".session-images-input-home");
+  if (parking && state?.input && state.input.parentElement !== parking) {
+    parking.appendChild(state.input);
+  }
+}
+
+function createSessionImageUploadSlot(state) {
+  const slot = document.createElement("label");
+  slot.className = "session-images-upload session-image-slot session-image-slot--upload";
+  slot.innerHTML = `
+    <span class="file-upload-control session-image-upload-control">
+      <span class="session-image-upload-plus" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+      </span>
+      <span class="file-upload-button">Choose Image</span>
+      <span class="file-upload-name">JPG, PNG up to 10MB</span>
+    </span>
+  `;
+
+  const control = slot.querySelector(".file-upload-control");
+  if (control && state.input) {
+    control.appendChild(state.input);
+    control.dataset.bound = "";
+    bindFileUploadControl(state.input);
+    updateFileUploadName(state.input);
+  }
+  return slot;
+}
+
+function createSessionImagePlaceholderSlot(index = 0) {
+  const slot = document.createElement("div");
+  slot.className = "session-image-slot session-image-slot--placeholder";
+  slot.setAttribute("aria-hidden", "true");
+  slot.innerHTML = `
+    ${renderSessionImagePlaceholderIconMarkup()}
+    <span class="sr-only">Image slot ${index + 1}</span>
+  `;
+  return slot;
+}
+
 function renderSessionImageGrid(state) {
   const allImages = [...state.images, ...state.pendingFiles];
   state.grid.innerHTML = "";
-
-  if (!allImages.length) {
-    state.grid.innerHTML = `
-      <div class="session-images-empty">
-        <p>No images added yet.</p>
-        ${renderLearnEmptyStateCtaMarkup("using-notes-and-images", "Using Notes & Images")}
-      </div>
-    `;
-    renderSessionImageDots(state, 0);
-    state.onRender?.(allImages);
-    return;
-  }
 
   allImages.forEach((image, index) => {
     const imageKey = getSessionImageEntryKey(image, index);
@@ -37275,6 +37321,26 @@ function renderSessionImageGrid(state) {
 
     state.grid.appendChild(card);
   });
+
+  if (state.editable && allImages.length < MAX_SESSION_IMAGES) {
+    state.grid.appendChild(createSessionImageUploadSlot(state));
+  } else {
+    parkSessionImageInput(state);
+  }
+
+  for (let index = allImages.length + (state.editable && allImages.length < MAX_SESSION_IMAGES ? 1 : 0); index < MAX_SESSION_IMAGES; index += 1) {
+    state.grid.appendChild(createSessionImagePlaceholderSlot(index));
+  }
+
+  if (!allImages.length) {
+    const emptyState = document.createElement("div");
+    emptyState.className = "session-images-empty";
+    emptyState.innerHTML = `
+      <p>No images added yet.</p>
+      ${renderLearnEmptyStateCtaMarkup("using-notes-and-images", "Using Notes & Images")}
+    `;
+    state.grid.appendChild(emptyState);
+  }
 
   state.onRender?.(allImages);
   renderSessionImageDots(state, allImages.length);
