@@ -63328,6 +63328,34 @@ body.theme-dark .session-workspace-shell .system-id-field:focus-within select {
 
 }
 
+.session-workspace-form[data-method-standardized="false"] .hardware-method-card {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "session"
+    "timeline";
+  justify-items: stretch;
+  text-align: left;
+}
+
+.session-workspace-form[data-method-standardized="false"] .hardware-method-hero {
+  display: none;
+}
+
+.session-workspace-form[data-method-standardized="false"] .hardware-session-panel,
+.session-workspace-form[data-method-standardized="false"] .hardware-session-column > .session-engine-visual-timeline {
+  width: 100%;
+  justify-self: stretch;
+}
+
+@media (max-width: 980px) {
+  .session-workspace-form[data-method-standardized="false"] .hardware-method-card {
+    grid-template-areas:
+      "session"
+      "timeline";
+    text-align: left;
+  }
+}
+
 body.theme-dark .session-workspace-shell .custom-select-menu {
   background: rgba(15, 21, 17, 0.98);
   border-color: rgba(148, 209, 89, 0.18);

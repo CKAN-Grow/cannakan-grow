@@ -133,6 +133,12 @@ for (const needle of [
   ".session-workspace-shell .hardware-session-fields",
   ".hardware-method-card .system-layout-image-kan",
   ".hardware-method-card .partition-node:focus-visible",
+  '.session-workspace-form[data-method-standardized="false"] .hardware-method-card',
+  'grid-template-areas:\n    "session"\n    "timeline";',
+  '.session-workspace-form[data-method-standardized="false"] .hardware-method-hero',
+  "display: none;",
+  '.session-workspace-form[data-method-standardized="false"] .hardware-session-column > .session-engine-visual-timeline',
+  "justify-self: stretch;",
 ]) {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing hardware card styling: ${needle}`);
@@ -141,9 +147,7 @@ for (const needle of [
 
 for (const forbidden of [
   '[data-method-standardized="false"] .system-layout-block',
-  '.session-workspace-form[data-method-standardized="false"] .hardware-method-card',
   '.session-workspace-form[data-method-standardized="false"] .hardware-overview-metrics',
-  '.session-workspace-form[data-method-standardized="false"] .hardware-method-hero',
 ]) {
   if (stylesSource.includes(forbidden)) {
     throw new Error(`Non-KAN methods must not fall back to the old collapsed layout: ${forbidden}`);
