@@ -25,8 +25,9 @@ const chartShellMarkup = indexSource.slice(chartStart, saveShortcutStart);
   'class="partition-work-header',
   'class="session-setup-tools-card"',
   'class="seed-chart-instruction-callout"',
+  'id="seed-chart-instruction-title"',
   "Build Your Session",
-  "After saving your session, you'll unlock germination results and completion tracking.",
+  "Save your session to unlock germination tracking and session results.",
   'id="partition-chart-header"',
   'id="partition-fields"',
   'class="custom-seed-row-actions"',
@@ -51,8 +52,8 @@ if (indexSource.includes('</div>\n          <div class="custom-seed-row-actions'
   ".session-workspace-form .session-setup-tools-card {\n  --session-setup-age-accent: #d9a74e;",
   "  border: 0;\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;",
   ".seed-chart-instruction-callout {",
-  ".seed-chart-instruction-icon {",
-  ".seed-chart-instruction-copy strong {",
+  ".seed-chart-instruction-callout h2 {",
+  ".seed-chart-instruction-callout p {",
   ".session-workspace-form #partition-chart-shell > .seed-chart-instruction-callout {",
   ".session-workspace-form #partition-chart-shell > .chart-header {",
   ".session-workspace-form #partition-chart-shell > .partition-table {",
@@ -61,6 +62,21 @@ if (indexSource.includes('</div>\n          <div class="custom-seed-row-actions'
 ].forEach((needle) => {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing unified seed chart container style: ${needle}`);
+  }
+});
+
+[
+  "seed-chart-instruction-icon",
+  "seed-chart-instruction-copy",
+  ".seed-chart-instruction-icon",
+  ".seed-chart-instruction-callout {\n  display: flex;",
+  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 12px;",
+  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 6px;\n  margin: 0 18px 16px;\n  min-width: 0;\n  padding:",
+  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 6px;\n  margin: 0 18px 16px;\n  min-width: 0;\n  border:",
+  ".seed-chart-instruction-callout {\n  display: grid;\n  gap: 6px;\n  margin: 0 18px 16px;\n  min-width: 0;\n  background:",
+].forEach((needle) => {
+  if (chartShellMarkup.includes(needle) || stylesSource.includes(needle)) {
+    throw new Error(`Seed Chart instruction should not retain old card/icon treatment: ${needle}`);
   }
 });
 
