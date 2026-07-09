@@ -53081,6 +53081,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .chart-shell {
+  display: grid;
+  gap: 0;
   overflow: hidden;
 }
 
@@ -54711,12 +54713,17 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 
 .partition-table {
   display: grid;
+  min-width: 0;
 }
 
 .custom-seed-row-actions {
   display: flex;
   justify-content: flex-start;
-  padding: 14px 16px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid rgba(148, 209, 89, 0.12);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.055), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.018);
 }
 
 .custom-seed-row-actions[hidden] {
