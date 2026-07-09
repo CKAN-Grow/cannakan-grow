@@ -46,6 +46,28 @@ html {
   --field-placeholder-opacity: 0.56;
   --radius: 20px;
   --page-section-gap: var(--space-5);
+  --app-page-max-width: 1280px;
+  --app-page-inline-padding: clamp(16px, 2vw, 24px);
+  --app-page-block-padding: clamp(18px, 2.4vw, 32px);
+  --app-section-gap: clamp(18px, 2.4vw, 30px);
+  --app-card-radius: 20px;
+  --app-card-radius-sm: 16px;
+  --app-card-padding: clamp(16px, 2vw, 24px);
+  --app-card-gap: clamp(12px, 1.6vw, 20px);
+  --app-control-radius: 16px;
+  --app-control-height: 48px;
+  --app-control-padding-x: 18px;
+  --app-border-subtle: rgba(148, 209, 89, 0.16);
+  --app-border-strong: rgba(148, 209, 89, 0.28);
+  --app-focus-ring: 0 0 0 3px rgba(148, 209, 89, 0.18);
+  --app-surface-panel:
+    radial-gradient(circle at 86% 10%, rgba(148, 209, 89, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(13, 24, 18, 0.96), rgba(5, 10, 8, 0.98));
+  --app-surface-panel-soft:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(15, 22, 18, 0.92) 0%, rgba(10, 16, 13, 0.96) 100%);
+  --app-card-shadow: 0 22px 44px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --app-card-shadow-soft: 0 16px 32px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --space-section: var(--page-section-gap);
   --space-card: var(--space-5);
   --space-card-gap: var(--space-4);
@@ -128,7 +150,7 @@ textarea {
 }
 
 .app-shell {
-  width: min(1280px, calc(100% - var(--space-5)));
+  width: min(var(--app-page-max-width), calc(100% - var(--space-5)));
   margin: 0 auto;
   padding: var(--space-4) 0 calc(var(--space-6) + var(--space-2));
   position: relative;
@@ -1877,13 +1899,13 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .app-main {
   display: grid;
-  gap: var(--page-section-gap);
+  gap: var(--app-section-gap);
 }
 
 .page-content {
   display: flex;
   flex-direction: column;
-  gap: var(--page-section-gap);
+  gap: var(--app-section-gap);
 }
 
 .card,
@@ -1904,8 +1926,59 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .card {
-  border-radius: var(--radius);
-  padding: var(--space-card);
+  border-radius: var(--app-card-radius);
+  padding: var(--app-card-padding);
+}
+
+.ds-page,
+.home-page-content,
+.session-workspace-page-layout,
+.my-grow-home-page,
+.source-profile-page,
+.seed-profile-page {
+  width: 100%;
+  max-width: var(--app-page-max-width);
+  margin-inline: auto;
+}
+
+.ds-stack,
+.home-page-content,
+.session-workspace-page-layout,
+.my-grow-home-page,
+.source-profile-page,
+.seed-profile-page {
+  gap: var(--app-section-gap);
+}
+
+.ds-card,
+.session-glass-panel,
+.session-workspace-shell,
+.session-command-center-shell,
+.home-learn-section,
+.home-gallery-rankings-card,
+.my-grow-panel,
+.my-grow-vault-preview,
+.learn-media-card,
+.gallery-review-section {
+  border-radius: var(--app-card-radius);
+  border-color: var(--app-border-subtle);
+  background: var(--app-surface-panel-soft);
+  box-shadow: var(--app-card-shadow-soft);
+}
+
+.ds-card--flat {
+  border-radius: var(--app-card-radius-sm);
+  border: 1px solid var(--app-border-subtle);
+  background: rgba(255, 255, 255, 0.032);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ds-card > .ds-card,
+.card > .card,
+.session-glass-panel > .session-glass-panel,
+.profile-section > .profile-section,
+.community-intelligence-panel > .community-intelligence-panel {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .dashboard-bar {
@@ -28548,10 +28621,13 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  padding: 12px 18px;
-  border-radius: 16px;
+  min-height: var(--app-control-height);
+  padding: 12px var(--app-control-padding-x);
+  border-radius: var(--app-control-radius);
   border: 1px solid transparent;
   cursor: pointer;
+  font-weight: 800;
+  line-height: 1;
   transition:
     transform 0.18s ease,
     background 0.18s ease,
@@ -28562,6 +28638,24 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
 
 .button:hover {
   transform: translateY(-1px);
+}
+
+.button:disabled,
+.button[disabled],
+.button.is-disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.button:focus-visible,
+.custom-select-trigger:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus-ring);
 }
 
 .button-primary,
@@ -29961,6 +30055,143 @@ body.theme-dark .button-secondary:hover {
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 14px 26px rgba(0, 0, 0, 0.18),
     0 0 18px rgba(148, 209, 89, 0.14);
+}
+
+.button-secondary,
+.button-ghost,
+.gallery-card-remove,
+.learn-empty-state-cta-button,
+.my-grow-panel-link,
+.home-learn-action {
+  border-radius: var(--app-control-radius);
+}
+
+:where(.session-workspace-shell, .profile-page, .my-grow-home-page, .home-page-content, .source-profile-page, .seed-profile-page, .auth-shell, .gallery-review-section) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea),
+.custom-select-trigger {
+  min-height: var(--app-control-height);
+  border-radius: var(--app-control-radius);
+  border-color: rgba(148, 209, 89, 0.16);
+  background: var(--field-bg);
+  color: var(--ink);
+}
+
+body.theme-dark :where(.session-workspace-shell, .profile-page, .my-grow-home-page, .home-page-content, .source-profile-page, .seed-profile-page, .auth-shell, .gallery-review-section) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea),
+body.theme-dark .custom-select-trigger {
+  border-color: rgba(148, 209, 89, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
+    rgba(9, 15, 11, 0.76);
+  color: #f4f8f1;
+}
+
+:where(.session-workspace-shell, .profile-page, .my-grow-home-page, .home-page-content, .source-profile-page, .seed-profile-page, .auth-shell, .gallery-review-section) label > span:first-child,
+:where(.session-workspace-shell, .profile-page, .my-grow-home-page, .home-page-content, .source-profile-page, .seed-profile-page, .auth-shell, .gallery-review-section) legend,
+.form-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.form-helper,
+.profile-field-helper,
+.session-seed-age-toggle-helper,
+.session-public-note-help,
+.session-images-limit,
+.session-images-message {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.ds-pill,
+.session-status-pill,
+.filter-paper-status-badge,
+.session-command-count-badge,
+.gallery-card-chip,
+.gallery-tile-badge,
+.learn-media-card-badge,
+.public-analytics-signal-badge,
+.admin-source-status-pill,
+.admin-message-status-pill,
+.admin-member-status-pill,
+.leaderboard-audit-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  background: rgba(148, 209, 89, 0.1);
+  color: #c9f29d;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.ds-pill.is-warning,
+.session-command-stage-badge.is-needs-attention,
+.filter-paper-status-badge--low,
+.filter-paper-status-badge--urgent,
+.filter-paper-status-badge--critical {
+  border-color: rgba(224, 138, 77, 0.34);
+  background: rgba(224, 138, 77, 0.12);
+  color: #f6d8bf;
+}
+
+.ds-pill.is-complete,
+.session-command-stage-badge.is-completed,
+.seed-age-analytics-status-pill.is-complete {
+  border-color: rgba(148, 209, 89, 0.32);
+  background: rgba(148, 209, 89, 0.14);
+  color: #d7f7b2;
+}
+
+.chart-shell,
+.partition-table,
+.community-insights-chart-card,
+.gallery-leaderboard-card,
+.leaderboard-audit-table,
+.admin-table-card {
+  border-radius: var(--app-card-radius);
+}
+
+.chart-header,
+.partition-row,
+.gallery-leaderboard-row,
+.community-insights-bar-row,
+.leaderboard-audit-row {
+  border-color: rgba(148, 209, 89, 0.12);
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    width: min(100% - 20px, var(--app-page-max-width));
+    padding-top: 12px;
+  }
+
+  .app-main,
+  .page-content,
+  .home-page-content,
+  .session-workspace-page-layout,
+  .my-grow-home-page,
+  .source-profile-page,
+  .seed-profile-page {
+    gap: clamp(14px, 5vw, 22px);
+  }
+
+  .card,
+  .session-glass-panel,
+  .session-workspace-shell,
+  .session-command-center-shell,
+  .home-learn-section,
+  .home-gallery-rankings-card,
+  .my-grow-panel,
+  .learn-media-card {
+    border-radius: 18px;
+  }
 }
 
 .admin-subnav-shell {
