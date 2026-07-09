@@ -1629,10 +1629,10 @@ const METHOD_SETUP_SESSION_STORAGE_KEY = "cannakanGrowSessionMethodSetup";
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({ key: "kan", accent: "#94d159", accentSoft: "rgba(148, 209, 89, 0.16)", glow: "rgba(148, 209, 89, 0.28)" }),
   TRA: Object.freeze({ key: "tra", accent: "#b8ff5c", accentSoft: "rgba(184, 255, 92, 0.16)", glow: "rgba(184, 255, 92, 0.3)" }),
-  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#e9c84b", accentSoft: "rgba(233, 200, 75, 0.16)", glow: "rgba(233, 200, 75, 0.28)" }),
-  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f1b65b", accentSoft: "rgba(241, 182, 91, 0.15)", glow: "rgba(241, 182, 91, 0.26)" }),
+  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
+  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
   WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)" }),
-  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#9cab8d", accentSoft: "rgba(156, 171, 141, 0.16)", glow: "rgba(156, 171, 141, 0.24)" }),
+  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#8f9aa3", accentSoft: "rgba(143, 154, 163, 0.16)", glow: "rgba(143, 154, 163, 0.24)" }),
   RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)" }),
   DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)" }),
   OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)" }),
@@ -96293,7 +96293,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetu
     case "SOAK_PAPER_TOWEL":
       return {
         title: "Soak + Paper Towel",
-        tone: "purple",
+        tone: "silver",
         iconName: "method-soak-paper",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
@@ -96307,7 +96307,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetu
     case "PAPER_TOWEL":
       return {
         title: "Paper Towel Only",
-        tone: "blue",
+        tone: "silver",
         iconName: "method-paper-towel",
         stages: [
           { key: "started", label: "Started", timing: "Session started" },
@@ -96333,7 +96333,7 @@ function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetu
     case "ROCKWOOL":
       return {
         title: "Rockwool",
-        tone: "orange",
+        tone: "gray",
         iconName: "method-direct-sow",
         stages: preparedMedia
           ? [

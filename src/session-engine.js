@@ -183,12 +183,12 @@
     PAPER_TOWEL_SOAK: {
       key: "PAPER_TOWEL_SOAK",
       displayName: "Soak + Paper Towel",
-      tone: "purple",
+      tone: "silver",
       iconName: "method-soak-paper",
       startLabel: "Soak begins",
       resultRequired: true,
       phases: [
-        phase("started", "Start", 0, 0, { timing: "Session started", tone: "purple" }),
+        phase("started", "Start", 0, 0, { timing: "Session started", tone: "silver" }),
         phase("soak", "Soak", 0, 12, { timing: "0-12h", tone: "soaking", requiredConfirmation: "confirm-moved-to-paper-towel" }),
         phase("ready-transfer", "Move to Paper Towel", 12, null, { timing: "12-18h", tone: "germination", requiredConfirmation: "confirm-moved-to-paper-towel" }),
         phase("paper-towel", "Paper Towel", 0, 24, { from: "paperTowelStart", timing: "0-24h", tone: "germination" }),
@@ -215,12 +215,12 @@
     PAPER_TOWEL: {
       key: "PAPER_TOWEL",
       displayName: "Paper Towel Only",
-      tone: "blue",
+      tone: "silver",
       iconName: "method-paper-towel",
       startLabel: "Paper towel begins",
       resultRequired: true,
       phases: [
-        phase("started", "Start", 0, 0, { timing: "Session started", tone: "blue" }),
+        phase("started", "Start", 0, 0, { timing: "Session started", tone: "silver" }),
         phase("paper-towel", "Paper Towel", 0, 12, { timing: "0-12h", tone: "germination" }),
         phase("first-check", "First Check", 12, 24, { timing: "12-24h", tone: "green" }),
         phase("check-window", "Check Seeds", 24, 48, { timing: "24-48h", tone: "green" }),
