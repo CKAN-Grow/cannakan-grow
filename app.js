@@ -95133,14 +95133,9 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
   const completedDate = normalizedStatus === "completed"
     ? timingState?.completedAt || parseCompletedAtValue(completedAt) || new Date()
     : null;
-  const durationTarget = completedDate || now;
   const setupGraceActive = timingState
     ? timingState.setupGraceActive
     : !completedDate && isSetupGracePeriodActive(startedAt, now);
-  const elapsedLabel = setupGraceActive
-    ? formatSetupGraceStartsIn(startedAt, now)
-    : formatDurationBetween(startedAt, durationTarget);
-
   summaryElement.innerHTML = `
     <article class="timing-card timing-card-started${setupGraceActive ? " timing-card-setup" : ""}">
       <strong>${setupGraceActive ? "Timer Starts" : "Started"}</strong>
@@ -95148,19 +95143,14 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
     </article>
     ${completedDate ? `
       <article class="timing-card">
-        <strong>Completed On</strong>
+        <strong>Completed</strong>
         <p>${formatTimingDateTime(completedDate)}</p>
       </article>
       <article class="timing-card">
-        <strong>Total Duration</strong>
+        <strong>Total Session Time</strong>
         <p>${formatDurationBetween(startedAt, completedDate)}</p>
       </article>
-    ` : `
-      <article class="timing-card timing-card-elapsed${setupGraceActive ? " timing-card-setup" : ""}">
-        <strong>${setupGraceActive ? "Setup Grace Period" : "Session Duration"}</strong>
-        <p>${elapsedLabel || "0m"}</p>
-      </article>
-    `}
+    ` : ""}
   `;
   sectionElement.hidden = false;
 }

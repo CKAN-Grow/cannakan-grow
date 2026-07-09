@@ -19,7 +19,7 @@ const requireSource = (source, needle, label) => {
   "createdAt: String(session.createdAt || session.created_at || \"\").trim()",
   "parseCompletedAtValue(session.createdAt || session.created_at || \"\")",
   "return parseCompletedAtValue(germinationStartedAt);",
-  "<strong>${setupGraceActive ? \"Setup Grace Period\" : \"Session Duration\"}</strong>",
+  "<strong>Total Session Time</strong>",
   "function getSessionDurationStartAt(session = null)",
   "parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || \"\")",
   "getSessionStageReminderOptions(session)",

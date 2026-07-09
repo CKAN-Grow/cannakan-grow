@@ -15,9 +15,24 @@ for (const needle of [
   "function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = \"\", timerStartAt = \"\", options = {})",
   "parseCompletedAtValue(options.sessionDurationStartAt || \"\")",
   "sessionDurationStartAt: getSessionDurationStartAt(session)?.toISOString() || \"\"",
+  "<strong>Total Session Time</strong>",
 ]) {
   if (!appSource.includes(needle)) {
-    throw new Error(`Missing full Session Duration behavior: ${needle}`);
+    throw new Error(`Missing session timeline timing behavior: ${needle}`);
+  }
+}
+
+const timingSummaryFunction = appSource.match(/function updateSessionTimingSummary\(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = "", timerStartAt = "", options = {}\) \{[\s\S]*?\n\}/)?.[0] || "";
+if (!timingSummaryFunction) {
+  throw new Error("Could not inspect updateSessionTimingSummary.");
+}
+for (const removedNeedle of [
+  "timing-card-elapsed",
+  "Session Duration",
+  "Total Duration",
+]) {
+  if (timingSummaryFunction.includes(removedNeedle)) {
+    throw new Error(`Session Timeline should not render redundant active duration copy: ${removedNeedle}`);
   }
 }
 
@@ -29,7 +44,7 @@ if (
   durationStartFunction.indexOf("parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || \"\")")
   > durationStartFunction.indexOf("parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || \"\")")
 ) {
-  throw new Error("Session Duration must prefer sessionStartedAt before soakStartedAt.");
+  throw new Error("Session timeline duration calculations must prefer sessionStartedAt before soakStartedAt.");
 }
 
 const formatElapsedMinutesShorthand = (totalMinutes) => {
@@ -57,11 +72,11 @@ const now = new Date("2026-05-20T08:45:00-04:00");
 const sessionDuration = durationBetween(sessionStartedAt, now);
 const currentStageElapsed = durationBetween(germinatingStartedAt, now);
 
-assert.equal(sessionDuration, "1d 12h", "Session Duration should measure from sessionStartedAt.");
+assert.equal(sessionDuration, "1d 12h", "Total session time should measure from sessionStartedAt.");
 assert.equal(currentStageElapsed, "12h 15m", "Current-stage elapsed should remain separate.");
 assert.ok(
   now.getTime() - sessionStartedAt.getTime() > now.getTime() - germinatingStartedAt.getTime(),
-  "Session Duration should be greater than current-stage elapsed for this Germinating session.",
+  "Total session time should be greater than current-stage elapsed for this Germinating session.",
 );
 
-console.log("Session Duration full elapsed regression check passed.");
+console.log("Session Timeline timing regression check passed.");
