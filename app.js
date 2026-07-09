@@ -85385,6 +85385,8 @@ function closeSourceDirectorySuggestions(field) {
     suggestions.innerHTML = "";
   }
   field?.removeAttribute?.("data-source-directory-active-index");
+  field?.removeAttribute?.("data-autocomplete-open");
+  field?.closest?.(".partition-row")?.removeAttribute?.("data-autocomplete-open");
 }
 
 function applySourceDirectorySuggestion(input, suggestion) {
@@ -85452,6 +85454,11 @@ function renderSourceDirectorySuggestions(field) {
     </button>
   `).join("");
   panel.hidden = false;
+  field.dataset.autocompleteOpen = "true";
+  const row = field.closest(".partition-row");
+  if (row instanceof HTMLElement) {
+    row.dataset.autocompleteOpen = "true";
+  }
 }
 
 function requestSourceDirectorySuggestionsRender(field) {
@@ -85560,6 +85567,8 @@ function closeVarietyDirectorySuggestions(field) {
     suggestions.innerHTML = "";
   }
   field?.removeAttribute?.("data-variety-directory-active-index");
+  field?.removeAttribute?.("data-autocomplete-open");
+  field?.closest?.(".partition-row")?.removeAttribute?.("data-autocomplete-open");
 }
 
 function applyVarietyDirectorySuggestion(input, suggestion) {
@@ -85627,6 +85636,11 @@ function renderVarietyDirectorySuggestions(field) {
     </button>
   `).join("");
   panel.hidden = false;
+  field.dataset.autocompleteOpen = "true";
+  const row = field.closest(".partition-row");
+  if (row instanceof HTMLElement) {
+    row.dataset.autocompleteOpen = "true";
+  }
 }
 
 function requestVarietyDirectorySuggestionsRender(field) {

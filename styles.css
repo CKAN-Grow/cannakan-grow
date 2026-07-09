@@ -55417,6 +55417,11 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   overflow: visible;
 }
 
+.session-workspace-form #partition-chart-shell:has(.partition-identity-suggestions:not([hidden])),
+.session-workspace-form #partition-chart-shell:focus-within {
+  overflow: visible;
+}
+
 .system-layout-label {
   width: 100%;
   margin: 0;
@@ -55691,6 +55696,12 @@ body.theme-dark .chart-header span:not(:last-child)::after {
   z-index: 6;
 }
 
+.partition-row[data-autocomplete-open="true"],
+.partition-row:has(.partition-identity-suggestions:not([hidden])) {
+  z-index: 80;
+  overflow: visible;
+}
+
 .partition-row:nth-child(even) {
   background: var(--partition-row-bg-even, rgba(244, 248, 243, 0.96));
 }
@@ -55822,9 +55833,14 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
   position: relative;
 }
 
+.partition-identity-field[data-autocomplete-open="true"],
+.partition-identity-field:has(.partition-identity-suggestions:not([hidden])) {
+  z-index: 90;
+}
+
 .partition-identity-suggestions {
   position: absolute;
-  z-index: 40;
+  z-index: 120;
   top: calc(100% + 6px);
   left: 0;
   right: 0;

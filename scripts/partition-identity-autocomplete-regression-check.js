@@ -3,6 +3,7 @@ const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 for (const needle of [
   "const PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS = 2;",
@@ -16,6 +17,9 @@ for (const needle of [
   "appState.sourceReviewSessionRows",
   "getGallerySnapshotsForDisplay(appState.gallerySnapshots || [])",
   'reason: isLikelyDuplicate ? "Use existing name" : getPartitionIdentitySuggestionReason(record)',
+  'field.dataset.autocompleteOpen = "true";',
+  'row.dataset.autocompleteOpen = "true";',
+  'field?.closest?.(".partition-row")?.removeAttribute?.("data-autocomplete-open");',
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing Source/Seed Variety autocomplete behavior: ${needle}`);
@@ -34,5 +38,18 @@ if (suggestionsFunction[0].includes("if (!normalizedQuery)")) {
 if (!suggestionsFunction[0].includes(".slice(0, PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT);")) {
   throw new Error("Autocomplete suggestions should remain capped by PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT.");
 }
+
+[
+  ".session-workspace-form #partition-chart-shell:has(.partition-identity-suggestions:not([hidden]))",
+  '.partition-row[data-autocomplete-open="true"]',
+  ".partition-row:has(.partition-identity-suggestions:not([hidden]))",
+  '.partition-identity-field[data-autocomplete-open="true"]',
+  ".partition-identity-field:has(.partition-identity-suggestions:not([hidden]))",
+  "z-index: 120;",
+].forEach((needle) => {
+  if (!stylesSource.includes(needle)) {
+    throw new Error(`Missing autocomplete overlay style: ${needle}`);
+  }
+});
 
 console.log("Source and Seed Variety autocomplete regression check passed.");
