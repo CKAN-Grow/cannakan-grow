@@ -25,8 +25,12 @@ assert(
   "Expected numbered Notes step badges in create and detail note sections.",
 );
 assert(
-  indexSource.match(/Private to you/g)?.length >= 2,
+  indexSource.match(/<span>Private to you<\/span>/g)?.length >= 2,
   "Expected Notes privacy indicators in create and detail note sections.",
+);
+assert(
+  indexSource.match(/data-note-privacy-mode="private" aria-live="polite"/g)?.length >= 2,
+  "Expected Notes privacy indicators to expose dynamic state and announce changes.",
 );
 assert(
   indexSource.match(/Private session notes/g)?.length >= 4,
@@ -59,6 +63,15 @@ assert(
   appSource.includes('state.publicGrowNoteFieldShell.hidden = normalizedMode !== "separate";'),
   "Expected separate note mode to reveal and hide the public note field shell.",
 );
+for (const needle of [
+  "function getSessionNotesPrivacyIndicatorMarkup(mode = \"private\")",
+  "function syncSessionNotesPrivacyIndicator(state = null, mode = \"private\")",
+  "Private note + Community note",
+  "Shared with Community Grow",
+  "syncSessionNotesPrivacyIndicator(state, normalizedMode);",
+]) {
+  assert(appSource.includes(needle), `Expected dynamic Notes privacy indicator behavior: ${needle}`);
+}
 assert(
   appSource.includes('return normalizePublicGrowNote(state?.sessionNotesField?.value || "");'),
   "Expected same-note mode to use the private Session Notes textarea as the shared note source.",
@@ -80,6 +93,10 @@ for (const selector of [
   ".session-notes-header",
   ".session-notes-step-badge",
   ".session-notes-privacy",
+  ".session-notes-privacy[data-note-privacy-mode=\"private\"]",
+  ".session-notes-privacy[data-note-privacy-mode=\"separate\"]",
+  ".session-notes-privacy[data-note-privacy-mode=\"session\"]",
+  "@keyframes session-note-privacy-pulse",
   ".session-note-sharing-card-icon",
   ".session-note-sharing-copy",
   ".session-notes-autosave-state",

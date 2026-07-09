@@ -37949,6 +37949,53 @@ function inferPublicGrowNoteSharingMode(state, snapshotState = null) {
   return "separate";
 }
 
+function getSessionNotesPrivacyIndicatorMarkup(mode = "private") {
+  const normalizedMode = ["private", "session", "separate"].includes(mode) ? mode : "private";
+  const metaByMode = {
+    private: {
+      label: "Private to you",
+      icon: '<rect x="6.5" y="10.5" width="11" height="9" rx="2"></rect><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"></path>',
+    },
+    separate: {
+      label: "Private note + Community note",
+      icon: '<path d="M7.5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M16.5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"></path><path d="M3.5 19c.6-2.7 2-4 4-4s3.4 1.3 4 4"></path><path d="M12.5 19c.6-2.7 2-4 4-4s3.4 1.3 4 4"></path>',
+    },
+    session: {
+      label: "Shared with Community Grow",
+      icon: '<circle cx="12" cy="12" r="8"></circle><path d="M4.5 12h15"></path><path d="M12 4c2.2 2.4 3.3 5.1 3.3 8S14.2 17.6 12 20"></path><path d="M12 4c-2.2 2.4-3.3 5.1-3.3 8S9.8 17.6 12 20"></path>',
+    },
+  };
+  const meta = metaByMode[normalizedMode];
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">${meta.icon}</svg>
+    <span>${escapeHtml(meta.label)}</span>
+  `;
+}
+
+function syncSessionNotesPrivacyIndicator(state = null, mode = "private") {
+  const noteSection = state?.sessionNotesField?.closest?.(".session-notes-section")
+    || state?.publicGrowNoteField?.closest?.(".session-notes-section")
+    || null;
+  const indicator = noteSection?.querySelector?.(".session-notes-privacy");
+  if (!(indicator instanceof HTMLElement)) {
+    return;
+  }
+  const normalizedMode = ["private", "session", "separate"].includes(mode) ? mode : "private";
+  if (indicator.dataset.notePrivacyMode === normalizedMode) {
+    return;
+  }
+  indicator.dataset.notePrivacyMode = normalizedMode;
+  indicator.innerHTML = getSessionNotesPrivacyIndicatorMarkup(normalizedMode);
+  indicator.classList.remove("is-updating");
+  void indicator.offsetWidth;
+  indicator.classList.add("is-updating");
+  window.setTimeout(() => {
+    if (indicator.isConnected) {
+      indicator.classList.remove("is-updating");
+    }
+  }, 260);
+}
+
 function setPublicGrowNoteSharingMode(state, mode = "private", { updatePendingState = true } = {}) {
   if (!state) {
     return "private";
@@ -37970,6 +38017,7 @@ function setPublicGrowNoteSharingMode(state, mode = "private", { updatePendingSt
     }
   });
   state.publicGrowNoteField?.closest("[data-note-sharing-block]")?.setAttribute("data-note-sharing-mode", normalizedMode);
+  syncSessionNotesPrivacyIndicator(state, normalizedMode);
   syncSnapshotPublicGrowNoteControls(state);
   if (updatePendingState) {
     updateSnapshotPublicGrowNotePendingState(state);

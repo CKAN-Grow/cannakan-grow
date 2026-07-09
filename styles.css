@@ -54540,6 +54540,23 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   color: rgba(232, 238, 229, 0.76);
   font-size: 0.86rem;
   white-space: nowrap;
+  transition: color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
+}
+
+.session-notes-privacy[data-note-privacy-mode="private"] {
+  color: rgba(232, 238, 229, 0.76);
+}
+
+.session-notes-privacy[data-note-privacy-mode="separate"] {
+  color: #c7f28a;
+}
+
+.session-notes-privacy[data-note-privacy-mode="session"] {
+  color: #94d159;
+}
+
+.session-notes-privacy.is-updating {
+  animation: session-note-privacy-pulse 0.26s ease-out both;
 }
 
 .session-notes-privacy svg,
@@ -54552,6 +54569,18 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+@keyframes session-note-privacy-pulse {
+  0% {
+    opacity: 0.68;
+    transform: translateY(-1px) scale(0.985);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .session-workspace-shell .session-notes-section > .session-notes-field {
