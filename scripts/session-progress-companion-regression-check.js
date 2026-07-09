@@ -7,7 +7,7 @@ const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace
 const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 function getFunctionSource(source, functionName) {
-  const startNeedle = `function ${functionName}`;
+  const startNeedle = `function ${functionName}(`;
   const startIndex = source.indexOf(startNeedle);
   if (startIndex === -1) {
     throw new Error(`Missing function ${functionName}.`);
@@ -18,6 +18,11 @@ function getFunctionSource(source, functionName) {
 
 const rendererSource = getFunctionSource(appSource, "renderSessionProgressCommandCenterMarkup");
 const roadmapSource = getFunctionSource(appSource, "renderSessionProgressCompanionRoadmapMarkup");
+const lifecycleUpdaterSource = getFunctionSource(appSource, "updateSessionLifecycleTimeline");
+const homeRendererSource = getFunctionSource(appSource, "renderHome");
+const commandCenterListSource = getFunctionSource(appSource, "renderMySessionsCommandCenterListMarkup");
+const commandCenterSectionSource = getFunctionSource(appSource, "renderMySessionsCommandCenterSectionMarkup");
+const commandCenterMountSource = getFunctionSource(appSource, "mountSharedSessionCommandCenter");
 
 function getMarkupSlice(startNeedle, endNeedle) {
   const startIndex = indexSource.indexOf(startNeedle);
@@ -74,6 +79,62 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   }
 });
 
+[
+  "const showReminder = options.showReminder !== false",
+  "${showReminder ? `",
+].forEach((needle) => {
+  if (!rendererSource.includes(needle)) {
+    throw new Error(`Session Progress companion reminder visibility is missing: ${needle}`);
+  }
+});
+
+[
+  'sectionElement.closest?.("#session-form")',
+  "renderOptions.showReminder = false",
+].forEach((needle) => {
+  if (!lifecycleUpdaterSource.includes(needle)) {
+    throw new Error(`New Session should suppress specific reminder cards before save: ${needle}`);
+  }
+});
+
+[
+  "hideWhenNoActive: true",
+  "showMetrics: false",
+  "showSupply: false",
+  "sessionActionLabel: \"Open Session\"",
+].forEach((needle) => {
+  if (!homeRendererSource.includes(needle)) {
+    throw new Error(`Home should mount compact active reminder sessions only after save: ${needle}`);
+  }
+});
+
+[
+  "getSessionCommandCenterNextReminderMeta(session)",
+  "getSessionCommandCenterPhaseLabel(session)",
+  "getSessionCommandCenterElapsedLabel(session)",
+  "getSessionCommandCenterMethodSummary(session)",
+  "session-command-session-reminder",
+  "reminderMeta.timeLabel || reminderMeta.countdown",
+].forEach((needle) => {
+  if (!commandCenterListSource.includes(needle)) {
+    throw new Error(`Home active session cards should include reminder fields: ${needle}`);
+  }
+});
+
+if (!commandCenterSectionSource.includes("showSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : \"\"")) {
+  throw new Error("Home should be able to hide supply management from the active reminder section.");
+}
+
+[
+  "options.hideWhenNoActive",
+  "host.hidden = true",
+  "sessionActionLabel: options.sessionActionLabel",
+].forEach((needle) => {
+  if (!commandCenterMountSource.includes(needle)) {
+    throw new Error(`Shared command center mount should support Home active reminder behavior: ${needle}`);
+  }
+});
+
 if (!appSource.includes("navigateToProfilePreferences();")) {
   throw new Error("Manage Reminders should route to notification preferences.");
 }
@@ -105,6 +166,8 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-progress-companion-roadmap-list",
   ".session-progress-companion-metrics",
   ".session-progress-companion-reminder",
+  ".session-command-session-reminder",
+  ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
   "@media (max-width: 720px)",
 ].forEach((needle) => {

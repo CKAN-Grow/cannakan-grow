@@ -72513,8 +72513,14 @@ function renderHome() {
     aggregateSessions: sessions,
     hasSessionHistory,
     requiresSignIn: !appState.user,
-    metricsPlacement: "top",
-    metricsVariant: "compact",
+    compact: true,
+    hideWhenNoActive: true,
+    showMetrics: false,
+    showSupply: false,
+    headerEyebrow: activeSessions.length === 1 ? "ACTIVE SESSION" : "ACTIVE SESSIONS",
+    headerTitle: activeSessions.length === 1 ? "Upcoming Reminder" : "Upcoming Reminders",
+    headerDescription: "Open active sessions and see the next reminder after a session has been saved.",
+    sessionActionLabel: "Open Session",
   });
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup({
@@ -94999,9 +95005,13 @@ function updateSessionEngineVisualTimeline(timelineElement = null, state = {}) {
   timelineElement.hidden = !markup;
 }
 
-function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
+function updateSessionLifecycleTimeline(summaryElement, sectionElement, state, options = {}) {
   if (!summaryElement || !sectionElement) {
     return;
+  }
+  const renderOptions = { ...options };
+  if (!Object.prototype.hasOwnProperty.call(renderOptions, "showReminder") && sectionElement.closest?.("#session-form")) {
+    renderOptions.showReminder = false;
   }
 
   if (!state.startedAt && !state.showEmptyTimeline) {
@@ -95010,7 +95020,7 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
     return;
   }
 
-  summaryElement.innerHTML = renderSessionProgressCommandCenterMarkup(state.engineState || null);
+  summaryElement.innerHTML = renderSessionProgressCommandCenterMarkup(state.engineState || null, renderOptions);
   bindSessionProgressCommandActions(summaryElement);
   sectionElement.hidden = false;
 }
@@ -95642,7 +95652,8 @@ function renderSessionProgressCompanionMetricMarkup(iconKey = "clock", label = "
   `;
 }
 
-function renderSessionProgressCommandCenterMarkup(engineState = null) {
+function renderSessionProgressCommandCenterMarkup(engineState = null, options = {}) {
+  const showReminder = options.showReminder !== false;
   if (!engineState) {
     return `
       <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="Session Progress">
@@ -95749,6 +95760,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null) {
         ${engineState.insight ? renderSessionProgressCompanionMetricMarkup("bulb", "Insight", String(engineState.insight), "") : ""}
       </section>
 
+      ${showReminder ? `
       <section class="session-progress-companion-reminder ${hasReminder ? "" : "is-empty"}" aria-label="Next reminder">
         <span class="session-progress-companion-reminder-icon">${renderSessionProgressCompanionIconMarkup("bell", "session-progress-companion-reminder-svg")}</span>
         <div>
@@ -95758,6 +95770,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null) {
         </div>
         <button type="button" class="button button-secondary session-progress-companion-reminder-button" ${hasReminder ? 'data-session-reminders-manage="true"' : "disabled"}>Manage Reminders</button>
       </section>
+      ` : ""}
 
       ${actionMarkup ? `
         <section class="session-progress-companion-action-panel" aria-label="Session progress actions">
@@ -96287,6 +96300,7 @@ function getSessionCommandCenterNextReminderMeta(session = null) {
     return {
       label: normalizeSessionCommandCenterNextUpText(engineMilestone.actionText || engineMilestone.title || engineMilestone.message || "Review this session"),
       countdown,
+      timeLabel: engineState.activeMilestone ? "Now" : (dueAt ? formatSessionEngineTimestampLabel(dueAt) : countdown),
     };
   }
 
@@ -96323,6 +96337,7 @@ function getSessionCommandCenterNextReminderMeta(session = null) {
     return {
       label: normalizeSessionCommandCenterNextUpText(activeReminder.actionText || activeReminder.title || activeReminder.message || "Review this session"),
       countdown: "Due now",
+      timeLabel: "Now",
     };
   }
 
@@ -96334,10 +96349,40 @@ function getSessionCommandCenterNextReminderMeta(session = null) {
   }
 
   const nextReminderMs = Math.max(0, ((Number(nextReminder.hours) || 0) * 60 * 60 * 1000) - elapsedMs);
+  const dueAt = new Date(stageStart.getTime() + ((Number(nextReminder.hours) || 0) * 60 * 60 * 1000));
   return {
     label: normalizeSessionCommandCenterNextUpText(nextReminder.actionText || nextReminder.title || nextReminder.message || "Review this session"),
     countdown: `in ${formatDurationMsShort(nextReminderMs) || "soon"}`,
+    timeLabel: formatSessionEngineTimestampLabel(dueAt),
   };
+}
+
+function getSessionCommandCenterPhaseLabel(session = null) {
+  const engineState = buildSessionEngineState(session);
+  if (engineState) {
+    const currentStep = getSessionEngineCurrentStep(engineState);
+    return engineState.phaseLabel || currentStep?.label || "Tracking";
+  }
+
+  return getSessionCommandCenterStageBadge(session).label || "Tracking";
+}
+
+function getSessionCommandCenterElapsedLabel(session = null) {
+  const startedAt = getEffectiveSessionTimerStartAt(session);
+  const completedAt = parseCompletedAtValue(session?.completedAt || session?.completed_at || "");
+  const elapsed = startedAt
+    ? formatDurationMsShort(getElapsedDurationMs(startedAt, completedAt)) || formatSpotlightElapsed(startedAt)
+    : "";
+  return elapsed || "Not started";
+}
+
+function getSessionCommandCenterMethodSummary(session = null) {
+  const method = getMethodConfig(getSessionMethodType(session));
+  const unitId = normalizeUnitIdValue(session?.unitId || session?.unit_id || "", "");
+  if (method.isStandardized && unitId) {
+    return `${method.name} • Unit ${unitId}`;
+  }
+  return method.name || "Grow Session";
 }
 
 function getSessionCommandCenterResultStatus(session = null) {
@@ -96699,6 +96744,11 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
     const varietyLabel = getSessionCommandCenterPrimaryStrain(session) || "Variety not set";
     const dateLabel = formatSessionNameDate(session.date);
     const dayLabel = formatSessionCommandCenterDayLabel(session);
+    const reminderMeta = getSessionCommandCenterNextReminderMeta(session);
+    const phaseLabel = getSessionCommandCenterPhaseLabel(session);
+    const elapsedLabel = getSessionCommandCenterElapsedLabel(session);
+    const methodSummary = getSessionCommandCenterMethodSummary(session);
+    const actionLabel = String(options.sessionActionLabel || "Continue").trim() || "Continue";
 
     return `
       <article
@@ -96711,10 +96761,17 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
         ${renderCommandCenterIconMarkup("session-thumb", "command-icon--session-thumb")}
         <div class="session-command-session-copy">
           <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+          <p class="session-command-session-method">${escapeHtml(methodSummary)}</p>
           <div class="session-command-session-meta">
             <p class="session-command-session-date">${escapeHtml(dateLabel)}</p>
             ${dayLabel ? `<p class="session-command-session-day">${escapeHtml(dayLabel)}</p>` : ""}
             <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
+          </div>
+          <div class="session-command-session-reminder" aria-label="Upcoming reminder">
+            <span><b>Current:</b> ${escapeHtml(phaseLabel)}</span>
+            <span><b>Elapsed:</b> ${escapeHtml(elapsedLabel)}</span>
+            <span><b>Next:</b> ${escapeHtml(reminderMeta?.label || "No reminder scheduled")}</span>
+            ${reminderMeta?.timeLabel || reminderMeta?.countdown ? `<span class="session-command-session-reminder-time">${escapeHtml(reminderMeta.timeLabel || reminderMeta.countdown)}</span>` : ""}
           </div>
           <div class="session-command-session-footer">
             <span class="session-command-stage-badge session-status-pill ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
@@ -96722,7 +96779,7 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
           </div>
         </div>
         <div class="session-command-session-actions">
-          <a class="button button-primary session-command-session-continue session-continue-button" href="#sessions/${escapeHtml(session.id)}"><span class="session-continue-button-icon" aria-hidden="true">&#9654;</span><span>Continue</span></a>
+          <a class="button button-primary session-command-session-continue session-continue-button" href="#sessions/${escapeHtml(session.id)}"><span class="session-continue-button-icon" aria-hidden="true">&#9654;</span><span>${escapeHtml(actionLabel)}</span></a>
           <a class="session-command-session-menu" href="#sessions/${escapeHtml(session.id)}" aria-label="Open ${escapeHtml(formatSessionLabel(session))}">
             <span aria-hidden="true">&bull;&bull;&bull;</span>
           </a>
@@ -96851,6 +96908,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const viewAllHref = String(options.viewAllHref || getActiveSessionsRouteHash()).trim() || getActiveSessionsRouteHash();
   const showViewAllLink = options.showViewAllLink !== false;
   const showMetrics = options.showMetrics !== false;
+  const showSupply = options.showSupply !== false;
   const metricsPlacement = String(options.metricsPlacement || "bottom").trim().toLowerCase() === "top" ? "top" : "bottom";
   const metricsVariant = String(options.metricsVariant || "").trim().toLowerCase();
   const headerActionHref = String(options.headerActionHref || "").trim();
@@ -96909,7 +96967,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
         </section>
       </div>
       ${metricsPlacement === "bottom" ? metricsMarkup : ""}
-      ${renderSessionCommandCenterFilterPaperSupplyMarkup()}
+      ${showSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : ""}
     </section>
   `;
 }
@@ -96927,6 +96985,12 @@ function mountSharedSessionCommandCenter(host, options = {}) {
   let selectedCommandCenterSessionId = options.selectedSessionId || activeSessions[0]?.id || "";
 
   const renderSessionCommandCenter = () => {
+    if (options.hideWhenNoActive && !activeSessions.length) {
+      host.innerHTML = "";
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
     const selectedSession = activeSessions.find((session) => session.id === selectedCommandCenterSessionId) || activeSessions[0] || null;
     host.innerHTML = renderMySessionsCommandCenterSectionMarkup(activeSessions, selectedSession?.id || "", {
       hasSessionHistory,
@@ -96939,8 +97003,13 @@ function mountSharedSessionCommandCenter(host, options = {}) {
       viewAllHref: options.viewAllHref,
       headerEyebrow: options.headerEyebrow,
       headerTitle: options.headerTitle,
+      headerDescription: options.headerDescription,
+      headerActionHref: options.headerActionHref,
+      headerActionLabel: options.headerActionLabel,
       metricsPlacement: options.metricsPlacement,
       metricsVariant: options.metricsVariant,
+      showSupply: options.showSupply,
+      sessionActionLabel: options.sessionActionLabel,
     });
     hydrateAppIconSlots(host);
     applySupplyStatusToSessionEntryButtons(host);
