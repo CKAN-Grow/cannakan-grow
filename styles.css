@@ -48193,9 +48193,15 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .new-session-quick-start-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
   gap: 10px;
+  align-items: center;
   min-width: 0;
+}
+
+.new-session-quick-start-dismiss {
+  justify-self: end;
+  min-width: 92px;
 }
 
 .new-session-seed-vault-section {
@@ -51694,6 +51700,11 @@ body.modal-open {
 
   .new-session-quick-start-actions {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .new-session-quick-start-dismiss {
+    justify-self: stretch;
+    width: 100%;
   }
 
   .new-session-tutorial-modal-overlay {

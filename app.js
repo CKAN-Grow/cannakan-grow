@@ -274,6 +274,7 @@ const TUTORIAL_FEEDBACK_STORAGE_KEY = "cannakanTutorialFeedback";
 const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
 const LEARN_RECOMMENDATION_ACTIVITY_STORAGE_KEY = "cannakanLearnRecommendationActivity";
 const LEARN_COLLECTION_PROGRESS_STORAGE_KEY = "cannakanLearnCollectionProgress";
+const NEW_SESSION_QUICK_START_DISMISSED_STORAGE_KEY = "cannakanNewSessionQuickStartDismissed";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "mary-jane-berlin-v1";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -46997,7 +46998,36 @@ function navigateToLearnCategory(categoryId = "") {
   window.location.hash = normalizedCategoryId ? `#learn/${normalizedCategoryId}` : "#learn";
 }
 
+function isNewSessionQuickStartHelpDismissed() {
+  return readBooleanLocalStorageFlag(NEW_SESSION_QUICK_START_DISMISSED_STORAGE_KEY);
+}
+
+function setNewSessionQuickStartHelpDismissed(dismissed = true) {
+  writeBooleanLocalStorageFlag(NEW_SESSION_QUICK_START_DISMISSED_STORAGE_KEY, dismissed === true);
+}
+
+function syncNewSessionQuickStartHelpVisibility(scope = document) {
+  const quickStartSection = scope.querySelector?.("[data-new-session-onboarding='quick-start']") || null;
+  if (!(quickStartSection instanceof HTMLElement)) {
+    return null;
+  }
+
+  quickStartSection.hidden = isNewSessionQuickStartHelpDismissed();
+  return quickStartSection;
+}
+
+function restoreNewSessionQuickStartHelp() {
+  setNewSessionQuickStartHelpDismissed(false);
+  return syncNewSessionQuickStartHelpVisibility(document);
+}
+
+if (typeof window !== "undefined") {
+  window.restoreCannakanQuickStartHelp = restoreNewSessionQuickStartHelp;
+}
+
 function bindNewSessionQuickStartHelp(scope = document) {
+  syncNewSessionQuickStartHelpVisibility(scope);
+
   scope.querySelectorAll("[data-learn-category-target], [data-new-session-tutorial]").forEach((button) => {
     if (button.dataset.tutorialBound === "true") {
       return;
@@ -47006,6 +47036,21 @@ function bindNewSessionQuickStartHelp(scope = document) {
     button.dataset.tutorialBound = "true";
     button.addEventListener("click", () => {
       navigateToLearnCategory(button.dataset.learnCategoryTarget || button.dataset.newSessionTutorial || "");
+    });
+  });
+
+  scope.querySelectorAll("[data-new-session-quick-start-dismiss='true']").forEach((button) => {
+    if (button.dataset.quickStartDismissBound === "true") {
+      return;
+    }
+
+    button.dataset.quickStartDismissBound = "true";
+    button.addEventListener("click", () => {
+      setNewSessionQuickStartHelpDismissed(true);
+      const quickStartSection = button.closest("[data-new-session-onboarding='quick-start']");
+      if (quickStartSection instanceof HTMLElement) {
+        quickStartSection.hidden = true;
+      }
     });
   });
 }
@@ -83786,11 +83831,15 @@ function renderSessionForm(initialSystemType = "KAN") {
   }
   syncNewSessionNameState(form);
   bindNewSessionQuickStartHelp(app);
+  const quickStartHelpSection = syncNewSessionQuickStartHelpVisibility(app);
+  const firstSessionPromptAnchor = quickStartHelpSection instanceof HTMLElement && !quickStartHelpSection.hidden
+    ? quickStartHelpSection
+    : document.querySelector(".session-workspace-header");
   mountContextualOnboardingPrompt(
-    document.querySelector(".new-session-quick-start") || document.querySelector(".session-workspace-header"),
+    firstSessionPromptAnchor,
     "new-session",
     {
-      position: document.querySelector(".new-session-quick-start") ? "afterend" : "afterbegin",
+      position: quickStartHelpSection instanceof HTMLElement && !quickStartHelpSection.hidden ? "afterend" : "afterbegin",
       eyebrow: "First Session",
       className: "contextual-onboarding-card--session-start",
     },
