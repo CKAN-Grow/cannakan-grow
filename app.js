@@ -1636,13 +1636,25 @@ const STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BAC
 const GLASS_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/glass-grow-companion-bg.png`;
 const DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/direct-sow-grow-companion-bg.png`;
 const OTHER_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/other-grow-companion-bg.png`;
+const GROW_COMPANION_METHOD_BACKGROUNDS = Object.freeze({
+  KAN: KAN_GROW_COMPANION_HERO_BACKGROUND,
+  TRA: KAN_GROW_COMPANION_HERO_BACKGROUND,
+  PAPER_TOWEL_SOAK: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND,
+  PAPER_TOWEL: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND,
+  WATER_SOAK: GLASS_GROW_COMPANION_HERO_BACKGROUND,
+  ROCKWOOL: ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND,
+  RAPID_ROOTER: STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND,
+  DIRECT_SOW: DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND,
+  OTHER: OTHER_GROW_COMPANION_HERO_BACKGROUND,
+});
+const methodCompanionBackgroundLoadCache = new Map();
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({
     key: "kan",
     accent: "#94d159",
     accentSoft: "rgba(148, 209, 89, 0.16)",
     glow: "rgba(148, 209, 89, 0.28)",
-    heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND,
+    heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.KAN,
     heroBackgroundPosition: "58% 45%",
   }),
   TRA: Object.freeze({
@@ -1650,16 +1662,16 @@ const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
     accent: "#b8ff5c",
     accentSoft: "rgba(184, 255, 92, 0.16)",
     glow: "rgba(184, 255, 92, 0.3)",
-    heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND,
+    heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.TRA,
     heroBackgroundPosition: "58% 45%",
   }),
-  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)", heroBackgroundImage: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
-  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)", heroBackgroundImage: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
-  WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)", heroBackgroundImage: GLASS_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
-  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#d88947", accentSoft: "rgba(216, 137, 71, 0.16)", glow: "rgba(216, 137, 71, 0.28)", heroBackgroundImage: ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
-  RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)", heroBackgroundImage: STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
-  DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)", heroBackgroundImage: DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
-  OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)", heroBackgroundImage: OTHER_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.PAPER_TOWEL_SOAK, heroBackgroundPosition: "50% 50%" }),
+  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.PAPER_TOWEL, heroBackgroundPosition: "50% 50%" }),
+  WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.WATER_SOAK, heroBackgroundPosition: "50% 50%" }),
+  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#d88947", accentSoft: "rgba(216, 137, 71, 0.16)", glow: "rgba(216, 137, 71, 0.28)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.ROCKWOOL, heroBackgroundPosition: "50% 50%" }),
+  RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.RAPID_ROOTER, heroBackgroundPosition: "50% 50%" }),
+  DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.DIRECT_SOW, heroBackgroundPosition: "50% 50%" }),
+  OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)", heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.OTHER, heroBackgroundPosition: "50% 50%" }),
 });
 const TIMELINE_STAGE_ICON_ASSETS = Object.freeze({
   "stage-soaking": "/src/assets/icons/timeline-icons-soaking.png",
@@ -95732,10 +95744,90 @@ function getRunProgressGradient(progressPercent) {
 }
 
 function getSessionEngineVisualTimelineTheme(engineState = null) {
-  const methodKey = getSessionEngineMethodKey(engineState?.methodKey || engineState?.definition?.key || "");
-  return SESSION_ENGINE_VISUAL_TIMELINE_THEMES[methodKey]
-    || SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizeMethodType(methodKey)]
+  const displayMethodKey = normalizeMethodType(
+    engineState?.methodType
+    || engineState?.methodName
+    || engineState?.definition?.displayName
+    || engineState?.definition?.id
+    || engineState?.definition?.key
+    || engineState?.methodKey
+    || "",
+  );
+  const engineMethodKey = getSessionEngineMethodKey(engineState?.methodKey || engineState?.definition?.key || "");
+  return SESSION_ENGINE_VISUAL_TIMELINE_THEMES[displayMethodKey]
+    || SESSION_ENGINE_VISUAL_TIMELINE_THEMES[engineMethodKey]
+    || SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizeMethodType(engineMethodKey)]
     || SESSION_ENGINE_VISUAL_TIMELINE_THEMES.OTHER;
+}
+
+function preloadMethodCompanionBackground(src = "") {
+  const backgroundSrc = String(src || "").trim();
+  if (!backgroundSrc) {
+    return Promise.resolve(false);
+  }
+  const cachedState = methodCompanionBackgroundLoadCache.get(backgroundSrc);
+  if (cachedState === "loaded") {
+    return Promise.resolve(true);
+  }
+  if (cachedState === "failed") {
+    return Promise.resolve(false);
+  }
+  if (cachedState?.promise) {
+    return cachedState.promise;
+  }
+
+  const promise = new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      methodCompanionBackgroundLoadCache.set(backgroundSrc, "loaded");
+      resolve(true);
+    };
+    image.onerror = () => {
+      methodCompanionBackgroundLoadCache.set(backgroundSrc, "failed");
+      console.warn("[Grow Companion] Failed to load method background image.", backgroundSrc);
+      resolve(false);
+    };
+    image.src = backgroundSrc;
+  });
+
+  methodCompanionBackgroundLoadCache.set(backgroundSrc, { promise });
+  return promise;
+}
+
+function applyMethodCompanionBackground(card, backgroundSrc = "", backgroundPosition = "50% 50%") {
+  if (!(card instanceof HTMLElement)) {
+    return;
+  }
+  card.style.setProperty("--method-companion-bg", `url("${backgroundSrc}")`);
+  card.style.setProperty("--method-companion-bg-position", backgroundPosition || "50% 50%");
+  card.classList.add("has-method-companion-background");
+}
+
+function clearMethodCompanionBackground(card) {
+  if (!(card instanceof HTMLElement)) {
+    return;
+  }
+  card.classList.remove("has-method-companion-background");
+  card.style.removeProperty("--method-companion-bg");
+  card.style.removeProperty("--method-companion-bg-position");
+}
+
+function hydrateMethodCompanionBackgrounds(root = document) {
+  const scope = root instanceof Element || root instanceof Document ? root : document;
+  scope.querySelectorAll(".session-progress-companion-card[data-method-companion-bg-src]").forEach((card) => {
+    const backgroundSrc = card.dataset.methodCompanionBgSrc || "";
+    const backgroundPosition = card.dataset.methodCompanionBgPosition || "50% 50%";
+    clearMethodCompanionBackground(card);
+    if (!backgroundSrc) {
+      return;
+    }
+    preloadMethodCompanionBackground(backgroundSrc).then((loaded) => {
+      if (!loaded || !card.isConnected || card.dataset.methodCompanionBgSrc !== backgroundSrc) {
+        return;
+      }
+      applyMethodCompanionBackground(card, backgroundSrc, backgroundPosition);
+    });
+  });
 }
 
 function getSessionEngineVisualTimelineStatus(step = {}, engineState = null) {
@@ -96033,6 +96125,7 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state, o
   const previousScrollLeft = previousRoadmap instanceof HTMLElement ? previousRoadmap.scrollLeft : 0;
   const preserveUserScroll = summaryElement.dataset.companionRoadmapUserScrolled === "true";
   summaryElement.innerHTML = renderSessionProgressCommandCenterMarkup(state.engineState || null, renderOptions);
+  hydrateMethodCompanionBackgrounds(summaryElement);
   bindSessionProgressCommandActions(summaryElement);
   requestSessionProgressCompanionCurrentStepScroll(summaryElement, {
     preserveUserScroll,
@@ -96840,11 +96933,13 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
     renderSessionProgressCompanionMetricMarkup(nextActionDisplay.iconKey, nextActionDisplay.label, nextActionDisplay.value, nextActionDisplay.detail),
     renderSessionProgressCompanionMetricMarkup("clock", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail),
   ].filter(Boolean).join("");
-  const companionHeroBackgroundStyle = theme.heroBackgroundImage
-    ? ` --session-companion-hero-bg-image: url('${escapeHtml(theme.heroBackgroundImage)}'); --session-companion-hero-bg-position: ${escapeHtml(theme.heroBackgroundPosition || "50% 50%")};`
-    : "";
   const actionMarkup = getSessionEngineActionList(engineState).length
     ? renderSessionProgressActionMarkup(engineState)
+    : "";
+  const companionHeroBackgroundAttributes = theme.heroBackgroundImage
+    ? `
+      data-method-companion-bg-src="${escapeHtml(theme.heroBackgroundImage)}"
+      data-method-companion-bg-position="${escapeHtml(theme.heroBackgroundPosition || "50% 50%")}"`
     : "";
 
   return `
@@ -96853,8 +96948,8 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
       aria-label="Session Progress"
       data-method-type="${escapeHtml(normalizedCompanionMethodType)}"
       data-method-theme="${escapeHtml(theme.key)}"
-      ${theme.heroBackgroundImage ? 'data-method-hero-background="true"' : ""}
-      style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;${companionHeroBackgroundStyle}"
+      ${companionHeroBackgroundAttributes}
+      style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;"
     >
       <header class="session-progress-companion-head">
         <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
