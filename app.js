@@ -1626,9 +1626,24 @@ const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWE
 const PREPARED_MEDIA_SETUP_METHODS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER"]);
 const METHOD_SETUP_PREFERENCE_STORAGE_KEY = "cannakanGrowMethodSetupPreferences";
 const METHOD_SETUP_SESSION_STORAGE_KEY = "cannakanGrowSessionMethodSetup";
+const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-hero.png";
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
-  KAN: Object.freeze({ key: "kan", accent: "#94d159", accentSoft: "rgba(148, 209, 89, 0.16)", glow: "rgba(148, 209, 89, 0.28)" }),
-  TRA: Object.freeze({ key: "tra", accent: "#b8ff5c", accentSoft: "rgba(184, 255, 92, 0.16)", glow: "rgba(184, 255, 92, 0.3)" }),
+  KAN: Object.freeze({
+    key: "kan",
+    accent: "#94d159",
+    accentSoft: "rgba(148, 209, 89, 0.16)",
+    glow: "rgba(148, 209, 89, 0.28)",
+    heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND,
+    heroBackgroundPosition: "58% 45%",
+  }),
+  TRA: Object.freeze({
+    key: "tra",
+    accent: "#b8ff5c",
+    accentSoft: "rgba(184, 255, 92, 0.16)",
+    glow: "rgba(184, 255, 92, 0.3)",
+    heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND,
+    heroBackgroundPosition: "58% 45%",
+  }),
   PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
   PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
   WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)" }),
@@ -96528,6 +96543,9 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
     renderSessionProgressCompanionMetricMarkup(nextActionDisplay.iconKey, nextActionDisplay.label, nextActionDisplay.value, nextActionDisplay.detail),
     renderSessionProgressCompanionMetricMarkup("clock", sessionTimeDisplay.label, sessionTimeDisplay.value, sessionTimeDisplay.detail),
   ].filter(Boolean).join("");
+  const companionHeroBackgroundStyle = theme.heroBackgroundImage
+    ? ` --session-companion-hero-bg-image: url('${escapeHtml(theme.heroBackgroundImage)}'); --session-companion-hero-bg-position: ${escapeHtml(theme.heroBackgroundPosition || "50% 50%")};`
+    : "";
   const actionMarkup = getSessionEngineActionList(engineState).length
     ? renderSessionProgressActionMarkup(engineState)
     : "";
@@ -96537,7 +96555,8 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
       class="session-progress-companion-card ${isOverdue ? "is-overdue" : ""}"
       aria-label="Session Progress"
       data-method-theme="${escapeHtml(theme.key)}"
-      style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;"
+      ${theme.heroBackgroundImage ? 'data-method-hero-background="true"' : ""}
+      style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;${companionHeroBackgroundStyle}"
     >
       <header class="session-progress-companion-head">
         <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>

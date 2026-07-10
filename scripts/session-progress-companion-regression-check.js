@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
+const kanCompanionHeroAssetPath = path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-hero.png");
 const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8").replace(/\r\n/g, "\n");
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
 const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
@@ -26,6 +27,10 @@ const homeRendererSource = getFunctionSource(appSource, "renderHome");
 const commandCenterListSource = getFunctionSource(appSource, "renderMySessionsCommandCenterListMarkup");
 const commandCenterSectionSource = getFunctionSource(appSource, "renderMySessionsCommandCenterSectionMarkup");
 const commandCenterMountSource = getFunctionSource(appSource, "mountSharedSessionCommandCenter");
+
+if (!fs.existsSync(kanCompanionHeroAssetPath)) {
+  throw new Error("KAN Grow Companion hero background asset is missing.");
+}
 
 function getMarkupSlice(startNeedle, endNeedle) {
   const startIndex = indexSource.indexOf(startNeedle);
@@ -86,9 +91,24 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   "getSessionEngineSessionTimeDisplay(engineState)",
   "getSessionEngineVisualTimelineTheme(engineState)",
   "renderSessionProgressCompanionRoadmapMarkup(engineState)",
+  "companionHeroBackgroundStyle",
+  'data-method-hero-background="true"',
+  "--session-companion-hero-bg-image",
+  "--session-companion-hero-bg-position",
 ].forEach((needle) => {
   if (!rendererSource.includes(needle)) {
     throw new Error(`Session Progress companion renderer is missing: ${needle}`);
+  }
+});
+
+[
+  'const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-hero.png";',
+  "heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND",
+  'key: "kan"',
+  'key: "tra"',
+].forEach((needle) => {
+  if (!appSource.includes(needle)) {
+    throw new Error(`Method visual theme should expose the KAN hero background: ${needle}`);
   }
 });
 
@@ -275,6 +295,11 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-progress-companion-recommendation",
   ".session-progress-companion-roadmap-list",
   ".session-progress-companion-metrics",
+  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before',
+  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::after',
+  "--session-companion-hero-bg-image",
+  "filter: blur(6px) saturate(0.86) brightness(0.9);",
+  "rgba(4, 12, 7, 0.965)",
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",

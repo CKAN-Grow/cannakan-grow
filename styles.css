@@ -4835,9 +4835,49 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-progress-companion-right {
+  position: relative;
   display: grid;
   gap: 20px;
   min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  isolation: isolate;
+}
+
+.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before,
+.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::after {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before {
+  background-image: var(--session-companion-hero-bg-image);
+  background-position: var(--session-companion-hero-bg-position, 58% 45%);
+  background-size: 145%;
+  background-repeat: no-repeat;
+  filter: blur(6px) saturate(0.86) brightness(0.9);
+  opacity: 0.34;
+  transform: scale(1.035);
+}
+
+.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::after {
+  background:
+    radial-gradient(circle at 48% 42%, rgba(4, 12, 7, 0.93), rgba(4, 12, 7, 0.965) 54%, rgba(1, 5, 5, 0.985) 100%),
+    linear-gradient(90deg, rgba(3, 10, 8, 0.98), rgba(3, 10, 8, 0.92) 42%, rgba(3, 10, 8, 0.98));
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.68);
+}
+
+.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-hero,
+.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-roadmap {
+  position: relative;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.014)),
+    rgba(5, 13, 10, 0.66);
+  backdrop-filter: blur(1px);
 }
 
 .session-progress-companion-hero {
@@ -5205,6 +5245,11 @@ body.theme-dark .spotlight-stat strong {
 
   .session-progress-companion-recommendation {
     width: 100%;
+  }
+
+  .session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before {
+    background-size: 190%;
+    background-position: 52% 42%;
   }
 
   .session-progress-companion-metrics {
