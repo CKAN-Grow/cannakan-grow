@@ -54002,6 +54002,27 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   color: #b7c0b7;
 }
 
+.session-workspace-shell .timeline-save-shortcut:not(.detail-session-action-bar) .timeline-save-shortcut-text {
+  display: grid;
+  gap: 4px;
+  max-width: 680px;
+  margin: 0;
+  line-height: 1.42;
+}
+
+.session-workspace-shell .timeline-save-shortcut:not(.detail-session-action-bar) .timeline-save-shortcut-text strong {
+  color: #94d159;
+  font-size: clamp(1rem, 1.4vw, 1.12rem);
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.session-workspace-shell .timeline-save-shortcut:not(.detail-session-action-bar) .timeline-save-shortcut-text span {
+  color: rgba(226, 232, 222, 0.72);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
 .detail-session-action-copy {
   margin: 0;
   max-width: 34ch;
