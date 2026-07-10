@@ -3,6 +3,7 @@ const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const kanCompanionHeroAssetPath = path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-hero.png");
+const kanCompanionLocalAssetPath = path.join(repoRoot, "assets", "images", "methods", "kan-grow-companion-bg.png");
 const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8").replace(/\r\n/g, "\n");
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
 const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
@@ -121,8 +122,8 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   }
 });
 
-if (!fs.existsSync(path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-bg.png"))) {
-  throw new Error("KAN Grow Companion background asset must exist at a stable public asset path.");
+if (!fs.existsSync(kanCompanionLocalAssetPath)) {
+  throw new Error("KAN Grow Companion background asset must exist at /assets/images/methods/kan-grow-companion-bg.png for local http-server roots.");
 }
 
 if (rendererSource.includes('<aside class="session-progress-companion-recommendation"')) {
@@ -308,12 +309,14 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-progress-companion-recommendation",
   ".session-progress-companion-roadmap-list",
   ".session-progress-companion-metrics",
-  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before',
-  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::after',
+  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-hero::before',
+  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-roadmap::before',
+  '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-hero > *',
   "--session-companion-hero-bg-image",
   "background-size: cover;",
-  "filter: blur(2.5px) saturate(0.88) brightness(0.9);",
-  "rgba(4, 12, 7, 0.82)",
+  "filter: blur(1.5px) saturate(0.86) brightness(0.9);",
+  "opacity: 0.42;",
+  "rgba(4, 12, 7, 0.72)",
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
@@ -328,6 +331,18 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 ].forEach((needle) => {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing Session Progress companion style: ${needle}`);
+  }
+});
+
+[
+  'const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-bg.png";',
+  "heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND",
+  "const normalizedCompanionMethodType = normalizeMethodType(engineState.methodType || engineState.definition?.id || methodName || \"\");",
+  'data-method-type="${escapeHtml(normalizedCompanionMethodType)}"',
+  'data-method-hero-background="true"',
+].forEach((needle) => {
+  if (!appSource.includes(needle)) {
+    throw new Error(`Missing Session Progress companion method background wiring: ${needle}`);
   }
 });
 

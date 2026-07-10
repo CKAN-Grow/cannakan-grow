@@ -96825,6 +96825,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
   const nextActionDisplay = getSessionProgressCompanionNextActionDisplay(engineState);
   const sessionTimeDisplay = getSessionEngineSessionTimeDisplay(engineState);
   const theme = getSessionEngineVisualTimelineTheme(engineState);
+  const normalizedCompanionMethodType = normalizeMethodType(engineState.methodType || engineState.definition?.id || methodName || "");
   const isOverdue = Boolean(engineState.overdueStatus?.isOverdue);
   const ringDegrees = Math.round(progress * 3.6);
   const elapsedLabel = formatSessionEngineDurationLabel(engineState.elapsedMs);
@@ -96843,6 +96844,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
     <article
       class="session-progress-companion-card ${isOverdue ? "is-overdue" : ""}"
       aria-label="Session Progress"
+      data-method-type="${escapeHtml(normalizedCompanionMethodType)}"
       data-method-theme="${escapeHtml(theme.key)}"
       ${theme.heroBackgroundImage ? 'data-method-hero-background="true"' : ""}
       style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;${companionHeroBackgroundStyle}"
