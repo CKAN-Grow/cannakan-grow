@@ -1628,7 +1628,14 @@ const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWE
 const PREPARED_MEDIA_SETUP_METHODS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER"]);
 const METHOD_SETUP_PREFERENCE_STORAGE_KEY = "cannakanGrowMethodSetupPreferences";
 const METHOD_SETUP_SESSION_STORAGE_KEY = "cannakanGrowSessionMethodSetup";
-const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-bg.png";
+const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/images/methods";
+const KAN_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/kan-grow-companion-bg.png`;
+const PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/paper-towel-grow-companion-bg.png`;
+const ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/rockwool-grow-companion-bg.png`;
+const STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/starter-plug-grow-companion-bg.png`;
+const GLASS_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/glass-grow-companion-bg.png`;
+const DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/direct-sow-grow-companion-bg.png`;
+const OTHER_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/other-grow-companion-bg.png`;
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({
     key: "kan",
@@ -1646,13 +1653,13 @@ const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
     heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND,
     heroBackgroundPosition: "58% 45%",
   }),
-  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
-  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)" }),
-  WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)" }),
-  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#d88947", accentSoft: "rgba(216, 137, 71, 0.16)", glow: "rgba(216, 137, 71, 0.28)" }),
-  RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)" }),
-  DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)" }),
-  OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)" }),
+  PAPER_TOWEL_SOAK: Object.freeze({ key: "paper-towel-soak", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)", heroBackgroundImage: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  PAPER_TOWEL: Object.freeze({ key: "paper-towel", accent: "#f4f6f2", accentSoft: "rgba(244, 246, 242, 0.15)", glow: "rgba(244, 246, 242, 0.26)", heroBackgroundImage: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  WATER_SOAK: Object.freeze({ key: "water-soak", accent: "#5ac8ff", accentSoft: "rgba(90, 200, 255, 0.15)", glow: "rgba(90, 200, 255, 0.28)", heroBackgroundImage: GLASS_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  ROCKWOOL: Object.freeze({ key: "rockwool", accent: "#d88947", accentSoft: "rgba(216, 137, 71, 0.16)", glow: "rgba(216, 137, 71, 0.28)", heroBackgroundImage: ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  RAPID_ROOTER: Object.freeze({ key: "rapid-rooter", accent: "#75c88b", accentSoft: "rgba(117, 200, 139, 0.15)", glow: "rgba(117, 200, 139, 0.26)", heroBackgroundImage: STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  DIRECT_SOW: Object.freeze({ key: "direct-sow", accent: "#9a6a3a", accentSoft: "rgba(154, 106, 58, 0.18)", glow: "rgba(154, 106, 58, 0.28)", heroBackgroundImage: DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
+  OTHER: Object.freeze({ key: "custom", accent: "#a78bfa", accentSoft: "rgba(167, 139, 250, 0.15)", glow: "rgba(167, 139, 250, 0.26)", heroBackgroundImage: OTHER_GROW_COMPANION_HERO_BACKGROUND, heroBackgroundPosition: "50% 50%" }),
 });
 const TIMELINE_STAGE_ICON_ASSETS = Object.freeze({
   "stage-soaking": "/src/assets/icons/timeline-icons-soaking.png",
@@ -1701,7 +1708,7 @@ function normalizeMethodType(value = "") {
   if (normalizedValue === "PAPER" || normalizedValue === "PAPER_TOWELS" || normalizedValue === "PAPER_TOWEL" || normalizedValue === "PAPER_TOWEL_ONLY") {
     return "PAPER_TOWEL";
   }
-  if (normalizedValue === "WATER" || normalizedValue === "SOAK" || normalizedValue === "WATER_SOAK" || normalizedValue === "WATER_GLASS") {
+  if (normalizedValue === "WATER" || normalizedValue === "SOAK" || normalizedValue === "GLASS" || normalizedValue === "WATER_SOAK" || normalizedValue === "WATER_GLASS") {
     return "WATER_SOAK";
   }
   if (normalizedValue === "DIRECT" || normalizedValue === "DIRECT_SOW" || normalizedValue === "DIRECT_SOIL" || normalizedValue === "SOIL") {
@@ -1710,7 +1717,7 @@ function normalizeMethodType(value = "") {
   if (normalizedValue === "STARTER_PLUG" || normalizedValue === "STARTER_PLUGS") {
     return "RAPID_ROOTER";
   }
-  if (normalizedValue === "CUSTOM") {
+  if (normalizedValue === "CUSTOM" || normalizedValue === "CUSTOM_METHOD") {
     return "OTHER";
   }
   if (Object.prototype.hasOwnProperty.call(METHOD_TYPE_CONFIG, normalizedValue)) {

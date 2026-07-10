@@ -3,7 +3,15 @@ const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
 const kanCompanionHeroAssetPath = path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-hero.png");
-const kanCompanionLocalAssetPath = path.join(repoRoot, "assets", "images", "methods", "kan-grow-companion-bg.png");
+const methodCompanionBackgroundFiles = Object.freeze([
+  "kan-grow-companion-bg.png",
+  "paper-towel-grow-companion-bg.png",
+  "rockwool-grow-companion-bg.png",
+  "starter-plug-grow-companion-bg.png",
+  "glass-grow-companion-bg.png",
+  "direct-sow-grow-companion-bg.png",
+  "other-grow-companion-bg.png",
+]);
 const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8").replace(/\r\n/g, "\n");
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
 const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
@@ -103,28 +111,48 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
 });
 
 [
-  'const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-bg.png";',
+  'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/images/methods";',
+  "const KAN_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/kan-grow-companion-bg.png`;",
+  "const PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/paper-towel-grow-companion-bg.png`;",
+  "const ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/rockwool-grow-companion-bg.png`;",
+  "const STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/starter-plug-grow-companion-bg.png`;",
+  "const GLASS_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/glass-grow-companion-bg.png`;",
+  "const DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/direct-sow-grow-companion-bg.png`;",
+  "const OTHER_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/other-grow-companion-bg.png`;",
   "heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND",
-  'key: "kan"',
-  'key: "tra"',
+  "heroBackgroundImage: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: GLASS_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: OTHER_GROW_COMPANION_HERO_BACKGROUND",
 ].forEach((needle) => {
   if (!appSource.includes(needle)) {
-    throw new Error(`Method visual theme should expose the KAN hero background: ${needle}`);
+    throw new Error(`Method visual theme should expose method-specific hero backgrounds: ${needle}`);
   }
 });
 
 [
   'if (normalizedValue === "KAN_SYSTEM")',
   'normalizedValue === "TRA_SYSTEM"',
+  'normalizedValue === "GLASS"',
+  'normalizedValue === "CUSTOM_METHOD"',
 ].forEach((needle) => {
   if (!appSource.includes(needle)) {
-    throw new Error(`Method normalization should support stored KAN/TRa display names for companion backgrounds: ${needle}`);
+    throw new Error(`Method normalization should support stored display names for companion backgrounds: ${needle}`);
   }
 });
 
-if (!fs.existsSync(kanCompanionLocalAssetPath)) {
-  throw new Error("KAN Grow Companion background asset must exist at /assets/images/methods/kan-grow-companion-bg.png for local http-server roots.");
-}
+methodCompanionBackgroundFiles.forEach((fileName) => {
+  const publicPath = path.join(repoRoot, "public", "assets", "images", "images", "methods", fileName);
+  const localPath = path.join(repoRoot, "Assets", "images", "images", "methods", fileName);
+  if (!fs.existsSync(publicPath)) {
+    throw new Error(`Method Grow Companion background asset is missing from deployed public path: ${fileName}`);
+  }
+  if (!fs.existsSync(localPath)) {
+    throw new Error(`Method Grow Companion background asset is missing from local /assets path: ${fileName}`);
+  }
+});
 
 if (rendererSource.includes('<aside class="session-progress-companion-recommendation"')) {
   throw new Error("Recommendation should be integrated into Current Phase, not rendered as a separate side panel.");
@@ -314,9 +342,9 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-hero > *',
   "--session-companion-hero-bg-image",
   "background-size: cover;",
-  "filter: blur(1.5px) saturate(0.86) brightness(0.9);",
-  "opacity: 0.42;",
-  "rgba(4, 12, 7, 0.72)",
+  "filter: blur(3px) saturate(0.86) brightness(0.9);",
+  "opacity: 0.38;",
+  "rgba(4, 12, 7, 0.8)",
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
@@ -335,8 +363,14 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 });
 
 [
-  'const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-bg.png";',
+  'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/images/methods";',
   "heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: STARTER_PLUG_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: GLASS_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: DIRECT_SOW_GROW_COMPANION_HERO_BACKGROUND",
+  "heroBackgroundImage: OTHER_GROW_COMPANION_HERO_BACKGROUND",
   "const normalizedCompanionMethodType = normalizeMethodType(engineState.methodType || engineState.definition?.id || methodName || \"\");",
   'data-method-type="${escapeHtml(normalizedCompanionMethodType)}"',
   'data-method-hero-background="true"',
