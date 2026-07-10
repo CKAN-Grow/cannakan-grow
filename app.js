@@ -82473,15 +82473,21 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
 
     section.hidden = false;
     section.classList.add("is-empty");
+    const expanded = Boolean(appState.newSessionSeedVaultExpanded);
     section.innerHTML = `
       <label class="session-seed-age-toggle session-setup-tool session-setup-tool--seed-vault new-session-seed-vault-toggle">
-        <input id="new-session-seed-vault-toggle" type="checkbox" data-seed-vault-session-toggle disabled>
+        <input id="new-session-seed-vault-toggle" type="checkbox" data-seed-vault-session-toggle ${expanded ? "checked" : ""}>
         <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
         <span class="session-seed-age-toggle-text">
           <span id="new-session-seed-vault-title" class="session-seed-age-toggle-copy">Add from My Seed Vault</span>
           <span class="session-seed-age-toggle-helper">No active Vault entries are available yet. Add seeds to My Seed Vault, then return to auto-fill this session.</span>
         </span>
       </label>
+      <div class="new-session-seed-vault-panel" data-seed-vault-session-panel ${expanded ? "" : "hidden"}>
+        <p class="new-session-seed-vault-message" data-seed-vault-session-message role="status" aria-live="polite">
+          No active Vault entries are available yet. Add seeds to My Seed Vault, then return to auto-fill this session.
+        </p>
+      </div>
     `;
     return;
   }

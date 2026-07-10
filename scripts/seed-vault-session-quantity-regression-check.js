@@ -16,7 +16,9 @@ for (const needle of [
   "function applySeedVaultSessionQuantityUsage(partitions = [])",
   "const seedVaultUsageValidation = validateSeedVaultSessionUsage(partitionEntries);",
   "if (!seedVaultUsageValidation.isValid) {",
-  "const savedSession = await createCloudSession(session);",
+  "const savedSession = isUpdatingExistingSession",
+  "? await saveSessionUpdate(session, { allowAutoComplete: false })",
+  ": await createCloudSession(session);",
   "await applySeedVaultSessionQuantityUsage(partitionEntries);",
   "Math.max(0, availableQuantity - usedCount)",
   "Session saved, but Vault quantity could not be updated.",
@@ -25,7 +27,7 @@ for (const needle of [
   requireNeedle(needle);
 }
 
-const saveIndex = appSource.indexOf("const savedSession = await createCloudSession(session);");
+const saveIndex = appSource.indexOf("const savedSession = isUpdatingExistingSession");
 const decrementIndex = appSource.indexOf("await applySeedVaultSessionQuantityUsage(partitionEntries);");
 if (saveIndex < 0 || decrementIndex < 0 || decrementIndex < saveIndex) {
   throw new Error("Seed Vault quantity must decrement only after the session is saved.");
