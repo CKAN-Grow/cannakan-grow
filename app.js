@@ -84986,6 +84986,16 @@ function buildPartitionFormCard(partition, index, options = {}) {
         <div class="partition-identity-suggestions" data-variety-directory-suggestions hidden></div>
       <span class="field-warning" aria-live="polite">Please enter seed variety</span>
     </label>
+    ${showSeedAgeField ? `
+    <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
+      <span class="mobile-field-label">Age</span>
+      <span class="partition-seed-age-input-wrap">
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="#" aria-label="${escapeHtml(rowLabel)} ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+        <span class="partition-seed-age-input-unit" aria-hidden="true">years</span>
+      </span>
+      <span class="field-warning" aria-live="polite">${SEED_AGE_INPUT_HELPER_TEXT}</span>
+    </label>
+    ` : ""}
     <label>
       <span class="mobile-field-label">Type</span>
       <div class="custom-select" data-dropdown-key="partition-${partition.id}-type-${index}">
@@ -85022,16 +85032,6 @@ function buildPartitionFormCard(partition, index, options = {}) {
         <input type="number" name="seedCount-${index}" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number of seeds">
       <span class="field-warning" aria-live="polite">Enter a seed count greater than zero.</span>
     </label>
-    ${showSeedAgeField ? `
-    <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
-      <span class="mobile-field-label">Age</span>
-      <span class="partition-seed-age-input-wrap">
-        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="#" aria-label="${escapeHtml(rowLabel)} ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
-        <span class="partition-seed-age-input-unit" aria-hidden="true">years</span>
-      </span>
-      <span class="field-warning" aria-live="polite">${SEED_AGE_INPUT_HELPER_TEXT}</span>
-    </label>
-    ` : ""}
     ${includeGerminationFields ? `
     <label>
       <span class="mobile-field-label"># Germinated</span>
@@ -93404,6 +93404,12 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
       <span class="mobile-field-label">Seed Variety</span>
       <p>${escapeHtml(varietyLabel)}</p>
     </div>
+    ${showSeedAgeField ? `
+    <div class="detail-cell">
+      <span class="mobile-field-label">Age</span>
+      <p>${escapeHtml(seedAgeLabel)}</p>
+    </div>
+    ` : ""}
     <div class="detail-cell">
       <span class="mobile-field-label">Type</span>
       <p>${escapeHtml(seedTypeLabel)}</p>
@@ -93416,12 +93422,6 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
       <span class="mobile-field-label">Seeds</span>
       <p>${escapeHtml(seedCountLabel)}</p>
     </div>
-    ${showSeedAgeField ? `
-    <div class="detail-cell">
-      <span class="mobile-field-label">Age</span>
-      <p>${escapeHtml(seedAgeLabel)}</p>
-    </div>
-    ` : ""}
     ${includeGerminationFields ? `
     <div class="detail-cell">
       <span class="mobile-field-label">Germinated</span>

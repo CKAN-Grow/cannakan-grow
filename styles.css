@@ -56112,14 +56112,14 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   grid-template-columns: 104px minmax(116px, 0.44fr) minmax(260px, 1.12fr) minmax(124px, 144px) minmax(124px, 144px) 88px minmax(122px, 132px) minmax(104px, 112px);
 }
 
-.chart-shell[data-seed-age-mode="mixed"] .chart-row,
-.partition-table[data-seed-age-mode="mixed"] .chart-row {
-  grid-template-columns: 104px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px);
+.chart-shell[data-seed-age-enabled="true"] .chart-row,
+.partition-table[data-seed-age-enabled="true"] .chart-row {
+  grid-template-columns: 104px minmax(112px, 0.42fr) minmax(230px, 1.02fr) minmax(96px, 104px) minmax(122px, 142px) minmax(122px, 142px) 88px;
 }
 
-.chart-shell[data-results-unlocked="true"][data-seed-age-mode="mixed"] .chart-row,
-.partition-table[data-results-unlocked="true"][data-seed-age-mode="mixed"] .chart-row {
-  grid-template-columns: 104px minmax(112px, 0.42fr) minmax(250px, 1.06fr) minmax(124px, 142px) minmax(124px, 142px) 84px minmax(118px, 128px) minmax(122px, 132px) minmax(104px, 112px);
+.chart-shell[data-results-unlocked="true"][data-seed-age-enabled="true"] .chart-row,
+.partition-table[data-results-unlocked="true"][data-seed-age-enabled="true"] .chart-row {
+  grid-template-columns: 104px minmax(106px, 0.38fr) minmax(210px, 0.92fr) minmax(92px, 100px) minmax(116px, 136px) minmax(116px, 136px) 84px minmax(118px, 128px) minmax(104px, 112px);
 }
 
 [data-method-standardized="false"] .timeline-debug-panel,
@@ -56170,6 +56170,12 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 }
 
 .chart-header [data-partition-header="germinated"] {
+  white-space: nowrap;
+}
+
+.chart-header [data-partition-header="age"] {
+  justify-content: center;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -56514,16 +56520,19 @@ body.theme-dark .partition-identity-suggestion.is-active {
 .partition-seed-age-input-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 4px;
   width: 100%;
-  min-width: 104px;
+  max-width: 96px;
+  min-width: 0;
+  margin: 0 auto;
 }
 
 .partition-seed-age-input-wrap input[name^="seedAgeYears-"] {
-  width: 70px;
-  min-width: 70px;
-  flex: 0 0 70px;
-  padding-inline: 8px;
+  width: 52px;
+  min-width: 0;
+  flex: 0 0 52px;
+  padding-inline: 6px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -56531,7 +56540,7 @@ body.theme-dark .partition-identity-suggestion.is-active {
 .partition-seed-age-input-unit {
   flex: 0 0 auto;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -63962,14 +63971,14 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     row-gap: 8px;
   }
 
-  .partition-table[data-seed-age-mode="mixed"] .partition-row {
+  .partition-table[data-seed-age-enabled="true"] .partition-row {
     grid-template-areas:
       "number source"
       "number variety"
+      "number age"
       "number type"
       "number sex"
-      "number seeds"
-      "number age";
+      "number seeds";
   }
 
   .partition-table[data-results-unlocked="true"] .partition-row {
@@ -63983,14 +63992,14 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
       "number success";
   }
 
-  .partition-table[data-results-unlocked="true"][data-seed-age-mode="mixed"] .partition-row {
+  .partition-table[data-results-unlocked="true"][data-seed-age-enabled="true"] .partition-row {
     grid-template-areas:
       "number source"
       "number variety"
+      "number age"
       "number type"
       "number sex"
       "number seeds"
-      "number age"
       "number planted"
       "number success";
   }
@@ -64024,23 +64033,35 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     grid-area: seeds;
   }
 
-  .partition-table[data-seed-age-mode="mixed"] .partition-row > :nth-child(7) {
+  .partition-table[data-seed-age-enabled="true"] .partition-row > :nth-child(4) {
     grid-area: age;
   }
 
-  .partition-table[data-results-unlocked="true"]:not([data-seed-age-mode="mixed"]) .partition-row > :nth-child(7) {
+  .partition-table[data-seed-age-enabled="true"] .partition-row > :nth-child(5) {
+    grid-area: type;
+  }
+
+  .partition-table[data-seed-age-enabled="true"] .partition-row > :nth-child(6) {
+    grid-area: sex;
+  }
+
+  .partition-table[data-seed-age-enabled="true"] .partition-row > :nth-child(7) {
+    grid-area: seeds;
+  }
+
+  .partition-table[data-results-unlocked="true"]:not([data-seed-age-enabled="true"]) .partition-row > :nth-child(7) {
     grid-area: planted;
   }
 
-  .partition-table[data-results-unlocked="true"]:not([data-seed-age-mode="mixed"]) .partition-row > :nth-child(8) {
+  .partition-table[data-results-unlocked="true"]:not([data-seed-age-enabled="true"]) .partition-row > :nth-child(8) {
     grid-area: success;
   }
 
-  .partition-table[data-results-unlocked="true"][data-seed-age-mode="mixed"] .partition-row > :nth-child(8) {
+  .partition-table[data-results-unlocked="true"][data-seed-age-enabled="true"] .partition-row > :nth-child(8) {
     grid-area: planted;
   }
 
-  .partition-table[data-results-unlocked="true"][data-seed-age-mode="mixed"] .partition-row > :nth-child(9) {
+  .partition-table[data-results-unlocked="true"][data-seed-age-enabled="true"] .partition-row > :nth-child(9) {
     grid-area: success;
   }
 
