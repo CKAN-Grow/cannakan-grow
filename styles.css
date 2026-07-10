@@ -54835,7 +54835,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 12px 16px;
+  min-width: 0;
 }
 
 .session-images-step-badge {
@@ -54855,7 +54856,19 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .session-images-heading-copy {
   display: grid;
-  gap: 3px;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.session-workspace-shell .session-images-workflow-heading > .session-images-heading-copy,
+.session-workspace-shell .session-images-heading.session-images-workflow-heading > .session-images-heading-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: none;
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -54865,10 +54878,25 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   line-height: 1;
 }
 
+.session-workspace-shell .session-images-workflow-heading > .session-images-heading-copy > .eyebrow,
+.session-workspace-shell .session-images-heading.session-images-workflow-heading > .session-images-heading-copy > .eyebrow {
+  grid-area: auto;
+  align-self: auto;
+  margin: 0;
+}
+
 .session-images-heading-copy > span {
   color: rgba(232, 238, 229, 0.82);
   font-size: 0.88rem;
   line-height: 1.2;
+  white-space: nowrap;
+}
+
+.session-workspace-shell .session-images-workflow-heading > .session-images-heading-copy > span,
+.session-workspace-shell .session-images-heading.session-images-workflow-heading > .session-images-heading-copy > span {
+  grid-area: auto;
+  align-self: auto;
+  min-width: 0;
 }
 
 .session-workspace-shell .session-images-limit {
@@ -54985,13 +55013,14 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .session-image-slot--placeholder {
-  color: rgba(224, 232, 221, 0.25);
+  color: rgba(178, 192, 176, 0.48);
 }
 
 .session-workspace-shell .session-image-slot--placeholder .session-image-placeholder-icon {
-  width: 42px;
-  height: 42px;
-  stroke-width: 1.6;
+  width: 84px;
+  height: 84px;
+  stroke-width: 1.35;
+  opacity: 0.9;
 }
 
 .session-workspace-shell .session-image-card {
@@ -55341,6 +55370,11 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   .session-workspace-shell .session-images-workflow-heading .session-images-limit {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .session-workspace-shell .session-images-workflow-heading > .session-images-heading-copy > span,
+  .session-workspace-shell .session-images-heading.session-images-workflow-heading > .session-images-heading-copy > span {
+    white-space: normal;
   }
 
   .session-workspace-shell .session-images-grid {

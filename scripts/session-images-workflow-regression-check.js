@@ -71,14 +71,21 @@ for (const [label, section] of [
 [
   ".session-workspace-shell .session-images-section",
   ".session-workspace-shell .session-images-workflow-heading",
+  ".session-workspace-shell .session-images-workflow-heading > .session-images-heading-copy",
+  "grid-template-areas: none;",
   ".session-images-step-badge",
+  "white-space: nowrap;",
   ".session-workspace-shell .session-images-grid",
   "grid-template-columns: repeat(3, minmax(0, 1fr));",
   ".session-workspace-shell .session-image-slot",
   ".session-workspace-shell .session-image-slot--upload",
   ".session-workspace-shell .session-image-slot--placeholder",
+  ".session-workspace-shell .session-image-slot--placeholder .session-image-placeholder-icon",
+  "width: 84px;",
+  "height: 84px;",
   ".session-workspace-shell .session-images-empty .learn-empty-state-cta-button",
   "@media (max-width: 720px)",
+  "white-space: normal;",
 ].forEach((needle) => requireNeedle(stylesSource, needle, "Images workflow styling"));
 
 console.log("Session Images workflow regression check passed.");
