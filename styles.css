@@ -52462,6 +52462,11 @@ body.modal-open {
   gap: 10px;
 }
 
+.session-seed-age-same-field[hidden],
+.session-seed-age-value[hidden] {
+  display: none;
+}
+
 .session-seed-age-input-field {
   display: grid;
   gap: 10px;
