@@ -4887,22 +4887,13 @@ body.theme-dark .spotlight-stat strong {
   display: grid;
   gap: 20px;
   min-width: 0;
-  overflow: visible;
-}
-
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap {
-  position: relative;
-  z-index: 1;
   overflow: hidden;
+  border-radius: 16px;
   isolation: isolate;
-  background: rgba(5, 13, 10, 0.78);
 }
 
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::before,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::after,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::after {
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-right::before,
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-right::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -4910,8 +4901,7 @@ body.theme-dark .spotlight-stat strong {
   z-index: 0;
 }
 
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::before {
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-right::before {
   background-image: var(--method-companion-bg);
   background-position: var(--method-companion-bg-position, center);
   background-size: cover;
@@ -4921,8 +4911,7 @@ body.theme-dark .spotlight-stat strong {
   transform: scale(1.012);
 }
 
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::after,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::after {
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-right::after {
   background:
     radial-gradient(circle at 88% 50%, rgba(255, 255, 255, 0.035), transparent 38%),
     linear-gradient(90deg, rgba(3, 10, 8, 0.9) 0%, rgba(3, 10, 8, 0.86) 24%, rgba(3, 10, 8, 0.79) 52%, rgba(3, 10, 8, 0.68) 100%),
@@ -4930,10 +4919,18 @@ body.theme-dark .spotlight-stat strong {
   box-shadow: inset 0 0 56px rgba(0, 0, 0, 0.48);
 }
 
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero > *,
-.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap > * {
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-right > * {
   position: relative;
   z-index: 1;
+}
+
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-hero,
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap,
+.session-progress-companion-card.has-method-companion-background .session-progress-companion-metric {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.024)),
+    rgba(5, 13, 10, 0.62);
+  backdrop-filter: blur(1px);
 }
 
 .session-progress-companion-hero {
@@ -5301,12 +5298,6 @@ body.theme-dark .spotlight-stat strong {
 
   .session-progress-companion-recommendation {
     width: 100%;
-  }
-
-  .session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before,
-  .session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::before {
-    background-size: cover;
-    background-position: 52% 42%;
   }
 
   .session-progress-companion-metrics {

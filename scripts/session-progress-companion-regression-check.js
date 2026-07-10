@@ -346,11 +346,12 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-progress-companion-ring",
   ".session-progress-companion-hero",
   ".session-progress-companion-recommendation",
+  ".session-progress-companion-right",
   ".session-progress-companion-roadmap-list",
   ".session-progress-companion-metrics",
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before",
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::before",
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero > *",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right::before",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right::after",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right > *",
   "--method-companion-bg",
   "background-size: cover;",
   "filter: blur(0.75px) saturate(0.9) brightness(0.9);",
@@ -370,6 +371,15 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 ].forEach((needle) => {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing Session Progress companion style: ${needle}`);
+  }
+});
+
+[
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::before",
+].forEach((needle) => {
+  if (stylesSource.includes(needle)) {
+    throw new Error(`Method backgrounds should not repeat on individual panels: ${needle}`);
   }
 });
 

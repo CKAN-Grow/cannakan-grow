@@ -96997,14 +96997,14 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
           <section class="session-progress-companion-roadmap" aria-label="Compact session roadmap">
             ${renderSessionProgressCompanionRoadmapMarkup(engineState)}
           </section>
+
+          ${summaryMetricItems ? `
+            <section class="session-progress-companion-metrics" aria-label="Session supporting summary">
+              ${summaryMetricItems}
+            </section>
+          ` : ""}
         </div>
       </div>
-
-      ${summaryMetricItems ? `
-        <section class="session-progress-companion-metrics" aria-label="Session supporting summary">
-          ${summaryMetricItems}
-        </section>
-      ` : ""}
 
       ${actionMarkup ? `
         <section class="session-progress-companion-action-panel" aria-label="Session progress actions">
