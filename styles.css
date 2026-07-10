@@ -54749,11 +54749,11 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .session-workspace-shell .session-note-sharing-option {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  min-height: 102px;
-  padding: 12px;
+  grid-template-columns: auto 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  min-height: 112px;
+  padding: 15px 14px;
   border-radius: 8px;
 }
 
@@ -54761,7 +54761,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   position: static;
   width: 14px;
   height: 14px;
-  margin: 2px 0 0;
+  margin: 0;
   flex: 0 0 auto;
   transform: none;
 }
@@ -54769,28 +54769,34 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-note-sharing-card-icon {
   display: inline-grid;
   place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #94d159;
+}
+
+.session-note-sharing-card-icon svg {
   width: 22px;
   height: 22px;
-  color: #94d159;
+  stroke-width: 2;
 }
 
 .session-note-sharing-copy {
   display: grid;
-  gap: 5px;
+  gap: 7px;
   min-width: 0;
 }
 
 .session-workspace-shell .session-note-sharing-option .session-note-sharing-copy strong {
   color: #f3f7f0;
-  font-size: 0.86rem;
+  font-size: 0.98rem;
   font-weight: 850;
-  line-height: 1.24;
+  line-height: 1.26;
 }
 
 .session-workspace-shell .session-note-sharing-option .session-note-sharing-copy small {
   color: rgba(220, 229, 218, 0.7);
-  font-size: 0.78rem;
-  line-height: 1.28;
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
 .session-workspace-shell .session-note-sharing-option:has(input:checked) {

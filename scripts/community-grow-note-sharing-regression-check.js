@@ -104,6 +104,15 @@ for (const selector of [
 ]) {
   assert(styleSource.includes(selector), `Expected redesigned Notes style: ${selector}`);
 }
+for (const needle of [
+  "grid-template-columns: auto 30px minmax(0, 1fr);",
+  "min-height: 112px;",
+  ".session-note-sharing-card-icon svg {\n  width: 22px;\n  height: 22px;",
+  ".session-workspace-shell .session-note-sharing-option .session-note-sharing-copy strong {\n  color: #f3f7f0;\n  font-size: 0.98rem;",
+  ".session-workspace-shell .session-note-sharing-option .session-note-sharing-copy small {\n  color: rgba(220, 229, 218, 0.7);\n  font-size: 0.84rem;\n  line-height: 1.4;",
+]) {
+  assert(styleSource.includes(needle), `Expected readable Community Grow sharing card refinement: ${needle}`);
+}
 
 const darkPublicNoteBlockMatch = styleSource.match(/body\.theme-dark \.session-workspace-shell \.session-public-note-block \{[\s\S]*?\n\}/);
 assert(
