@@ -37633,6 +37633,26 @@ function setFeedbackMessage(element, message = "", tone = "") {
   setFeedbackMessageTone(element, message ? tone : "");
 }
 
+function setFeedbackMessageBlock(element, title = "", message = "", tone = "") {
+  if (!element) {
+    return;
+  }
+
+  const normalizedTitle = String(title || "").trim();
+  const normalizedMessage = String(message || "").trim();
+  if (!normalizedTitle && !normalizedMessage) {
+    element.textContent = "";
+    setFeedbackMessageTone(element, "");
+    return;
+  }
+
+  element.innerHTML = `
+    ${normalizedTitle ? `<strong>${escapeHtml(normalizedTitle)}</strong>` : ""}
+    ${normalizedMessage ? `<span>${escapeHtml(normalizedMessage)}</span>` : ""}
+  `;
+  setFeedbackMessageTone(element, tone);
+}
+
 async function uploadPendingSessionImages(form, sessionId, scope) {
   const state = scope?.__sessionImageState || form.__sessionImageState || form.querySelector(".session-images-section")?.__sessionImageState;
   if (!state?.pendingFiles?.length) {
@@ -84630,7 +84650,14 @@ function renderSessionForm(initialSystemType = "KAN") {
     }
     if (!syncStoredTimeFromDisplay(form, { normalize: true, forceError: true })) {
       setUnsavedChangesLastSaveError(new Error("Please enter a valid session time before saving."), "Please enter a valid session time before saving.");
-      form.elements.timeDisplay?.focus();
+      focusInvalidSessionField(form.elements.timeDisplay);
+      return null;
+    }
+    const requiredFieldValidation = validateNewSessionRequiredFields(form);
+    if (!requiredFieldValidation.isValid) {
+      setFeedbackMessageBlock(formMessage, requiredFieldValidation.title, requiredFieldValidation.message, "error");
+      setUnsavedChangesLastSaveError(new Error(`${requiredFieldValidation.title} ${requiredFieldValidation.message}`.trim()), requiredFieldValidation.message);
+      focusInvalidSessionField(requiredFieldValidation.firstInvalidField);
       return null;
     }
     if (!validateSessionStatus(sessionStatusField, sessionStatusError)) {
@@ -84650,19 +84677,20 @@ function renderSessionForm(initialSystemType = "KAN") {
     if (!seedAgeValidation.isValid) {
       formMessage.textContent = seedAgeValidation.message;
       setUnsavedChangesLastSaveError(new Error(seedAgeValidation.message), seedAgeValidation.message);
-      seedAgeValidation.firstInvalidField?.focus();
+      focusInvalidSessionField(seedAgeValidation.firstInvalidField);
       return null;
     }
 
     const validation = validatePartitions(form, { showMessage: true });
     if (!validation.isValid) {
-      formMessage.textContent = "Please complete all partition fields before saving";
-      setUnsavedChangesLastSaveError(new Error(formMessage.textContent), formMessage.textContent);
-      validation.firstInvalidField?.focus();
+      const validationCopy = getNewSessionPartitionValidationCopy(validation);
+      setFeedbackMessageBlock(formMessage, validationCopy.title, validationCopy.message, "error");
+      setUnsavedChangesLastSaveError(new Error(`${validationCopy.title} ${validationCopy.message}`.trim()), validationCopy.message);
+      focusInvalidSessionField(validation.firstInvalidField || validation.firstInvalidRow);
       return null;
     }
 
-    formMessage.textContent = "";
+    setFeedbackMessage(formMessage, "");
 
     const formData = new FormData(form);
     const pendingMethodType = normalizeMethodType(formData.get("systemType"));
@@ -84852,9 +84880,10 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       return savedSession;
     } catch (error) {
-      const message = setUnsavedChangesLastSaveError(error, "Could not save session.");
-      formMessage.textContent = message || "Could not save session.";
-      formMessage.classList.add("is-error");
+      const genericSaveError = "Something went wrong while saving your session. Please try again.";
+      console.error("Failed to save session", error);
+      setUnsavedChangesLastSaveError(new Error(genericSaveError), genericSaveError);
+      setFeedbackMessage(formMessage, genericSaveError, "error");
       return null;
     }
   };
@@ -95197,18 +95226,126 @@ function getTraSectionForPartition(partitionId) {
 function validatePartitions(form, options = { showMessage: false }) {
   const rows = [...form.querySelectorAll(".partition-row")];
   let firstInvalidField = null;
+  let firstInvalidRow = null;
+  const invalidRows = [];
 
   rows.forEach((row) => {
     const result = validatePartitionRow(row);
+    if (!result.isValid) {
+      invalidRows.push({
+        row,
+        firstInvalidField: result.firstInvalidField,
+        rowStarted: Boolean(result.rowStarted),
+        rowLabel: result.rowLabel || getPartitionValidationRowLabel(row),
+      });
+      if (!firstInvalidRow) {
+        firstInvalidRow = row;
+      }
+    }
     if (!result.isValid && !firstInvalidField) {
       firstInvalidField = result.firstInvalidField;
     }
   });
 
   return {
-    isValid: !firstInvalidField,
+    isValid: invalidRows.length === 0,
     firstInvalidField,
+    firstInvalidRow,
+    invalidRows,
   };
+}
+
+function getPartitionValidationRowLabel(row) {
+  const badgeLabel = String(row?.querySelector?.(".partition-row-badge")?.textContent || "").trim();
+  const headerLabel = String(row?.closest?.(".chart-shell")?.querySelector?.("#partition-chart-header span:first-child")?.textContent || "").trim()
+    || String(row?.closest?.("form")?.querySelector?.("#partition-chart-header span:first-child")?.textContent || "").trim()
+    || "Partition";
+  const fallbackId = String(row?.dataset?.partitionId || "").trim();
+  return [headerLabel, badgeLabel || fallbackId].filter(Boolean).join(" ").trim() || "Partition";
+}
+
+function getNewSessionPartitionValidationCopy(validation = {}) {
+  const invalidRows = Array.isArray(validation.invalidRows) ? validation.invalidRows : [];
+  if (invalidRows.length === 1) {
+    return {
+      title: `${invalidRows[0].rowLabel || "Partition"} is incomplete.`,
+      message: "Please complete all required fields or clear the row before saving.",
+    };
+  }
+
+  return {
+    title: "Incomplete session.",
+    message: "Please complete or remove all incomplete rows before saving.",
+  };
+}
+
+function validateNewSessionRequiredFields(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return {
+      isValid: false,
+      firstInvalidField: null,
+      title: "Incomplete session.",
+      message: "Please complete the required session setup fields before saving.",
+    };
+  }
+
+  const methodField = form.elements.systemType;
+  const dateField = form.elements.date;
+  const timeField = form.elements.time;
+  const timeDisplayField = form.elements.timeDisplay;
+  const normalizedMethod = normalizeMethodType(methodField?.value || "");
+  const dateValue = String(dateField?.value || "").trim();
+  const timeValue = String(timeField?.value || "").trim();
+  const parsedDate = dateValue ? new Date(`${dateValue}T00:00:00`) : null;
+  const dateIsValid = parsedDate instanceof Date && !Number.isNaN(parsedDate.getTime());
+  const parsedStart = dateValue && timeValue ? parseSessionStartDateTime(dateValue, timeValue) : null;
+
+  if (!normalizedMethod) {
+    return {
+      isValid: false,
+      firstInvalidField: methodField instanceof HTMLElement ? methodField : null,
+      title: "Incomplete session.",
+      message: "Please choose a germination method before saving.",
+    };
+  }
+
+  if (!dateValue || !dateIsValid) {
+    return {
+      isValid: false,
+      firstInvalidField: dateField instanceof HTMLElement ? dateField : null,
+      title: "Incomplete session.",
+      message: "Please enter a valid session date before saving.",
+    };
+  }
+
+  if (!timeValue || !parsedStart) {
+    return {
+      isValid: false,
+      firstInvalidField: timeDisplayField instanceof HTMLElement ? timeDisplayField : timeField instanceof HTMLElement ? timeField : null,
+      title: "Incomplete session.",
+      message: "Please enter a valid session time before saving.",
+    };
+  }
+
+  return {
+    isValid: true,
+    firstInvalidField: null,
+    title: "",
+    message: "",
+  };
+}
+
+function focusInvalidSessionField(field) {
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  const focusTarget = field.matches?.(".custom-select-native")
+    ? getCustomSelectTrigger(field) || field
+    : field;
+  const scrollTarget = focusTarget.closest?.(".partition-row") || focusTarget.closest?.("label") || focusTarget;
+  scrollTarget?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  window.setTimeout(() => focusTarget.focus?.({ preventScroll: true }), 120);
 }
 
 function validatePartitionRow(row) {
@@ -95263,6 +95400,7 @@ function validatePartitionRow(row) {
   row.classList.toggle("partition-row--inactive", normalizedSessionStatus === "germinating" && !rowStarted);
   row.classList.toggle("row--completed", fieldsComplete);
   row.classList.toggle("row-has-warning", rowInvalid);
+  row.classList.toggle("partition-row--save-invalid", rowInvalid);
   row.classList.toggle("row-complete", normalizedSessionStatus === "completed" && rowStarted);
   row.classList.toggle("row-completed-empty", normalizedSessionStatus === "completed" && !rowStarted);
   updatePartitionButtonState(row, rowState);
@@ -95313,6 +95451,8 @@ function validatePartitionRow(row) {
   return {
     isValid: !rowInvalid,
     firstInvalidField,
+    rowStarted,
+    rowLabel: getPartitionValidationRowLabel(row),
   };
 }
 

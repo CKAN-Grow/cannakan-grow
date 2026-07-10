@@ -33668,6 +33668,25 @@ textarea::placeholder {
   display: block;
 }
 
+.form-message strong,
+.form-message span {
+  display: block;
+}
+
+.form-message strong {
+  margin-bottom: 3px;
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.form-message span {
+  color: color-mix(in srgb, currentColor 86%, #ffffff 14%);
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .sessions-list.compact-list {
   gap: 10px;
 }
@@ -56593,6 +56612,22 @@ body.theme-dark .partition-row.row--completed:hover .custom-select-trigger {
   background: #232823 !important;
   color: #dfe6e1 !important;
   -webkit-text-fill-color: #dfe6e1;
+}
+
+body.theme-dark .partition-row.partition-row--save-invalid {
+  background:
+    linear-gradient(90deg, rgba(255, 180, 88, 0.14), rgba(166, 61, 64, 0.085) 48%, rgba(255, 255, 255, 0.018)),
+    rgba(40, 24, 20, 0.92) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 180, 88, 0.34),
+    inset 4px 0 0 rgba(255, 180, 88, 0.7),
+    0 0 22px rgba(255, 130, 80, 0.1) !important;
+}
+
+body.theme-dark .partition-row.partition-row--save-invalid input,
+body.theme-dark .partition-row.partition-row--save-invalid select,
+body.theme-dark .partition-row.partition-row--save-invalid .custom-select-trigger {
+  border-color: rgba(255, 180, 88, 0.48) !important;
 }
 
 body.theme-dark .partition-row.partition-row--filled .partition-number {
