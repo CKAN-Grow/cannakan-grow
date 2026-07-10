@@ -275,6 +275,7 @@ const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
 const LEARN_RECOMMENDATION_ACTIVITY_STORAGE_KEY = "cannakanLearnRecommendationActivity";
 const LEARN_COLLECTION_PROGRESS_STORAGE_KEY = "cannakanLearnCollectionProgress";
 const NEW_SESSION_QUICK_START_DISMISSED_STORAGE_KEY = "cannakanNewSessionQuickStartDismissed";
+const NEW_SESSION_FIRST_SESSION_DISMISSED_STORAGE_KEY = "cannakanNewSessionFirstSessionDismissed";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "mary-jane-berlin-v1";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -44384,8 +44385,32 @@ function saveContextualOnboardingPromptState(promptId = "", status = "dismissed"
   }
 }
 
+function clearContextualOnboardingPromptState(promptId = "") {
+  const normalizedPromptId = String(promptId || "").trim();
+  if (!normalizedPromptId) {
+    return;
+  }
+
+  try {
+    localStorage.removeItem(getContextualOnboardingStorageKey(normalizedPromptId));
+  } catch (error) {
+    console.warn("[Onboarding] Failed to clear prompt state.", { promptId: normalizedPromptId, error });
+  }
+}
+
+function isNewSessionFirstSessionHelpDismissed() {
+  return readBooleanLocalStorageFlag(NEW_SESSION_FIRST_SESSION_DISMISSED_STORAGE_KEY);
+}
+
+function setNewSessionFirstSessionHelpDismissed(dismissed = true) {
+  writeBooleanLocalStorageFlag(NEW_SESSION_FIRST_SESSION_DISMISSED_STORAGE_KEY, dismissed === true);
+}
+
 function shouldShowContextualOnboardingPrompt(promptId = "") {
   const prompt = getContextualOnboardingPrompt(promptId);
+  if (String(promptId || "").trim() === "new-session" && isNewSessionFirstSessionHelpDismissed()) {
+    return false;
+  }
   if (!prompt || getContextualOnboardingPromptState(promptId)) {
     return false;
   }
@@ -46100,32 +46125,96 @@ function renderContextualOnboardingPromptMarkup(promptId = "", options = {}) {
   `;
 }
 
+function removeContextualOnboardingPromptElement(promptElement) {
+  if (!(promptElement instanceof HTMLElement)) {
+    return;
+  }
+
+  promptElement.hidden = true;
+  promptElement.setAttribute("aria-hidden", "true");
+  promptElement.classList.add("is-dismissing");
+  window.setTimeout(() => promptElement.remove(), 170);
+}
+
+function dismissContextualOnboardingPromptElement(promptElement, promptId = "", tutorialId = "") {
+  if (!(promptElement instanceof HTMLElement)) {
+    return;
+  }
+
+  const normalizedPromptId = String(promptId || promptElement.dataset.contextualOnboardingPrompt || "").trim();
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  saveContextualOnboardingPromptState(normalizedPromptId, "dismissed", normalizedTutorialId);
+  if (normalizedPromptId === "new-session") {
+    setNewSessionFirstSessionHelpDismissed(true);
+  }
+  removeContextualOnboardingPromptElement(promptElement);
+}
+
+function handleContextualOnboardingDelegatedClick(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  const control = target?.closest("[data-onboarding-dismiss='true'], [data-onboarding-tutorial-id]");
+  if (!(control instanceof HTMLElement)) {
+    return;
+  }
+
+  const promptElement = control.closest("[data-contextual-onboarding-prompt]");
+  if (!(promptElement instanceof HTMLElement)) {
+    return;
+  }
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation?.();
+
+  const promptId = promptElement.dataset.contextualOnboardingPrompt || "";
+  const tutorialId = control.dataset.onboardingTutorialId || "";
+  if (tutorialId) {
+    dismissContextualOnboardingPromptElement(promptElement, promptId, tutorialId);
+    const source = promptId === "new-session"
+      ? "New Session prompt"
+      : (promptId === "snapshot" ? "Snapshot prompt" : `${promptId} prompt`);
+    openLearnTutorialModal(tutorialId, { source });
+    return;
+  }
+
+  dismissContextualOnboardingPromptElement(promptElement, promptId);
+}
+
+function bindContextualOnboardingDelegatedInteractions() {
+  if (typeof document === "undefined" || document.documentElement?.dataset.contextualOnboardingDelegated === "true") {
+    return;
+  }
+
+  document.documentElement.dataset.contextualOnboardingDelegated = "true";
+  document.addEventListener("click", handleContextualOnboardingDelegatedClick, true);
+}
+
+bindContextualOnboardingDelegatedInteractions();
+
 function bindContextualOnboardingPrompt(promptElement, promptId = "") {
   if (!(promptElement instanceof HTMLElement) || promptElement.dataset.onboardingBound === "true") {
     return;
   }
 
   promptElement.dataset.onboardingBound = "true";
-  const removePrompt = () => {
-    promptElement.classList.add("is-dismissing");
-    window.setTimeout(() => promptElement.remove(), 170);
-  };
 
   promptElement.querySelectorAll("[data-onboarding-tutorial-id]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       const tutorialId = button.dataset.onboardingTutorialId || "";
-      saveContextualOnboardingPromptState(promptId, "dismissed", tutorialId);
+      dismissContextualOnboardingPromptElement(promptElement, promptId, tutorialId);
       const source = promptId === "new-session"
         ? "New Session prompt"
         : (promptId === "snapshot" ? "Snapshot prompt" : `${promptId} prompt`);
       openLearnTutorialModal(tutorialId, { source });
-      removePrompt();
     });
   });
 
-  promptElement.querySelector("[data-onboarding-dismiss='true']")?.addEventListener("click", () => {
-    saveContextualOnboardingPromptState(promptId, "dismissed");
-    removePrompt();
+  promptElement.querySelector("[data-onboarding-dismiss='true']")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dismissContextualOnboardingPromptElement(promptElement, promptId);
   });
 }
 
@@ -47054,8 +47143,15 @@ function restoreNewSessionQuickStartHelp() {
   return syncNewSessionQuickStartHelpVisibility(document);
 }
 
+function restoreNewSessionFirstSessionHelp() {
+  setNewSessionFirstSessionHelpDismissed(false);
+  clearContextualOnboardingPromptState("new-session");
+  return null;
+}
+
 if (typeof window !== "undefined") {
   window.restoreCannakanQuickStartHelp = restoreNewSessionQuickStartHelp;
+  window.restoreCannakanFirstSessionHelp = restoreNewSessionFirstSessionHelp;
 }
 
 function bindNewSessionQuickStartHelp(scope = document) {
