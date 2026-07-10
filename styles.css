@@ -4904,18 +4904,18 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before {
   background-image: var(--session-companion-hero-bg-image);
   background-position: var(--session-companion-hero-bg-position, 58% 45%);
-  background-size: 145%;
+  background-size: cover;
   background-repeat: no-repeat;
-  filter: blur(6px) saturate(0.86) brightness(0.9);
-  opacity: 0.34;
-  transform: scale(1.035);
+  filter: blur(2.5px) saturate(0.88) brightness(0.9);
+  opacity: 1;
+  transform: scale(1.025);
 }
 
 .session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::after {
   background:
-    radial-gradient(circle at 48% 42%, rgba(4, 12, 7, 0.93), rgba(4, 12, 7, 0.965) 54%, rgba(1, 5, 5, 0.985) 100%),
-    linear-gradient(90deg, rgba(3, 10, 8, 0.98), rgba(3, 10, 8, 0.92) 42%, rgba(3, 10, 8, 0.98));
-  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.68);
+    radial-gradient(circle at 48% 42%, rgba(4, 12, 7, 0.82), rgba(4, 12, 7, 0.86) 54%, rgba(1, 5, 5, 0.9) 100%),
+    linear-gradient(90deg, rgba(3, 10, 8, 0.88), rgba(3, 10, 8, 0.82) 42%, rgba(3, 10, 8, 0.88));
+  box-shadow: inset 0 0 72px rgba(0, 0, 0, 0.56);
 }
 
 .session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-hero,
@@ -4923,9 +4923,9 @@ body.theme-dark .spotlight-stat strong {
   position: relative;
   z-index: 1;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.014)),
-    rgba(5, 13, 10, 0.66);
-  backdrop-filter: blur(1px);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(5, 13, 10, 0.5);
+  backdrop-filter: blur(0.5px);
 }
 
 .session-progress-companion-hero {
@@ -5296,7 +5296,7 @@ body.theme-dark .spotlight-stat strong {
   }
 
   .session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before {
-    background-size: 190%;
+    background-size: cover;
     background-position: 52% 42%;
   }
 

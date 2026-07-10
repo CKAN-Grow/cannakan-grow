@@ -102,7 +102,7 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
 });
 
 [
-  'const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-hero.png";',
+  'const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-bg.png";',
   "heroBackgroundImage: KAN_GROW_COMPANION_HERO_BACKGROUND",
   'key: "kan"',
   'key: "tra"',
@@ -111,6 +111,19 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
     throw new Error(`Method visual theme should expose the KAN hero background: ${needle}`);
   }
 });
+
+[
+  'if (normalizedValue === "KAN_SYSTEM")',
+  'normalizedValue === "TRA_SYSTEM"',
+].forEach((needle) => {
+  if (!appSource.includes(needle)) {
+    throw new Error(`Method normalization should support stored KAN/TRa display names for companion backgrounds: ${needle}`);
+  }
+});
+
+if (!fs.existsSync(path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-bg.png"))) {
+  throw new Error("KAN Grow Companion background asset must exist at a stable public asset path.");
+}
 
 if (rendererSource.includes('<aside class="session-progress-companion-recommendation"')) {
   throw new Error("Recommendation should be integrated into Current Phase, not rendered as a separate side panel.");
@@ -298,8 +311,9 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::before',
   '.session-progress-companion-card[data-method-hero-background="true"] .session-progress-companion-right::after',
   "--session-companion-hero-bg-image",
-  "filter: blur(6px) saturate(0.86) brightness(0.9);",
-  "rgba(4, 12, 7, 0.965)",
+  "background-size: cover;",
+  "filter: blur(2.5px) saturate(0.88) brightness(0.9);",
+  "rgba(4, 12, 7, 0.82)",
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",

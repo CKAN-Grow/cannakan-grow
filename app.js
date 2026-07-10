@@ -1627,7 +1627,7 @@ const PAPER_TOWEL_SETUP_METHODS = Object.freeze(["PAPER_TOWEL_SOAK", "PAPER_TOWE
 const PREPARED_MEDIA_SETUP_METHODS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER"]);
 const METHOD_SETUP_PREFERENCE_STORAGE_KEY = "cannakanGrowMethodSetupPreferences";
 const METHOD_SETUP_SESSION_STORAGE_KEY = "cannakanGrowSessionMethodSetup";
-const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-hero.png";
+const KAN_GROW_COMPANION_HERO_BACKGROUND = "/assets/images/methods/kan-grow-companion-bg.png";
 const SESSION_ENGINE_VISUAL_TIMELINE_THEMES = Object.freeze({
   KAN: Object.freeze({
     key: "kan",
@@ -1681,7 +1681,10 @@ function normalizeMethodType(value = "") {
     .replace(/[\s-]+/g, "_")
     .replace(/[Āā]/g, "A");
 
-  if (normalizedValue === "TR" || normalizedValue === "TRA") {
+  if (normalizedValue === "KAN_SYSTEM") {
+    return "KAN";
+  }
+  if (normalizedValue === "TR" || normalizedValue === "TRA" || normalizedValue === "TRA_SYSTEM") {
     return "TRA";
   }
   if ([
