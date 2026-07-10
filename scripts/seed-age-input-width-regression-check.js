@@ -41,6 +41,12 @@ if (!(editableRowMarkup.indexOf('name="seedVariety-${index}"') < editableRowMark
   && editableRowMarkup.indexOf("data-partition-seed-age-field") < editableRowMarkup.indexOf('name="seedType-${index}"'))) {
   throw new Error("Editable Seed Age field must render between Seed Variety and Type.");
 }
+if (editableRowMarkup.includes("partition-seed-age-input-unit") || editableRowMarkup.includes(">years</span>")) {
+  throw new Error("Editable Seed Age fields should not repeat a per-row years unit label.");
+}
+if (stylesSource.includes(".partition-seed-age-input-unit")) {
+  throw new Error("Seed Age unit suffix styles should be removed with the per-row years label.");
+}
 
 const seedAgeGridMatches = stylesSource.match(/data-seed-age-enabled="true"[\s\S]{0,260}?minmax\(9[26]px, 10[04]px\)/g) || [];
 if (seedAgeGridMatches.length < 2) {
