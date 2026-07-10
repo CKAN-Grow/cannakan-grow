@@ -137,6 +137,10 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   "function preloadMethodCompanionBackground",
   "function hydrateMethodCompanionBackgrounds",
   "hydrateMethodCompanionBackgrounds(summaryElement)",
+  "const visualMethodCandidates = [",
+  "engineState?.methodName",
+  "engineState?.definition?.displayName",
+  "isExplicitKanCandidate",
 ].forEach((needle) => {
   if (!appSource.includes(needle)) {
     throw new Error(`Method visual theme should expose method-specific hero backgrounds: ${needle}`);
@@ -146,6 +150,9 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
 [
   'if (normalizedValue === "KAN_SYSTEM")',
   'normalizedValue === "TRA_SYSTEM"',
+  '.replace(/\\+/g, "_PLUS_")',
+  '"SOAK_PLUS_PAPER_TOWEL"',
+  '"PAPERTOWEL"',
   'normalizedValue === "GLASS"',
   'normalizedValue === "CUSTOM_METHOD"',
 ].forEach((needle) => {

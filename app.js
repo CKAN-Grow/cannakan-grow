@@ -1699,7 +1699,11 @@ function normalizeMethodType(value = "") {
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, "_")
-    .replace(/[Āā]/g, "A");
+    .replace(/[Āā]/g, "A")
+    .replace(/\+/g, "_PLUS_")
+    .replace(/&/g, "_AND_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
 
   if (normalizedValue === "KAN_SYSTEM") {
     return "KAN";
@@ -1710,14 +1714,19 @@ function normalizeMethodType(value = "") {
   if ([
     "SOAK_PAPER",
     "SOAK_AND_PAPER_TOWEL",
+    "SOAK_AND_PAPER_TOWELS",
     "SOAK_PAPER_TOWEL",
+    "SOAK_PAPER_TOWELS",
     "SOAK_PLUS_PAPER_TOWEL",
+    "SOAK_PLUS_PAPER_TOWELS",
     "WATER_SOAK_PAPER_TOWEL",
+    "WATER_SOAK_PAPER_TOWELS",
     "PAPER_TOWEL_SOAK",
+    "PAPER_TOWELS_SOAK",
   ].includes(normalizedValue)) {
     return "PAPER_TOWEL_SOAK";
   }
-  if (normalizedValue === "PAPER" || normalizedValue === "PAPER_TOWELS" || normalizedValue === "PAPER_TOWEL" || normalizedValue === "PAPER_TOWEL_ONLY") {
+  if (normalizedValue === "PAPER" || normalizedValue === "PAPERTOWEL" || normalizedValue === "PAPERTOWELS" || normalizedValue === "PAPER_TOWELS" || normalizedValue === "PAPER_TOWEL" || normalizedValue === "PAPER_TOWEL_ONLY") {
     return "PAPER_TOWEL";
   }
   if (normalizedValue === "WATER" || normalizedValue === "SOAK" || normalizedValue === "GLASS" || normalizedValue === "WATER_SOAK" || normalizedValue === "WATER_GLASS") {
@@ -95744,18 +95753,30 @@ function getRunProgressGradient(progressPercent) {
 }
 
 function getSessionEngineVisualTimelineTheme(engineState = null) {
-  const displayMethodKey = normalizeMethodType(
-    engineState?.methodType
-    || engineState?.methodName
-    || engineState?.definition?.displayName
-    || engineState?.definition?.id
-    || engineState?.definition?.key
-    || engineState?.methodKey
-    || "",
-  );
+  const visualMethodCandidates = [
+    engineState?.methodName,
+    engineState?.definition?.displayName,
+    engineState?.methodType,
+    engineState?.definition?.id,
+    engineState?.definition?.key,
+    engineState?.methodKey,
+  ];
   const engineMethodKey = getSessionEngineMethodKey(engineState?.methodKey || engineState?.definition?.key || "");
-  return SESSION_ENGINE_VISUAL_TIMELINE_THEMES[displayMethodKey]
-    || SESSION_ENGINE_VISUAL_TIMELINE_THEMES[engineMethodKey]
+  for (const candidate of visualMethodCandidates) {
+    const rawCandidate = String(candidate || "").trim();
+    if (!rawCandidate) {
+      continue;
+    }
+    const normalizedCandidate = normalizeMethodType(rawCandidate);
+    const isExplicitKanCandidate = /^(KAN|KAN\s+SYSTEM)$/i.test(rawCandidate);
+    if (normalizedCandidate === "KAN" && !isExplicitKanCandidate) {
+      continue;
+    }
+    if (SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizedCandidate]) {
+      return SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizedCandidate];
+    }
+  }
+  return SESSION_ENGINE_VISUAL_TIMELINE_THEMES[engineMethodKey]
     || SESSION_ENGINE_VISUAL_TIMELINE_THEMES[normalizeMethodType(engineMethodKey)]
     || SESSION_ENGINE_VISUAL_TIMELINE_THEMES.OTHER;
 }
