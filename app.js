@@ -64161,7 +64161,7 @@ function renderAdminCstpPartitionEditor(detail = null, session = null) {
   normalizedSession.partitions.forEach((partition, index) => {
     detail.partitions.appendChild(buildPartitionFormCard(partition, index, {
       showSeedAgeField: seedAgeMetadata.trackingEnabled,
-      showSeedAgeInput: seedAgeMetadata.trackingEnabled && shouldShowPartitionSeedAgeFieldForPartition(partition),
+      showSeedAgeInput: seedAgeMetadata.trackingEnabled,
       seedAgeReadOnly: seedAgeMetadata.mode === "same",
     }));
     hydratePartitionRow(detail.partitions.lastElementChild, partition);
@@ -86190,7 +86190,6 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     renderTraPartitionSections(partitionFields, partitions, {
       showSeedAgeField,
       seedAgeReadOnly,
-      shouldShowSeedAgeInput: (partition) => shouldShowPartitionSeedAgeFieldForPartition(partition),
       includeGerminationFields: method.supportsProgress !== false,
       rowLabel: method.rowLabel,
       methodType: method.id,
@@ -86199,7 +86198,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     partitions.forEach((partition, index) => {
       partitionFields.appendChild(buildPartitionFormCard(partition, index, {
         showSeedAgeField,
-        showSeedAgeInput: showSeedAgeField && shouldShowPartitionSeedAgeFieldForPartition(partition),
+        showSeedAgeInput: showSeedAgeField,
         seedAgeReadOnly,
         includeGerminationFields: method.supportsProgress !== false,
         rowLabel: method.rowLabel,
@@ -87415,13 +87414,13 @@ function applySeedAgeValuesToPartitions(partitions = [], options = {}) {
     partition.seedAgeAutoFilledFromSession = false;
 
     if (!trackingEnabled) {
-      partition.seedAgeYears = null;
+      partition.seedAgeYears = currentValue;
       return;
     }
 
     if (mode === "same") {
-      partition.seedAgeYears = isActive ? sessionSeedAgeYears : null;
-      partition.seedAgeAutoFilledFromSession = isActive && sessionSeedAgeYears !== null;
+      partition.seedAgeYears = sessionSeedAgeYears;
+      partition.seedAgeAutoFilledFromSession = sessionSeedAgeYears !== null;
       return;
     }
 
@@ -91598,7 +91597,7 @@ function renderSessionDetail(sessionId) {
       normalizedPartitions.forEach((partition, index) => {
         partitions.appendChild(buildPartitionFormCard(partition, index, {
           showSeedAgeField: currentSeedAgeMetadata.trackingEnabled,
-          showSeedAgeInput: currentSeedAgeMetadata.trackingEnabled && shouldShowPartitionSeedAgeFieldForPartition(partition),
+          showSeedAgeInput: currentSeedAgeMetadata.trackingEnabled,
           seedAgeReadOnly: currentSeedAgeMetadata.mode === "same",
           includeGerminationFields: sessionMethod.supportsProgress !== false,
           rowLabel: sessionMethod.rowLabel,
@@ -93562,7 +93561,6 @@ function syncPartitionSeedAgeFieldState(row) {
 
   if (!trackingEnabled) {
     seedAgeLabel.hidden = true;
-    seedAgeInput.value = "";
     seedAgeInput.readOnly = false;
     seedAgeInput.removeAttribute("aria-readonly");
     delete seedAgeInput.dataset.autoFilledFromSessionAge;
@@ -93575,22 +93573,14 @@ function syncPartitionSeedAgeFieldState(row) {
     seedAgeInput.setAttribute("aria-readonly", "true");
     seedAgeInput.dataset.seedAgeAutofillApplied = "true";
     seedAgeInput.dataset.autoFilledFromSessionAge = "true";
-    seedAgeInput.value = hasCoreValues ? formatSeedAgeInputValue(sessionSeedAgeYears) : "";
-    if (!hasCoreValues) {
+    seedAgeInput.value = formatSeedAgeInputValue(sessionSeedAgeYears);
+    if (sessionSeedAgeYears === null) {
       delete seedAgeInput.dataset.autoFilledFromSessionAge;
       delete seedAgeInput.dataset.seedAgeAutofillApplied;
     }
   } else {
     seedAgeInput.readOnly = false;
     seedAgeInput.removeAttribute("aria-readonly");
-    if (!hasCoreValues) {
-      if (normalizedInputSeedAge !== null && partitionId) {
-        mixedSeedAgeDrafts[partitionId] = normalizedInputSeedAge;
-      }
-      seedAgeInput.value = "";
-      delete seedAgeInput.dataset.autoFilledFromSessionAge;
-      delete seedAgeInput.dataset.seedAgeAutofillApplied;
-    }
 
     if (
       isAutoFilled
@@ -93634,16 +93624,7 @@ function syncPartitionSeedAgeFieldState(row) {
     }
   }
 
-  const shouldShow = shouldShowPartitionSeedAgeFieldForValues({
-    sourceValue: row.querySelector('input[name^="source-"]')?.value || "",
-    varietyValue: row.querySelector('input[name^="seedVariety-"]')?.value || "",
-    typeValue: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
-    sexValue: row.querySelector('select[name^="feminized-"]')?.value || "",
-    seedValue: row.querySelector('input[name^="seedCount-"]')?.value || "",
-    plantedValue: row.querySelector('input[name="plantedCount"]')?.value || "",
-  });
-
-  seedAgeLabel.hidden = !shouldShow;
+  seedAgeLabel.hidden = false;
 }
 
 function syncCompletedSessionPartitionVisibility(partitionContainer, sessionStatus = "") {
