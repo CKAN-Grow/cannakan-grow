@@ -39224,6 +39224,16 @@ function applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionContainer
   });
 }
 
+function syncPartitionSeedAgeFieldsInContainer(partitionContainer) {
+  if (!(partitionContainer instanceof Element)) {
+    return;
+  }
+
+  partitionContainer.querySelectorAll(".partition-row").forEach((row) => {
+    syncPartitionSeedAgeFieldState(row);
+  });
+}
+
 function syncSeedAgeSetupUi(form, options = {}) {
   if (!form) {
     return {
@@ -84286,12 +84296,13 @@ function renderSessionForm(initialSystemType = "KAN") {
     refreshUnsavedChangesState();
   });
   const rerenderSeedAgePartitions = () => {
-    syncSeedAgeSetupUi(form);
+    const seedAgeState = syncSeedAgeSetupUi(form);
     renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
     renderSystemLayoutReference(layoutReference, systemTypeField.value);
     updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
-    applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
+    applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, seedAgeState.mode || "");
+    syncPartitionSeedAgeFieldsInContainer(partitionFields);
     applyStageEditingMode(form, sessionStatusField.value);
     updateSessionSuccessSummary(form, sessionSuccessSummary);
     updatePartitionProgressChart(
@@ -86235,6 +86246,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     partitionFields,
     seedAgeState.mode,
   );
+  syncPartitionSeedAgeFieldsInContainer(partitionFields);
   syncPartitionButtonStates(partitionFields, sessionStatus);
   updateGrowthStageLock(form, sessionStatus);
   clearActiveSystemLayout(form);
@@ -86267,9 +86279,11 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
     || "";
   const selectedMethod = getMethodConfig(selectedMethodType);
   const usesCustomMethodWorkflow = selectedMethod && selectedMethod.isStandardized === false;
+  const isCreateSessionForm = scope instanceof HTMLFormElement && scope.id === "session-form";
   const isUnselected = normalizedStatus === "unselected";
   const isCompleted = normalizedStatus === "completed";
   const allowFullEditing = (usesCustomMethodWorkflow && !isCompleted) || normalizedStatus === "soaking" || isUnselected;
+  const allowSetupToolEditing = isCreateSessionForm && !isCompleted ? true : allowFullEditing;
   const allowGerminationOnlyEditing = !usesCustomMethodWorkflow && normalizedStatus === "germinating";
   const allowAnyEditing = allowFullEditing || allowGerminationOnlyEditing;
 
@@ -86304,7 +86318,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   });
 
   scope.querySelectorAll('input[name="seedAgeTrackingEnabled"], input[name="seedAgeMode"], input[name="sessionSeedAgeYears"]').forEach((field) => {
-    field.disabled = !allowFullEditing;
+    field.disabled = !allowSetupToolEditing;
   });
 
   scope.querySelectorAll('#detail-session-notes, #session-notes').forEach((field) => {
@@ -91622,6 +91636,7 @@ function renderSessionDetail(sessionId) {
     applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
     setSeedChartResultsUnlocked(detail.chartShell, detail.chartHeader, partitions, true);
     applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, partitions, currentSeedAgeMetadata.mode);
+    syncPartitionSeedAgeFieldsInContainer(partitions);
     updateMethodTypeLayout(app, sessionMethod.id);
     syncPartitionButtonStates(partitions, detail.statusField.value);
     syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);

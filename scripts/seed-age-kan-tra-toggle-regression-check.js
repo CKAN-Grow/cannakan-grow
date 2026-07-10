@@ -14,6 +14,9 @@ if (!renderPartitionRowsSource.includes("const showSeedAgeField = seedAgeState.t
 if (!renderPartitionRowsSource.includes("showSeedAgeInput: showSeedAgeField,")) {
   throw new Error("KAN/TRa rows should show Seed Age inputs for every partition when tracking is enabled.");
 }
+if (!renderPartitionRowsSource.includes("syncPartitionSeedAgeFieldsInContainer(partitionFields);")) {
+  throw new Error("Rendered KAN/TRa rows should be synchronized after the shared Seed Age layout is applied.");
+}
 if (renderPartitionRowsSource.includes("showSeedAgeInput: showSeedAgeField && shouldShowPartitionSeedAgeFieldForPartition")) {
   throw new Error("KAN/TRa Seed Age inputs must not be gated by populated partition content.");
 }
@@ -28,8 +31,28 @@ const detailRendererSource = appSource.slice(
 if (!detailRendererSource.includes("showSeedAgeInput: currentSeedAgeMetadata.trackingEnabled,")) {
   throw new Error("Saved session detail rows should use the shared Seed Age tracking state.");
 }
+if (!detailRendererSource.includes("syncPartitionSeedAgeFieldsInContainer(partitions);")) {
+  throw new Error("Saved KAN/TRa session detail rows should be synchronized after Seed Age layout changes.");
+}
 if (detailRendererSource.includes("showSeedAgeInput: currentSeedAgeMetadata.trackingEnabled && shouldShowPartitionSeedAgeFieldForPartition")) {
   throw new Error("Saved session detail rows should not hide KAN/TRa Seed Age inputs for empty partitions.");
+}
+
+const stageEditingSource = appSource.slice(
+  appSource.indexOf("function applyStageEditingMode"),
+  appSource.indexOf("function closeGrowthStageModal"),
+);
+if (!stageEditingSource.includes('const isCreateSessionForm = scope instanceof HTMLFormElement && scope.id === "session-form";')) {
+  throw new Error("New Session should be identified so KAN/TRa setup tools remain editable before save.");
+}
+if (!stageEditingSource.includes("const allowSetupToolEditing = isCreateSessionForm && !isCompleted ? true : allowFullEditing;")) {
+  throw new Error("Track Seed Age controls should stay enabled during New Session setup.");
+}
+if (!stageEditingSource.includes("field.disabled = !allowSetupToolEditing;")) {
+  throw new Error("Track Seed Age controls should use the shared setup-tool editing gate.");
+}
+if (stageEditingSource.includes("input[name=\"seedAgeTrackingEnabled\"], input[name=\"seedAgeMode\"], input[name=\"sessionSeedAgeYears\"]').forEach((field) => {\n    field.disabled = !allowFullEditing;")) {
+  throw new Error("KAN/TRa Track Seed Age controls must not be disabled by the standardized-method editing gate.");
 }
 
 const syncFieldSource = appSource.slice(
