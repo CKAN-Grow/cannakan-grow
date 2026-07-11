@@ -1751,6 +1751,25 @@ function getMethodConfig(value = "") {
   return METHOD_TYPE_CONFIG[normalizeMethodType(value)] || METHOD_TYPE_CONFIG.KAN;
 }
 
+function isFilterPaperSupplyRelevantMethod(methodType = "") {
+  const rawMethodType = String(methodType || "").trim();
+  if (!rawMethodType) {
+    return false;
+  }
+
+  return ["KAN", "TRA"].includes(normalizeMethodType(rawMethodType));
+}
+
+function getSessionRawMethodType(session = null) {
+  return String(
+    session?.methodType
+    || session?.method_type
+    || session?.systemType
+    || session?.system_type
+    || "",
+  ).trim();
+}
+
 function standardizeMethodDisplayLabel(value = "") {
   const label = String(value || "").trim();
   if (!label) {
@@ -6045,6 +6064,36 @@ function hasFilterPaperInventoryBeenSet(userId = appState.user?.id || "") {
   return getFilterPaperInventoryStorageKeys(userId).some((storageKey) => (
     getStoredFilterPaperInventoryValue(storageKey) !== null
   ));
+}
+
+function hasExplicitFilterPaperInventoryCount(inventory = null) {
+  if (!inventory || typeof inventory !== "object") {
+    return false;
+  }
+
+  if (inventory.updatedAt || inventory.updated_at) {
+    return true;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(inventory, "count")) {
+    return false;
+  }
+
+  return Number.isFinite(Number(inventory.count));
+}
+
+function hasFilterPaperSupplyRelevantSession(sessions = []) {
+  return (Array.isArray(sessions) ? sessions : []).some((session) => (
+    isFilterPaperSupplyRelevantMethod(getSessionRawMethodType(session))
+  ));
+}
+
+function shouldShowFilterPaperSupply(userSessions = [], inventory = null) {
+  if (hasExplicitFilterPaperInventoryCount(inventory) || (!inventory && hasFilterPaperInventoryBeenSet())) {
+    return true;
+  }
+
+  return hasFilterPaperSupplyRelevantSession(userSessions);
 }
 
 function saveFilterPaperInventory(inventory) {
@@ -98389,6 +98438,11 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const metricsVariant = String(options.metricsVariant || "").trim().toLowerCase();
   const headerActionHref = String(options.headerActionHref || "").trim();
   const headerActionLabel = String(options.headerActionLabel || "").trim();
+  const supplyEligibilitySessions = [
+    ...sessions,
+    ...visibleActiveSessions,
+  ];
+  const shouldRenderSupply = showSupply && shouldShowFilterPaperSupply(supplyEligibilitySessions);
   const countBadgeLabel = requiresSignIn
     ? "Sign in"
     : `${visibleActiveSessions.length} ${visibleActiveSessions.length === 1 ? "in progress" : "in progress"}`;
@@ -98443,7 +98497,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
         </section>
       </div>
       ${metricsPlacement === "bottom" ? metricsMarkup : ""}
-      ${showSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : ""}
+      ${shouldRenderSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : ""}
     </section>
   `;
 }
