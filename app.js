@@ -2141,6 +2141,44 @@ function getMethodSessionStatusLabel(status = "", methodType = "") {
   return capitalize(normalizedStatus).replace("Unselected", "Not started");
 }
 
+function hasSessionOfficialStart(session = null) {
+  if (!session) {
+    return false;
+  }
+
+  const sessionId = String(session.id || session.sessionId || session.session_id || "").trim();
+  const startedAt = getSessionDurationStartAt(session);
+  return Boolean(sessionId && startedAt instanceof Date && !Number.isNaN(startedAt.getTime()));
+}
+
+function getSessionDisplayStatus(session = null) {
+  if (!session) {
+    return { label: "Not Started", className: "is-inactive", key: "not-started" };
+  }
+
+  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
+  const normalizedStatus = normalizeSessionStatus(session.sessionStatus || session.session_status || "");
+  const lifecycleState = normalizeGrowSessionLifecycleState(session);
+
+  if (normalizedStatus === "completed" || lifecycleState === "completed") {
+    return { label: "Completed", className: "is-completed", key: "completed" };
+  }
+  if (lifecycleHealth.classification === "needs_attention") {
+    return { label: "Action Needed", className: "is-needs-attention", key: "action-needed" };
+  }
+  if (["stale", "abandoned"].includes(lifecycleHealth.classification) || ["stale", "abandoned"].includes(lifecycleState)) {
+    return { label: "Session inactive", className: "is-stale", key: "inactive" };
+  }
+  if (lifecycleState === "active" || hasSessionOfficialStart(session)) {
+    return { label: "In Progress", className: "is-in-progress", key: "in-progress" };
+  }
+  if (["active", "soaking", "germinating", "first-germinated"].includes(normalizedStatus)) {
+    return { label: "Active", className: "is-active", key: "active" };
+  }
+
+  return { label: "Not Started", className: "is-inactive", key: "not-started" };
+}
+
 function formatMethodTypeLabel(value = "") {
   return standardizeMethodDisplayLabel(getMethodConfig(value).name);
 }
@@ -11552,6 +11590,13 @@ function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
     const lifecycleHealth = getGrowSessionLifecycleHealth(session);
     if (["completed", "stale", "abandoned"].includes(lifecycleHealth.classification)) {
       return lifecycleHealth.lifecycleState;
+    }
+    if (
+      lifecycleHealth.lifecycleState === "active"
+      || lifecycleHealth.activeMetricEligible
+      || hasSessionOfficialStart(session)
+    ) {
+      return "active";
     }
   }
   if (normalizedStatus === "completed") {
@@ -97858,32 +97903,7 @@ function getSessionCommandCenterPrimaryStrain(session = null) {
 }
 
 function getSessionCommandCenterStageBadge(session = null) {
-  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
-  if (lifecycleHealth.classification === "needs_attention") {
-    return { label: "Needs attention", className: "is-needs-attention" };
-  }
-  if (lifecycleHealth.classification === "stale") {
-    return { label: "Session inactive", className: "is-stale" };
-  }
-  if (lifecycleHealth.classification === "abandoned") {
-    return { label: "Session inactive", className: "is-abandoned" };
-  }
-  const stageState = session ? buildSessionLifecycleState(session) : null;
-  const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
-
-  if (normalizedStage === "completed") {
-    return { label: "Completed", className: "is-completed" };
-  }
-  if (stageState?.firstPlantedAt) {
-    return { label: getCanonicalSessionStageDisplayLabel("first-germinated"), className: "is-first-germinated" };
-  }
-  if (normalizedStage === "germinating" || stageState?.germinationStartedAt) {
-    return { label: getCanonicalSessionStageDisplayLabel("germinating"), className: "is-germinating" };
-  }
-  if (normalizedStage === "soaking") {
-    return { label: getCanonicalSessionStageDisplayLabel("soaking"), className: "is-soaking" };
-  }
-  return { label: "Not Started", className: "is-inactive" };
+  return getSessionDisplayStatus(session);
 }
 
 function getSessionCommandCenterProgressEvents(session = null) {
@@ -98697,12 +98717,11 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
     const isSelected = session.id === selectedSessionId;
     const stageBadge = getSessionCommandCenterStageBadge(session);
     const lifecycleHealth = getGrowSessionLifecycleHealth(session);
-    const varietyLabel = getSessionCommandCenterPrimaryStrain(session) || "Variety not set";
     const dateLabel = formatSessionNameDate(session.date);
-    const dayLabel = formatSessionCommandCenterDayLabel(session);
-    const reminderMeta = getSessionCommandCenterNextReminderMeta(session);
     const phaseLabel = getSessionCommandCenterPhaseLabel(session);
-    const elapsedLabel = getSessionCommandCenterElapsedLabel(session);
+    const roadmap = getSessionCommandCenterRoadmapState(session);
+    const actionMeta = getSessionCommandCenterActionMeta(session, roadmap);
+    const nextActionLabel = actionMeta?.nextTitle || "Review this session";
     const methodSummary = getSessionCommandCenterMethodSummary(session);
     const actionLabel = String(options.sessionActionLabel || "Continue").trim() || "Continue";
 
@@ -98720,14 +98739,10 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
           <p class="session-command-session-method">${escapeHtml(methodSummary)}</p>
           <div class="session-command-session-meta">
             <p class="session-command-session-date">${escapeHtml(dateLabel)}</p>
-            ${dayLabel ? `<p class="session-command-session-day">${escapeHtml(dayLabel)}</p>` : ""}
-            <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
           </div>
-          <div class="session-command-session-reminder" aria-label="Upcoming reminder">
-            <span><b>Current:</b> ${escapeHtml(phaseLabel)}</span>
-            <span><b>Elapsed:</b> ${escapeHtml(elapsedLabel)}</span>
-            <span><b>Next:</b> ${escapeHtml(reminderMeta?.label || "No reminder scheduled")}</span>
-            ${reminderMeta?.timeLabel || reminderMeta?.countdown ? `<span class="session-command-session-reminder-time">${escapeHtml(reminderMeta.timeLabel || reminderMeta.countdown)}</span>` : ""}
+          <div class="session-command-session-focus" aria-label="Session current phase and next action">
+            <p><b>Current</b><span>${escapeHtml(phaseLabel)}</span></p>
+            <p><b>Next</b><span>${escapeHtml(nextActionLabel)}</span></p>
           </div>
           <div class="session-command-session-footer">
             <span class="session-command-stage-badge session-status-pill ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
