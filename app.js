@@ -73686,7 +73686,7 @@ function renderHomeSessionDashboardHeroActions(hasSavedGrowSessions = true) {
 
   return `
     <a class="button button-new-session" href="#sessions">My Sessions</a>
-    <a class="button button-secondary" href="#active-sessions">Active Sessions <span aria-hidden="true">&rarr;</span></a>
+    <a class="button button-secondary" href="#new" data-session-entry="true">Start Session</a>
   `;
 }
 
@@ -73736,23 +73736,13 @@ function renderHome() {
   const activeSessions = sortActiveSessionsNewestFirst(
     visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
   );
-  const commandCenterHost = document.querySelector("#home-session-command-center-host");
+  const currentSessionHost = document.querySelector("#home-current-session-host");
   const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
 
-  mountSharedSessionCommandCenter(commandCenterHost, {
+  mountHomeCurrentSessionExperience(currentSessionHost, {
     activeSessions,
-    sessions: visibleSessions,
-    aggregateSessions: sessions,
     hasSessionHistory,
     requiresSignIn: !appState.user,
-    compact: true,
-    hideWhenNoActive: true,
-    showMetrics: false,
-    showSupply: false,
-    headerEyebrow: activeSessions.length === 1 ? "ACTIVE SESSION" : "ACTIVE SESSIONS",
-    headerTitle: activeSessions.length === 1 ? "Upcoming Reminder" : "Upcoming Reminders",
-    headerDescription: "Open active sessions and see the next reminder after a session has been saved.",
-    sessionActionLabel: "Open Session",
   });
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup({
@@ -73765,8 +73755,8 @@ function renderHome() {
   `;
   if (homeAnnouncementAnchor) {
     homeAnnouncementAnchor.innerHTML = homeEcosystemMarkup;
-  } else if (commandCenterHost) {
-    commandCenterHost.insertAdjacentHTML("afterend", homeEcosystemMarkup);
+  } else if (currentSessionHost) {
+    currentSessionHost.insertAdjacentHTML("afterend", homeEcosystemMarkup);
   } else {
     app.insertAdjacentHTML("beforeend", homeEcosystemMarkup);
   }
@@ -97958,14 +97948,15 @@ function renderSessionProgressCompanionMetricMarkup(iconKey = "clock", label = "
 }
 
 function renderSessionProgressCommandCenterMarkup(engineState = null, options = {}) {
+  const title = String(options.title || "Your Grow Companion").trim() || "Your Grow Companion";
   if (!engineState) {
     return `
-      <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="Session Progress">
+      <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="${escapeHtml(title)}">
         <header class="session-progress-companion-head">
           <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
           <div>
             <p class="eyebrow">Session Progress</p>
-            <h3>Your Grow Companion</h3>
+            <h3>${escapeHtml(title)}</h3>
           </div>
         </header>
         <div class="session-progress-companion-empty">
@@ -98006,7 +97997,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
   return `
     <article
       class="session-progress-companion-card ${isOverdue ? "is-overdue" : ""}"
-      aria-label="Session Progress"
+      aria-label="${escapeHtml(title)}"
       data-method-type="${escapeHtml(normalizedCompanionMethodType)}"
       data-method-theme="${escapeHtml(theme.key)}"
       ${companionHeroBackgroundAttributes}
@@ -98016,7 +98007,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
         <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
         <div>
           <p class="eyebrow">Session Progress</p>
-          <h3>Your Grow Companion</h3>
+          <h3>${escapeHtml(title)}</h3>
         </div>
       </header>
 
@@ -99240,6 +99231,173 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
       ${shouldRenderSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : ""}
     </section>
   `;
+}
+
+function getHomeCurrentSessionCompanionState(session = null) {
+  if (!session) {
+    return null;
+  }
+  return buildSessionLifecycleState(session);
+}
+
+function renderHomeCurrentSessionActionsMarkup(session = null) {
+  const openSessionAction = session
+    ? `<a class="button button-primary home-current-session-action" href="#sessions/${escapeHtml(session.id)}">Open Current Session</a>`
+    : "";
+  return `
+    <div class="home-current-session-actions" aria-label="Current session actions">
+      ${openSessionAction}
+      <a class="button button-primary home-current-session-action" href="#new" data-session-entry="true">Start Session</a>
+    </div>
+  `;
+}
+
+function renderHomeOtherActiveSessionCardMarkup(session = null, selectedSessionId = "") {
+  if (!session) {
+    return "";
+  }
+  const lifecycleState = getHomeCurrentSessionCompanionState(session);
+  const engineState = lifecycleState?.engineState || null;
+  const currentStep = getSessionEngineCurrentStep(engineState);
+  const phaseLabel = engineState?.phaseLabel || currentStep?.label || getSessionCommandCenterPhaseLabel(session);
+  const nextAction = engineState ? getSessionProgressCompanionNextActionDisplay(engineState) : null;
+  const elapsedLabel = engineState
+    ? formatSessionEngineDurationLabel(engineState.elapsedMs)
+    : (() => {
+      const startedAt = getEffectiveSessionTimerStartAt(session);
+      return startedAt instanceof Date && !Number.isNaN(startedAt.getTime())
+        ? formatDurationMsShort(Math.max(0, Date.now() - startedAt.getTime()))
+        : "Not started";
+    })();
+  const isSelected = String(session.id || "") === String(selectedSessionId || "");
+  return `
+    <article
+      class="home-other-active-session-card${isSelected ? " is-selected" : ""}"
+      data-home-current-session-select="${escapeHtml(session.id)}"
+      tabindex="0"
+      role="button"
+      aria-pressed="${isSelected ? "true" : "false"}"
+    >
+      <div class="home-other-active-session-copy">
+        <div class="home-other-active-session-title-row">
+          <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+          <span>${escapeHtml(getSessionCommandCenterMethodSummary(session))}</span>
+        </div>
+        <div class="home-other-active-session-meta">
+          <p><b>Current</b><span>${escapeHtml(phaseLabel || "Tracking")}</span></p>
+          <p><b>Next</b><span>${escapeHtml(nextAction?.value || "Review this session")}</span></p>
+          <p><b>Elapsed</b><span>${escapeHtml(elapsedLabel || "0m")}</span></p>
+        </div>
+      </div>
+      <a class="button button-secondary home-other-active-session-continue" href="#sessions/${escapeHtml(session.id)}">Continue</a>
+    </article>
+  `;
+}
+
+function renderHomeOtherActiveSessionsMarkup(activeSessions = [], selectedSessionId = "") {
+  const otherSessions = activeSessions.filter((session) => String(session?.id || "") !== String(selectedSessionId || ""));
+  if (!otherSessions.length) {
+    return "";
+  }
+
+  return `
+    <section class="home-other-active-sessions" aria-labelledby="home-other-active-sessions-title">
+      <div class="home-other-active-sessions-head">
+        <p class="eyebrow">ACTIVE SESSIONS</p>
+        <h3 id="home-other-active-sessions-title">Other Active Sessions</h3>
+      </div>
+      <div class="home-other-active-sessions-list">
+        ${otherSessions.map((session) => renderHomeOtherActiveSessionCardMarkup(session, selectedSessionId)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderHomeCurrentSessionExperienceMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  const hasSessionHistory = Boolean(options.hasSessionHistory);
+  const selectedSession = activeSessions.find((session) => String(session?.id || "") === String(selectedSessionId || ""))
+    || activeSessions[0]
+    || null;
+  const lifecycleState = getHomeCurrentSessionCompanionState(selectedSession);
+  const companionMarkup = selectedSession
+    ? renderSessionProgressCommandCenterMarkup(lifecycleState?.engineState || null, { title: "Current Session" })
+    : renderSessionProgressCommandCenterMarkup(null, { title: "Current Session" });
+  const emptyHelper = !selectedSession
+    ? `
+      <div class="home-current-session-empty-copy">
+        <p>${escapeHtml(requiresSignIn
+          ? "Sign in to start and continue tracking your grow sessions."
+          : (hasSessionHistory ? "No active session right now. Start a session when you're ready to track your next grow." : "Start your first grow session to open your current-session dashboard."))}</p>
+      </div>
+    `
+    : "";
+
+  return `
+    <section class="home-current-session-section" aria-label="Current Session" data-home-current-session-section="true">
+      ${renderHomeCurrentSessionActionsMarkup(selectedSession)}
+      <div class="home-current-session-companion" data-home-current-session-companion="true">
+        ${companionMarkup}
+        ${emptyHelper}
+      </div>
+      ${renderHomeOtherActiveSessionsMarkup(activeSessions, selectedSession?.id || "")}
+    </section>
+  `;
+}
+
+function mountHomeCurrentSessionExperience(host, options = {}) {
+  if (!(host instanceof Element)) {
+    return null;
+  }
+
+  const activeSessions = getVisibleUserSessions(Array.isArray(options.activeSessions) ? options.activeSessions : []);
+  let selectedCurrentSessionId = options.selectedSessionId || activeSessions[0]?.id || "";
+
+  const renderHomeCurrentSession = () => {
+    const selectedSession = activeSessions.find((session) => String(session?.id || "") === String(selectedCurrentSessionId || ""))
+      || activeSessions[0]
+      || null;
+    selectedCurrentSessionId = selectedSession?.id || "";
+    host.hidden = false;
+    host.innerHTML = renderHomeCurrentSessionExperienceMarkup(activeSessions, selectedCurrentSessionId, options);
+    hydrateAppIconSlots(host);
+    hydrateMethodCompanionBackgrounds(host);
+    bindSessionProgressCommandActions(host);
+    requestSessionProgressCompanionCurrentStepScroll(host.querySelector("[data-home-current-session-companion='true']"), { forceCenter: true });
+  };
+
+  if (host.dataset.homeCurrentSessionBound !== "true") {
+    host.dataset.homeCurrentSessionBound = "true";
+    host.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element) || target.closest("a, button")) {
+        return;
+      }
+      const card = target.closest("[data-home-current-session-select]");
+      if (!card) {
+        return;
+      }
+      selectedCurrentSessionId = String(card.getAttribute("data-home-current-session-select") || "");
+      renderHomeCurrentSession();
+    });
+    host.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element) || (event.key !== "Enter" && event.key !== " ")) {
+        return;
+      }
+      const card = target.closest("[data-home-current-session-select]");
+      if (!card) {
+        return;
+      }
+      event.preventDefault();
+      selectedCurrentSessionId = String(card.getAttribute("data-home-current-session-select") || "");
+      renderHomeCurrentSession();
+    });
+  }
+
+  renderHomeCurrentSession();
+  startSessionTimer(renderHomeCurrentSession);
+  return renderHomeCurrentSession;
 }
 
 function mountSharedSessionCommandCenter(host, options = {}) {
