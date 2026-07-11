@@ -99593,68 +99593,238 @@ function formatPublicJourneyTimestamp(value = null, fallback = "Not shared") {
   return getGallerySnapshotSubmittedDateTimeLabel({ publishedAt: value.toISOString(), createdAt: value.toISOString() });
 }
 
-function renderPublicSessionLifecycleTimelineMarkup(state) {
-  const germinationDurationEndAt = state.firstPlantedAt || state.completedAt;
+function getPublicSessionJourneyMethodType(snapshot = null) {
+  return snapshot?.methodType
+    || snapshot?.method_type
+    || snapshot?.systemType
+    || snapshot?.system_type
+    || "KAN";
+}
 
-  const events = [
-    {
+function buildPublicSessionJourneyEngineState({
+  snapshot = null,
+  methodType = "",
+  startedAt = null,
+  germinationStartedAt = null,
+  firstPlantedAt = null,
+  completedAt = null,
+} = {}) {
+  if (!SESSION_ENGINE?.calculateSessionState) {
+    return null;
+  }
+
+  const sessionRecord = {
+    methodType: methodType || getPublicSessionJourneyMethodType(snapshot),
+    systemType: methodType || getPublicSessionJourneyMethodType(snapshot),
+    date: snapshot?.sessionDate || snapshot?.date || "",
+    time: snapshot?.sessionTime || snapshot?.session_time || snapshot?.time || "00:00",
+    sessionStatus: completedAt ? "completed" : "active",
+    sessionStartedAt: startedAt ? startedAt.toISOString() : "",
+    soakStartedAt: startedAt ? startedAt.toISOString() : "",
+    timerStartAt: startedAt ? startedAt.toISOString() : "",
+    germinationStartedAt: germinationStartedAt ? germinationStartedAt.toISOString() : "",
+    firstPlantedAt: firstPlantedAt ? firstPlantedAt.toISOString() : "",
+    completedAt: completedAt ? completedAt.toISOString() : "",
+    methodSetup: snapshot?.methodSetup || snapshot?.method_setup || {},
+    partitions: Array.isArray(snapshot?.partitions) ? snapshot.partitions : [],
+  };
+
+  return buildSessionEngineState(sessionRecord, {
+    method: sessionRecord.methodType,
+    now: completedAt || new Date(),
+  });
+}
+
+function normalizePublicJourneyTone(tone = "", key = "") {
+  const normalizedTone = String(tone || "").trim().toLowerCase();
+  if (["started", "soaking", "germination", "green", "completed", "silver", "orange", "cyan", "gray"].includes(normalizedTone)) {
+    return normalizedTone;
+  }
+  const normalizedKey = String(key || "").trim().toLowerCase();
+  if (normalizedKey === "started") {
+    return "started";
+  }
+  if (normalizedKey === "complete" || normalizedKey === "completed") {
+    return "completed";
+  }
+  if (normalizedKey.includes("soak") || normalizedKey.includes("prep")) {
+    return "soaking";
+  }
+  if (normalizedKey.includes("check") || normalizedKey.includes("watch")) {
+    return "green";
+  }
+  return "germination";
+}
+
+function getPublicJourneyDisplayLabel(step = {}, options = {}) {
+  const key = String(step?.key || "").trim().toLowerCase();
+  if (options.firstGerminated === true) {
+    return "First Germinated";
+  }
+  if (key === "started") {
+    return "Started";
+  }
+  if (key === "complete" || key === "completed") {
+    return "Completed";
+  }
+  if (key === "soak" || key === "soaking") {
+    return "Soaking";
+  }
+  return step?.label || "Session Stage";
+}
+
+function isPublicJourneyCheckStep(step = {}) {
+  const key = String(step?.key || "").trim().toLowerCase();
+  return ["check-window", "first-check", "check-seeds", "check-sprouts", "watch-sprouts", "emergence"].includes(key);
+}
+
+function getPublicJourneyIconName(step = {}, options = {}) {
+  if (options.firstGerminated === true) {
+    return "sourceHeroSprout";
+  }
+  const key = String(step?.key || "").trim().toLowerCase();
+  const iconName = String(step?.iconName || "").trim().toLowerCase();
+  if (key === "started" || iconName.includes("method")) {
+    return "sourceHeroSprout";
+  }
+  if (key === "complete" || key === "completed" || iconName.includes("completed")) {
+    return "check";
+  }
+  if (iconName.includes("soaking") || key.includes("soak") || key.includes("prep")) {
+    return "waterDrop";
+  }
+  if (iconName.includes("first") || key.includes("check") || key.includes("watch")) {
+    return "sourceHeroSprout";
+  }
+  return "seedGermination";
+}
+
+function getPublicJourneyStepDurationEndAt(step = {}, state = {}, nextStep = null) {
+  const key = String(step?.key || "").trim().toLowerCase();
+  if (["soak", "soaking", "ready-transfer", "move-germination"].includes(key) && state.germinationStartedAt) {
+    return state.germinationStartedAt;
+  }
+  if (["germination", "paper-towel", "seeds-started", "seeds-planted"].includes(key) && state.firstPlantedAt) {
+    return state.firstPlantedAt;
+  }
+  if (isPublicJourneyCheckStep(step) && state.completedAt) {
+    return state.completedAt;
+  }
+  return parseCompletedAtValue(nextStep?.startAt || "") || parseCompletedAtValue(step?.endAt || "");
+}
+
+function buildPublicSessionJourneyEvents(state = {}) {
+  const steps = Array.isArray(state?.engineState?.timelineSteps)
+    ? state.engineState.timelineSteps.filter((step) => String(step?.label || step?.key || "").trim())
+    : [];
+  const firstPlantedAt = state.firstPlantedAt || null;
+  const hasCheckStep = steps.some(isPublicJourneyCheckStep);
+
+  if (steps.length) {
+    const events = steps.map((step, index) => {
+      const key = String(step?.key || "").trim().toLowerCase();
+      const nextStep = steps[index + 1] || null;
+      const isStarted = key === "started";
+      const isCompleted = key === "complete" || key === "completed";
+      const useFirstGerminatedEvent = Boolean(firstPlantedAt && isPublicJourneyCheckStep(step));
+      const startAt = isStarted
+        ? state.startedAt
+        : (isCompleted ? state.completedAt : (useFirstGerminatedEvent ? firstPlantedAt : parseCompletedAtValue(step.startAt || "")));
+      const durationEndAt = getPublicJourneyStepDurationEndAt(step, state, nextStep);
+      const durationLabel = isCompleted
+        ? formatPublicTimelineElapsedDuration(state.startedAt, state.completedAt)
+        : (useFirstGerminatedEvent
+          ? formatPublicTimelineElapsedDuration(state.startedAt, firstPlantedAt, { includeDays: false })
+          : formatPublicTimelineElapsedDuration(parseCompletedAtValue(step.startAt || ""), durationEndAt, { includeDays: false }));
+      const description = isStarted
+        ? "Session opened"
+        : (isCompleted
+          ? formatPublicTimelineDurationDetail("Total duration", state.startedAt, state.completedAt)
+          : (useFirstGerminatedEvent
+            ? formatPublicTimelineDurationDetail("Time from start", state.startedAt, firstPlantedAt, { includeDays: false })
+            : formatPublicTimelineDurationDetail("Stage duration", parseCompletedAtValue(step.startAt || ""), durationEndAt, { includeDays: false })));
+      return {
+        label: getPublicJourneyDisplayLabel(step, { firstGerminated: useFirstGerminatedEvent }),
+        timeLabel: startAt ? formatPublicJourneyTimestamp(startAt) : (isStarted ? (state.startedDisplayLabel || "Not shared") : "Not shared"),
+        description,
+        durationLabel: isStarted ? "" : durationLabel,
+        statusLabel: isStarted || isCompleted ? "Completed" : "",
+        durationIcon: isStarted || isCompleted ? "check" : "clock",
+        icon: getPublicJourneyIconName(step, { firstGerminated: useFirstGerminatedEvent }),
+        tone: isStarted ? "started" : (isCompleted ? "completed" : normalizePublicJourneyTone(step.tone, step.key)),
+        complete: Boolean(step.isComplete || isStarted || isCompleted || startAt),
+      };
+    });
+
+    if (firstPlantedAt && !hasCheckStep) {
+      const completeIndex = events.findIndex((event) => event.tone === "completed");
+      const firstGerminatedEvent = {
+        label: "First Germinated",
+        timeLabel: formatPublicJourneyTimestamp(firstPlantedAt),
+        description: formatPublicTimelineDurationDetail("Time from start", state.startedAt, firstPlantedAt, { includeDays: false }),
+        durationLabel: formatPublicTimelineElapsedDuration(state.startedAt, firstPlantedAt, { includeDays: false }),
+        durationIcon: "clock",
+        icon: "sourceHeroSprout",
+        tone: "green",
+        complete: true,
+      };
+      if (completeIndex >= 0) {
+        events.splice(completeIndex, 0, firstGerminatedEvent);
+      } else {
+        events.push(firstGerminatedEvent);
+      }
+    }
+
+    return events;
+  }
+
+  const fallbackEvents = [];
+  if (state.startedAt || state.startedDisplayLabel) {
+    fallbackEvents.push({
       label: "Started",
-      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : (state.startedDisplayLabel || "Not shared"),
+      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : state.startedDisplayLabel,
       description: "Session opened",
-      durationLabel: "",
       statusLabel: "Completed",
       durationIcon: "check",
       icon: "sourceHeroSprout",
       tone: "started",
-      complete: Boolean(state.startedAt || state.startedDisplayLabel),
-    },
-    {
-      label: "Soaking",
-      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : "Not shared",
-      description: formatPublicTimelineDurationDetail("Stage duration", state.startedAt, state.germinationStartedAt, { includeDays: false }),
-      durationLabel: formatPublicTimelineElapsedDuration(state.startedAt, state.germinationStartedAt, { includeDays: false }),
-      durationIcon: "clock",
-      icon: "waterDrop",
-      tone: "soaking",
-      complete: Boolean(state.startedAt && state.germinationStartedAt),
-    },
-    {
-      label: "Germination",
-      timeLabel: formatPublicJourneyTimestamp(state.germinationStartedAt),
-      description: formatPublicTimelineDurationDetail("Stage duration", state.germinationStartedAt, germinationDurationEndAt, { includeDays: false }),
-      durationLabel: formatPublicTimelineElapsedDuration(state.germinationStartedAt, germinationDurationEndAt, { includeDays: false }),
-      durationIcon: "clock",
-      icon: "seedGermination",
-      tone: "germination",
-      complete: Boolean(state.germinationStartedAt),
-    },
-    {
+      complete: true,
+    });
+  }
+  if (firstPlantedAt) {
+    fallbackEvents.push({
       label: "First Germinated",
-      timeLabel: formatPublicJourneyTimestamp(state.firstPlantedAt),
-      description: state.firstPlantedAt
-        ? formatPublicTimelineDurationDetail("Time from start", state.startedAt, state.firstPlantedAt, { includeDays: false })
-        : "Not shared",
-      durationLabel: state.firstPlantedAt ? formatPublicTimelineElapsedDuration(state.startedAt, state.firstPlantedAt, { includeDays: false }) : "",
+      timeLabel: formatPublicJourneyTimestamp(firstPlantedAt),
+      description: formatPublicTimelineDurationDetail("Time from start", state.startedAt, firstPlantedAt, { includeDays: false }),
+      durationLabel: formatPublicTimelineElapsedDuration(state.startedAt, firstPlantedAt, { includeDays: false }),
       durationIcon: "clock",
       icon: "sourceHeroSprout",
       tone: "green",
-      complete: Boolean(state.firstPlantedAt),
-    },
-    {
+      complete: true,
+    });
+  }
+  if (state.completedAt) {
+    fallbackEvents.push({
       label: "Completed",
       timeLabel: formatPublicJourneyTimestamp(state.completedAt),
       description: formatPublicTimelineDurationDetail("Total duration", state.startedAt, state.completedAt),
       durationLabel: formatPublicTimelineElapsedDuration(state.startedAt, state.completedAt),
-      statusLabel: state.completedAt ? "Completed" : "",
+      statusLabel: "Completed",
       durationIcon: "check",
       icon: "check",
       tone: "completed",
-      complete: Boolean(state.completedAt),
-    },
-  ];
+      complete: true,
+    });
+  }
+
+  return fallbackEvents;
+}
+
+function renderPublicSessionLifecycleTimelineMarkup(state) {
+  const events = buildPublicSessionJourneyEvents(state);
 
   return `
-    <div class="public-session-journey">
+    <div class="public-session-journey" style="--public-session-journey-count:${escapeHtml(String(Math.max(1, events.length)))}">
       ${events.map((event) => `
         <article class="public-session-journey-step public-session-journey-step--${escapeHtml(event.tone)} ${event.complete ? "is-complete" : ""}">
           <span class="public-session-journey-marker" aria-hidden="true">${renderAppIconMarkup(event.durationIcon || "check", { variant: "plain" })}</span>
@@ -99752,12 +99922,23 @@ function buildSessionLifecycleState(session) {
 
 function buildMockPublicSessionLifecycleState(scenario = null) {
   const activeScenario = scenario || MOCK_PUBLIC_SESSION_SCENARIOS[0];
+  const startedAt = parseCompletedAtValue(activeScenario.timeline.startedAt);
+  const germinationStartedAt = parseCompletedAtValue(activeScenario.timeline.germinationStartedAt);
+  const firstPlantedAt = parseCompletedAtValue(activeScenario.timeline.firstPlantedAt);
+  const completedAt = parseCompletedAtValue(activeScenario.timeline.completedAt);
   return {
     showEmptyTimeline: false,
-    startedAt: parseCompletedAtValue(activeScenario.timeline.startedAt),
-    germinationStartedAt: parseCompletedAtValue(activeScenario.timeline.germinationStartedAt),
-    firstPlantedAt: parseCompletedAtValue(activeScenario.timeline.firstPlantedAt),
-    completedAt: parseCompletedAtValue(activeScenario.timeline.completedAt),
+    engineState: buildPublicSessionJourneyEngineState({
+      methodType: "KAN",
+      startedAt,
+      germinationStartedAt,
+      firstPlantedAt,
+      completedAt,
+    }),
+    startedAt,
+    germinationStartedAt,
+    firstPlantedAt,
+    completedAt,
   };
 }
 
@@ -99793,6 +99974,14 @@ function buildPublicSessionLifecycleState(snapshot) {
 
   return {
     showEmptyTimeline: false,
+    engineState: buildPublicSessionJourneyEngineState({
+      snapshot,
+      methodType: getPublicSessionJourneyMethodType(snapshot),
+      startedAt,
+      germinationStartedAt,
+      firstPlantedAt,
+      completedAt,
+    }),
     startedAt,
     startedDisplayLabel,
     startedComplete: Boolean(startedAt || startedDisplayLabel),

@@ -46362,6 +46362,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .public-session-timeline-section {
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   margin-top: 0;
   padding: 28px;
 }
@@ -46486,12 +46488,13 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-journey-heading {
+  flex: 0 0 auto;
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
   gap: 18px;
-  margin-bottom: 26px;
+  margin-bottom: 20px;
 }
 
 .public-session-journey-heading-icon {
@@ -46539,18 +46542,23 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-journey {
   --journey-rail-left: 29px;
+  --journey-step-count: var(--public-session-journey-count, 5);
+  flex: 1 1 auto;
   position: relative;
   z-index: 1;
-  display: grid;
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: clamp(12px, 1.4vh, 18px);
+  min-height: 0;
   padding-left: 86px;
 }
 
 .public-session-journey::before {
   content: "";
   position: absolute;
-  top: 32px;
-  bottom: 84px;
+  top: 28px;
+  bottom: 74px;
   left: var(--journey-rail-left);
   width: 4px;
   border-radius: 999px;
@@ -46563,8 +46571,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .public-session-journey-step {
   --journey-accent: #94d159;
   --journey-accent-soft: rgba(148, 209, 89, 0.13);
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
   position: relative;
   min-width: 0;
+  min-height: 92px;
 }
 
 .public-session-journey-step--started {
@@ -46592,10 +46604,30 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   --journey-accent-soft: rgba(184, 134, 92, 0.18);
 }
 
+.public-session-journey-step--silver {
+  --journey-accent: #e6eee8;
+  --journey-accent-soft: rgba(230, 238, 232, 0.12);
+}
+
+.public-session-journey-step--orange {
+  --journey-accent: #d49a62;
+  --journey-accent-soft: rgba(212, 154, 98, 0.14);
+}
+
+.public-session-journey-step--cyan {
+  --journey-accent: #6fd0dc;
+  --journey-accent-soft: rgba(111, 208, 220, 0.14);
+}
+
+.public-session-journey-step--gray {
+  --journey-accent: #aeb8b0;
+  --journey-accent-soft: rgba(174, 184, 176, 0.12);
+}
+
 .public-session-journey-marker {
   position: absolute;
   z-index: 2;
-  top: 38px;
+  top: 50%;
   left: calc(-86px + var(--journey-rail-left) - 19px);
   width: 42px;
   height: 42px;
@@ -46609,6 +46641,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   box-shadow:
     0 0 0 8px color-mix(in srgb, var(--journey-accent) 15%, transparent),
     0 0 26px color-mix(in srgb, var(--journey-accent) 48%, transparent);
+  transform: translateY(-50%);
 }
 
 .public-session-journey-marker svg {
@@ -46619,13 +46652,14 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-journey-card {
+  width: 100%;
   min-width: 0;
-  min-height: 128px;
+  min-height: 106px;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
+  grid-template-columns: 62px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 18px;
-  padding: 20px 22px;
+  gap: 16px;
+  padding: 16px 18px;
   border: 1px solid color-mix(in srgb, var(--journey-accent) 20%, transparent);
   border-radius: 22px;
   background:
@@ -46637,8 +46671,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-journey-stage-icon {
-  width: 62px;
-  height: 62px;
+  width: 54px;
+  height: 54px;
   display: grid;
   place-items: center;
   border: 2px solid color-mix(in srgb, var(--journey-accent) 52%, transparent);
@@ -46653,15 +46687,15 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-journey-stage-icon svg {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   filter: drop-shadow(0 0 12px color-mix(in srgb, var(--journey-accent) 36%, transparent));
 }
 
 .public-session-journey-stage-copy {
   min-width: 0;
   display: grid;
-  gap: 7px;
+  gap: 5px;
 }
 
 .public-session-journey-stage-copy strong,
@@ -46766,10 +46800,11 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-journey-footer {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 12px 0 0 -86px;
+  margin: 10px 0 0 -86px;
   padding: 14px 16px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   border-radius: 16px;
@@ -46818,7 +46853,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 
   .public-session-journey-marker {
-    top: 28px;
+    top: 50%;
     left: calc(-54px + var(--journey-rail-left) - 16px);
     width: 34px;
     height: 34px;
