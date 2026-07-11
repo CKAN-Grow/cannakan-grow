@@ -32581,6 +32581,8 @@ function getAppSectionHeaderIconName(iconType = "overview") {
       return "profileUser";
     case "plant":
       return "mySessionsSprout";
+    case "seed":
+      return "seedGermination";
     case "reports":
       return "reportDocument";
     case "sources":
@@ -51038,6 +51040,15 @@ function renderHomeLockedEcosystemPreviewMarkup() {
         bodyMarkup: renderHomeGalleryRankingsTeaser(),
       })}
       ${renderHomeLockedSectionPreviewMarkup({
+        key: "seed-directory",
+        eyebrow: "Seed Explorer",
+        title: "Seed Explorer",
+        iconType: "seed",
+        description: "Community variety data, germination rollups, and confidence signals.",
+        modifierClass: "home-locked-ecosystem-section--seed-directory",
+        bodyMarkup: renderHomeSeedExplorerPreviewSectionMarkup(),
+      })}
+      ${renderHomeLockedSectionPreviewMarkup({
         key: "source-directory",
         eyebrow: "Source Explorer",
         title: "Source Explorer",
@@ -51163,6 +51174,7 @@ function renderHomeSecondaryInfoRowMarkup(options = {}) {
       <div class="${escapeHtml(`${growNetworkPreviewShellClassName} home-grow-network-preview-shell--secondary`)}">
         <div class="home-grow-network-preview-content"${lockedPreviewAttributes}>
           ${announcementMarkup ? `<div class="home-dashboard-secondary-row-bottom">${announcementMarkup}</div>` : ""}
+          ${renderHomeSeedExplorerPreviewSectionMarkup()}
           ${renderHomeTestedSourcesPreviewSectionMarkup()}
           ${renderHomeExploreDividerMarkup({
             title: `CSTP: ${BRAND_NAME} Seed Testing Program`,
@@ -52590,6 +52602,141 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
                     <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
                   </span>
                 </article>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function getHomeSeedExplorerConfidencePercent(totalSeeds = 0) {
+  const seedCount = Math.max(0, Number(totalSeeds) || 0);
+  if (seedCount >= 100) {
+    return 100;
+  }
+  if (seedCount >= 20) {
+    return 72;
+  }
+  return seedCount > 0 ? 44 : 0;
+}
+
+function getHomeSeedExplorerPreviewData() {
+  const state = buildCommunityInsightsState();
+  const liveVarietyRows = Array.isArray(state.mostTestedVarieties)
+    ? state.mostTestedVarieties.filter((row) => Number(row?.totalSeeds) > 0)
+    : [];
+  const liveRows = liveVarietyRows.map((row) => {
+    const seedProfile = getSeedExplorerSeedByVarietyLabel(row.label || "");
+    const signal = getPublicAnalyticsSignalStrength(row.totalSeeds);
+    return {
+      name: row.label || "Seed variety",
+      source: seedProfile?.source || "Community Sources",
+      averageRate: row.averageRate,
+      confidenceLabel: signal.label,
+      confidencePercent: getHomeSeedExplorerConfidencePercent(row.totalSeeds),
+      sessionCount: row.sessionCount || row.snapshotCount || 0,
+      seedsTracked: row.totalSeeds || 0,
+      href: seedProfile?.id ? `#seeds/${encodeURIComponent(seedProfile.id)}` : "#seeds",
+    };
+  });
+
+  if (liveRows.length >= 3) {
+    return {
+      totalVarieties: liveVarietyRows.length,
+      totalSessions: state.overview?.totalPublicSessionsRepresented || liveRows.reduce((sum, row) => sum + row.sessionCount, 0),
+      rows: liveRows.slice(0, 3),
+      source: "community",
+    };
+  }
+
+  const fallbackRecords = getSeedExplorerDemoSeeds().sort((left, right) => (
+    (Number(right.communitySessions) || 0) - (Number(left.communitySessions) || 0)
+    || (Number(right.confidencePercent) || 0) - (Number(left.confidencePercent) || 0)
+    || String(left.varietyName || "").localeCompare(String(right.varietyName || ""))
+  ));
+  const fallbackMetrics = getSeedExplorerMetrics(fallbackRecords);
+  const fallbackRows = fallbackRecords.slice(0, 3).map((seed) => ({
+    name: seed.varietyName || "Seed variety",
+    source: seed.source || "Source not shared",
+    averageRate: Number(seed.germinationSuccess) || null,
+    confidenceLabel: seed.communityConfidence || getPublicAnalyticsSignalStrength(seed.seedsTracked).label,
+    confidencePercent: Math.max(0, Math.min(100, Number(seed.confidencePercent) || getHomeSeedExplorerConfidencePercent(seed.seedsTracked))),
+    sessionCount: Number(seed.communitySessions) || 0,
+    seedsTracked: Number(seed.seedsTracked) || 0,
+    href: seed.id ? `#seeds/${encodeURIComponent(seed.id)}` : "#seeds",
+  }));
+
+  return {
+    totalVarieties: Math.max(liveVarietyRows.length, fallbackMetrics.totalVarieties),
+    totalSessions: Math.max(state.overview?.totalPublicSessionsRepresented || 0, fallbackMetrics.totalSessions),
+    rows: [...liveRows, ...fallbackRows].slice(0, 3),
+    source: liveRows.length ? "mixed" : "preview",
+  };
+}
+
+function renderHomeSeedExplorerPreviewSectionMarkup() {
+  const preview = getHomeSeedExplorerPreviewData();
+  const summaryStats = [
+    { label: "Varieties Tracked", value: preview.totalVarieties },
+    { label: "Community Sessions", value: preview.totalSessions },
+  ];
+  const previewLabel = preview.source === "community"
+    ? "Community evidence preview"
+    : "Seed Explorer preview";
+
+  return `
+    <section class="card home-tested-sources-preview-section home-seed-explorer-preview-section">
+      <div class="home-tested-sources-preview-head">
+        <div class="section-title-with-icon app-section-header-main home-section-header-main">
+          ${renderPremiumSectionHeaderIcon("seedGermination")}
+          <div>
+            <p class="eyebrow">Seed Explorer</p>
+            <h2>Seed Explorer</h2>
+            <p class="muted">Discover seed varieties through real community germination data.</p>
+          </div>
+        </div>
+        <a class="button button-secondary home-tested-sources-header-cta" href="#seeds">View Seed Explorer</a>
+      </div>
+      <div class="home-tested-sources-overview">
+        <div class="home-tested-sources-kpis" aria-label="Seed Explorer preview summary">
+          ${summaryStats.map((kpi) => `
+            <article class="home-tested-source-kpi home-seed-explorer-kpi">
+              <strong>${escapeHtml(Number(kpi.value || 0).toLocaleString())}</strong>
+              <span>${escapeHtml(kpi.label)}</span>
+            </article>
+          `).join("")}
+        </div>
+        <div class="home-tested-sources-rankings home-seed-explorer-rankings">
+          <div class="home-tested-sources-rankings-head">
+            <p class="eyebrow">Trending Varieties</p>
+            <span>${escapeHtml(previewLabel)}</span>
+          </div>
+          <div class="home-tested-sources-list" role="list" aria-label="Trending Seed Explorer varieties">
+            ${preview.rows.map((row) => {
+              const confidencePercent = Math.max(0, Math.min(100, Number(row.confidencePercent) || 0));
+              const sessionSummary = row.sessionCount
+                ? `${formatPrivateAnalyticsNumber(row.sessionCount)} ${row.sessionCount === 1 ? "session" : "sessions"}`
+                : `${formatPrivateAnalyticsNumber(row.seedsTracked)} seeds tracked`;
+
+              return `
+                <a class="home-tested-source-row home-seed-explorer-row" role="listitem" href="${escapeHtml(row.href || "#seeds")}">
+                  ${renderAppIconMarkup("seedGermination", {
+                    variant: "plate",
+                    className: "home-seed-explorer-row-icon",
+                  })}
+                  <span class="home-tested-source-row-copy">
+                    <strong>${escapeHtml(row.name || "Seed variety")}</strong>
+                    <small>${escapeHtml(row.source || "Community Sources")}</small>
+                    <small><b>${escapeHtml(formatPrivateAnalyticsPercent(row.averageRate))}</b> Average Germination</small>
+                  </span>
+                  <span class="home-tested-source-confidence" aria-label="${escapeHtml(row.confidenceLabel || sessionSummary)}">
+                    <span>${escapeHtml(row.confidenceLabel || sessionSummary)}</span>
+                    <small>${escapeHtml(sessionSummary)}</small>
+                    <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
+                  </span>
+                </a>
               `;
             }).join("")}
           </div>
