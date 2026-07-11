@@ -47156,13 +47156,32 @@ function setNewSessionQuickStartHelpDismissed(dismissed = true) {
   writeBooleanLocalStorageFlag(NEW_SESSION_QUICK_START_DISMISSED_STORAGE_KEY, dismissed === true);
 }
 
+function removeNewSessionQuickStartHelpSection(quickStartSection = null) {
+  if (quickStartSection instanceof HTMLElement) {
+    quickStartSection.remove();
+  }
+}
+
+function dismissNewSessionQuickStartHelp(control = null, scope = document) {
+  setNewSessionQuickStartHelpDismissed(true);
+  const quickStartSection = control?.closest?.("[data-new-session-onboarding='quick-start']")
+    || scope.querySelector?.("[data-new-session-onboarding='quick-start']")
+    || document.querySelector("[data-new-session-onboarding='quick-start']");
+  removeNewSessionQuickStartHelpSection(quickStartSection);
+}
+
 function syncNewSessionQuickStartHelpVisibility(scope = document) {
   const quickStartSection = scope.querySelector?.("[data-new-session-onboarding='quick-start']") || null;
   if (!(quickStartSection instanceof HTMLElement)) {
     return null;
   }
 
-  quickStartSection.hidden = isNewSessionQuickStartHelpDismissed();
+  if (isNewSessionQuickStartHelpDismissed()) {
+    removeNewSessionQuickStartHelpSection(quickStartSection);
+    return null;
+  }
+
+  quickStartSection.hidden = false;
   return quickStartSection;
 }
 
@@ -47182,7 +47201,24 @@ if (typeof window !== "undefined") {
   window.restoreCannakanFirstSessionHelp = restoreNewSessionFirstSessionHelp;
 }
 
+function bindGlobalNewSessionQuickStartDismissHandler() {
+  if (document.documentElement.dataset.quickStartDismissDelegated === "true") {
+    return;
+  }
+  document.documentElement.dataset.quickStartDismissDelegated = "true";
+  document.addEventListener("click", (event) => {
+    const dismissButton = event.target?.closest?.("[data-new-session-quick-start-dismiss='true']");
+    if (!(dismissButton instanceof HTMLElement)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    dismissNewSessionQuickStartHelp(dismissButton);
+  }, true);
+}
+
 function bindNewSessionQuickStartHelp(scope = document) {
+  bindGlobalNewSessionQuickStartDismissHandler();
   syncNewSessionQuickStartHelpVisibility(scope);
 
   scope.querySelectorAll("[data-learn-category-target], [data-new-session-tutorial]").forEach((button) => {
@@ -47202,12 +47238,10 @@ function bindNewSessionQuickStartHelp(scope = document) {
     }
 
     button.dataset.quickStartDismissBound = "true";
-    button.addEventListener("click", () => {
-      setNewSessionQuickStartHelpDismissed(true);
-      const quickStartSection = button.closest("[data-new-session-onboarding='quick-start']");
-      if (quickStartSection instanceof HTMLElement) {
-        quickStartSection.hidden = true;
-      }
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dismissNewSessionQuickStartHelp(button, scope);
     });
   });
 }

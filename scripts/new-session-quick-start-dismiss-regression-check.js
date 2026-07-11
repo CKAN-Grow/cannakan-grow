@@ -29,8 +29,23 @@ assert(
 );
 
 assert(
-  appJs.includes("setNewSessionQuickStartHelpDismissed(true)") && appJs.includes("quickStartSection.hidden = true"),
-  "Dismiss action persists the state and hides the Quick Start section.",
+  appJs.includes("function dismissNewSessionQuickStartHelp(control = null, scope = document)") && appJs.includes("setNewSessionQuickStartHelpDismissed(true)") && appJs.includes("removeNewSessionQuickStartHelpSection(quickStartSection);"),
+  "Dismiss action persists the state and removes the Quick Start section.",
+);
+
+assert(
+  appJs.includes("if (isNewSessionQuickStartHelpDismissed())") && appJs.includes("return null;"),
+  "Quick Start visibility sync removes dismissed onboarding instead of rendering it.",
+);
+
+assert(
+  appJs.includes("function bindGlobalNewSessionQuickStartDismissHandler()") && appJs.includes('document.addEventListener("click", (event) =>') && appJs.includes("[data-new-session-quick-start-dismiss='true']"),
+  "Quick Start dismiss uses a delegated capture handler so stale direct bindings cannot break the click.",
+);
+
+assert(
+  appJs.includes("event.preventDefault();\n    event.stopPropagation();\n    dismissNewSessionQuickStartHelp(dismissButton);"),
+  "Delegated Quick Start dismiss prevents competing handlers and removes the card immediately.",
 );
 
 assert(
