@@ -75109,3 +75109,213 @@ a.source-directory-variety-chip:focus-visible {
     0 8px 18px rgba(0, 0, 0, 0.22);
   transform: translateY(-1px);
 }
+
+/* Seed Vault modern glass alignment */
+.seed-vault-page {
+  background:
+    radial-gradient(circle at 12% 4%, rgba(var(--cannakan-brand-green-rgb, 148, 209, 89), 0.035), transparent 24%),
+    transparent;
+}
+
+.seed-vault-panel,
+.seed-vault-panel[data-seed-vault-theme] {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.24)) 42%, rgba(255, 255, 255, 0.09));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01) 24%),
+    linear-gradient(180deg, rgba(16, 22, 18, 0.96) 0%, rgba(9, 14, 12, 0.97) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 32px rgba(0, 0, 0, 0.22);
+}
+
+.seed-vault-panel .section-title-icon,
+.seed-vault-shortcut-icon,
+.seed-vault-empty-icon,
+.seed-vault-insights-icon,
+.seed-vault-collections .seed-vault-quick-view-icon,
+.seed-vault-theme-swatch,
+.seed-vault-theme-more-dot,
+.seed-vault-inline-summary-item::before,
+.sessions-inline-icon {
+  filter: none;
+  box-shadow: none;
+}
+
+.seed-vault-panel .section-title-icon,
+.seed-vault-shortcut-icon {
+  border-color: rgba(148, 209, 89, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(255, 255, 255, 0.03);
+  color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 82%, white 18%);
+}
+
+.seed-vault-inline-summary-item,
+.seed-vault-metric-card,
+.seed-vault-insight-card,
+.seed-vault-intelligence-panel,
+.seed-vault-rollup-card,
+.seed-vault-controls,
+.seed-vault-insights,
+.seed-vault-collections .seed-vault-quick-view,
+.seed-vault-side-card,
+.seed-vault-support-panel,
+.seed-vault-summary-panel,
+.seed-vault-share-card,
+.seed-vault-user-share-section,
+.seed-vault-shared-with-me-summary {
+  border-color: rgba(255, 255, 255, 0.085);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.01) 30%),
+    rgba(9, 14, 12, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 18px rgba(0, 0, 0, 0.13);
+}
+
+.seed-vault-theme-control {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.28)) 44%, rgba(255, 255, 255, 0.09));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.01) 30%),
+    rgba(9, 14, 12, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+.seed-vault-theme-option,
+.seed-vault-theme-more-summary,
+.seed-vault-view-toggle-button,
+.seed-vault-page-tab {
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+}
+
+.seed-vault-theme-option:hover,
+.seed-vault-theme-option:focus-visible,
+.seed-vault-theme-option.is-active,
+.seed-vault-theme-more-summary:hover,
+.seed-vault-theme-more-summary:focus-visible,
+.seed-vault-theme-more[open] .seed-vault-theme-more-summary,
+.seed-vault-page[data-seed-vault-theme] .seed-vault-page-tab.is-active,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-view-toggle-button.is-active,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-quick-view.is-active {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.34)) 76%, rgba(255, 255, 255, 0.08));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--seed-vault-theme-accent-softer, rgba(148, 209, 89, 0.075)) 64%, transparent), rgba(255, 255, 255, 0.01)),
+    rgba(14, 20, 16, 0.82);
+  color: color-mix(in srgb, var(--seed-vault-theme-text, #f3ffe8) 84%, white 16%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.34)) 50%, transparent),
+    0 10px 18px rgba(0, 0, 0, 0.14);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-health-pill,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-readonly-pill,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-shared-context,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-badge,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-source-badge,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-status-pill {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.34)) 42%, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--seed-vault-theme-accent-softer, rgba(148, 209, 89, 0.075)) 58%, rgba(255, 255, 255, 0.02));
+}
+
+.seed-vault-entry-card,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-inline-summary-item,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-summary-panel,
+.seed-vault-shared-with-me-card[data-seed-vault-theme] {
+  border-color: rgba(255, 255, 255, 0.085);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.01) 30%),
+    rgba(9, 15, 12, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+.seed-vault-entry-card:hover,
+.seed-vault-entry-card:focus-within,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card:hover,
+.seed-vault-shared-with-me-card[data-seed-vault-theme]:hover {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.3)) 52%, rgba(255, 255, 255, 0.09));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-entry-card.is-favorite {
+  border-color: rgba(255, 111, 130, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 111, 130, 0.035), rgba(255, 255, 255, 0.01) 30%),
+    rgba(10, 15, 13, 0.84);
+}
+
+.seed-vault-collections .seed-vault-quick-view::before,
+.seed-vault-insights .seed-vault-insight-card::after,
+.seed-vault-insights-cta.button::before {
+  opacity: 0;
+}
+
+.seed-vault-collections .seed-vault-quick-view:hover,
+.seed-vault-collections .seed-vault-quick-view:focus-visible,
+.seed-vault-collections .seed-vault-quick-view.is-active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 18px rgba(0, 0, 0, 0.14);
+}
+
+.seed-vault-search-field input,
+.seed-vault-filter-row select,
+.seed-vault-share-link-field input,
+.seed-vault-entry-form input,
+.seed-vault-entry-form select,
+.seed-vault-entry-form textarea {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(6, 10, 8, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.seed-vault-search-field input:focus,
+.seed-vault-filter-row select:focus,
+.seed-vault-entry-form input:focus,
+.seed-vault-entry-form select:focus,
+.seed-vault-entry-form textarea:focus {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-border, rgba(148, 209, 89, 0.34)) 72%, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 3px color-mix(in srgb, var(--seed-vault-theme-accent-softer, rgba(148, 209, 89, 0.075)) 70%, transparent);
+}
+
+.seed-vault-empty-icon,
+.seed-vault-collections .seed-vault-quick-view-icon {
+  background: rgba(255, 255, 255, 0.045);
+  color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 78%, white 22%);
+}
+
+.seed-vault-favorite-button.is-active,
+.seed-vault-favorite-indicator.is-active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(255, 111, 130, 0.08);
+}
+
+.seed-vault-insights-cta.button,
+.seed-vault-panel .seed-vault-header-actions .seed-vault-share-button.button,
+.seed-vault-shared-with-me-card[data-seed-vault-theme] .button,
+.shared-seed-vault-page[data-seed-vault-theme] .button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+.seed-vault-insights-cta.button:hover,
+.seed-vault-insights-cta.button:focus-visible,
+.seed-vault-panel .seed-vault-header-actions .seed-vault-share-button.button:hover,
+.seed-vault-panel .seed-vault-header-actions .seed-vault-share-button.button:focus-visible,
+.seed-vault-shared-with-me-card[data-seed-vault-theme] .button:hover,
+.shared-seed-vault-page[data-seed-vault-theme] .button:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 10px 18px rgba(0, 0, 0, 0.18);
+}
