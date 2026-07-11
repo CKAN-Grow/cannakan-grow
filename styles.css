@@ -4885,7 +4885,7 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-right {
   position: relative;
   display: grid;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
 }
 
@@ -5190,7 +5190,7 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-metrics {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2.35fr) minmax(190px, 0.95fr);
   align-items: stretch;
   gap: 12px;
 }
@@ -5198,11 +5198,11 @@ body.theme-dark .spotlight-stat strong {
 .session-progress-companion-metric {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 7px 10px;
-  align-content: start;
+  gap: 5px 10px;
+  align-content: center;
   min-width: 0;
   height: 100%;
-  padding: 16px;
+  padding: 12px 14px;
 }
 
 .session-progress-companion-metric-icon {
@@ -5231,14 +5231,26 @@ body.theme-dark .spotlight-stat strong {
 
 .session-progress-companion-metric strong {
   color: #ffffff;
-  font-size: clamp(1.05rem, 1.7vw, 1.45rem);
-  line-height: 1.12;
+  font-size: clamp(1rem, 1.35vw, 1.22rem);
+  line-height: 1.13;
   overflow-wrap: anywhere;
 }
 
 .session-progress-companion-metric small {
-  font-size: 0.9rem;
-  line-height: 1.25;
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.session-progress-companion-metric:first-child strong {
+  font-size: clamp(1rem, 1.28vw, 1.18rem);
+  line-height: 1.1;
+  max-width: 36ch;
+}
+
+.session-progress-companion-metric:nth-child(2) strong {
+  font-size: clamp(1.05rem, 1.42vw, 1.3rem);
+  line-height: 1.08;
+  overflow-wrap: normal;
 }
 
 .session-progress-companion-action-panel {
@@ -5286,7 +5298,7 @@ body.theme-dark .spotlight-stat strong {
   }
 
   .session-progress-companion-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 2.2fr) minmax(180px, 0.9fr);
   }
 }
 
