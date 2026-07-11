@@ -356,16 +356,20 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
   ".session-progress-companion-right",
   ".session-progress-companion-roadmap-list",
   ".session-progress-companion-metrics",
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right::before",
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right::after",
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right > *",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::after",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero > *",
   "--method-companion-bg",
+  "right: 0;",
+  "width: 65%;",
   "background-size: cover;",
-  "filter: blur(0) saturate(0.95) brightness(0.94);",
+  "filter: saturate(0.95) brightness(0.94);",
   "opacity: 1;",
-  "linear-gradient(90deg, rgba(3, 10, 8, 0.76) 0%, rgba(3, 10, 8, 0.72) 22%, rgba(3, 10, 8, 0.58) 52%, rgba(3, 10, 8, 0.4) 100%)",
-  "rgba(5, 13, 10, 0.34)",
-  "rgba(5, 13, 10, 0.66)",
+  "-webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.2) 18%, #000 45%);",
+  "mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.2) 18%, #000 45%);",
+  "linear-gradient(90deg, rgba(5, 13, 10, 0.98) 0%, rgba(5, 13, 10, 0.94) 38%, rgba(5, 13, 10, 0.72) 68%, rgba(5, 13, 10, 0.56) 100%)",
+  "rgba(5, 13, 10, 0.9)",
+  "rgba(5, 13, 10, 0.88)",
   ".session-command-session-reminder",
   ".session-command-session-reminder-time",
   ".session-lifecycle-section--companion",
@@ -384,11 +388,13 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 });
 
 [
-  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-hero::before",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right::before",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-right::after",
   ".session-progress-companion-card.has-method-companion-background .session-progress-companion-roadmap::before",
+  ".session-progress-companion-card.has-method-companion-background .session-progress-companion-metric::before",
 ].forEach((needle) => {
   if (stylesSource.includes(needle)) {
-    throw new Error(`Method backgrounds should not repeat on individual panels: ${needle}`);
+    throw new Error(`Method backgrounds should only render inside the Current Phase card: ${needle}`);
   }
 });
 
