@@ -93673,16 +93673,19 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
   return `
     <section class="session-result-breakdown${compact ? " session-result-breakdown--compact" : ""}" aria-label="Session result breakdown">
       <div class="session-result-breakdown-head">
-        <div>
-          <p class="eyebrow">RESULT BREAKDOWN</p>
-          <h4>${escapeHtml(breakdownTitle)}</h4>
-          <p class="session-result-breakdown-context">${
-            isSetupSession
-              ? "Build and save this session before results are classified."
-              : isInProgressSession
-                ? "Germination results are still in progress. Final classifications appear after completion."
-              : `${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}`
-          }</p>
+        <div class="session-result-breakdown-title section-title-with-icon">
+          ${renderAppSectionHeaderIcon("analytics", { className: "session-result-breakdown-icon" })}
+          <div>
+            <p class="eyebrow">RESULT BREAKDOWN</p>
+            <h4>${escapeHtml(breakdownTitle)}</h4>
+            <p class="session-result-breakdown-context">${
+              isSetupSession
+                ? "Build and save this session before results are classified."
+                : isInProgressSession
+                  ? "Germination results are still in progress. Final classifications appear after completion."
+                : `${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}`
+            }</p>
+          </div>
         </div>
         <aside class="session-result-breakdown-overall partition-success-card ${escapeHtml(overallStatus.className)}" aria-label="${escapeHtml(overallLabel)}">
           <span class="session-result-overall-orb" aria-hidden="true">${renderCommunityInsightsIconMarkup("varieties", "session-result-overall-icon")}</span>

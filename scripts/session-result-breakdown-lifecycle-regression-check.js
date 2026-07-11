@@ -16,6 +16,8 @@ for (const needle of [
   "compact || !isCompletedSession ? \"\" : performanceLegendMarkup",
   "? pendingStatus",
   "getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount)",
+  "session-result-breakdown-title section-title-with-icon",
+  "renderAppSectionHeaderIcon(\"analytics\", { className: \"session-result-breakdown-icon\" })",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing lifecycle-aware result breakdown behavior: ${needle}`);
@@ -27,6 +29,8 @@ for (const needle of [
   "partition-success--pending",
   "--partition-success-accent: #62b3ff;",
   "body.theme-dark .partition-success--pending",
+  ".session-result-breakdown-title",
+  ".session-result-breakdown-title .section-title-icon",
 ]) {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing lifecycle-aware result breakdown styling: ${needle}`);
