@@ -6683,6 +6683,31 @@ function getPartitionSeedVarietyAnalyticsKey(partition = null) {
   );
 }
 
+const WHOLE_SEED_COUNT_MESSAGE = "Enter a whole number of seeds.";
+const WHOLE_SEED_COUNT_PATTERN = /^\d+$/;
+
+function parseWholeNonNegativeIntegerInput(value = "", options = {}) {
+  const { allowBlank = false } = options;
+  const text = String(value ?? "").trim();
+  if (!text) {
+    return allowBlank ? null : 0;
+  }
+  if (!WHOLE_SEED_COUNT_PATTERN.test(text)) {
+    return null;
+  }
+  const parsed = Number(text);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function normalizeSeedCountForStorage(value = "", options = {}) {
+  const { allowBlank = false } = options;
+  const parsed = parseWholeNonNegativeIntegerInput(value, { allowBlank });
+  if (parsed === null) {
+    return allowBlank ? "" : 0;
+  }
+  return parsed;
+}
+
 function normalizeStoredPartition(partition, fallback = {}) {
   const sourcePartition = partition && typeof partition === "object" ? partition : {};
   const fallbackPartition = fallback && typeof fallback === "object" ? fallback : {};
@@ -85378,7 +85403,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       ...partition,
       id: index + 1,
       breeder: "",
-      seedCount: Number(partition.seedCount) || 0,
+      seedCount: parseWholeNonNegativeIntegerInput(partition.seedCount, { allowBlank: false }) ?? 0,
       seedAgeYears: getEffectivePartitionSeedAgeFromRow(partitionFields.querySelectorAll(".partition-row")[index], seedAgeState),
     }));
     const seedVaultUsageValidation = validateSeedVaultSessionUsage(partitionEntries);
@@ -85705,13 +85730,13 @@ function buildPartitionFormCard(partition, index, options = {}) {
     </label>
     <label>
       <span class="mobile-field-label">Seeds</span>
-        <input type="number" name="seedCount-${index}" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number of seeds">
+        <input type="text" name="seedCount-${index}" class="partition-input" inputmode="numeric" pattern="[0-9]*" data-seed-count-input="true" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number of seeds">
       <span class="field-warning" aria-live="polite">Enter a seed count greater than zero.</span>
     </label>
     ${includeGerminationFields ? `
     <label>
       <span class="mobile-field-label"># Germinated</span>
-        <input type="number" name="plantedCount" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number germinated">
+        <input type="text" name="plantedCount" class="partition-input" inputmode="numeric" pattern="[0-9]*" data-germinated-count-input="true" placeholder="Enter #" aria-label="${escapeHtml(rowLabel)} ${partition.id} number germinated">
       <span class="field-warning" aria-live="polite"># Germinated cannot exceed # Seeds.</span>
     </label>
     <div class="detail-cell success-cell" aria-live="polite">
@@ -87979,6 +88004,10 @@ function getCurrentPartitionValues(form) {
     const varietyValue = varietyInput?.value.trim() || "";
     const sourceFields = buildPartitionSourceDirectoryFields(row, sourceValue);
     const varietyFields = buildPartitionVarietyDirectoryFields(row, varietyValue);
+    const seedCount = parseWholeNonNegativeIntegerInput(row.querySelector('input[name^="seedCount-"]')?.value, { allowBlank: false }) ?? 0;
+    const plantedCount = normalizeSeedCountForStorage(row.querySelector('input[name="plantedCount"]')?.value, {
+      allowBlank: true,
+    });
 
     return {
       id: Number(row.dataset.partitionId) || index + 1,
@@ -87987,8 +88016,8 @@ function getCurrentPartitionValues(form) {
       breeder: "",
       seedType: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
       feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
-      seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
-      plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
+      seedCount,
+      plantedCount: plantedCount === "" ? "" : String(plantedCount),
       seedAgeYears: normalizeSeedAgeYears(
         row.querySelector('input[name^="seedAgeYears-"]')?.value
         ?? previousValues[index]?.seedAgeYears,
@@ -92382,6 +92411,7 @@ function renderSessionDetail(sessionId) {
     }
 
     bindPartitionRowVisualState(partitions);
+    bindWholeSeedCountInputGuards(partitions);
     applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
     setSeedChartResultsUnlocked(detail.chartShell, detail.chartHeader, partitions, true);
     applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, partitions, currentSeedAgeMetadata.mode);
@@ -93270,6 +93300,107 @@ function getSessionSeedTotals(session) {
 function normalizeSessionResultCount(value = null) {
   const normalizedValue = Number(value);
   return Number.isFinite(normalizedValue) ? Math.max(0, normalizedValue) : 0;
+}
+
+function isWholeSeedCountInput(field) {
+  return field instanceof HTMLInputElement && Boolean(
+    field.matches?.([
+      'input[name^="seedCount-"]',
+      'input[name="plantedCount"]',
+      "input[data-seed-count-input]",
+      "input[data-germinated-count-input]",
+    ].join(", ")),
+  );
+}
+
+function setWholeSeedCountInputWarning(input, message = "") {
+  const warning = input?.closest?.("label")?.querySelector?.(".field-warning");
+  if (warning) {
+    warning.textContent = message || warning.textContent || WHOLE_SEED_COUNT_MESSAGE;
+  }
+}
+
+function rejectWholeSeedCountInput(input, message = WHOLE_SEED_COUNT_MESSAGE) {
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+  input.dataset.seedCountInvalid = "true";
+  setWholeSeedCountInputWarning(input, message);
+  const row = input.closest?.(".partition-row");
+  if (row) {
+    validatePartitionRow(row);
+  }
+}
+
+function commitWholeSeedCountInput(input) {
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const value = input.value.trim();
+  if (value === "") {
+    input.dataset.lastValidWholeSeedCount = "";
+    delete input.dataset.seedCountInvalid;
+    return;
+  }
+
+  if (!WHOLE_SEED_COUNT_PATTERN.test(value)) {
+    input.value = input.dataset.lastValidWholeSeedCount || "";
+    rejectWholeSeedCountInput(input);
+    return;
+  }
+
+  input.dataset.lastValidWholeSeedCount = value;
+  delete input.dataset.seedCountInvalid;
+}
+
+function bindWholeSeedCountInputGuards(scope) {
+  if (!(scope instanceof Element) || scope.dataset.wholeSeedCountGuardsBound === "true") {
+    return;
+  }
+
+  scope.addEventListener("beforeinput", (event) => {
+    if (!isWholeSeedCountInput(event.target) || event.inputType?.startsWith("delete")) {
+      return;
+    }
+    if (typeof event.data === "string" && event.data !== "" && !WHOLE_SEED_COUNT_PATTERN.test(event.data)) {
+      event.preventDefault();
+      rejectWholeSeedCountInput(event.target);
+    }
+  });
+
+  scope.addEventListener("paste", (event) => {
+    if (!isWholeSeedCountInput(event.target)) {
+      return;
+    }
+    const pastedText = event.clipboardData?.getData("text")?.trim() || "";
+    if (pastedText && !WHOLE_SEED_COUNT_PATTERN.test(pastedText)) {
+      event.preventDefault();
+      rejectWholeSeedCountInput(event.target);
+    }
+  });
+
+  scope.addEventListener("input", (event) => {
+    if (!isWholeSeedCountInput(event.target)) {
+      return;
+    }
+    commitWholeSeedCountInput(event.target);
+  });
+
+  scope.addEventListener("change", (event) => {
+    if (!isWholeSeedCountInput(event.target)) {
+      return;
+    }
+    commitWholeSeedCountInput(event.target);
+  });
+
+  scope.querySelectorAll("input").forEach((input) => {
+    if (isWholeSeedCountInput(input)) {
+      commitWholeSeedCountInput(input);
+    }
+  });
+
+  scope.dataset.wholeSeedCountGuardsBound = "true";
 }
 
 const PARTITION_SUCCESS_STATUS_DEFINITIONS = Object.freeze({
@@ -94946,6 +95077,7 @@ function getPartitionSuccessDisplay(partition) {
 }
 
 function attachPartitionValidation(form, formMessage) {
+  bindWholeSeedCountInputGuards(form);
   const rows = form.querySelectorAll(".partition-row");
   rows.forEach((row) => {
     row.querySelectorAll("input, select").forEach((field) => {
@@ -96396,13 +96528,17 @@ function validatePartitionRow(row) {
   const hasSeedCount = seedValue !== "";
   const hasSeedAge = seedAgeValue !== "";
   const hasPlantedCount = plantedValue !== "";
-  const seedNumber = Number(seedValue);
-  const plantedNumber = Number(plantedValue);
-  const seedCountValid = hasSeedCount && seedNumber > 0;
+  const seedNumber = parseWholeNonNegativeIntegerInput(seedValue, { allowBlank: true });
+  const plantedNumber = parseWholeNonNegativeIntegerInput(plantedValue, { allowBlank: true });
+  const seedCountRejected = seedInput.dataset.seedCountInvalid === "true";
+  const plantedCountRejected = plantedInput?.dataset.seedCountInvalid === "true";
+  const seedCountWhole = !seedCountRejected && (!hasSeedCount || seedNumber !== null);
+  const plantedCountWhole = !plantedCountRejected && (!hasPlantedCount || plantedNumber !== null);
+  const seedCountValid = hasSeedCount && seedCountWhole && seedNumber !== null && seedNumber > 0;
   const seedAgeValid = !seedAgeInput || isValidSeedAgeYearsInput(seedAgeValue, { allowBlank: true });
-  const plantedCountValid = !hasPlantedCount || (Number.isFinite(plantedNumber) && plantedNumber >= 0 && seedCountValid && plantedNumber <= seedNumber);
+  const plantedCountValid = !hasPlantedCount || (plantedCountWhole && plantedNumber !== null && seedCountValid && plantedNumber <= seedNumber);
 
-  const rowStarted = Boolean(sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount);
+  const rowStarted = Boolean(sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount || seedCountRejected || plantedCountRejected);
   const fieldsComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
   const rowInvalid = (rowStarted && !fieldsComplete) || !seedAgeValid || !plantedCountValid;
   const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
@@ -96427,6 +96563,15 @@ function validatePartitionRow(row) {
   updatePartitionButtonState(row, rowState);
   applyPartitionRowVisualState(row);
 
+  const seedWarning = seedLabel.querySelector(".field-warning");
+  if (seedWarning) {
+    seedWarning.textContent = seedCountWhole ? "Enter a seed count greater than zero." : WHOLE_SEED_COUNT_MESSAGE;
+  }
+  const plantedWarning = plantedLabel?.querySelector(".field-warning");
+  if (plantedWarning) {
+    plantedWarning.textContent = plantedCountWhole ? "# Germinated cannot exceed # Seeds." : WHOLE_SEED_COUNT_MESSAGE;
+  }
+
   varietyLabel.classList.toggle("field-has-warning", rowInvalid && !varietyValue);
   typeLabel.classList.toggle("field-has-warning", rowInvalid && !typeValue);
   sexLabel.classList.toggle("field-has-warning", rowInvalid && !sexValue);
@@ -96444,8 +96589,8 @@ function validatePartitionRow(row) {
   syncCustomSelect(sexSelect);
   if (successOutput) {
     successOutput.textContent = formatSuccessPercent(
-      hasSeedCount ? seedNumber : "",
-      hasPlantedCount ? plantedNumber : "",
+      hasSeedCount && seedNumber !== null ? seedNumber : "",
+      hasPlantedCount && plantedNumber !== null ? plantedNumber : "",
     );
   }
 
@@ -96478,14 +96623,14 @@ function validatePartitionRow(row) {
 }
 
 function formatSuccessPercent(seedCount, plantedCount) {
-  const seeds = Number(seedCount);
-  const planted = Number(plantedCount);
+  const seeds = parseWholeNonNegativeIntegerInput(seedCount, { allowBlank: true });
+  const planted = parseWholeNonNegativeIntegerInput(plantedCount, { allowBlank: true });
 
-  if (!Number.isFinite(seeds) || !Number.isFinite(planted) || seeds <= 0) {
+  if (seeds === null || planted === null || seeds <= 0) {
     return "";
   }
 
-  if (planted < 0 || planted > seeds) {
+  if (planted > seeds) {
     return "";
   }
 
@@ -96520,8 +96665,10 @@ function updateSessionSuccessSummary(form, summaryElement) {
 function getPartitionProgressDataFromForm(form) {
   return [...form.querySelectorAll(".partition-row")].map((row, index) => ({
     id: Number(row.dataset.partitionId) || index + 1,
-    seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
-    plantedCount: row.querySelector('input[name="plantedCount"]')?.value ?? "",
+    seedCount: parseWholeNonNegativeIntegerInput(row.querySelector('input[name^="seedCount-"]')?.value, { allowBlank: false }) ?? 0,
+    plantedCount: normalizeSeedCountForStorage(row.querySelector('input[name="plantedCount"]')?.value, {
+      allowBlank: true,
+    }),
   }));
 }
 
@@ -100376,6 +100523,10 @@ function syncSessionPartitionsFromContainer(session, container, options = {}) {
     const existingPartition = session.partitions?.[index] || {};
     const sourceValue = getPartitionRowFieldValue(row, "source").trim();
     const sourceFields = buildPartitionSourceDirectoryFields(row, sourceValue);
+    const seedCount = parseWholeNonNegativeIntegerInput(getPartitionRowFieldValue(row, "seedCount"), { allowBlank: false }) ?? 0;
+    const plantedCount = normalizeSeedCountForStorage(getPartitionRowFieldValue(row, "plantedCount"), {
+      allowBlank: true,
+    });
     return {
       id: Number(row.dataset.partitionId) || existingPartition.id || index + 1,
       ...sourceFields,
@@ -100383,9 +100534,9 @@ function syncSessionPartitionsFromContainer(session, container, options = {}) {
       breeder: existingPartition.breeder || "",
       seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
       feminized: getPartitionRowFieldValue(row, "feminized").trim(),
-      seedCount: Number(getPartitionRowFieldValue(row, "seedCount")) || 0,
+      seedCount,
       seedAgeYears: getEffectivePartitionSeedAgeFromRow(row, seedAgeState),
-      plantedCount: getPartitionRowFieldValue(row, "plantedCount").trim(),
+      plantedCount: plantedCount === "" ? "" : String(plantedCount),
     };
   });
 }
