@@ -42027,15 +42027,22 @@ function syncNewSessionSeedChartResultsUnlockState(form, options = {}) {
     return;
   }
 
+  const partitionContainer = form.querySelector("#partition-fields");
   const unlocked = form.dataset.seedChartResultsUnlocked === "true"
     || String(form.dataset.savedSessionId || "").trim() !== "";
   setSeedChartResultsUnlocked(
     form.querySelector("#partition-chart-shell"),
     form.querySelector("#partition-chart-header"),
-    form.querySelector("#partition-fields"),
+    partitionContainer,
     unlocked,
     options,
   );
+  if (partitionContainer) {
+    const method = getMethodConfig(form.elements?.systemType?.value || form.dataset.methodType || "");
+    syncSeedChartRowVisibility(partitionContainer, form.elements?.sessionStatus?.value || form.dataset.currentStage || "", {
+      rowLabel: method.rowLabel || partitionContainer.dataset.rowLabel || "Row",
+    });
+  }
 }
 
 function showSeedChartExpandedModal() {
@@ -86534,6 +86541,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   partitionFields.innerHTML = "";
   partitionFields.dataset.methodType = method.id;
   partitionFields.dataset.methodStandardized = String(method.isStandardized);
+  partitionFields.dataset.rowLabel = method.rowLabel || "Row";
   if (method.id === "TRA") {
     renderTraPartitionSections(partitionFields, partitions, {
       showSeedAgeField,
@@ -92011,6 +92019,9 @@ function renderSessionDetail(sessionId) {
 
     partitions.innerHTML = "";
     partitions.__partitionDraftValues = normalizedPartitions.map((partition) => ({ ...partition }));
+    partitions.dataset.methodType = sessionMethod.id;
+    partitions.dataset.methodStandardized = String(sessionMethod.isStandardized);
+    partitions.dataset.rowLabel = sessionMethod.rowLabel || "Row";
     partitions.dataset.partitionRenderMode = normalizedStatus === "completed"
       ? "completed-report"
       : "editable";
@@ -93918,11 +93929,13 @@ function getPartitionBaseRowState(values) {
   const seedValue = String(values?.seedValue || "").trim();
   const seedAgeValue = String(values?.seedAgeValue || "").trim();
   const plantedValue = String(values?.plantedValue || "").trim();
-  const hasSeedCount = seedValue !== "";
+  const seedVaultEntryId = String(values?.seedVaultEntryId || "").trim();
+  const seedCount = Number(seedValue);
+  const hasSeedCount = seedValue !== "" && Number.isFinite(seedCount) && seedCount > 0;
   const hasSeedAge = seedAgeValue !== "";
   const hasPlantedCount = plantedValue !== "";
 
-  if (sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount) {
+  if (sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount || seedVaultEntryId) {
     return "in-progress";
   }
 
@@ -93951,12 +93964,16 @@ function getPartitionRowStateFromPartition(partition, sessionStatus = "") {
     sexValue: partition?.feminized || "",
     seedValue: partition?.seedCount ?? "",
     plantedValue: partition?.plantedCount ?? "",
+    seedVaultEntryId: partition?.seedVaultEntryId || partition?.seed_vault_entry_id || "",
   }, sessionStatus);
 }
 
-function shouldHideInactivePartitionRowsForStatus(sessionStatus = "") {
+function shouldHideInactivePartitionRowsForStatus(sessionStatus = "", options = {}) {
   const normalizedStatus = String(sessionStatus || "").trim().toLowerCase();
-  return normalizedStatus === "completed" || normalizedStatus === "closed";
+  return normalizedStatus === "completed"
+    || normalizedStatus === "closed"
+    || options.isSavedSession === true
+    || options.resultsUnlocked === true;
 }
 
 function getPartitionRowFieldValue(row, fieldName = "") {
@@ -94003,7 +94020,24 @@ function getPartitionBaseRowStateFromRow(row) {
     seedValue: getPartitionRowFieldValue(row, "seedCount"),
     seedAgeValue: getPartitionRowFieldValue(row, "seedAgeYears"),
     plantedValue: getPartitionRowFieldValue(row, "plantedCount"),
+    seedVaultEntryId: row.dataset.seedVaultEntryId || "",
   });
+}
+
+function isSeedChartRowUsed(rowOrPartition = null) {
+  if (rowOrPartition instanceof Element) {
+    return getPartitionBaseRowStateFromRow(rowOrPartition) !== "empty";
+  }
+
+  return hasPartitionContent(rowOrPartition);
+}
+
+function getVisibleSeedChartRows(rows = [], sessionState = {}) {
+  const rowList = Array.isArray(rows) ? rows : [...rows || []];
+  const shouldFilter = Boolean(sessionState?.isSaved || sessionState?.isCompleted);
+  return shouldFilter
+    ? rowList.filter((row) => isSeedChartRowUsed(row))
+    : rowList;
 }
 
 function getSessionSeedAgeAutofillValueForRow(row) {
@@ -94102,19 +94136,98 @@ function syncPartitionSeedAgeFieldState(row) {
   seedAgeLabel.hidden = false;
 }
 
-function syncCompletedSessionPartitionVisibility(partitionContainer, sessionStatus = "") {
+function syncSeedChartUnusedRowsRevealControl(partitionContainer, options = {}) {
   if (!(partitionContainer instanceof Element)) {
     return;
   }
 
-  const shouldHideEmptyRows = shouldHideInactivePartitionRowsForStatus(sessionStatus);
-  partitionContainer.querySelectorAll(".partition-row").forEach((row) => {
-    const baseState = getPartitionBaseRowStateFromRow(row);
+  let control = partitionContainer.nextElementSibling?.matches?.("[data-show-unused-seed-chart-rows]")
+    ? partitionContainer.nextElementSibling
+    : null;
+  const hiddenCount = Number(options.hiddenCount) || 0;
+  const shouldShow = hiddenCount > 0 && options.isSavedSession === true && options.isCompleted !== true;
+
+  if (!shouldShow) {
+    control?.remove();
+    return;
+  }
+
+  if (!control) {
+    control = document.createElement("div");
+    control.className = "seed-chart-unused-rows-control";
+    control.setAttribute("data-show-unused-seed-chart-rows", "true");
+    control.innerHTML = `
+      <button type="button" class="button button-secondary button-compact" data-show-unused-seed-chart-rows-button>
+        Show unused rows
+      </button>
+    `;
+    partitionContainer.insertAdjacentElement("afterend", control);
+  }
+
+  const rowLabel = String(options.rowLabel || "Row").trim() || "Row";
+  const pluralLabel = hiddenCount === 1 ? rowLabel : `${rowLabel}s`;
+  const button = control.querySelector("[data-show-unused-seed-chart-rows-button]");
+  if (button) {
+    button.textContent = `Show unused ${pluralLabel}`;
+    if (button.dataset.seedChartUnusedRowsBound !== "true") {
+      button.addEventListener("click", () => {
+        partitionContainer.dataset.unusedRowsRevealed = "true";
+        syncSeedChartRowVisibility(partitionContainer, options.sessionStatus || partitionContainer.dataset.sessionStatus || "", {
+          ...options,
+          isSavedSession: true,
+        });
+      });
+      button.dataset.seedChartUnusedRowsBound = "true";
+    }
+  }
+}
+
+function syncSeedChartRowVisibility(partitionContainer, sessionStatus = "", options = {}) {
+  if (!(partitionContainer instanceof Element)) {
+    return;
+  }
+
+  const form = partitionContainer.closest("form");
+  const normalizedStatus = normalizeSessionStatus(sessionStatus || partitionContainer.dataset.sessionStatus || form?.dataset?.currentStage || "");
+  const resultsUnlocked = partitionContainer.dataset.resultsUnlocked === "true"
+    || form?.dataset?.seedChartResultsUnlocked === "true"
+    || String(form?.dataset?.savedSessionId || "").trim() !== "";
+  const isCompleted = normalizedStatus === "completed" || normalizedStatus === "closed";
+  const isSavedSession = options.isSavedSession === true || resultsUnlocked;
+  const unusedRowsRevealed = partitionContainer.dataset.unusedRowsRevealed === "true" && !isCompleted;
+  const shouldHideEmptyRows = shouldHideInactivePartitionRowsForStatus(normalizedStatus, {
+    isSavedSession,
+    resultsUnlocked,
+  }) && !unusedRowsRevealed;
+  let hiddenCount = 0;
+  const rows = [...partitionContainer.querySelectorAll(".partition-row")];
+  const visibleRows = new Set(getVisibleSeedChartRows(rows, {
+    isSaved: shouldHideEmptyRows,
+    isCompleted,
+  }));
+
+  rows.forEach((row) => {
+    const baseState = isSeedChartRowUsed(row) ? "in-progress" : "empty";
     row.dataset.partitionBaseState = baseState;
-    const shouldHide = shouldHideEmptyRows && baseState === "empty";
+    const shouldHide = shouldHideEmptyRows && !visibleRows.has(row);
     row.hidden = shouldHide;
     row.setAttribute("aria-hidden", shouldHide ? "true" : "false");
+    if (shouldHide) {
+      hiddenCount += 1;
+    }
   });
+
+  syncSeedChartUnusedRowsRevealControl(partitionContainer, {
+    hiddenCount,
+    isCompleted,
+    isSavedSession,
+    rowLabel: options.rowLabel || partitionContainer.dataset.rowLabel || "Row",
+    sessionStatus: normalizedStatus,
+  });
+}
+
+function syncCompletedSessionPartitionVisibility(partitionContainer, sessionStatus = "", options = {}) {
+  syncSeedChartRowVisibility(partitionContainer, sessionStatus, options);
 }
 
 function getPartitionButtonClassName(state) {
@@ -94344,8 +94457,10 @@ function hasPartitionContent(partition = null) {
   const hasSeedCount = seeds > 0;
   const hasGerminationData = plantedRaw !== "";
   const hasSeedAge = getEffectivePartitionSeedAgeYears(partition) !== null;
+  const seedVaultEntryId = String(partition?.seedVaultEntryId || partition?.seed_vault_entry_id || "").trim();
+  const hasVaultSnapshot = Boolean(partition?.seedVaultEntrySnapshot || partition?.seed_vault_entry_snapshot);
 
-  return Boolean(source || variety || seedType || sex || hasSeedCount || hasGerminationData || hasSeedAge);
+  return Boolean(source || variety || seedType || sex || hasSeedCount || hasGerminationData || hasSeedAge || seedVaultEntryId || hasVaultSnapshot);
 }
 
 function isPartitionEmpty(partition = null) {
@@ -94405,6 +94520,10 @@ function attachPartitionValidation(form, formMessage) {
           form.querySelector("#session-status-trigger"),
         );
         validatePartitionRow(row);
+        syncSeedChartRowVisibility(
+          form.querySelector("#partition-fields"),
+          form.elements.sessionStatus?.value || form.dataset.currentStage || "",
+        );
         updateSessionSuccessSummary(form, form.querySelector("#session-success-summary"));
         updatePartitionProgressChart(
           getPartitionProgressDataFromForm(form),
@@ -94441,6 +94560,10 @@ function attachPartitionValidation(form, formMessage) {
           form.querySelector("#session-status-trigger"),
         );
         validatePartitionRow(row);
+        syncSeedChartRowVisibility(
+          form.querySelector("#partition-fields"),
+          form.elements.sessionStatus?.value || form.dataset.currentStage || "",
+        );
         updateSessionSuccessSummary(form, form.querySelector("#session-success-summary"));
         updatePartitionProgressChart(
           getPartitionProgressDataFromForm(form),

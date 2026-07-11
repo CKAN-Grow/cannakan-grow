@@ -57478,6 +57478,21 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
   opacity: var(--field-placeholder-opacity);
 }
 
+.partition-table .partition-row[hidden],
+body.theme-dark .partition-table .partition-row[hidden] {
+  display: none !important;
+}
+
+.seed-chart-unused-rows-control {
+  display: flex;
+  justify-content: center;
+  padding: 14px 0 4px;
+}
+
+.seed-chart-unused-rows-control .button {
+  min-height: 36px;
+}
+
 .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive,
 body.theme-dark .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive {
   opacity: 0.45;
