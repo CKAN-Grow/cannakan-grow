@@ -3317,6 +3317,15 @@ function canManuallyEditGrowSessionTimestamps() {
   return hasResolvedAdminAccess() || isAdminUser();
 }
 
+function canAuthenticatedAdminEditGrowSessionTimestamps() {
+  const authenticatedUser = appState.authSession?.user || appState.user || null;
+  if (!authenticatedUser) {
+    return false;
+  }
+
+  return getAdminAccessLevel(authenticatedUser, { allowLocalDemoAdmin: false }).isAdmin;
+}
+
 function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile, options = {}) {
   const sessionEmail = String(session?.user?.email || "").trim();
   const normalizedEmail = getNormalizedUserEmail(session?.user || null);
@@ -26241,7 +26250,7 @@ async function updateCloudSession(session) {
     throw previousRowError;
   }
 
-  if (!canManuallyEditGrowSessionTimestamps()) {
+  if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
     applyRegularUserGrowSessionUpdateTimestampPolicy(record, previousRow || {});
   }
 
@@ -26261,7 +26270,7 @@ async function updateCloudSession(session) {
       includeMockColumns: !appState.sessionMockColumnsUnavailable,
       includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
     });
-    if (!canManuallyEditGrowSessionTimestamps()) {
+    if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
       applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
     }
     ({ data, error } = await appState.supabase
@@ -26281,7 +26290,7 @@ async function updateCloudSession(session) {
       includeMockColumns: !appState.sessionMockColumnsUnavailable,
       includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
     });
-    if (!canManuallyEditGrowSessionTimestamps()) {
+    if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
       applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
     }
     ({ data, error } = await appState.supabase
@@ -26301,7 +26310,7 @@ async function updateCloudSession(session) {
       includeMockColumns: false,
       includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
     });
-    if (!canManuallyEditGrowSessionTimestamps()) {
+    if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
       applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
     }
     ({ data, error } = await appState.supabase
@@ -26321,7 +26330,7 @@ async function updateCloudSession(session) {
       includeMockColumns: !appState.sessionMockColumnsUnavailable,
       includeLifecycleColumns: false,
     });
-    if (!canManuallyEditGrowSessionTimestamps()) {
+    if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
       applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
     }
     ({ data, error } = await appState.supabase
@@ -26341,7 +26350,7 @@ async function updateCloudSession(session) {
       includeMockColumns: false,
       includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
     });
-    if (!canManuallyEditGrowSessionTimestamps()) {
+    if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
       applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
     }
     ({ data, error } = await appState.supabase
@@ -26511,7 +26520,7 @@ async function updateOwnerGrowSessionTimes(session, payload) {
   if (!session?.id) {
     throw new Error("Session not found.");
   }
-  if (!canManuallyEditGrowSessionTimestamps()) {
+  if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
     throw new Error(GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE);
   }
   if (!canCurrentUserEditSessionTimes(session)) {
@@ -91275,25 +91284,17 @@ function buildSessionDetailMetaCards(session = null) {
   const seedAgeMetadata = getSessionSeedAgeMetadata(session);
   const method = getMethodConfig(getSessionMethodType(session));
   const methodLabel = formatMethodTypeLabel(method.id);
-  const cards = [
+  return [
     { label: "Status", value: getMethodSessionStatusLabel(session?.sessionStatus || "", method.id) },
     { label: "Method Type", value: session ? methodLabel : "Not set" },
-    { label: "Date", value: session?.date || "Not set" },
-    { label: "Time", value: formatStoredTime(session?.time || "") || "Not set" },
-  ];
-
-  if (method.isStandardized) {
-    cards.splice(2, 0, { label: "Unit ID", value: normalizeUnitIdValue(session?.unitId) });
-  }
-
-  if (seedAgeMetadata.trackingEnabled) {
-    cards.push({
+    { label: "Unit ID", value: normalizeUnitIdValue(session?.unitId || "", "Not set") },
+    { label: "Session Date", value: session?.date || "Not set" },
+    { label: "Session Time", value: formatStoredTime(session?.time || "") || "Not set" },
+    {
       label: "Seed Age",
-      value: seedAgeMetadata.summaryLabel,
-    });
-  }
-
-  return cards;
+      value: seedAgeMetadata.trackingEnabled ? seedAgeMetadata.summaryLabel : "Not tracked",
+    },
+  ];
 }
 
 function populateSessionDetailEditorForm(form, session = null) {
@@ -91343,7 +91344,7 @@ function canCurrentUserEditSessionTimes(session = null) {
   if (!session) {
     return false;
   }
-  if (!canManuallyEditGrowSessionTimestamps()) {
+  if (!canAuthenticatedAdminEditGrowSessionTimestamps()) {
     return false;
   }
   if (isLocalDevQaBypassActive() || !appState.supabase) {
@@ -91513,6 +91514,75 @@ function syncSessionDetailHeaderMeta(detail, session) {
     title: formatSessionLabel(session),
   });
   renderSessionDetailMetaCards(detail.meta, buildSessionDetailMetaCards(session));
+  syncSessionDetailCompletedPresentation(detail, session);
+}
+
+function syncSessionDetailCompletedPresentation(detail, session = null) {
+  if (!detail?.title) {
+    return;
+  }
+
+  const isCompleted = normalizeSessionStatus(session?.sessionStatus || "") === "completed";
+  const shell = detail.title.closest(".session-workspace-shell");
+  shell?.classList.toggle("is-completed-session-detail", isCompleted);
+
+  const titleHost = detail.title.parentElement;
+  if (!titleHost) {
+    return;
+  }
+
+  let badge = titleHost.querySelector("[data-session-detail-status-badge='true']");
+  if (!isCompleted) {
+    badge?.remove();
+    return;
+  }
+
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "session-detail-status-badge";
+    badge.dataset.sessionDetailStatusBadge = "true";
+    detail.title.insertAdjacentElement("afterend", badge);
+  }
+  badge.textContent = "Completed";
+}
+
+function ensureSessionTimesEditButton(detail) {
+  if (!detail?.topBackLink) {
+    return null;
+  }
+
+  const actions = detail.topBackLink.closest(".inline-actions");
+  if (!actions) {
+    return null;
+  }
+
+  let button = actions.querySelector("#detail-edit-session-times");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "detail-edit-session-times";
+    button.className = "button button-secondary";
+    button.type = "button";
+    button.textContent = "Edit Times";
+    actions.insertBefore(button, detail.topBackLink);
+  }
+
+  detail.timesEditButton = button;
+  return button;
+}
+
+function removeSessionTimesEditUi(detail) {
+  detail?.timesEditButton?.remove();
+  if (detail) {
+    detail.timesEditButton = null;
+  }
+  detail?.timesPanel?.remove();
+  if (detail) {
+    detail.timesPanel = null;
+    detail.timesForm = null;
+    detail.timesSaveButton = null;
+    detail.timesCancelButton = null;
+    detail.timesMessage = null;
+  }
 }
 
 function applySessionDetailEditorValues(form, session) {
@@ -91677,8 +91747,10 @@ function renderSessionDetail(sessionId) {
   clearSessionDetailEditorMessage(detail);
   clearSessionTimesEditorMessage(detail);
   const canEditSessionTimes = canCurrentUserEditSessionTimes(session);
-  if (detail.timesEditButton) {
-    detail.timesEditButton.hidden = !canEditSessionTimes;
+  if (canEditSessionTimes) {
+    ensureSessionTimesEditButton(detail);
+  } else {
+    removeSessionTimesEditUi(detail);
   }
   applySessionDetailNotesOptions(detail, {
     value: session.sessionNotes || "",
@@ -92401,6 +92473,10 @@ function renderSessionDetail(sessionId) {
   detail.timesForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     clearSessionTimesEditorMessage(detail);
+    if (!canCurrentUserEditSessionTimes(session)) {
+      setSessionTimesEditorMessage(detail, GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE, true);
+      return;
+    }
     const payload = getSessionTimesFormPayload(detail.timesForm, session);
     if (!payload.isValid) {
       setSessionTimesEditorMessage(detail, payload.message, true);
@@ -92434,7 +92510,8 @@ function renderSessionDetail(sessionId) {
     refreshDetailUnsavedChanges();
   });
   detail.timesEditButton?.addEventListener("click", () => {
-    if (!canEditSessionTimes) {
+    if (!canCurrentUserEditSessionTimes(session)) {
+      setSessionTimesEditorMessage(detail, GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE, true);
       return;
     }
     if (detail.timesPanel && !detail.timesPanel.hidden) {

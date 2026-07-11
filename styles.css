@@ -48415,6 +48415,133 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   margin: 0;
 }
 
+.session-workspace-shell--detail.is-completed-session-detail .session-workspace-header {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions .button {
+  min-height: 42px;
+}
+
+.session-detail-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.1);
+  color: #b8ef84;
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .session-workspace-overview {
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-top-grid {
+  display: block;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-top-stack {
+  gap: 12px;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-header {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+  width: 100%;
+  padding: 0;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.075), rgba(255, 255, 255, 0.012)),
+    rgba(13, 18, 14, 0.64);
+  box-shadow: none;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card strong {
+  color: rgba(218, 229, 216, 0.76);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card p {
+  color: #f3f8f0;
+  font-size: 0.86rem;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card:first-child {
+  border-color: rgba(148, 209, 89, 0.24);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(255, 255, 255, 0.018)),
+    rgba(20, 31, 18, 0.72);
+}
+
+@media (max-width: 1120px) {
+  .session-workspace-shell--detail.is-completed-session-detail .detail-header {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header {
+    align-items: stretch;
+  }
+
+  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .session-workspace-shell--detail.is-completed-session-detail .detail-header {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions .button {
+    width: 100%;
+  }
+
+  .session-workspace-shell--detail.is-completed-session-detail .detail-header {
+    grid-template-columns: 1fr;
+  }
+}
+
 .new-session-quick-start {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.45fr);
