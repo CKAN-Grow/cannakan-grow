@@ -39837,6 +39837,20 @@ function formatSnapshotSystemLabel(systemType) {
   return formatMethodTypeLabel(method.id);
 }
 
+function stripSnapshotFooterDateFromSessionName(sessionName = "", dateLabel = "") {
+  const rawName = String(sessionName || "").trim();
+  const rawDate = String(dateLabel || "").trim();
+  if (!rawName || !rawDate) {
+    return rawName;
+  }
+
+  const escapedDate = rawDate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return rawName
+    .replace(new RegExp(`(?:\\s*[-–—•|·]+\\s*)${escapedDate}$`, "i"), "")
+    .replace(new RegExp(`\\s+${escapedDate}$`, "i"), "")
+    .trim() || rawName;
+}
+
 async function buildSessionSnapshotBlob(data, imageSource = "") {
   const canvas = document.createElement("canvas");
   const size = 1080;
@@ -40041,6 +40055,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   }
 
   const dateText = data.dateLabel;
+  const footerSessionName = stripSnapshotFooterDateFromSessionName(data.sessionName, dateText);
   const profileName = String(data?.profileAttribution?.name || "").trim();
   const showProfileAttribution = Boolean(profileName);
   context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
@@ -40064,7 +40079,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   }
   context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
   const sessionNameMaxWidth = Math.max(120, width - inset * 2 - dateWidth - profileAttributionWidth);
-  const sessionNameText = truncateTextToWidth(context, data.sessionName, sessionNameMaxWidth);
+  const sessionNameText = truncateTextToWidth(context, footerSessionName || data.sessionName, sessionNameMaxWidth);
 
   context.fillStyle = "#eef7e6";
   context.fillText(sessionNameText, x + inset, footerTextY);
@@ -40081,14 +40096,11 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
     const profileMetrics = context.measureText(profileText);
     const profileAscent = profileMetrics.actualBoundingBoxAscent || (roomy ? 18 : 16);
     const profileDescent = profileMetrics.actualBoundingBoxDescent || (roomy ? 6 : 5);
-    const profileCenterY = footerTextY - profileDescent - ((profileAscent + profileDescent) / 2) + 1;
-    const avatarY = profileCenterY - (profileAvatarSize / 2) + 20;
+    const profileCenterY = footerTextY - ((profileAscent - profileDescent) / 2);
+    const avatarY = profileCenterY - (profileAvatarSize / 2);
     drawSnapshotProfileAvatar(context, profileAvatar, profileName, attributionX, avatarY, profileAvatarSize, roomy);
     context.fillStyle = "#dce9d2";
-    context.save();
-    context.textBaseline = "middle";
-    context.fillText(profileText, attributionX + profileAvatarSize + profileGap, profileCenterY);
-    context.restore();
+    context.fillText(profileText, attributionX + profileAvatarSize + profileGap, footerTextY);
   }
 }
 
