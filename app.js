@@ -97692,6 +97692,11 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
             </div>
           </div>
           <span class="session-progress-companion-method-badge">${escapeHtml(methodName)}</span>
+          ${summaryMetricItems ? `
+            <section class="session-progress-companion-metrics" aria-label="Session supporting summary">
+              ${summaryMetricItems}
+            </section>
+          ` : ""}
         </section>
 
         <div class="session-progress-companion-right">
@@ -97719,12 +97724,6 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
           <section class="session-progress-companion-roadmap" aria-label="Compact session roadmap">
             ${renderSessionProgressCompanionRoadmapMarkup(engineState)}
           </section>
-
-          ${summaryMetricItems ? `
-            <section class="session-progress-companion-metrics" aria-label="Session supporting summary">
-              ${summaryMetricItems}
-            </section>
-          ` : ""}
         </div>
       </div>
 
