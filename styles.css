@@ -6767,7 +6767,7 @@ body.theme-dark #active-sessions-section {
 
 .session-result-breakdown-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.42fr);
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.92fr);
   align-items: flex-start;
   gap: 22px;
 }
@@ -6807,9 +6807,9 @@ body.theme-dark #active-sessions-section {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   min-height: 118px;
-  padding: 18px 22px;
+  padding: 18px 24px;
   border: 1px solid var(--partition-success-border);
   border-radius: 18px;
   background:
@@ -6846,9 +6846,9 @@ body.theme-dark #active-sessions-section {
 .session-result-breakdown-overall strong {
   display: block;
   color: var(--partition-success-accent);
-  font-size: clamp(2.5rem, 4vw, 3.8rem);
+  font-size: clamp(2.15rem, 3.45vw, 3.35rem);
   font-weight: 900;
-  line-height: 0.95;
+  line-height: 0.98;
 }
 
 .session-result-breakdown-overall > div > span {
@@ -33812,6 +33812,16 @@ textarea::placeholder {
   flex: 1 1 auto;
 }
 
+.session-workspace-shell--detail .session-top-grid,
+.session-workspace-shell--detail .detail-top-stack,
+.session-workspace-shell--detail #detail-meta {
+  width: 100%;
+}
+
+.session-workspace-shell--detail .detail-top-stack {
+  min-width: 0;
+}
+
 .system-layout-block {
   display: grid;
   justify-items: center;
@@ -48546,11 +48556,11 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-workspace-shell--detail .detail-header {
   display: grid;
-  grid-template-columns: repeat(5, minmax(112px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
   align-items: stretch;
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid rgba(148, 209, 89, 0.14);
   border-radius: 18px;
   background:
@@ -48574,7 +48584,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   display: grid;
   align-content: center;
   gap: 8px;
-  min-height: 64px;
+  min-height: 70px;
   padding: 12px 14px;
   border-radius: 14px;
   background:
