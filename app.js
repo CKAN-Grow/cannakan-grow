@@ -99275,12 +99275,12 @@ function getHomeCurrentSessionCompanionState(session = null) {
 
 function renderHomeCurrentSessionActionsMarkup(session = null) {
   const openSessionAction = session
-    ? `<a class="button button-primary home-current-session-action" href="#sessions/${escapeHtml(session.id)}">Open Current Session</a>`
+    ? `<a class="button button-secondary home-current-session-action home-current-session-action--continue" href="#sessions/${escapeHtml(session.id)}">Continue Session <span aria-hidden="true">→</span></a>`
     : "";
   return `
     <div class="session-progress-companion-head-actions home-current-session-actions" aria-label="Current session actions">
       ${openSessionAction}
-      <a class="button button-secondary home-current-session-action home-current-session-action--new" href="#new" data-session-entry="true"><span class="home-current-session-action-plus" aria-hidden="true">+</span><span>New Session</span></a>
+      <a class="button button-primary home-current-session-action home-current-session-action--new" href="#new" data-session-entry="true"><span class="home-current-session-action-plus" aria-hidden="true">+</span><span>New Session</span></a>
     </div>
   `;
 }

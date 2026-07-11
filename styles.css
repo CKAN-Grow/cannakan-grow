@@ -5412,22 +5412,33 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .home-current-session-action {
-  min-width: min(100%, 190px);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.home-current-session-action--continue {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: auto;
+  min-width: 0;
+  padding-inline: 16px;
+  border-color: color-mix(in srgb, var(--session-companion-accent, #94d159) 42%, transparent);
+  color: color-mix(in srgb, var(--session-companion-accent, #94d159) 86%, white 14%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(5, 13, 10, 0.7);
 }
 
 .home-current-session-action--new {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border-color: color-mix(in srgb, var(--session-companion-accent, #94d159) 42%, transparent);
-  color: #f5f8f2;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
-    rgba(5, 13, 10, 0.7);
+  min-width: 154px;
 }
 
 .home-current-session-action-plus {
-  color: var(--session-companion-accent, #94d159);
+  color: currentColor;
   font-size: 1.05em;
   font-weight: 950;
   line-height: 1;
