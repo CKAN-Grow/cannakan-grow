@@ -91,6 +91,7 @@ const GROW_GALLERY_BUCKET = "grow-gallery";
 const SOURCES_TABLE = "sources";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const LEGACY_GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_like";
+const MOCK_GALLERY_LIKES_STORAGE_KEY = "cannakanMockGalleryLikes";
 const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
@@ -13841,7 +13842,7 @@ const MOCK_PENDING_GALLERY_SUBMISSIONS = buildMockPendingGalleryReviewSnapshots(
 
 function getGallerySnapshotsForDisplay(snapshotRows = appState.gallerySnapshots) {
   if (isMockDataEnabled()) {
-    return sortGallerySnapshotsNewestFirst(MOCK_GALLERY_SNAPSHOTS);
+    return sortGallerySnapshotsNewestFirst(applyMockGallerySnapshotLikeOverrides(MOCK_GALLERY_SNAPSHOTS));
   }
 
   return sortGallerySnapshotsNewestFirst((snapshotRows || []).filter((snapshot) => !isMockGallerySnapshot(snapshot)));
@@ -13849,6 +13850,65 @@ function getGallerySnapshotsForDisplay(snapshotRows = appState.gallerySnapshots)
 
 function isMockGallerySnapshot(snapshot) {
   return Boolean(snapshot?.isMock) || String(snapshot?.id || "").startsWith("mock-gallery-");
+}
+
+function getMockGalleryLikesStorageKey(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${MOCK_GALLERY_LIKES_STORAGE_KEY}:${normalizedUserId}`
+    : MOCK_GALLERY_LIKES_STORAGE_KEY;
+}
+
+function readMockGalleryLikeOverrides(userId = appState.user?.id || "") {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(getMockGalleryLikesStorageKey(userId)) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    console.error("Failed to read mock Community Grow likes from localStorage", error);
+    return {};
+  }
+}
+
+function writeMockGalleryLikeOverrides(overrides = {}, userId = appState.user?.id || "") {
+  try {
+    localStorage.setItem(getMockGalleryLikesStorageKey(userId), JSON.stringify(overrides || {}));
+  } catch (error) {
+    console.error("Failed to persist mock Community Grow likes to localStorage", error);
+  }
+}
+
+function applyMockGallerySnapshotLikeOverrides(snapshotRows = [], userId = appState.user?.id || "") {
+  const overrides = readMockGalleryLikeOverrides(userId);
+  return (snapshotRows || []).map((snapshot) => {
+    if (!snapshot || !isMockGallerySnapshot(snapshot)) {
+      return snapshot;
+    }
+    const override = overrides[snapshot.id];
+    if (!override) {
+      return {
+        ...snapshot,
+        likedByCurrentUser: false,
+      };
+    }
+    return {
+      ...snapshot,
+      likeCount: Math.max(0, Number(override.likeCount ?? snapshot.likeCount) || 0),
+      likedByCurrentUser: Boolean(override.likedByCurrentUser),
+    };
+  });
+}
+
+function persistMockGallerySnapshotLikeState(snapshotId = "", nextState = {}) {
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  if (!normalizedSnapshotId) {
+    return;
+  }
+  const overrides = readMockGalleryLikeOverrides();
+  overrides[normalizedSnapshotId] = {
+    likeCount: Math.max(0, Number(nextState.likeCount) || 0),
+    likedByCurrentUser: Boolean(nextState.likedByCurrentUser),
+  };
+  writeMockGalleryLikeOverrides(overrides);
 }
 
 function isMockGalleryReviewSnapshot(snapshot) {
@@ -29266,12 +29326,18 @@ async function unpublishGallerySnapshot(snapshotId) {
 }
 
 async function toggleGallerySnapshotLike(snapshotId, options = {}) {
-  const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  const snapshot = getGallerySnapshotLikeTarget(snapshotId);
   if (!snapshot) {
     throw new Error("Could not find this Community Grow snapshot.");
   }
   if (isMockGallerySnapshot(snapshot)) {
-    throw new Error("Mock Community Grow likes are preview-only in local development.");
+    persistMockGallerySnapshotLikeState(snapshotId, {
+      likeCount: Math.max(0, Number(options.nextLikeCount ?? snapshot.likeCount) || 0),
+      likedByCurrentUser: typeof options.nextLiked === "boolean"
+        ? options.nextLiked
+        : !snapshot.likedByCurrentUser,
+    });
+    return;
   }
 
   if (!appState.supabase || !appState.user?.id) {
@@ -29325,8 +29391,18 @@ async function toggleGallerySnapshotLike(snapshotId, options = {}) {
   await refreshGallerySnapshotLikes([snapshotId], "toggle-like");
 }
 
+function getGallerySnapshotLikeTarget(snapshotId = "") {
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  if (!normalizedSnapshotId) {
+    return null;
+  }
+  return appState.gallerySnapshots.find((entry) => entry?.id === normalizedSnapshotId)
+    || getGallerySnapshotsForDisplay().find((entry) => entry?.id === normalizedSnapshotId)
+    || null;
+}
+
 function getGallerySnapshotLikeSnapshot(snapshotId = "") {
-  const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  const snapshot = getGallerySnapshotLikeTarget(snapshotId);
   if (!snapshot) {
     return null;
   }
@@ -29340,6 +29416,12 @@ function getGallerySnapshotLikeSnapshot(snapshotId = "") {
 function applyGallerySnapshotLikeState(snapshotId = "", nextState = {}) {
   const normalizedSnapshotId = String(snapshotId || "").trim();
   if (!normalizedSnapshotId) {
+    return;
+  }
+
+  const displaySnapshot = getGallerySnapshotsForDisplay().find((snapshot) => snapshot?.id === normalizedSnapshotId);
+  if (displaySnapshot && isMockGallerySnapshot(displaySnapshot)) {
+    persistMockGallerySnapshotLikeState(normalizedSnapshotId, nextState);
     return;
   }
 
@@ -29368,7 +29450,7 @@ function setGalleryLikeButtonsLoading(snapshotId = "", isLoading = false) {
 }
 
 function syncGalleryLikeButtonsForSnapshot(snapshotId = "") {
-  const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  const snapshot = getGallerySnapshotLikeTarget(snapshotId);
   if (!snapshot) {
     return;
   }
@@ -29428,7 +29510,10 @@ async function handleGallerySnapshotLikeButtonClick(button, options = {}) {
   setGalleryLikeButtonsLoading(snapshotId, true);
 
   try {
-    await toggleGallerySnapshotLike(snapshotId, { nextLiked: nextState.likedByCurrentUser });
+    await toggleGallerySnapshotLike(snapshotId, {
+      nextLiked: nextState.likedByCurrentUser,
+      nextLikeCount: nextState.likeCount,
+    });
     syncGalleryLikeButtonsForSnapshot(snapshotId);
     if (typeof options.afterPersist === "function") {
       options.afterPersist();
@@ -36405,11 +36490,11 @@ function renderHomeGalleryRankingRowIcon(iconType = "source") {
 }
 
 function renderGalleryLikeButtonMarkup(snapshot, options = {}) {
-  const { variant = "heart" } = options;
+  const { variant = "heart", className = "" } = options;
   const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
   const isLiked = Boolean(snapshot?.likedByCurrentUser);
-  const isMock = isMockGallerySnapshot(snapshot);
   const isThumbVariant = variant === "thumb";
+  const extraClassName = String(className || "").trim();
   const iconMarkup = isThumbVariant
     ? renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb gallery-like-icon gallery-like-icon--thumb")
     : renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true });
@@ -36417,11 +36502,10 @@ function renderGalleryLikeButtonMarkup(snapshot, options = {}) {
   return `
     <button
       type="button"
-      class="gallery-like-button${isLiked ? " is-liked" : ""}${isThumbVariant ? " gallery-like-button--thumb" : ""}"
+      class="gallery-like-button${isLiked ? " is-liked" : ""}${isThumbVariant ? " gallery-like-button--thumb" : ""}${extraClassName ? ` ${escapeHtml(extraClassName)}` : ""}"
       data-gallery-like="${escapeHtml(snapshot?.id || "")}"
       aria-pressed="${isLiked ? "true" : "false"}"
-      aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report")}"
-      ${isMock ? "disabled" : ""}
+      aria-label="${isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report"}"
     >
       ${iconMarkup}
       <span class="gallery-like-count-wrap">
@@ -99128,22 +99212,10 @@ function renderPublicSessionQuickStatsMarkup(snapshot = null, publicDetails = {}
 }
 
 function renderPublicSessionHeroLikeMarkup(snapshot = null) {
-  const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
-  const isLiked = Boolean(snapshot?.likedByCurrentUser);
-  return `
-    <button
-      type="button"
-      class="public-session-hero-like gallery-like-button${isLiked ? " is-liked" : ""}"
-      data-gallery-like="${escapeHtml(snapshot?.id || "")}"
-      aria-pressed="${isLiked ? "true" : "false"}"
-      aria-label="${isLiked ? "Unlike this Community Grow report" : "Like this Community Grow report"}"
-    >
-      <span class="public-session-hero-like-icon" aria-hidden="true">
-        ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true })}
-      </span>
-      <span class="gallery-like-count public-session-hero-like-count">${escapeHtml(String(likeCount))}</span>
-    </button>
-  `;
+  return renderGalleryLikeButtonMarkup(snapshot, {
+    variant: "thumb",
+    className: "public-session-hero-like",
+  });
 }
 
 function getPublicSessionSourceReportHref(sourceLabel = "") {
