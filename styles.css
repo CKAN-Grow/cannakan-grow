@@ -6652,6 +6652,22 @@ body.theme-dark #active-sessions-section {
   --partition-success-glow: rgba(170, 179, 170, 0.06);
 }
 
+.partition-success--setup {
+  --partition-success-accent: #aab3aa;
+  --partition-success-accent-soft: rgba(170, 179, 170, 0.1);
+  --partition-success-border: rgba(120, 130, 120, 0.15);
+  --partition-success-text: #6f786f;
+  --partition-success-glow: rgba(170, 179, 170, 0.06);
+}
+
+.partition-success--pending {
+  --partition-success-accent: #4f9ed8;
+  --partition-success-accent-soft: rgba(79, 158, 216, 0.12);
+  --partition-success-border: rgba(79, 158, 216, 0.22);
+  --partition-success-text: #276b9b;
+  --partition-success-glow: rgba(79, 158, 216, 0.1);
+}
+
 .partition-success-card {
   border-color: var(--partition-success-border);
   box-shadow:
@@ -58968,6 +58984,22 @@ body.theme-dark .partition-success--none {
   --partition-success-accent-soft: rgba(185, 193, 185, 0.065);
   --partition-success-border: rgba(185, 193, 185, 0.15);
   --partition-success-glow: rgba(185, 193, 185, 0.04);
+}
+
+body.theme-dark .partition-success--setup {
+  --partition-success-text: #b9c1b9;
+  --partition-success-accent: #aab3aa;
+  --partition-success-accent-soft: rgba(185, 193, 185, 0.065);
+  --partition-success-border: rgba(185, 193, 185, 0.15);
+  --partition-success-glow: rgba(185, 193, 185, 0.04);
+}
+
+body.theme-dark .partition-success--pending {
+  --partition-success-text: #a9d4f4;
+  --partition-success-accent: #62b3ff;
+  --partition-success-accent-soft: rgba(98, 179, 255, 0.09);
+  --partition-success-border: rgba(98, 179, 255, 0.22);
+  --partition-success-glow: rgba(98, 179, 255, 0.08);
 }
 
 body.theme-dark .partition-success-card .partition-success-rate,

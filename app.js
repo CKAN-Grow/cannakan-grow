@@ -92994,6 +92994,22 @@ const PARTITION_SUCCESS_STATUS_DEFINITIONS = Object.freeze({
     className: "partition-success--none",
     modifier: "none",
   }),
+  setup: Object.freeze({
+    key: "setup",
+    label: "Setup Required",
+    shortLabel: "Setup",
+    range: "Before save",
+    className: "partition-success--setup",
+    modifier: "setup",
+  }),
+  pending: Object.freeze({
+    key: "pending",
+    label: "In Progress",
+    shortLabel: "Pending",
+    range: "Awaiting results",
+    className: "partition-success--pending",
+    modifier: "pending",
+  }),
 });
 
 const PARTITION_SUCCESS_STATUS_ORDER = Object.freeze(["strong", "good", "mixed", "poor", "failed", "none"]);
@@ -93046,6 +93062,22 @@ const PARTITION_SUCCESS_CANVAS_PALETTE = Object.freeze({
     border: "rgba(185, 193, 185, 0.2)",
     background: "rgba(185, 193, 185, 0.06)",
     glow: "rgba(185, 193, 185, 0.04)",
+  }),
+  setup: Object.freeze({
+    accent: "#aab3aa",
+    text: "#edf1ed",
+    muted: "#b9c1b9",
+    border: "rgba(185, 193, 185, 0.2)",
+    background: "rgba(185, 193, 185, 0.06)",
+    glow: "rgba(185, 193, 185, 0.04)",
+  }),
+  pending: Object.freeze({
+    accent: "#62b3ff",
+    text: "#d9eeff",
+    muted: "#a9d4f4",
+    border: "rgba(98, 179, 255, 0.28)",
+    background: "rgba(98, 179, 255, 0.09)",
+    glow: "rgba(98, 179, 255, 0.08)",
   }),
 });
 
@@ -93508,9 +93540,57 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
   const maxPartitions = Math.max(0, Number(options.maxPartitions) || 16);
   const maxGroups = Math.max(0, Number(options.maxGroups) || 4);
   const compact = options.compact === true;
+  const normalizedResultStatus = normalizeSessionStatus(
+    options.sessionStatus
+    || summary.sessionStatus
+    || sessionOrSummary?.sessionStatus
+    || sessionOrSummary?.session_status
+    || "",
+  );
+  const isCompletedSession = normalizedResultStatus === "completed";
+  const isSetupSession = !isCompletedSession && (
+    normalizedResultStatus === "unselected"
+    || normalizedResultStatus === "setup"
+    || (!String(summary.sessionId || sessionOrSummary?.id || "").trim() && normalizedResultStatus !== "active")
+  );
+  const isInProgressSession = !isCompletedSession && !isSetupSession;
   const countedPartitions = summary.partitions.filter((partition) => partition.hasSeeds).slice(0, maxPartitions);
-  const sourceGroups = summary.sourceGroups.slice(0, maxGroups);
-  const varietyGroups = summary.varietyGroups.slice(0, maxGroups);
+  const buildLifecycleGroupRows = (type = "source") => {
+    const groups = new Map();
+    countedPartitions.forEach((partition) => {
+      const key = type === "source" ? partition.sourceKey : partition.varietyKey;
+      const label = type === "source" ? partition.sourceLabel : partition.varietyLabel;
+      if (!key || !label || label === "Not shared") {
+        return;
+      }
+      const group = groups.get(key) || {
+        key,
+        type,
+        label,
+        totalSeeds: 0,
+        totalGerminated: 0,
+        totalRecorded: 0,
+        partitionLabels: [],
+        percentageLabel: isCompletedSession ? "N/A" : (isSetupSession ? "Setup Required" : "Pending"),
+      };
+      const recordedCount = partition.hasValidResultValue ? partition.totalCount : 0;
+      group.totalSeeds += partition.totalCount;
+      group.totalGerminated += partition.hasValidResultValue ? partition.germinatedCount : 0;
+      group.totalRecorded += recordedCount;
+      group.partitionLabels.push(partition.label);
+      group.countLabel = isCompletedSession
+        ? `${group.totalGerminated}/${group.totalSeeds}`
+        : `${group.totalRecorded}/${group.totalSeeds} recorded`;
+      groups.set(key, group);
+    });
+    return [...groups.values()].slice(0, maxGroups);
+  };
+  const sourceGroups = isCompletedSession
+    ? summary.sourceGroups.slice(0, maxGroups)
+    : buildLifecycleGroupRows("source");
+  const varietyGroups = isCompletedSession
+    ? summary.varietyGroups.slice(0, maxGroups)
+    : buildLifecycleGroupRows("variety");
   const hasPendingCustomResults = Boolean(summary.isPendingCustomMethodSession && summary.overall.hasPendingResults);
   if (!summary.overall.hasResults && !hasPendingCustomResults) {
     return "";
@@ -93525,21 +93605,33 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
   const breakdownTitle = method.isStandardized
     ? `Fair view by ${method.rowLabel.toLowerCase()}, source, and variety`
     : `Result view by ${method.rowLabel.toLowerCase()}, source, and variety`;
-  const overallLabel = hasPendingCustomResults
-    ? "Pending results"
-    : `${summary.overall.percentageLabel} overall`;
-  const pendingStatus = {
-    ...PARTITION_SUCCESS_STATUS_DEFINITIONS.none,
-    label: "Pending",
-    shortLabel: "Pending",
-  };
-  const overallStatus = hasPendingCustomResults
-    ? pendingStatus
+  const setupStatus = PARTITION_SUCCESS_STATUS_DEFINITIONS.setup;
+  const pendingStatus = PARTITION_SUCCESS_STATUS_DEFINITIONS.pending;
+  const overallSeedCount = countedPartitions.reduce((sum, partition) => sum + partition.totalCount, 0);
+  const overallRecordedCount = countedPartitions.reduce(
+    (sum, partition) => sum + (partition.hasValidResultValue ? partition.totalCount : 0),
+    0,
+  );
+  const overallLabel = isSetupSession
+    ? "Setup required"
+    : isInProgressSession
+      ? "Results pending"
+      : `${summary.overall.percentageLabel} overall`;
+  const overallStatus = isSetupSession
+    ? setupStatus
+    : isInProgressSession
+      ? pendingStatus
     : getPartitionSuccessStatus(summary.overall.percentage, summary.overall.totalGerminated, summary.overall.totalSeeds);
-  const overallRateLabel = hasPendingCustomResults ? "Pending" : summary.overall.percentageLabel;
-  const overallCountLabel = hasPendingCustomResults
-    ? "Results pending"
-    : `${summary.overall.totalGerminated} of ${summary.overall.totalSeeds} germinated`;
+  const overallRateLabel = isSetupSession
+    ? "Setup Required"
+    : isInProgressSession
+      ? "Results Pending"
+      : summary.overall.percentageLabel;
+  const overallCountLabel = isSetupSession
+    ? "Save session to start tracking results."
+    : isInProgressSession
+      ? `${overallRecordedCount} of ${overallSeedCount} recorded`
+      : `${summary.overall.totalGerminated} of ${summary.overall.totalSeeds} germinated`;
   const renderGroupPanelMarkup = (title, iconType, groups) => `
     <article class="session-result-group-list">
       <div class="session-result-group-list-head">
@@ -93552,7 +93644,7 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
             <span class="session-result-group-name">${escapeHtml(group.label)}</span>
             <span class="session-result-group-partitions">${escapeHtml(group.partitionLabels.join(", "))}</span>
             <b>${escapeHtml(group.percentageLabel)}</b>
-            <span class="session-result-group-count">${escapeHtml(`${group.totalGerminated}/${group.totalSeeds}`)}</span>
+            <span class="session-result-group-count">${escapeHtml(group.countLabel || `${group.totalGerminated}/${group.totalSeeds}`)}</span>
           </div>
         `).join("")}
       </div>
@@ -93580,8 +93672,10 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
           <p class="eyebrow">RESULT BREAKDOWN</p>
           <h4>${escapeHtml(breakdownTitle)}</h4>
           <p class="session-result-breakdown-context">${
-            hasPendingCustomResults
-              ? "Results not completed yet. Mark the session complete to publish final germination analytics."
+            isSetupSession
+              ? "Build and save this session before results are classified."
+              : isInProgressSession
+                ? "Germination results are still in progress. Final classifications appear after completion."
               : `${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}`
           }</p>
         </div>
@@ -93606,19 +93700,37 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
       </div>
       <div class="session-result-partition-grid">
         ${countedPartitions.map((partition) => {
-          const successStatus = partition.isPendingResult
-            ? pendingStatus
+          const successStatus = isSetupSession
+            ? setupStatus
+            : isInProgressSession
+              ? pendingStatus
+              : partition.isPendingResult
+                ? pendingStatus
             : getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount);
-          const germinationLine = partition.isPendingResult
-            ? "Pending results"
+          const resultRecordedCount = partition.hasValidResultValue ? partition.totalCount : 0;
+          const germinationLine = isSetupSession
+            ? "No percentage yet"
+            : isInProgressSession
+              ? `${resultRecordedCount} of ${partition.totalCount} recorded`
+              : partition.isPendingResult
+                ? "Pending results"
             : `${partition.germinatedCount}/${partition.totalCount} germinated`;
-          const accountingLine = partition.isPendingResult
-            ? "Results not completed yet"
+          const accountingLine = isSetupSession
+            ? "Save session to begin tracking"
+            : isInProgressSession
+              ? "Awaiting germination results"
+              : partition.isPendingResult
+                ? "Results not completed yet"
             : `${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`;
+          const rateLabel = isSetupSession
+            ? "Setup Required"
+            : isInProgressSession
+              ? "Pending"
+              : partition.percentageLabel;
           return `
             <article class="session-result-partition-chip partition-success-card ${escapeHtml(successStatus.className)}">
               <span class="session-result-partition-label"><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partition.label)}</span>
-              <strong class="partition-success-rate">${escapeHtml(partition.percentageLabel)}</strong>
+              <strong class="partition-success-rate">${escapeHtml(rateLabel)}</strong>
               <p class="session-result-partition-count">${escapeHtml(germinationLine)}</p>
               <p class="session-result-partition-meta">${escapeHtml(accountingLine)}</p>
               <span class="partition-success-badge">${escapeHtml(successStatus.label)}</span>
@@ -93627,7 +93739,7 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
           `;
         }).join("")}
       </div>
-      ${compact || hasPendingCustomResults ? "" : performanceLegendMarkup}
+      ${compact || !isCompletedSession ? "" : performanceLegendMarkup}
     </section>
   `;
 }
