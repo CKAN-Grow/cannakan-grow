@@ -37565,6 +37565,35 @@ function ensureSessionImageLightboxModal() {
       showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) + 1);
     }
   });
+  modal.addEventListener("touchstart", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+    modal.dataset.touchStartX = String(touch.clientX);
+    modal.dataset.touchStartY = String(touch.clientY);
+  }, { passive: true });
+  modal.addEventListener("touchend", (event) => {
+    const touch = event.changedTouches?.[0];
+    const startX = Number(modal.dataset.touchStartX || NaN);
+    const startY = Number(modal.dataset.touchStartY || NaN);
+    if (!touch || !Number.isFinite(startX) || !Number.isFinite(startY)) {
+      return;
+    }
+
+    const deltaX = touch.clientX - startX;
+    const deltaY = touch.clientY - startY;
+    delete modal.dataset.touchStartX;
+    delete modal.dataset.touchStartY;
+    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) {
+      return;
+    }
+
+    showSessionImageLightboxIndex(
+      modal,
+      Number(modal.dataset.currentIndex || 0) + (deltaX < 0 ? 1 : -1),
+    );
+  }, { passive: true });
 
   document.body.appendChild(modal);
   return modal;
@@ -88386,6 +88415,7 @@ function renderPublicSessionDetail(snapshotId) {
       await handlePublicSessionShareButtonClick(shareSnapshotId);
     });
   });
+  initializePublicSessionEvidenceGallery(app, getPublicSessionEvidenceImages(reportSnapshot));
 }
 
 let growIdQrLibraryLoadPromise = null;
@@ -99446,9 +99476,7 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
   const images = getPublicSessionEvidenceImages(snapshot);
   const imageCountLabel = images.length === 0
     ? "No images submitted"
-    : images.length === 1
-    ? "1 / 3 images"
-    : `${images.length} images submitted`;
+    : `${images.length} / 3 images`;
   return `
     <section class="public-session-evidence-gallery" aria-labelledby="public-session-evidence-gallery-title">
       <div class="public-session-section-head">
@@ -99462,7 +99490,12 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
       ${images.length ? `
         <div class="public-session-evidence-grid public-session-evidence-grid--${escapeHtml(String(images.length))}">
           ${images.map((image, index) => `
-            <figure>
+            <figure
+              role="button"
+              tabindex="0"
+              aria-label="${escapeHtml(`Open ${image.label} image ${index + 1} of ${images.length}`)}"
+              data-session-image-lightbox-index="${escapeHtml(String(index))}"
+            >
               <img src="${escapeHtml(image.url)}" alt="${escapeHtml(`${image.label} ${index + 1}`)}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async">
             </figure>
           `).join("")}
@@ -99474,6 +99507,57 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
       `}
     </section>
   `;
+}
+
+function initializePublicSessionEvidenceGallery(scope, images = []) {
+  const grid = scope?.querySelector?.(".public-session-evidence-grid");
+  const normalizedImages = normalizeSessionImages(images.map((image, index) => ({
+    url: String(image?.url || "").trim(),
+    previewUrl: String(image?.url || "").trim(),
+    filename: String(image?.label || `Evidence image ${index + 1}`).trim(),
+    name: String(image?.label || `Evidence image ${index + 1}`).trim(),
+  })).filter((image) => image.url));
+
+  if (!grid || !normalizedImages.length || grid.dataset.lightboxBound) {
+    return;
+  }
+
+  const lightboxState = {
+    images: normalizedImages,
+    pendingFiles: [],
+  };
+
+  const openEvidenceImage = (target) => {
+    const card = target instanceof Element
+      ? target.closest("[data-session-image-lightbox-index]")
+      : null;
+    if (!card) {
+      return false;
+    }
+
+    const imageIndex = Number(card.getAttribute("data-session-image-lightbox-index"));
+    if (!Number.isInteger(imageIndex)) {
+      return false;
+    }
+
+    openSessionImageLightbox(lightboxState, imageIndex);
+    return true;
+  };
+
+  grid.addEventListener("click", (event) => {
+    if (openEvidenceImage(event.target)) {
+      event.preventDefault();
+    }
+  });
+  grid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    if (openEvidenceImage(event.target)) {
+      event.preventDefault();
+    }
+  });
+  grid.dataset.lightboxBound = "true";
 }
 
 async function handlePublicSessionShareButtonClick(snapshotId = "") {
