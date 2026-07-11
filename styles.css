@@ -54883,6 +54883,10 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   min-width: 0;
 }
 
+.session-workspace-shell .session-progress-workflow-heading {
+  margin-bottom: 14px;
+}
+
 .session-images-step-badge {
   display: inline-grid;
   place-items: center;

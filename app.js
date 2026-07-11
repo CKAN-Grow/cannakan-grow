@@ -87093,8 +87093,8 @@ function updateMethodProgressHeading(scope, method) {
 
   const headingText = `Germination progress by ${method.rowLabel.toLowerCase()}`;
   const selectors = [
-    "#partition-progress-title span",
-    "#detail-progress-title",
+    "#partition-progress-section [data-progress-heading-subtitle]",
+    "#detail-progress-section [data-progress-heading-subtitle]",
   ];
   scope.querySelectorAll(selectors.join(", ")).forEach((element) => {
     element.textContent = headingText;
