@@ -29506,12 +29506,12 @@ function isGallerySnapshotIncludedByExploreFilter(snapshot = null, filterKey = "
 function getGalleryExploreFilterHelperLabel(filterKey = "standardized") {
   const normalizedFilter = normalizeGalleryExploreFilter(filterKey);
   if (normalizedFilter === "standardized") {
-    return "Showing standardized Grow methods. Switch to All Methods to explore every community session.";
+    return "Showing KAN and TRā sessions. Switch to All Methods to explore every community session.";
   }
   if (normalizedFilter === "all") {
-    return "Showing every community session, including standardized and custom methods.";
+    return "Showing community sessions across all germination methods.";
   }
-  return `Showing ${getGalleryExploreFilterLabel(normalizedFilter)} community sessions. Switch to All Methods to explore every method.`;
+  return `Showing ${getGalleryExploreFilterLabel(normalizedFilter)} community sessions. Switch to All Methods to explore every community session.`;
 }
 
 function getGallerySortOrderOptions(sortBy = "date") {
@@ -76614,6 +76614,8 @@ function renderGallery(targetSnapshotId = "") {
   const galleryExploreFilterControl = document.querySelector("#gallery-explore-filter");
   const galleryExploreHelper = document.querySelector("#gallery-explore-helper");
   const gallerySortState = document.querySelector("#gallery-sort-state");
+  const gallerySortOrderState = document.querySelector("#gallery-sort-order-state");
+  const galleryViewingState = document.querySelector("#gallery-viewing-state");
   const galleryCountState = document.querySelector("#gallery-count-state");
   const galleryLoadMoreShell = document.querySelector("#gallery-load-more-shell");
   const galleryLoadMoreButton = document.querySelector("#gallery-load-more-button");
@@ -76634,12 +76636,26 @@ function renderGallery(targetSnapshotId = "") {
     GALLERY_SNAPSHOT_PAGE_SIZE,
     Number.parseInt(appState.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
   );
-  if (gallerySortState) {
-    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
-  }
-  if (galleryExploreHelper) {
-    galleryExploreHelper.textContent = getGalleryExploreFilterHelperLabel(appState.galleryExploreFilter);
-  }
+
+  const syncGalleryHeaderSummary = (visibleCount = 0, totalCount = 0) => {
+    if (galleryExploreHelper) {
+      galleryExploreHelper.textContent = getGalleryExploreFilterHelperLabel(appState.galleryExploreFilter);
+    }
+    if (galleryViewingState) {
+      galleryViewingState.textContent = getGalleryExploreFilterLabel(appState.galleryExploreFilter);
+    }
+    if (gallerySortState) {
+      gallerySortState.textContent = getGallerySortLabel(appState.gallerySort);
+    }
+    if (gallerySortOrderState) {
+      gallerySortOrderState.textContent = getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder);
+    }
+    if (galleryCountState) {
+      galleryCountState.textContent = `${Number(visibleCount).toLocaleString()} of ${Number(totalCount).toLocaleString()} reports`;
+    }
+  };
+
+  syncGalleryHeaderSummary();
 
   const leaderboardProfileIds = [...new Set(getApprovedPublicGallerySnapshots()
     .map((snapshot) => String(snapshot?.userId || "").trim())
@@ -76870,10 +76886,7 @@ function renderGallery(targetSnapshotId = "") {
       ...visibleApprovedSnapshots,
       ...nonApprovedSnapshots,
     ];
-    if (galleryCountState) {
-      const countLabel = `${getGalleryExploreFilterSentenceLabel(appState.galleryExploreFilter)} reports`;
-      galleryCountState.textContent = `Showing ${visibleApprovedSnapshots.length.toLocaleString()} of ${approvedSnapshots.length.toLocaleString()} ${countLabel}`;
-    }
+    syncGalleryHeaderSummary(visibleApprovedSnapshots.length, approvedSnapshots.length);
     if (galleryLoadMoreShell) {
       galleryLoadMoreShell.hidden = visibleApprovedSnapshots.length >= approvedSnapshots.length;
     }
@@ -76986,9 +76999,7 @@ function renderGallery(targetSnapshotId = "") {
       appState.gallerySort = normalizeGallerySort(gallerySortControl.value);
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       syncGallerySortOrderControl(true);
-      if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
-      }
+      syncGalleryHeaderSummary();
       renderVisibleGallerySnapshots();
     });
   }
@@ -76998,9 +77009,7 @@ function renderGallery(targetSnapshotId = "") {
     gallerySortOrderControl.addEventListener("change", () => {
       appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, gallerySortOrderControl.value);
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
-      if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
-      }
+      syncGalleryHeaderSummary();
       renderVisibleGallerySnapshots();
     });
   }
@@ -77010,12 +77019,7 @@ function renderGallery(targetSnapshotId = "") {
     galleryExploreFilterControl.addEventListener("change", () => {
       appState.galleryExploreFilter = normalizeGalleryExploreFilter(galleryExploreFilterControl.value);
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
-      if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · Explore: ${getGalleryExploreFilterLabel(appState.galleryExploreFilter)}`;
-      }
-      if (galleryExploreHelper) {
-        galleryExploreHelper.textContent = getGalleryExploreFilterHelperLabel(appState.galleryExploreFilter);
-      }
+      syncGalleryHeaderSummary();
       renderVisibleGallerySnapshots();
     });
   }
