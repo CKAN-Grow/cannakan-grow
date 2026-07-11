@@ -73686,7 +73686,7 @@ function renderHomeSessionDashboardHeroActions(hasSavedGrowSessions = true) {
 
   return `
     <a class="button button-new-session" href="#sessions">My Sessions</a>
-    <a class="button button-secondary" href="#new" data-session-entry="true">Start Session</a>
+    <a class="button button-secondary" href="#new" data-session-entry="true"><span aria-hidden="true">+</span> New Session</a>
   `;
 }
 
@@ -97949,15 +97949,18 @@ function renderSessionProgressCompanionMetricMarkup(iconKey = "clock", label = "
 
 function renderSessionProgressCommandCenterMarkup(engineState = null, options = {}) {
   const title = String(options.title || "Your Grow Companion").trim() || "Your Grow Companion";
+  const headerActionsMarkup = String(options.headerActionsMarkup || "").trim();
+  const headerClassName = `session-progress-companion-head${headerActionsMarkup ? " session-progress-companion-head--with-actions" : ""}`;
   if (!engineState) {
     return `
       <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="${escapeHtml(title)}">
-        <header class="session-progress-companion-head">
+        <header class="${escapeHtml(headerClassName)}">
           <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
           <div>
             <p class="eyebrow">Session Progress</p>
             <h3>${escapeHtml(title)}</h3>
           </div>
+          ${headerActionsMarkup}
         </header>
         <div class="session-progress-companion-empty">
           <strong>Timeline unavailable</strong>
@@ -98003,12 +98006,13 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
       ${companionHeroBackgroundAttributes}
       style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;"
     >
-      <header class="session-progress-companion-head">
+      <header class="${escapeHtml(headerClassName)}">
         <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
         <div>
           <p class="eyebrow">Session Progress</p>
           <h3>${escapeHtml(title)}</h3>
         </div>
+        ${headerActionsMarkup}
       </header>
 
       <div class="session-progress-companion-main">
@@ -99245,9 +99249,9 @@ function renderHomeCurrentSessionActionsMarkup(session = null) {
     ? `<a class="button button-primary home-current-session-action" href="#sessions/${escapeHtml(session.id)}">Open Current Session</a>`
     : "";
   return `
-    <div class="home-current-session-actions" aria-label="Current session actions">
+    <div class="session-progress-companion-head-actions home-current-session-actions" aria-label="Current session actions">
       ${openSessionAction}
-      <a class="button button-primary home-current-session-action" href="#new" data-session-entry="true">Start Session</a>
+      <a class="button button-secondary home-current-session-action home-current-session-action--new" href="#new" data-session-entry="true"><span class="home-current-session-action-plus" aria-hidden="true">+</span><span>New Session</span></a>
     </div>
   `;
 }
@@ -99320,9 +99324,10 @@ function renderHomeCurrentSessionExperienceMarkup(activeSessions = [], selectedS
     || activeSessions[0]
     || null;
   const lifecycleState = getHomeCurrentSessionCompanionState(selectedSession);
+  const headerActionsMarkup = renderHomeCurrentSessionActionsMarkup(selectedSession);
   const companionMarkup = selectedSession
-    ? renderSessionProgressCommandCenterMarkup(lifecycleState?.engineState || null, { title: "Current Session" })
-    : renderSessionProgressCommandCenterMarkup(null, { title: "Current Session" });
+    ? renderSessionProgressCommandCenterMarkup(lifecycleState?.engineState || null, { title: "Current Session", headerActionsMarkup })
+    : renderSessionProgressCommandCenterMarkup(null, { title: "Current Session", headerActionsMarkup });
   const emptyHelper = !selectedSession
     ? `
       <div class="home-current-session-empty-copy">
@@ -99335,7 +99340,6 @@ function renderHomeCurrentSessionExperienceMarkup(activeSessions = [], selectedS
 
   return `
     <section class="home-current-session-section" aria-label="Current Session" data-home-current-session-section="true">
-      ${renderHomeCurrentSessionActionsMarkup(selectedSession)}
       <div class="home-current-session-companion" data-home-current-session-companion="true">
         ${companionMarkup}
         ${emptyHelper}
