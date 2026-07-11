@@ -17718,6 +17718,49 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 0;
 }
 
+.home-tested-sources-preview-section {
+  --home-explorer-preview-art: url("/src/assets/images/source-directory-bg.png?v=20260506");
+  --home-explorer-preview-position: center right;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.home-seed-explorer-preview-section {
+  --home-explorer-preview-art: url("/assets/images/seed-explorer-hero-bg.png");
+  --home-explorer-preview-position: center right;
+}
+
+.home-tested-sources-preview-section::before,
+.home-tested-sources-preview-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-tested-sources-preview-section::before {
+  background-image: var(--home-explorer-preview-art);
+  background-position: var(--home-explorer-preview-position);
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0.34;
+  filter: saturate(0.86) brightness(0.82);
+}
+
+.home-tested-sources-preview-section::after {
+  background:
+    linear-gradient(90deg, rgba(5, 10, 8, 0.94) 0%, rgba(5, 10, 8, 0.86) 38%, rgba(5, 10, 8, 0.68) 68%, rgba(5, 10, 8, 0.78) 100%),
+    radial-gradient(circle at 92% 12%, rgba(148, 209, 89, 0.11), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.004));
+}
+
+.home-tested-sources-preview-section > * {
+  position: relative;
+  z-index: 1;
+}
+
 .home-tested-sources-preview-head,
 .home-cstp-overview-layout {
   display: flex;
