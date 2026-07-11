@@ -31796,6 +31796,37 @@ function renderAppIconMarkup(iconName = "info", options = {}) {
   `;
 }
 
+function renderSectionMarkerMarkup(iconName = "info", options = {}) {
+  const {
+    className = "",
+    label = "",
+    decorative = true,
+    content = "",
+  } = options;
+  const markerClasses = ["section-marker", className].filter(Boolean).join(" ");
+  const markerAttributes = decorative
+    ? 'aria-hidden="true"'
+    : `role="img" aria-label="${escapeHtml(label || iconName)}"`;
+  const visibleContent = String(content || "").trim();
+
+  if (visibleContent) {
+    return `
+      <span class="${escapeHtml(markerClasses)}" ${markerAttributes}>
+        <span class="section-marker-number">${escapeHtml(visibleContent)}</span>
+      </span>
+    `;
+  }
+
+  const symbolMarkup = APP_ICON_LIBRARY[iconName] || APP_ICON_LIBRARY.info;
+  return `
+    <span class="${escapeHtml(markerClasses)}" ${markerAttributes}>
+      <svg class="section-marker-svg" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        ${symbolMarkup}
+      </svg>
+    </span>
+  `;
+}
+
 function getGrowKpiVisualMeta(input = "") {
   if (input && typeof input === "object") {
     const tone = String(input.tone || "neutral").trim() || "neutral";
@@ -32641,8 +32672,7 @@ function renderAppSectionHeaderIcon(iconType = "overview", options = {}) {
   const {
     className = "",
   } = options;
-  return renderAppIconMarkup(getAppSectionHeaderIconName(iconType), {
-    variant: "plate",
+  return renderSectionMarkerMarkup(getAppSectionHeaderIconName(iconType), {
     className: ["section-title-icon", className].filter(Boolean).join(" "),
   });
 }
@@ -52778,8 +52808,7 @@ function renderHomeCstpTestingIconMarkup() {
 }
 
 function renderPremiumSectionHeaderIcon(iconName = "info") {
-  return renderAppIconMarkup(iconName, {
-    variant: "plate",
+  return renderSectionMarkerMarkup(iconName, {
     className: "section-title-icon",
   });
 }
@@ -97955,7 +97984,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
     return `
       <article class="session-progress-companion-card session-progress-companion-card--empty" aria-label="${escapeHtml(title)}">
         <header class="${escapeHtml(headerClassName)}">
-          <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
+          ${renderSectionMarkerMarkup("activeSessionWaveform", { className: "session-progress-companion-icon" })}
           <div>
             <p class="eyebrow">Session Progress</p>
             <h3>${escapeHtml(title)}</h3>
@@ -98007,7 +98036,7 @@ function renderSessionProgressCommandCenterMarkup(engineState = null, options = 
       style="--session-companion-accent: ${escapeHtml(theme.accent)}; --session-companion-accent-soft: ${escapeHtml(theme.accentSoft)}; --session-companion-glow: ${escapeHtml(theme.glow)}; --session-progress-ring-degrees: ${escapeHtml(String(ringDegrees))}deg;"
     >
       <header class="${escapeHtml(headerClassName)}">
-        <span class="session-progress-companion-icon">${renderSessionProgressCompanionIconMarkup("pulse", "session-progress-companion-title-svg")}</span>
+        ${renderSectionMarkerMarkup("activeSessionWaveform", { className: "session-progress-companion-icon" })}
         <div>
           <p class="eyebrow">Session Progress</p>
           <h3>${escapeHtml(title)}</h3>
@@ -99826,9 +99855,7 @@ function renderPublicSessionDetailsCardMarkup(snapshot = null, publicDetails = {
   return `
     <section class="public-session-method-panel public-session-method-panel--report public-session-details-card" aria-labelledby="public-session-details-title">
       <div class="public-session-details-heading">
-        <span class="public-session-details-heading-icon" aria-hidden="true">
-          ${renderAppIconMarkup("reportDocument", { variant: "plain" })}
-        </span>
+        ${renderSectionMarkerMarkup("reportDocument", { className: "public-session-details-heading-icon" })}
         <span>
           <h3 id="public-session-details-title">Report Overview</h3>
           <p>Key context and report signals for this Community Grow Report.</p>
@@ -99969,9 +99996,7 @@ function renderPublicSessionCustomMethodDetailsMarkup(snapshot = null, publicDet
   return `
     <section class="public-session-method-panel public-session-method-panel--custom public-session-details-card public-session-custom-method-card" aria-labelledby="public-session-custom-method-title">
       <div class="public-session-details-heading">
-        <span class="public-session-details-heading-icon" aria-hidden="true">
-          ${renderAppIconMarkup("journeyFlag", { variant: "plain" })}
-        </span>
+        ${renderSectionMarkerMarkup("journeyFlag", { className: "public-session-details-heading-icon" })}
         <span>
           <h3 id="public-session-custom-method-title">Custom Method Summary</h3>
           <p>Flexible variety-based evidence without a guided KAN/TRā timeline.</p>
@@ -100022,10 +100047,13 @@ function renderPublicSessionEvidenceGalleryMarkup(snapshot = null) {
   return `
     <section class="public-session-evidence-gallery" aria-labelledby="public-session-evidence-gallery-title">
       <div class="public-session-section-head">
-        <div>
-          <p class="eyebrow">Evidence</p>
-          <h2 id="public-session-evidence-gallery-title">Evidence</h2>
-          <p>Session images shared with this public Community Grow Report.</p>
+        <div class="public-session-section-head-main">
+          ${renderSectionMarkerMarkup("uploadImage", { className: "public-session-section-marker" })}
+          <div>
+            <p class="eyebrow">Evidence</p>
+            <h2 id="public-session-evidence-gallery-title">Evidence</h2>
+            <p>Session images shared with this public Community Grow Report.</p>
+          </div>
         </div>
         <span>${escapeHtml(imageCountLabel)}</span>
       </div>
@@ -100626,9 +100654,7 @@ function renderPublicSessionTimelineSection(snapshot) {
   return `
     <section class="public-session-method-panel public-session-method-panel--journey session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
       <div class="public-session-journey-heading">
-        <span class="public-session-journey-heading-icon" aria-hidden="true">
-          ${renderAppIconMarkup("journeyFlag", { variant: "plain" })}
-        </span>
+        ${renderSectionMarkerMarkup("journeyFlag", { className: "public-session-journey-heading-icon" })}
         <span>
           <h4 id="public-session-progress-title">Method Journey</h4>
           <p>Start to finish timeline for this method.</p>

@@ -75638,3 +75638,148 @@ a.source-directory-variety-chip:focus-visible {
     inset 0 1px 0 rgba(255, 255, 255, 0.055),
     0 10px 18px rgba(0, 0, 0, 0.18);
 }
+
+/* Shared major-section marker system.
+   Scoped to section headers so functional/status icons retain their own visual language. */
+:root {
+  --section-marker-size: 48px;
+  --section-marker-icon-size: 24px;
+  --section-marker-bg: rgba(5, 12, 9, 0.92);
+  --section-marker-border: rgba(148, 209, 89, 0.32);
+  --section-marker-color: #94D159;
+  --section-marker-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 22px rgba(0, 0, 0, 0.22);
+}
+
+.section-marker,
+.section-marker.section-title-icon,
+.app-section-header-main .section-marker.section-title-icon,
+.session-progress-companion-icon.section-marker,
+.session-notes-step-badge.section-marker,
+.session-images-step-badge.section-marker,
+.snapshot-workflow-step-badge.section-marker,
+.public-session-details-heading-icon.section-marker,
+.public-session-journey-heading-icon.section-marker,
+.public-session-section-marker.section-marker {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--section-marker-size);
+  height: var(--section-marker-size);
+  min-width: var(--section-marker-size);
+  flex: 0 0 var(--section-marker-size);
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--section-marker-border);
+  border-radius: 999px;
+  color: var(--section-marker-color);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    var(--section-marker-bg);
+  box-shadow: var(--section-marker-shadow);
+  opacity: 1;
+  overflow: hidden;
+  transform: none;
+  filter: none;
+}
+
+.section-marker::before,
+.section-marker::after,
+.section-marker.section-title-icon::before,
+.section-marker.section-title-icon::after {
+  content: none;
+  display: none;
+}
+
+.section-marker .section-marker-svg,
+.section-marker > svg,
+.public-session-details-heading-icon.section-marker svg,
+.public-session-journey-heading-icon.section-marker svg,
+.session-images-step-badge.section-marker svg,
+.session-progress-companion-icon.section-marker svg {
+  width: var(--section-marker-icon-size);
+  height: var(--section-marker-icon-size);
+  display: block;
+  margin: 0;
+  color: var(--section-marker-color);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: none;
+  filter: none;
+}
+
+.section-marker .section-marker-svg :is(path, circle, rect, line, polyline, polygon, ellipse),
+.section-marker > svg :is(path, circle, rect, line, polyline, polygon, ellipse) {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: inherit;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.section-marker-number {
+  color: var(--section-marker-color);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.section-marker.section-title-icon .cg-icon-svg,
+.section-marker.section-title-icon .cg-icon-shadow-layer,
+.section-marker.section-title-icon .cg-icon-main-layer,
+.section-marker.section-title-icon .cg-icon-main-shape,
+.section-marker.section-title-icon .cg-icon-shadow-shape {
+  filter: none;
+  transform: none;
+}
+
+.section-title-with-icon:hover .section-marker,
+.app-section-header:hover .section-marker {
+  color: var(--section-marker-color);
+  box-shadow: var(--section-marker-shadow);
+  filter: none;
+}
+
+.public-session-section-head-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.public-session-section-head-main > div {
+  min-width: 0;
+}
+
+.session-progress-workflow-heading .session-images-step-badge.section-marker {
+  --section-marker-icon-size: 23px;
+}
+
+@media (max-width: 640px) {
+  .section-marker,
+  .section-marker.section-title-icon,
+  .app-section-header-main .section-marker.section-title-icon,
+  .session-progress-companion-icon.section-marker,
+  .session-notes-step-badge.section-marker,
+  .session-images-step-badge.section-marker,
+  .snapshot-workflow-step-badge.section-marker,
+  .public-session-details-heading-icon.section-marker,
+  .public-session-journey-heading-icon.section-marker,
+  .public-session-section-marker.section-marker {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    flex-basis: 44px;
+  }
+
+  .section-marker .section-marker-svg,
+  .section-marker > svg {
+    width: 22px;
+    height: 22px;
+  }
+}
