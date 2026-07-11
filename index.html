@@ -1400,28 +1400,22 @@
           <button id="detail-mark-custom-complete" type="button" class="button button-primary">Mark Session Complete</button>
         </div>
         <div class="timeline-save-shortcut session-glass-panel detail-session-action-bar" data-standardized-method-only>
-          <div class="detail-stage-progress-card" data-detail-stage-progress-card>
-            <span class="detail-stage-progress-step" data-stage-role="current">
-              <span class="detail-stage-progress-icon-slot" data-detail-action-current-icon aria-hidden="true"></span>
-              <span class="detail-stage-progress-copy">
-                <span class="detail-stage-progress-label" data-detail-action-current-label>Current Phase</span>
-                <strong data-detail-action-current-stage>Current status</strong>
-              </span>
-            </span>
-            <span class="detail-stage-progress-arrow" aria-hidden="true">→</span>
-            <span class="detail-stage-progress-step" data-stage-role="next">
-              <span class="detail-stage-progress-icon-slot" data-detail-action-next-icon aria-hidden="true"></span>
-              <span class="detail-stage-progress-copy">
-                <span class="detail-stage-progress-label" data-detail-action-next-label>Next Milestone</span>
-                <strong data-detail-action-next-stage>Next action</strong>
-              </span>
-            </span>
-            <button type="button" class="detail-stage-progress-action" data-detail-stage-progress-trigger aria-label="Review required session action">
-              <span data-detail-stage-progress-action-label>Review Session</span>
-              <span data-detail-stage-progress-action-arrow aria-hidden="true">→</span>
-            </button>
+          <div class="detail-stage-progress-card detail-session-status-bar" data-detail-stage-progress-card>
+            <div class="detail-session-status-block detail-session-status-block--phase">
+              <span class="detail-session-status-label" data-detail-action-current-label>Session Status</span>
+              <strong data-detail-action-current-stage>Current status</strong>
+              <span class="detail-session-status-badge" data-detail-status-badge>Setup</span>
+            </div>
+            <div class="detail-session-status-block detail-session-status-block--action">
+              <span class="detail-session-status-label" data-detail-action-next-label>Current Action</span>
+              <strong data-detail-status-action>Save session to begin</strong>
+              <small data-detail-status-action-detail>Automated timing starts after the session is saved.</small>
+              <button type="button" class="detail-session-status-action-trigger" data-detail-stage-progress-trigger aria-label="Review required session action">
+                <span data-detail-stage-progress-action-label>Apply</span>
+              </button>
+            </div>
+            <div class="detail-session-status-meta" data-detail-status-meta aria-label="Session metadata"></div>
           </div>
-          <p class="timeline-save-shortcut-text detail-session-action-copy">Review your progress and update your growth stage when ready.</p>
           <button id="detail-save-shortcut" type="button" class="button button-primary detail-save-shortcut-button" data-session-save-button="true">
             <span data-session-save-button-label>Update Session</span>
           </button>

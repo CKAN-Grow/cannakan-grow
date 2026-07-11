@@ -54737,8 +54737,194 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   transform: none;
 }
 
+.session-workspace-shell .detail-session-action-bar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.detail-stage-progress-card.detail-session-status-bar,
+.detail-stage-progress-card.detail-session-status-bar.is-session-complete {
+  --detail-status-accent: #94d159;
+  display: grid;
+  grid-template-columns: minmax(160px, 0.65fr) minmax(280px, 1.25fr) minmax(180px, auto);
+  grid-template-areas: "phase action meta";
+  align-items: center;
+  gap: 14px 18px;
+  min-height: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.014)),
+    rgba(5, 13, 10, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  color: #f3f7f1;
+  text-align: left;
+  opacity: 1;
+}
+
+.detail-session-action-bar[data-current-stage-tone="soaking"] .detail-session-status-bar {
+  --detail-status-accent: var(--stage-color-soaking);
+}
+
+.detail-session-action-bar[data-current-stage-tone="germinating"] .detail-session-status-bar {
+  --detail-status-accent: var(--stage-color-germinating);
+}
+
+.detail-session-action-bar[data-current-stage-tone="first-germinated"] .detail-session-status-bar,
+.detail-session-action-bar[data-current-stage-tone="active"] .detail-session-status-bar {
+  --detail-status-accent: var(--stage-color-first-germinated);
+}
+
+.detail-session-action-bar[data-current-stage-tone="completed"] .detail-session-status-bar,
+.detail-session-action-bar[data-current-stage-tone="complete"] .detail-session-status-bar {
+  --detail-status-accent: var(--stage-color-completed);
+}
+
+.detail-session-status-block {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.detail-session-status-block--phase {
+  grid-area: phase;
+}
+
+.detail-session-status-block--action {
+  grid-area: action;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+}
+
+.detail-session-status-block--action .detail-session-status-label,
+.detail-session-status-block--action [data-detail-status-action],
+.detail-session-status-block--action [data-detail-status-action-detail] {
+  grid-column: 1;
+}
+
+.detail-session-status-label {
+  color: rgba(226, 234, 224, 0.66);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.detail-session-status-bar strong {
+  min-width: 0;
+  color: #f8faf6;
+  font-size: clamp(1rem, 1.3vw, 1.18rem);
+  font-weight: 900;
+  line-height: 1.14;
+  text-shadow: none;
+}
+
+.detail-session-status-block--action strong {
+  color: #ffffff;
+  font-size: clamp(1.06rem, 1.55vw, 1.32rem);
+  max-width: 42ch;
+}
+
+.detail-session-status-block--action small {
+  color: rgba(224, 232, 221, 0.72);
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.detail-session-status-badge,
+.detail-session-status-meta-pill,
+.detail-session-status-action-trigger {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--detail-status-accent) 34%, transparent);
+  border-radius: 999px;
+  color: var(--detail-status-accent);
+  background: color-mix(in srgb, var(--detail-status-accent) 12%, rgba(255, 255, 255, 0.018));
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.detail-session-status-badge.is-complete,
+.detail-session-status-meta-pill.is-complete {
+  --detail-status-accent: var(--stage-color-completed);
+}
+
+.detail-session-status-badge.is-attention,
+.detail-session-status-meta-pill.is-attention {
+  --detail-status-accent: #fbbf24;
+}
+
+.detail-session-status-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.detail-session-status-meta:empty {
+  display: none;
+}
+
+.detail-session-status-meta-pill {
+  color: rgba(236, 242, 232, 0.86);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.detail-session-status-meta-pill.is-ok,
+.detail-session-status-meta-pill.is-saved,
+.detail-session-status-meta-pill.is-timing {
+  color: var(--detail-status-accent);
+  border-color: color-mix(in srgb, var(--detail-status-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--detail-status-accent) 10%, rgba(255, 255, 255, 0.02));
+}
+
+.detail-session-status-action-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  color: #07100d;
+  background: var(--detail-status-accent);
+  border-color: color-mix(in srgb, var(--detail-status-accent) 72%, transparent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 950;
+  min-width: 58px;
+  min-height: 30px;
+  padding-inline: 12px;
+  box-shadow: none;
+}
+
+.detail-session-status-action-trigger:hover,
+.detail-session-status-action-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--detail-status-accent) 18%, transparent);
+}
+
+.detail-session-status-action-trigger[hidden] {
+  display: none;
+}
+
 .detail-save-shortcut-button {
-  min-height: 58px;
+  min-height: 46px;
   padding-inline: 22px;
   gap: 10px;
   white-space: nowrap;
@@ -55649,6 +55835,19 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .detail-stage-progress-card.detail-session-status-bar,
+  .detail-stage-progress-card.detail-session-status-bar.is-session-complete {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "phase"
+      "action"
+      "meta";
+  }
+
+  .detail-session-status-meta {
+    justify-content: flex-start;
+  }
+
   .session-notes-section,
   .session-workspace-shell .session-notes-section {
     padding: 16px;
@@ -55713,6 +55912,26 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
   .detail-stage-progress-action {
     align-self: center;
+  }
+
+  .detail-stage-progress-card.detail-session-status-bar,
+  .detail-stage-progress-card.detail-session-status-bar.is-session-complete {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "phase"
+      "action"
+      "meta";
+    gap: 13px;
+  }
+
+  .detail-session-status-block--action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-session-status-action-trigger {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
   }
 
   .detail-save-shortcut-button {

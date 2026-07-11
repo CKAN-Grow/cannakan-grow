@@ -86853,34 +86853,13 @@ function getSessionStageProgressionState(control) {
     completed: "completed",
     "session-complete": "session-complete",
   };
-  const iconKeyByStage = {
-    "not-started": "header",
-    soaking: "stage-soaking",
-    germination: "stage-germination",
-    "first-germinated": "stage-first-germinated",
-    completed: "stage-completed",
-    "session-complete": "stage-completed",
-  };
-  const iconClassByStage = {
-    "not-started": "detail-stage-progress-icon detail-stage-progress-icon--not-started",
-    soaking: "detail-stage-progress-icon command-icon--stage command-icon--stage-soaking",
-    germination: "detail-stage-progress-icon command-icon--stage command-icon--stage-germination",
-    "first-germinated": "detail-stage-progress-icon command-icon--stage command-icon--stage-first-germinated",
-    completed: "detail-stage-progress-icon command-icon--stage command-icon--stage-completed",
-    "session-complete": "detail-stage-progress-icon command-icon--stage command-icon--stage-completed",
-  };
-
   return {
     currentKey: resolvedCurrentKey,
     currentLabel: labelByKey[resolvedCurrentKey] || getSessionProgressDisplayLabel(progressKey, control?.value || ""),
     currentTone: toneByKey[resolvedCurrentKey] || "soaking",
-    currentIconKey: iconKeyByStage[resolvedCurrentKey] || "stage-soaking",
-    currentIconClass: iconClassByStage[resolvedCurrentKey] || iconClassByStage.soaking,
     nextKey,
     nextLabel: labelByKey[nextKey] || "Germinating",
     nextTone: toneByKey[nextKey] || "germinating",
-    nextIconKey: iconKeyByStage[nextKey] || "stage-germination",
-    nextIconClass: iconClassByStage[nextKey] || iconClassByStage.germination,
     actionLabel: resolvedCurrentKey === "not-started"
       ? "Start Session"
       : (resolvedCurrentKey === "completed" ? "Session Complete" : "Review Session"),
@@ -86897,63 +86876,94 @@ function syncDetailSessionActionBar(control) {
   const engineState = getSessionStatusEngineState(control);
   const state = getSessionStageProgressionState(control);
   const currentStageElement = actionBar.querySelector("[data-detail-action-current-stage]");
-  const nextStageElement = actionBar.querySelector("[data-detail-action-next-stage]");
   const currentLabelElement = actionBar.querySelector("[data-detail-action-current-label]");
   const nextLabelElement = actionBar.querySelector("[data-detail-action-next-label]");
-  const currentIconElement = actionBar.querySelector("[data-detail-action-current-icon]");
-  const nextIconElement = actionBar.querySelector("[data-detail-action-next-icon]");
+  const statusBadgeElement = actionBar.querySelector("[data-detail-status-badge]");
+  const actionElement = actionBar.querySelector("[data-detail-status-action]");
+  const actionDetailElement = actionBar.querySelector("[data-detail-status-action-detail]");
+  const metadataElement = actionBar.querySelector("[data-detail-status-meta]");
   const stageTrigger = actionBar.querySelector("[data-detail-stage-progress-trigger]");
   const stageActionLabel = actionBar.querySelector("[data-detail-stage-progress-action-label]");
-  const stageActionArrow = actionBar.querySelector("[data-detail-stage-progress-action-arrow]");
   const stageCard = actionBar.querySelector("[data-detail-stage-progress-card]");
   const currentStep = getSessionEngineCurrentStep(engineState);
   const nextStep = getSessionEngineNextStep(engineState);
   const actionLabel = getSessionEnginePrimaryActionLabel(engineState);
+  const renderMetadataPills = (items = []) => {
+    if (!metadataElement) {
+      return;
+    }
+    metadataElement.innerHTML = items
+      .filter((item) => String(item?.label || "").trim())
+      .slice(0, 3)
+      .map((item) => `<span class="detail-session-status-meta-pill${item.tone ? ` is-${escapeHtml(item.tone)}` : ""}">${escapeHtml(item.label)}</span>`)
+      .join("");
+  };
 
   if (engineState && currentStep) {
-    if (currentStageElement) {
-      currentStageElement.textContent = engineState.phaseLabel || currentStep.label || "Tracking";
+    const isComplete = Boolean(engineState.completedAt || engineState.currentPhase?.key === "complete" || engineState.status === "completed");
+    const companionStatus = getSessionProgressCompanionStatus(engineState);
+    const nextActionDisplay = getSessionProgressCompanionNextActionDisplay(engineState);
+    const hasRequiredAction = Boolean(Array.isArray(engineState.requiredUserActions) && engineState.requiredUserActions.length);
+    const actionValue = isComplete
+      ? "Results saved and ready for review."
+      : nextActionDisplay.value || actionLabel || "No action needed right now";
+    const actionDetail = isComplete
+      ? ""
+      : nextActionDisplay.detail || "";
+    const metadataItems = [
+      { label: isComplete ? "Completed" : companionStatus.label, tone: companionStatus.key },
+      { label: engineState.isDraftSession ? "Setup" : "Saved", tone: engineState.isDraftSession ? "setup" : "saved" },
+    ];
+    if (!isComplete && actionDetail && actionDetail.length <= 32) {
+      metadataItems.push({ label: actionDetail, tone: engineState.overdueStatus?.isOverdue ? "attention" : "timing" });
     }
-    if (nextStageElement) {
-      nextStageElement.textContent = nextStep?.label || engineState.nextMilestone?.title || "No milestone scheduled";
+
+    if (currentStageElement) {
+      currentStageElement.textContent = isComplete
+        ? "Session Completed"
+        : (engineState.phaseLabel || currentStep.label || "Tracking");
     }
     if (currentLabelElement) {
-      currentLabelElement.textContent = "Current Phase";
+      currentLabelElement.textContent = "Session Status";
     }
     if (nextLabelElement) {
-      nextLabelElement.textContent = nextStep ? "Next Phase" : "Next Milestone";
+      nextLabelElement.textContent = "Current Action";
     }
-    if (currentIconElement) {
-      currentIconElement.innerHTML = renderCommandCenterIconMarkup(currentStep.iconName || "stage-germination", "detail-stage-progress-icon command-icon--stage");
+    if (statusBadgeElement) {
+      statusBadgeElement.textContent = isComplete
+        ? "Completed"
+        : (engineState.isDraftSession ? "Setup" : companionStatus.label);
+      statusBadgeElement.className = `detail-session-status-badge is-${escapeHtml(isComplete ? "complete" : (engineState.isDraftSession ? "setup" : companionStatus.key))}`;
     }
-    if (nextIconElement) {
-      nextIconElement.innerHTML = renderCommandCenterIconMarkup(nextStep?.iconName || "stage-completed", "detail-stage-progress-icon command-icon--stage");
+    if (actionElement) {
+      actionElement.textContent = actionValue;
+    }
+    if (actionDetailElement) {
+      actionDetailElement.textContent = actionDetail;
+      actionDetailElement.hidden = !actionDetail || actionDetail === actionValue;
     }
     if (stageActionLabel) {
-      stageActionLabel.textContent = actionLabel || "No Action Needed";
+      stageActionLabel.textContent = "Apply";
     }
-    if (stageActionArrow) {
-      stageActionArrow.hidden = !actionLabel;
-    }
+    renderMetadataPills(metadataItems);
 
     actionBar.dataset.currentStageTone = currentStep.tone || "active";
     actionBar.dataset.nextStageTone = nextStep?.tone || "completed";
     actionBar.dataset.currentStageKey = currentStep.key || "";
     actionBar.dataset.nextStageKey = nextStep?.key || "";
-    actionBar.dataset.stageActionState = actionLabel ? "available" : "none";
+    actionBar.dataset.stageActionState = hasRequiredAction ? "available" : "none";
 
     if (stageCard) {
-      const isComplete = Boolean(engineState.completedAt || engineState.currentPhase?.key === "complete");
       stageCard.classList.toggle("is-session-complete", isComplete);
       stageCard.setAttribute(
         "aria-label",
-        `${engineState.phaseLabel || currentStep.label}. ${actionLabel || "No required action."}`,
+        `${engineState.phaseLabel || currentStep.label}. ${actionValue}`,
       );
     }
 
     if (stageTrigger) {
-      stageTrigger.hidden = !actionLabel;
-      stageTrigger.disabled = !actionLabel;
+      stageTrigger.hidden = !hasRequiredAction || isComplete;
+      stageTrigger.disabled = !hasRequiredAction || isComplete;
       stageTrigger.setAttribute("aria-label", actionLabel || "No required session action");
     }
     return;
@@ -86962,27 +86972,34 @@ function syncDetailSessionActionBar(control) {
   if (currentStageElement) {
     currentStageElement.textContent = state.isComplete ? "Session Completed" : state.currentLabel;
   }
-  if (nextStageElement) {
-    nextStageElement.textContent = state.nextLabel;
-  }
   if (currentLabelElement) {
-    currentLabelElement.textContent = state.isComplete ? "Final Phase" : "Current Phase";
+    currentLabelElement.textContent = "Session Status";
   }
   if (nextLabelElement) {
-    nextLabelElement.textContent = "Next Phase";
+    nextLabelElement.textContent = "Current Action";
   }
-  if (currentIconElement) {
-    currentIconElement.innerHTML = renderCommandCenterIconMarkup(state.currentIconKey, state.currentIconClass);
+  if (statusBadgeElement) {
+    statusBadgeElement.textContent = state.isComplete ? "Completed" : (state.currentKey === "not-started" ? "Setup" : "On Track");
+    statusBadgeElement.className = `detail-session-status-badge is-${escapeHtml(state.isComplete ? "complete" : (state.currentKey === "not-started" ? "setup" : "ok"))}`;
   }
-  if (nextIconElement) {
-    nextIconElement.innerHTML = renderCommandCenterIconMarkup(state.nextIconKey, state.nextIconClass);
+  if (actionElement) {
+    actionElement.textContent = state.isComplete
+      ? "Results saved and ready for review."
+      : (state.currentKey === "not-started" ? "Save session to begin" : state.actionLabel);
+  }
+  if (actionDetailElement) {
+    actionDetailElement.textContent = state.currentKey === "not-started"
+      ? "Automated timing starts after the session is saved."
+      : "";
+    actionDetailElement.hidden = state.currentKey !== "not-started";
   }
   if (stageActionLabel) {
-    stageActionLabel.textContent = state.actionLabel;
+    stageActionLabel.textContent = "Apply";
   }
-  if (stageActionArrow) {
-    stageActionArrow.hidden = state.isComplete;
-  }
+  renderMetadataPills([
+    { label: state.isComplete ? "Completed" : (state.currentKey === "not-started" ? "Setup" : "On Track"), tone: state.isComplete ? "complete" : "ok" },
+    { label: state.currentKey === "not-started" ? "Draft" : "Saved", tone: state.currentKey === "not-started" ? "setup" : "saved" },
+  ]);
 
   actionBar.dataset.currentStageTone = state.currentTone;
   actionBar.dataset.nextStageTone = state.nextTone;
@@ -87001,7 +87018,9 @@ function syncDetailSessionActionBar(control) {
   }
 
   if (stageTrigger) {
-    stageTrigger.disabled = state.isComplete;
+    const hasFallbackAction = !state.isComplete && state.currentKey !== "not-started";
+    stageTrigger.hidden = !hasFallbackAction;
+    stageTrigger.disabled = !hasFallbackAction;
     stageTrigger.setAttribute(
       "aria-label",
       state.isComplete
