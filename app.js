@@ -91368,12 +91368,15 @@ function renderSessionDetailMetaCards(container, cards = []) {
     return;
   }
 
-  container.innerHTML = cards.map((card) => `
-    <article class="meta-card ${escapeHtml(card.className || "").trim()}">
+  container.innerHTML = `
+    <div class="detail-header-label">Session Overview</div>
+    ${cards.map((card) => `
+    <article class="meta-card ${escapeHtml(card.className || "").trim()}" data-session-summary-card="${escapeHtml(card.key || card.label || "")}">
       <strong>${escapeHtml(card.label || "")}</strong>
       <p>${escapeHtml(card.value || "")}</p>
     </article>
-  `).join("");
+  `).join("")}
+  `;
 }
 
 function getSessionDetailEditableName(session = null) {
@@ -91401,14 +91404,16 @@ function buildSessionDetailMetaCards(session = null) {
   const method = getMethodConfig(getSessionMethodType(session));
   const methodLabel = formatMethodTypeLabel(method.id);
   return [
-    { label: "Status", value: getMethodSessionStatusLabel(session?.sessionStatus || "", method.id) },
-    { label: "Method Type", value: session ? methodLabel : "Not set" },
-    { label: "Unit ID", value: normalizeUnitIdValue(session?.unitId || "", "Not set") },
-    { label: "Session Date", value: session?.date || "Not set" },
-    { label: "Session Time", value: formatStoredTime(session?.time || "") || "Not set" },
+    { key: "status", label: "Status", value: getMethodSessionStatusLabel(session?.sessionStatus || "", method.id), className: "meta-card--status" },
+    { key: "method", label: "Method Type", value: session ? methodLabel : "Not set" },
+    { key: "unit", label: "Unit ID", value: normalizeUnitIdValue(session?.unitId || "", "Not set") },
+    { key: "date", label: "Session Date", value: session?.date || "Not set" },
+    { key: "time", label: "Session Time", value: formatStoredTime(session?.time || "") || "Not set" },
     {
+      key: "seed-age",
       label: "Seed Age",
       value: seedAgeMetadata.trackingEnabled ? seedAgeMetadata.summaryLabel : "Not tracked",
+      className: "meta-card--seed-age",
     },
   ];
 }

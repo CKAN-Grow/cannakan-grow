@@ -48487,29 +48487,46 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   text-transform: uppercase;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .session-workspace-overview {
+.session-workspace-shell--detail .session-workspace-overview {
   gap: 16px;
   margin-bottom: 22px;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-top-grid {
+.session-workspace-shell--detail .detail-top-grid {
   display: block;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-top-stack {
+.session-workspace-shell--detail .detail-top-stack {
   gap: 12px;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-header {
+.session-workspace-shell--detail .detail-header {
   display: grid;
-  grid-template-columns: repeat(6, minmax(112px, 1fr));
+  grid-template-columns: repeat(5, minmax(112px, 1fr));
   gap: 10px;
   align-items: stretch;
   width: 100%;
-  padding: 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01) 34%),
+    rgba(7, 12, 9, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card {
+.session-workspace-shell--detail .detail-header-label {
+  grid-column: 1 / -1;
+  margin: 0 0 2px;
+  color: #9fda6d;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell--detail .detail-header .meta-card {
   display: grid;
   align-content: center;
   gap: 8px;
@@ -48522,20 +48539,20 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   box-shadow: none;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card strong {
+.session-workspace-shell--detail .detail-header .meta-card strong {
   color: rgba(218, 229, 216, 0.76);
   font-size: 0.68rem;
   letter-spacing: 0.1em;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card p {
+.session-workspace-shell--detail .detail-header .meta-card p {
   color: #f3f8f0;
   font-size: 0.86rem;
   font-weight: 760;
   line-height: 1.25;
 }
 
-.session-workspace-shell--detail.is-completed-session-detail .detail-header .meta-card:first-child {
+.session-workspace-shell--detail .detail-header .meta-card--status {
   border-color: rgba(148, 209, 89, 0.24);
   background:
     linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(255, 255, 255, 0.018)),
@@ -48543,38 +48560,38 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 @media (max-width: 1120px) {
-  .session-workspace-shell--detail.is-completed-session-detail .detail-header {
+  .session-workspace-shell--detail .detail-header {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 760px) {
-  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header {
+  .session-workspace-shell--detail .session-workspace-header {
     align-items: stretch;
   }
 
-  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions {
+  .session-workspace-shell--detail .session-workspace-header .inline-actions {
     width: 100%;
     justify-content: flex-start;
     margin-left: 0;
   }
 
-  .session-workspace-shell--detail.is-completed-session-detail .detail-header {
+  .session-workspace-shell--detail .detail-header {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
-  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions {
+  .session-workspace-shell--detail .session-workspace-header .inline-actions {
     display: grid;
     grid-template-columns: 1fr;
   }
 
-  .session-workspace-shell--detail.is-completed-session-detail .session-workspace-header .inline-actions .button {
+  .session-workspace-shell--detail .session-workspace-header .inline-actions .button {
     width: 100%;
   }
 
-  .session-workspace-shell--detail.is-completed-session-detail .detail-header {
+  .session-workspace-shell--detail .detail-header {
     grid-template-columns: 1fr;
   }
 }
@@ -65189,6 +65206,13 @@ body.theme-dark .session-workspace-shell .snapshot-source-card {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 12px 20px rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .session-workspace-shell--detail .detail-header .meta-card--status {
+  border-color: rgba(148, 209, 89, 0.24);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(255, 255, 255, 0.018)),
+    rgba(20, 31, 18, 0.72);
 }
 
 .session-workspace-shell .share-snapshot-section,
