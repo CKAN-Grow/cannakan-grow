@@ -93337,6 +93337,45 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
     label: "Pending",
     shortLabel: "Pending",
   };
+  const overallStatus = hasPendingCustomResults
+    ? pendingStatus
+    : getPartitionSuccessStatus(summary.overall.percentage, summary.overall.totalGerminated, summary.overall.totalSeeds);
+  const overallRateLabel = hasPendingCustomResults ? "Pending" : summary.overall.percentageLabel;
+  const overallCountLabel = hasPendingCustomResults
+    ? "Results pending"
+    : `${summary.overall.totalGerminated} of ${summary.overall.totalSeeds} germinated`;
+  const renderGroupPanelMarkup = (title, iconType, groups) => `
+    <article class="session-result-group-list">
+      <div class="session-result-group-list-head">
+        ${renderCommunityInsightsIconMarkup(iconType, "session-result-group-icon")}
+        <strong>${escapeHtml(title)}</strong>
+      </div>
+      <div class="session-result-group-rows">
+        ${groups.map((group) => `
+          <div class="session-result-group-row">
+            <span class="session-result-group-name">${escapeHtml(group.label)}</span>
+            <span class="session-result-group-partitions">${escapeHtml(group.partitionLabels.join(", "))}</span>
+            <b>${escapeHtml(group.percentageLabel)}</b>
+            <span class="session-result-group-count">${escapeHtml(`${group.totalGerminated}/${group.totalSeeds}`)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `;
+  const performanceLegendMarkup = `
+    <div class="partition-success-legend partition-success-legend--compact session-result-performance-legend" aria-label="Partition performance legend">
+      ${PARTITION_SUCCESS_STATUS_ORDER.map((key) => {
+        const status = PARTITION_SUCCESS_STATUS_DEFINITIONS[key];
+        const rangeLabel = status.key === "none" ? "" : ` ${status.range.replace("-", "\u2013")}`;
+        return `
+          <span class="partition-success-legend-item ${escapeHtml(status.className)}">
+            <span class="partition-success-dot" aria-hidden="true"></span>
+            <span>${escapeHtml(`${status.shortLabel}${rangeLabel}`)}</span>
+          </span>
+        `;
+      }).join("")}
+    </div>
+  `;
 
   return `
     <section class="session-result-breakdown${compact ? " session-result-breakdown--compact" : ""}" aria-label="Session result breakdown">
@@ -93344,14 +93383,31 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
         <div>
           <p class="eyebrow">RESULT BREAKDOWN</p>
           <h4>${escapeHtml(breakdownTitle)}</h4>
+          <p class="session-result-breakdown-context">${
+            hasPendingCustomResults
+              ? "Results not completed yet. Mark the session complete to publish final germination analytics."
+              : `${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}`
+          }</p>
         </div>
-        <span class="session-result-breakdown-overall">${escapeHtml(overallLabel)}</span>
+        <aside class="session-result-breakdown-overall partition-success-card ${escapeHtml(overallStatus.className)}" aria-label="${escapeHtml(overallLabel)}">
+          <span class="session-result-overall-orb" aria-hidden="true">${renderCommunityInsightsIconMarkup("varieties", "session-result-overall-icon")}</span>
+          <div>
+            <strong>${escapeHtml(overallRateLabel)}</strong>
+            <span>Overall Germination</span>
+            <p>${escapeHtml(overallCountLabel)}</p>
+          </div>
+        </aside>
       </div>
-      <p class="session-result-breakdown-context">${
-        hasPendingCustomResults
-          ? "Results not completed yet. Mark the session complete to publish final germination analytics."
-          : `${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}`
-      }</p>
+      ${(sourceGroups.length || varietyGroups.length) ? `
+        <div class="session-result-group-grid">
+          ${sourceGroups.length ? renderGroupPanelMarkup("Sources", "sources", sourceGroups) : ""}
+          ${varietyGroups.length ? renderGroupPanelMarkup("Varieties", "varieties", varietyGroups) : ""}
+        </div>
+      ` : ""}
+      <div class="session-result-partition-heading">
+        ${renderCommunityInsightsIconMarkup("sources", "session-result-partition-heading-icon")}
+        <strong>${escapeHtml(`${method.rowLabel} Results`)}</strong>
+      </div>
       <div class="session-result-partition-grid">
         ${countedPartitions.map((partition) => {
           const successStatus = partition.isPendingResult
@@ -93365,37 +93421,17 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
             : `${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`;
           return `
             <article class="session-result-partition-chip partition-success-card ${escapeHtml(successStatus.className)}">
-              <span><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partition.label)}</span>
+              <span class="session-result-partition-label"><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partition.label)}</span>
               <strong class="partition-success-rate">${escapeHtml(partition.percentageLabel)}</strong>
-              <p>${escapeHtml(germinationLine)}</p>
-              <p>${escapeHtml(accountingLine)}</p>
-              <p><span class="partition-success-badge">${escapeHtml(successStatus.label)}</span></p>
-              ${partition.source ? `<p>${escapeHtml(partition.source)}</p>` : ""}
+              <p class="session-result-partition-count">${escapeHtml(germinationLine)}</p>
+              <p class="session-result-partition-meta">${escapeHtml(accountingLine)}</p>
+              <span class="partition-success-badge">${escapeHtml(successStatus.label)}</span>
+              <p class="session-result-partition-variety">${escapeHtml(partition.varietyLabel || partition.seedVariety || partition.source || "Not shared")}</p>
             </article>
           `;
         }).join("")}
       </div>
-      ${compact || hasPendingCustomResults ? "" : renderPartitionSuccessLegendMarkup({ compact: true })}
-      ${(sourceGroups.length || varietyGroups.length) ? `
-        <div class="session-result-group-grid">
-          ${sourceGroups.length ? `
-            <div class="session-result-group-list">
-              <strong>Sources</strong>
-              ${sourceGroups.map((group) => `
-                <p><span>${escapeHtml(`${group.label} · ${group.partitionLabels.join(", ")}`)}</span><b>${escapeHtml(`${group.percentageLabel} (${group.totalGerminated}/${group.totalSeeds})`)}</b></p>
-              `).join("")}
-            </div>
-          ` : ""}
-          ${varietyGroups.length ? `
-            <div class="session-result-group-list">
-              <strong>Varieties</strong>
-              ${varietyGroups.map((group) => `
-                <p><span>${escapeHtml(`${group.label} · ${group.partitionLabels.join(", ")}`)}</span><b>${escapeHtml(`${group.percentageLabel} (${group.totalGerminated}/${group.totalSeeds})`)}</b></p>
-              `).join("")}
-            </div>
-          ` : ""}
-        </div>
-      ` : ""}
+      ${compact || hasPendingCustomResults ? "" : performanceLegendMarkup}
     </section>
   `;
 }
