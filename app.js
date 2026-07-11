@@ -6151,19 +6151,21 @@ function setSessionFilterPaperDeducted(session, deducted = true) {
 
 function shouldAutoDeductFilterPaperForSessionStart(session) {
   const inventory = getFilterPaperInventory();
+  const method = getMethodConfig(getSessionMethodType(session));
   return (
-    inventory.autoSubtract
+    method.supportsFilterInventory === true
+    && inventory.autoSubtract
     && Boolean(String(session?.id || "").trim())
     && !getSessionFilterPaperDeducted(session)
   );
 }
 
 function getFilterPaperUsageForSessionStart(session) {
-  const systemType = String(session?.systemType || "").trim().toUpperCase();
-  if (systemType === "KAN" || systemType === "TRA") {
+  const method = getMethodConfig(getSessionMethodType(session));
+  if (method.supportsFilterInventory === true) {
     return FILTER_PAPER_USAGE_PER_STARTED_SESSION;
   }
-  return FILTER_PAPER_USAGE_PER_STARTED_SESSION;
+  return 0;
 }
 
 function applyFilterPaperDeductionForStartedSession(session) {
@@ -6173,6 +6175,9 @@ function applyFilterPaperDeductionForStartedSession(session) {
 
   const inventory = getFilterPaperInventory();
   const filterPaperUsage = getFilterPaperUsageForSessionStart(session);
+  if (filterPaperUsage <= 0) {
+    return inventory;
+  }
   const nextInventory = saveFilterPaperInventory({
     ...inventory,
     count: Math.max(0, inventory.count - filterPaperUsage),
@@ -11177,11 +11182,13 @@ function getLatestSessionLifecycleActivityAt(session = null) {
 
 function getSessionLifecycleTimestampHealth(session = null, now = new Date()) {
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  const methodConfig = getMethodConfig(getSessionMethodType(session));
+  const requiresSoakTimestamp = methodConfig.supportsStageTracking === true;
   const sessionStartedAtIso = getSessionStartedAtIso(session)
     || parseCompletedAtValue(session?.createdAt || session?.created_at || "")?.toISOString()
     || "";
   const soakStartedAtIso = getSessionSoakStartedAtIso(session)
-    || sessionStartedAtIso;
+    || (requiresSoakTimestamp ? sessionStartedAtIso : "");
   const hasStartedIntent = Boolean(
     ["soaking", "germinating", "completed"].includes(normalizedStatus)
     || String(session?.sessionStartedAt || session?.session_started_at || "").trim()
@@ -11196,7 +11203,7 @@ function getSessionLifecycleTimestampHealth(session = null, now = new Date()) {
     completedAt: session?.completedAt || session?.completed_at || "",
   }, {
     requireSessionStarted: hasStartedIntent,
-    requireSoakStarted: hasStartedIntent,
+    requireSoakStarted: hasStartedIntent && requiresSoakTimestamp,
     requireCompleted: normalizedStatus === "completed",
   });
   if (!timelineValidation.isValid) {
@@ -25902,14 +25909,25 @@ function applyNewSessionTimestampEditAccess(form) {
 async function createCloudSession(session) {
   if (isLocalDevQaBypassActive() || !appState.supabase) {
     const timestamp = new Date().toISOString();
+    const method = getMethodConfig(getSessionMethodType(session));
+    const sessionStartedAt = String(session?.sessionStartedAt || "").trim()
+      || parseSessionStartDateTime(session?.date, session?.time)?.toISOString()
+      || timestamp;
+    const timerStartAt = String(session?.timerStartAt || "").trim()
+      || (method.supportsStageTracking
+        ? getTimerStartAtFromCreatedAt(String(session?.createdAt || timestamp).trim())
+        : sessionStartedAt);
     const savedSession = normalizeStoredSession({
       ...session,
       id: String(session?.id || "").trim() || crypto.randomUUID(),
       createdAt: String(session?.createdAt || timestamp).trim(),
-      timerStartAt: String(session?.timerStartAt || "").trim()
-        || getTimerStartAtFromCreatedAt(String(session?.createdAt || timestamp).trim()),
-      isMock: true,
-      is_mock: true,
+      sessionStartedAt,
+      timerStartAt,
+      isMock: false,
+      is_mock: false,
+      is_mock_data: false,
+      devModeOnly: false,
+      dev_mode_only: false,
       updatedAt: timestamp,
     });
     savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
@@ -25926,7 +25944,7 @@ async function createCloudSession(session) {
   const sessionForSave = canManuallyEditGrowSessionTimestamps()
     ? session
     : applyAutomaticGrowSessionCreationTimestamps(session);
-  const record = mapSessionToRecord(sessionForSave, authUser.id, {
+  let attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
     includeTimerColumn: !appState.sessionTimerColumnUnavailable,
     includeMockColumns: !appState.sessionMockColumnsUnavailable,
@@ -25934,21 +25952,22 @@ async function createCloudSession(session) {
   });
   let { data, error } = await appState.supabase
     .from("grow_sessions")
-    .insert(record)
+    .insert(attemptedRecord)
     .select()
     .single();
 
   if (error && isGrowSessionTimerColumnSchemaError(error) && !appState.sessionTimerColumnUnavailable) {
     appState.sessionTimerColumnUnavailable = true;
     console.warn("Grow session timer_start_at column is not available yet; retrying insert without timer_start_at.", error);
+    attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
+      includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeTimerColumn: false,
+      includeMockColumns: !appState.sessionMockColumnsUnavailable,
+      includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+    });
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
-        includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
-        includeTimerColumn: false,
-        includeMockColumns: !appState.sessionMockColumnsUnavailable,
-        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
-      }))
+      .insert(attemptedRecord)
       .select()
       .single());
   }
@@ -25956,14 +25975,15 @@ async function createCloudSession(session) {
   if (error && isSessionTimeColumnSchemaError(error) && !appState.sessionTimeColumnsUnavailable) {
     appState.sessionTimeColumnsUnavailable = true;
     console.warn("Session time columns are not available yet; retrying grow session insert with legacy timestamp payload.", error);
+    attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
+      includeOwnerTimeColumns: false,
+      includeTimerColumn: !appState.sessionTimerColumnUnavailable,
+      includeMockColumns: !appState.sessionMockColumnsUnavailable,
+      includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+    });
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
-        includeOwnerTimeColumns: false,
-        includeTimerColumn: !appState.sessionTimerColumnUnavailable,
-        includeMockColumns: !appState.sessionMockColumnsUnavailable,
-        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
-      }))
+      .insert(attemptedRecord)
       .select()
       .single());
   }
@@ -25971,14 +25991,15 @@ async function createCloudSession(session) {
   if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
     appState.sessionMockColumnsUnavailable = true;
     console.warn("Grow session mock columns are not available yet; retrying insert with legacy mock payload.", error);
+    attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
+      includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeTimerColumn: !appState.sessionTimerColumnUnavailable,
+      includeMockColumns: false,
+      includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+    });
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
-        includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
-        includeTimerColumn: !appState.sessionTimerColumnUnavailable,
-        includeMockColumns: false,
-        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
-      }))
+      .insert(attemptedRecord)
       .select()
       .single());
   }
@@ -25986,14 +26007,15 @@ async function createCloudSession(session) {
   if (error && isGrowSessionLifecycleColumnSchemaError(error) && !appState.sessionLifecycleColumnsUnavailable) {
     appState.sessionLifecycleColumnsUnavailable = true;
     console.warn("Grow session lifecycle columns are not available yet; retrying insert with legacy lifecycle payload.", error);
+    attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
+      includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeTimerColumn: !appState.sessionTimerColumnUnavailable,
+      includeMockColumns: !appState.sessionMockColumnsUnavailable,
+      includeLifecycleColumns: false,
+    });
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
-        includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
-        includeTimerColumn: !appState.sessionTimerColumnUnavailable,
-        includeMockColumns: !appState.sessionMockColumnsUnavailable,
-        includeLifecycleColumns: false,
-      }))
+      .insert(attemptedRecord)
       .select()
       .single());
   }
@@ -26001,14 +26023,15 @@ async function createCloudSession(session) {
   if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
     appState.sessionMockColumnsUnavailable = true;
     console.warn("Grow session mock columns are not available yet after lifecycle fallback; retrying insert with legacy mock payload.", error);
+    attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
+      includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeTimerColumn: !appState.sessionTimerColumnUnavailable,
+      includeMockColumns: false,
+      includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+    });
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
-        includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
-        includeTimerColumn: !appState.sessionTimerColumnUnavailable,
-        includeMockColumns: false,
-        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
-      }))
+      .insert(attemptedRecord)
       .select()
       .single());
   }
@@ -26016,6 +26039,7 @@ async function createCloudSession(session) {
   if (error) {
     console.error("Grow session insert failed", {
       error,
+      payload: attemptedRecord,
       request: "insert grow_sessions",
       retriedWithoutOwnerTimeColumns: appState.sessionTimeColumnsUnavailable,
     });
@@ -26136,8 +26160,11 @@ async function updateCloudSession(session) {
       ...session,
       id: String(session?.id || existingSession?.id || "").trim(),
       createdAt: String(session?.createdAt || existingSession?.createdAt || new Date().toISOString()).trim(),
-      isMock: true,
-      is_mock: true,
+      isMock: false,
+      is_mock: false,
+      is_mock_data: false,
+      devModeOnly: false,
+      dev_mode_only: false,
       updatedAt: new Date().toISOString(),
     });
     savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
@@ -28595,6 +28622,28 @@ function getSnapshotSessionIntegrity(session = null, options = {}) {
 function getSnapshotSessionIntegrityMessage(session = null, options = {}) {
   const integrity = getSnapshotSessionIntegrity(session, options);
   return integrity.ok ? "" : integrity.message;
+}
+
+function getSavedNewSessionSnapshotSession(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return null;
+  }
+
+  const savedSessionId = String(form.dataset.savedSessionId || form.__lastSavedSession?.id || "").trim();
+  if (!savedSessionId) {
+    return null;
+  }
+
+  const savedSession = getSessions().find((session) => String(session?.id || "").trim() === savedSessionId);
+  if (savedSession) {
+    return savedSession;
+  }
+
+  if (form.__lastSavedSession && String(form.__lastSavedSession.id || "").trim() === savedSessionId) {
+    return normalizeStoredSession(form.__lastSavedSession);
+  }
+
+  return null;
 }
 
 function getGallerySnapshotIntegrity(snapshot = null) {
@@ -38349,6 +38398,24 @@ function syncSnapshotActionSurface(state, { hasConfirmedSubmission = false, hasG
   if (state.emptyExploreCard) {
     state.emptyExploreCard.hidden = !isEmptyState;
   }
+  syncSnapshotGenerateActionAvailability(state);
+}
+
+function syncSnapshotGenerateActionAvailability(state) {
+  if (!state?.generateButton) {
+    return { ok: true, reason: "", message: "" };
+  }
+
+  const session = state.getGallerySession?.() || null;
+  const integrity = getSnapshotSessionIntegrity(session);
+  state.generateButton.disabled = !integrity.ok;
+  state.generateButton.setAttribute("aria-disabled", integrity.ok ? "false" : "true");
+  if (integrity.ok) {
+    state.generateButton.removeAttribute("title");
+  } else {
+    state.generateButton.title = integrity.message || "Save this session before creating a snapshot.";
+  }
+  return integrity;
 }
 
 function prefersReducedSnapshotMotion() {
@@ -38932,6 +38999,10 @@ async function ensureSnapshotGenerated(state) {
 async function generateSnapshotPreview(state) {
   try {
     setSnapshotMessage(state, "");
+    const generationEligibility = syncSnapshotGenerateActionAvailability(state);
+    if (!generationEligibility.ok) {
+      throw new Error(generationEligibility.message || "Save this session before creating a snapshot.");
+    }
     state.generateButton?.setAttribute("disabled", "disabled");
     validateSnapshotStateSessionEligibility(state);
     const wasCommunityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
@@ -38981,7 +39052,7 @@ async function generateSnapshotPreview(state) {
     setSnapshotMessage(state, error.message || "Could not generate snapshot.", true);
     return null;
   } finally {
-    state.generateButton?.removeAttribute("disabled");
+    syncSnapshotGenerateActionAvailability(state);
   }
 }
 
@@ -84118,7 +84189,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     publicGrowNoteModeInputs,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
-    getGallerySession: () => null,
+    getGallerySession: () => getSavedNewSessionSnapshotSession(form),
     getSnapshotData: () => getFormSnapshotData(form),
     getImageEntries: () => {
       const imageState = form.__sessionImageState;
@@ -84996,6 +85067,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (!savedSession) {
         throw appState.unsavedChanges.lastSaveError || new Error("Could not save session.");
       }
+      form.__lastSavedSession = savedSession;
       void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
       void recordVarietyDirectoryUsages(getVarietyDirectoryUsageRecordsFromSession(savedSession || session));
       if (!isUpdatingExistingSession) {
@@ -85041,6 +85113,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       form.dataset.firstPlantedAt = savedSession.firstPlantedAt || savedSession.first_planted_at || session.firstPlantedAt || "";
       form.dataset.completedAt = savedSession.completedAt || savedSession.completed_at || session.completedAt || "";
       form.dataset.currentStage = normalizeSessionStatus(savedSession.sessionStatus || savedSession.session_status || session.sessionStatus || "");
+      syncSnapshotGenerateActionAvailability(snapshotSection?.__snapshotState);
       setNewSessionSaveButtonState(form, "saved");
       if (!isUpdatingExistingSession && form.dataset.seedChartExpandedModalShown !== "true") {
         form.dataset.seedChartExpandedModalShown = "true";
