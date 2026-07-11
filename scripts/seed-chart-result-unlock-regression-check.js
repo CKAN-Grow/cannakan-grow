@@ -11,9 +11,16 @@ for (const needle of [
   'function syncNewSessionSeedChartResultsUnlockState(form, options = {})',
   'function showSeedChartExpandedModal()',
   'Seed Chart Expanded',
-  'Your session has been started.',
-  'The Germinated Seeds and Success % columns are now unlocked.',
-  'Return here during your session to record germination results and complete your session.',
+  'Session Started',
+  'Your session is now active.',
+  'Unlocked',
+  'Germinated Seeds',
+  'Now available',
+  'Success %',
+  'Automatically calculated',
+  'Return anytime to record germination results and complete the session.',
+  'seed-chart-expanded-modal-visual',
+  'seed-chart-expanded-modal-unlocked',
   '}, 3000);',
   'form.dataset.seedChartExpandedModalShown = "true";',
   'form.dataset.seedChartResultsUnlocked = "true";',
@@ -46,6 +53,10 @@ for (const needle of [
   '@keyframes seed-chart-result-column-unlock-glow',
   '.seed-chart-expanded-modal-overlay',
   '.seed-chart-expanded-modal',
+  '.seed-chart-expanded-modal-visual',
+  '.seed-chart-expanded-modal-section-label',
+  '.seed-chart-expanded-modal-unlocked',
+  '@keyframes seed-chart-expanded-modal-enter',
 ]) {
   if (!stylesSource.includes(needle)) {
     throw new Error(`Missing seed chart unlock styling: ${needle}`);
@@ -57,6 +68,9 @@ for (const retiredNeedle of [
   '.partition-table[data-method-standardized="false"][data-session-status="active"] .partition-row label:has(input[name="plantedCount"])',
   '.partition-table[data-method-standardized="false"] .partition-row {\n    grid-template-areas:',
   'New result columns are now unlocked: # Germinated and Success %.',
+  'Your session has been started.',
+  'The Germinated Seeds and Success % columns are now unlocked.',
+  'Return here during your session to record germination results and complete your session.',
 ]) {
   if (stylesSource.includes(retiredNeedle) || appSource.includes(retiredNeedle)) {
     throw new Error(`Retired seed chart workflow behavior remains: ${retiredNeedle}`);

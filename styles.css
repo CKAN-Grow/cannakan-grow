@@ -56093,17 +56093,21 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .seed-chart-expanded-modal {
   display: grid;
-  gap: 14px;
-  width: min(100%, 520px);
-  padding: 24px;
+  justify-items: center;
+  gap: 16px;
+  width: min(100%, 500px);
+  padding: 28px;
   border: 1px solid rgba(148, 209, 89, 0.24);
-  border-radius: 22px;
+  border-radius: 24px;
   background:
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.16), transparent 48%),
+    radial-gradient(circle at 50% 8%, rgba(148, 209, 89, 0.18), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(148, 209, 89, 0.08), transparent 44%),
     linear-gradient(180deg, rgba(24, 31, 22, 0.97), rgba(8, 12, 9, 0.98));
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     0 28px 70px rgba(0, 0, 0, 0.42);
+  text-align: center;
+  animation: seed-chart-expanded-modal-enter 180ms ease-out both;
 }
 
 .session-complete-confirm-modal {
@@ -56130,7 +56134,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .seed-chart-expanded-modal h2 {
   margin: 0;
   color: #f7f9f0;
-  font-size: 1.35rem;
+  font-size: clamp(1.6rem, 4vw, 2rem);
+  line-height: 1.05;
 }
 
 .session-complete-confirm-modal h2 {
@@ -56171,7 +56176,185 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .seed-chart-expanded-modal .button {
   justify-self: stretch;
-  margin-top: 6px;
+  margin-top: 2px;
+}
+
+.seed-chart-expanded-modal-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(148, 209, 89, 0.26), rgba(148, 209, 89, 0.08) 54%, transparent 72%);
+}
+
+.seed-chart-expanded-modal-visual::before {
+  content: "";
+  position: absolute;
+  inset: 15px;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.2), rgba(148, 209, 89, 0.08)),
+    rgba(11, 21, 13, 0.86);
+  border: 1px solid rgba(148, 209, 89, 0.42);
+  box-shadow:
+    0 0 36px rgba(148, 209, 89, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.seed-chart-expanded-modal-icon {
+  position: relative;
+  z-index: 1;
+  width: 58px;
+  height: 58px;
+  color: #9fea5f;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 12px rgba(148, 209, 89, 0.28));
+}
+
+.seed-chart-expanded-modal-icon circle {
+  stroke: rgba(148, 209, 89, 0.24);
+}
+
+.seed-chart-expanded-modal-lede {
+  color: rgba(247, 249, 240, 0.9);
+  font-size: 1rem;
+}
+
+.seed-chart-expanded-modal-section-label {
+  justify-self: start;
+  margin-top: 2px;
+  color: #94d159;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.seed-chart-expanded-modal-unlocked {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.seed-chart-expanded-modal-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.1), rgba(148, 209, 89, 0.03)),
+    rgba(8, 16, 10, 0.72);
+  text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  animation: seed-chart-expanded-feature-enter 260ms ease-out both;
+}
+
+.seed-chart-expanded-modal-feature:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.seed-chart-expanded-modal-feature-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.12);
+  color: #9fea5f;
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.2);
+}
+
+.seed-chart-expanded-modal-feature-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.seed-chart-expanded-modal-feature strong,
+.seed-chart-expanded-modal-feature small {
+  display: block;
+}
+
+.seed-chart-expanded-modal-feature strong {
+  color: #f7f9f0;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.seed-chart-expanded-modal-feature small {
+  margin-top: 3px;
+  color: #94d159;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.seed-chart-expanded-modal-confirmation {
+  max-width: 38ch;
+}
+
+.seed-chart-expanded-modal-continue {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+}
+
+@keyframes seed-chart-expanded-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes seed-chart-expanded-feature-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seed-chart-expanded-modal,
+  .seed-chart-expanded-modal-feature {
+    animation: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .seed-chart-expanded-modal {
+    padding: 24px 20px;
+  }
+
+  .seed-chart-expanded-modal-unlocked {
+    grid-template-columns: 1fr;
+  }
 }
 
 .session-complete-confirm-modal-actions {

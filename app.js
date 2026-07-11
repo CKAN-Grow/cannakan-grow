@@ -42050,12 +42050,52 @@ function showSeedChartExpandedModal() {
     overlay.className = "seed-chart-expanded-modal-overlay";
     overlay.innerHTML = `
       <div class="seed-chart-expanded-modal" role="dialog" aria-modal="true" aria-labelledby="seed-chart-expanded-modal-title" aria-describedby="seed-chart-expanded-modal-description">
-        <p class="seed-chart-expanded-modal-eyebrow">Seed Chart</p>
+        <div class="seed-chart-expanded-modal-visual" aria-hidden="true">
+          <svg class="seed-chart-expanded-modal-icon" viewBox="0 0 64 64" focusable="false">
+            <circle cx="32" cy="32" r="24"></circle>
+            <path d="M32 46V27"></path>
+            <path d="M32 31c-8.5 0-15-5.9-15-13.4 8.6-.3 15 5.3 15 13.4Z"></path>
+            <path d="M33 33c8.5 0 15-5.9 15-13.4-8.6-.3-15 5.3-15 13.4Z"></path>
+            <path d="m22 39 6.1 6.1L43 30.2"></path>
+          </svg>
+        </div>
+        <p class="seed-chart-expanded-modal-eyebrow">Session Started</p>
         <h2 id="seed-chart-expanded-modal-title">Seed Chart Expanded</h2>
-        <p id="seed-chart-expanded-modal-description">Your session has been started.</p>
-        <p>The Germinated Seeds and Success % columns are now unlocked.</p>
-        <p>Return here during your session to record germination results and complete your session.</p>
-        <button type="button" class="button button-primary" data-seed-chart-expanded-continue>Continue</button>
+        <p id="seed-chart-expanded-modal-description" class="seed-chart-expanded-modal-lede">Your session is now active.</p>
+        <p class="seed-chart-expanded-modal-section-label">Unlocked</p>
+        <div class="seed-chart-expanded-modal-unlocked" aria-label="Unlocked seed chart features">
+          <div class="seed-chart-expanded-modal-feature">
+            <span class="seed-chart-expanded-modal-feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 20v-8"></path>
+                <path d="M12 12c-4.4 0-7-2.8-7-6.5 4.5-.2 7 2.6 7 6.5Z"></path>
+                <path d="M13 13c4.4 0 7-2.8 7-6.5-4.5-.2-7 2.6-7 6.5Z"></path>
+              </svg>
+            </span>
+            <span>
+              <strong>Germinated Seeds</strong>
+              <small>Now available</small>
+            </span>
+          </div>
+          <div class="seed-chart-expanded-modal-feature">
+            <span class="seed-chart-expanded-modal-feature-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M19 5 5 19"></path>
+                <circle cx="7" cy="7" r="2"></circle>
+                <circle cx="17" cy="17" r="2"></circle>
+              </svg>
+            </span>
+            <span>
+              <strong>Success %</strong>
+              <small>Automatically calculated</small>
+            </span>
+          </div>
+        </div>
+        <p class="seed-chart-expanded-modal-confirmation">Return anytime to record germination results and complete the session.</p>
+        <button type="button" class="button button-primary seed-chart-expanded-modal-continue" data-seed-chart-expanded-continue>
+          <span>Continue</span>
+          <span aria-hidden="true">→</span>
+        </button>
       </div>
     `;
 
