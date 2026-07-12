@@ -61678,6 +61678,193 @@ body.theme-dark #session-analytics-section {
   color: #d6f79e;
 }
 
+.seed-vault-entry-indicators,
+.seed-vault-detail-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.seed-vault-entry-indicator,
+.seed-vault-detail-pill,
+.seed-vault-detail-empty {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 4px 9px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  border-radius: 999px;
+  background: rgba(10, 18, 14, 0.72);
+  color: rgba(244, 255, 235, 0.86);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.seed-vault-entry-indicator.is-planned,
+.seed-vault-entry-indicator.is-active,
+.seed-vault-entry-indicator.is-grow-along,
+.seed-vault-entry-indicator.is-testing {
+  border-color: rgba(148, 209, 89, 0.48);
+  color: #a9ef70;
+  background: rgba(91, 139, 54, 0.18);
+}
+
+.seed-vault-entry-indicator.is-completed {
+  border-color: rgba(148, 209, 89, 0.55);
+  color: #c9ff9f;
+}
+
+.seed-vault-entry-indicator.is-archived,
+.seed-vault-detail-empty {
+  border-color: rgba(209, 222, 202, 0.16);
+  color: rgba(229, 236, 222, 0.62);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.seed-vault-detail-grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.seed-vault-planning-summary,
+.seed-vault-note-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.seed-vault-planning-summary > article,
+.seed-vault-program-summary,
+.seed-vault-note-type-grid > article,
+.seed-vault-grow-notes-list {
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 12px;
+  background: rgba(7, 13, 10, 0.58);
+  padding: 13px;
+}
+
+.seed-vault-planning-summary span,
+.seed-vault-note-type-grid span,
+.seed-vault-grow-notes-list > span {
+  display: block;
+  color: rgba(205, 223, 197, 0.72);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-planning-summary strong,
+.seed-vault-program-summary strong {
+  color: #f4fff0;
+  font-size: 0.95rem;
+}
+
+.seed-vault-program-summary {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.seed-vault-program-summary p,
+.seed-vault-grow-notes-list article {
+  margin: 0;
+}
+
+.seed-vault-program-summary span,
+.seed-vault-note-type-grid p,
+.seed-vault-grow-notes-list p,
+.seed-vault-grow-notes-list small {
+  color: rgba(232, 240, 225, 0.74);
+  line-height: 1.55;
+}
+
+.seed-vault-grow-notes-list {
+  margin-top: 12px;
+}
+
+.seed-vault-grow-notes-list article {
+  padding: 10px 0;
+  border-top: 1px solid rgba(148, 209, 89, 0.12);
+}
+
+.seed-vault-form-section {
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 12px;
+  background: rgba(7, 12, 9, 0.42);
+  padding: 0;
+}
+
+.seed-vault-form-section + .seed-vault-form-section,
+.seed-vault-form-grid + .seed-vault-form-section,
+.seed-vault-form-section + label {
+  margin-top: 12px;
+}
+
+.seed-vault-form-section summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 13px 14px;
+  color: #f4fff0;
+  font-weight: 900;
+}
+
+.seed-vault-form-section summary small {
+  color: rgba(214, 228, 205, 0.66);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.seed-vault-form-section > label,
+.seed-vault-form-section > .seed-vault-form-grid,
+.seed-vault-form-section > .seed-vault-grow-note-list,
+.seed-vault-form-section > .button {
+  margin: 0 14px 14px;
+}
+
+.seed-vault-check-toggle {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+}
+
+.seed-vault-check-toggle input {
+  width: auto !important;
+}
+
+.seed-vault-grow-note-list {
+  display: grid;
+  gap: 10px;
+}
+
+.seed-vault-grow-note-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(150px, 1fr) minmax(220px, 2fr) auto;
+  align-items: end;
+  gap: 10px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-grow-note-text-field {
+  min-width: 0;
+}
+
+.seed-vault-filter-action {
+  align-self: end;
+  min-height: 42px;
+}
+
 .seed-vault-start-session-button.button {
   min-height: 36px;
   padding: 0 13px;
@@ -63547,6 +63734,15 @@ body.theme-dark #session-analytics-section {
 
   .seed-vault-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .seed-vault-grow-note-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .seed-vault-form-section summary {
+    flex-direction: column;
   }
 
   .seed-vault-share-card,
