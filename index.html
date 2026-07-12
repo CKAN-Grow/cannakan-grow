@@ -173,6 +173,18 @@
           <input type="password" name="confirmPassword" placeholder="Confirm password" minlength="6">
         </label>
         <p id="auth-message" class="form-message" role="alert" aria-live="polite"></p>
+        <section class="auth-pending-verification" data-auth-pending-verification hidden aria-live="polite">
+          <p class="eyebrow">Email confirmation</p>
+          <h3>Check your email to confirm your account.</h3>
+          <p>We sent a confirmation link to <strong data-auth-pending-email></strong>.</p>
+          <p class="muted">Confirm your email, then return here to sign in and open Grow.</p>
+          <div class="auth-pending-actions">
+            <button type="button" class="button button-primary" data-auth-resend-confirmation="true">Resend confirmation email</button>
+            <button type="button" class="button button-secondary" data-auth-change-email="true">Change email</button>
+            <button type="button" class="button button-secondary" data-auth-signin-after-confirm="true">Sign in after confirming</button>
+          </div>
+          <p class="auth-pending-status form-message" data-auth-pending-status role="status" aria-live="polite"></p>
+        </section>
         <div class="form-actions">
           <button type="submit" name="action" value="login" class="button button-primary">Log In</button>
           <button type="submit" name="action" value="signup" class="button button-secondary">Sign Up</button>

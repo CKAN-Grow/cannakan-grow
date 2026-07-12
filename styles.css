@@ -30006,6 +30006,52 @@ textarea:focus-visible {
   gap: 14px;
 }
 
+.auth-form.is-pending-verification > label,
+.auth-form.is-pending-verification > .auth-helper-row,
+.auth-form.is-pending-verification > .form-actions {
+  display: none;
+}
+
+.auth-pending-verification {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.046), rgba(255, 255, 255, 0.012)),
+    rgba(8, 13, 10, 0.68);
+}
+
+.auth-pending-verification[hidden] {
+  display: none;
+}
+
+.auth-pending-verification h3,
+.auth-pending-verification p {
+  margin: 0;
+}
+
+.auth-pending-verification h3 {
+  color: #f4faf0;
+  font-size: 1.16rem;
+}
+
+.auth-pending-verification strong {
+  color: #94d159;
+}
+
+.auth-pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.auth-pending-actions .button {
+  min-height: 40px;
+}
+
 .profile-onboarding-progress {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -63723,6 +63769,11 @@ body.theme-dark #session-analytics-section {
 
   .seed-vault-empty-state-actions,
   .seed-vault-empty-state-actions .button {
+    width: 100%;
+  }
+
+  .auth-pending-actions,
+  .auth-pending-actions .button {
     width: 100%;
   }
 
