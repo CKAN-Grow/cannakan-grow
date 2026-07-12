@@ -85549,7 +85549,12 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (!canProceedWithoutFilterPapers) {
         return null;
       }
-      session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
+      try {
+        session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
+      } catch (imageUploadError) {
+        console.warn("[Session Save] Session image upload failed before save; continuing without blocking the session record.", imageUploadError);
+        session.sessionImages = normalizePersistedSessionImages(existingSessionForUpdate?.sessionImages || []);
+      }
       const savedSession = isUpdatingExistingSession
         ? await saveSessionUpdate(session, { allowAutoComplete: false })
         : await createCloudSession(session);
@@ -85571,23 +85576,43 @@ function renderSessionForm(initialSystemType = "KAN") {
         }
       }
       const unlockedGrowNetworkNow = !wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession);
-      if (unlockedGrowNetworkNow) {
-        markGrowNetworkUnlocked({ showNotice: true });
+      try {
+        if (unlockedGrowNetworkNow) {
+          markGrowNetworkUnlocked({ showNotice: true });
+        }
+      } catch (unlockError) {
+        console.warn("[Session Save] Session saved, but Grow Network unlock state could not be updated.", unlockError);
       }
-      if (!isUpdatingExistingSession && isFirstRealGrowReminderSession(savedSession, existingSessionsBeforeSave)) {
-        queueGrowRemindersPromptForUser(appState.user?.id || "");
+      try {
+        if (!isUpdatingExistingSession && isFirstRealGrowReminderSession(savedSession, existingSessionsBeforeSave)) {
+          queueGrowRemindersPromptForUser(appState.user?.id || "");
+        }
+      } catch (reminderPromptError) {
+        console.warn("[Session Save] Session saved, but the reminder prompt could not be queued.", reminderPromptError);
       }
-      if (!isUpdatingExistingSession) {
-        processSessionNotificationTriggers(savedSession, {
-          existingSessions: existingSessionsBeforeSave,
-          previousSession: null,
-          isNewSession: true,
-        });
+      try {
+        if (!isUpdatingExistingSession) {
+          processSessionNotificationTriggers(savedSession, {
+            existingSessions: existingSessionsBeforeSave,
+            previousSession: null,
+            isNewSession: true,
+          });
+        }
+      } catch (notificationError) {
+        console.warn("[Session Save] Session saved, but notification triggers could not be processed.", notificationError);
       }
-      clearNewSessionNotesDraft();
+      try {
+        clearNewSessionNotesDraft();
+      } catch (notesDraftError) {
+        console.warn("[Session Save] Session saved, but the local note draft could not be cleared.", notesDraftError);
+      }
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
-        savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
+        try {
+          savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
+        } catch (imagePersistError) {
+          console.warn("[Session Save] Session saved, but session images could not be persisted.", imagePersistError);
+        }
       }
       if (!isUpdatingExistingSession && shouldAutoDeductFilterPaperForSessionStart(savedSession)) {
         try {
@@ -85597,7 +85622,11 @@ function renderSessionForm(initialSystemType = "KAN") {
           appState.filterPaperInventoryError = "Session saved, but filter paper inventory could not be updated.";
         }
       }
-      await refreshUserSessionsAfterSave(isUpdatingExistingSession ? "new-session:update" : "new-session:save");
+      try {
+        await refreshUserSessionsAfterSave(isUpdatingExistingSession ? "new-session:update" : "new-session:save");
+      } catch (refreshError) {
+        console.warn("[Session Save] Session saved, but the local session cache could not be refreshed.", refreshError);
+      }
       markUnsavedChangesSaved();
       form.dataset.savedSessionId = savedSession.id || session.id || "";
       form.dataset.sessionStartedAt = savedSession.sessionStartedAt || savedSession.session_started_at || session.sessionStartedAt || "";
@@ -85626,6 +85655,15 @@ function renderSessionForm(initialSystemType = "KAN") {
       return savedSession;
     } catch (error) {
       const genericSaveError = "Something went wrong while saving your session. Please try again.";
+      const developmentErrorDetails = [
+        error?.code ? `code: ${error.code}` : "",
+        error?.message ? `message: ${error.message}` : "",
+        error?.details ? `details: ${error.details}` : "",
+        error?.hint ? `hint: ${error.hint}` : "",
+      ].filter(Boolean).join(" | ");
+      const visibleSaveError = isLocalDevelopmentHost() && developmentErrorDetails
+        ? `${genericSaveError} ${developmentErrorDetails}`
+        : genericSaveError;
       console.error("Failed to save session", {
         error,
         message: error?.message || "",
@@ -85641,8 +85679,8 @@ function renderSessionForm(initialSystemType = "KAN") {
           partitionCount: Array.isArray(session?.partitions) ? session.partitions.length : 0,
         },
       });
-      setUnsavedChangesLastSaveError(new Error(genericSaveError), genericSaveError);
-      setFeedbackMessage(formMessage, genericSaveError, "error");
+      setUnsavedChangesLastSaveError(new Error(visibleSaveError), visibleSaveError);
+      setFeedbackMessage(formMessage, visibleSaveError, "error");
       return null;
     }
   };
