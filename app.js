@@ -59,6 +59,7 @@ const SEED_VAULT_GLOBAL_VARIETY_IMAGE_URLS = Object.freeze({
 });
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
+const INSTALL_BANNER_DISMISSED_STORAGE_KEY = "cannakan-grow-install-banner-dismissed";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
@@ -4334,6 +4335,10 @@ function getInstallPromptMode() {
     return "";
   }
 
+  if (isInstallBannerDismissed()) {
+    return "";
+  }
+
   if (environment.promptAvailable) {
     return "prompt";
   }
@@ -4402,6 +4407,10 @@ function syncInstallPromptBanner() {
   const mode = getInstallPromptMode();
   appState.installPromptMode = mode;
   const existingBanner = appShell.querySelector("#install-grow-app-banner");
+  if (isInstallBannerDismissed()) {
+    existingBanner?.remove();
+    return;
+  }
   if (isDownloadRouteActive()) {
     existingBanner?.remove();
     return;
@@ -4424,12 +4433,14 @@ function syncInstallPromptBanner() {
       <div class="install-app-banner-actions">
         <button type="button" class="button button-primary install-app-button" data-install-grow-app="true">Install Now</button>
         <a class="install-app-learn-link" href="#learn" data-public-learn-link="true">New here? Visit Learn</a>
+        <button type="button" class="install-app-dismiss-button" data-install-banner-dismiss="true">Dismiss</button>
       </div>
     `
     : `
       <div class="install-app-banner-actions">
         <p class="install-app-banner-ios-tip">To install: tap Share, then Add to Home Screen</p>
         <a class="install-app-learn-link" href="#learn" data-public-learn-link="true">New here? Visit Learn</a>
+        <button type="button" class="install-app-dismiss-button" data-install-banner-dismiss="true">Dismiss</button>
       </div>
     `;
 
@@ -4462,13 +4473,23 @@ function syncInstallPromptBanner() {
   banner.querySelector("[data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });
+  banner.querySelector("[data-install-banner-dismiss='true']")?.addEventListener("click", () => {
+    setInstallBannerDismissed(true);
+    banner.style.maxHeight = `${banner.offsetHeight}px`;
+    banner.style.overflow = "hidden";
+    banner.getBoundingClientRect();
+    banner.classList.add("is-dismissing");
+    window.setTimeout(() => {
+      banner.remove();
+    }, 220);
+  });
 }
 
 function bindInstallPromptEvents() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     setDeferredInstallPrompt(event);
-    appState.installPromptDismissed = false;
+    appState.installPromptDismissed = isInstallBannerDismissed();
     appState.installPromptFeedbackMessage = "";
     appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
@@ -9114,6 +9135,15 @@ function writeBooleanLocalStorageFlag(key = "", enabled = false) {
   } catch (error) {
     console.error(`Could not write localStorage flag: ${normalizedKey}`, error);
   }
+}
+
+function isInstallBannerDismissed() {
+  return readBooleanLocalStorageFlag(INSTALL_BANNER_DISMISSED_STORAGE_KEY);
+}
+
+function setInstallBannerDismissed(dismissed = true) {
+  writeBooleanLocalStorageFlag(INSTALL_BANNER_DISMISSED_STORAGE_KEY, dismissed === true);
+  appState.installPromptDismissed = dismissed === true;
 }
 
 function getProfileSetupCompleteStorageKey(userId = appState.user?.id || "") {

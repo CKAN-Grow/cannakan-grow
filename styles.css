@@ -918,6 +918,23 @@ textarea {
   box-shadow:
     0 12px 24px rgba(24, 34, 24, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    max-height 220ms ease,
+    padding 220ms ease,
+    margin 220ms ease;
+}
+
+.install-app-banner.is-dismissing {
+  max-height: 0 !important;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
 }
 
 .install-app-banner-shell {
@@ -1007,6 +1024,28 @@ textarea {
 .install-app-learn-link:focus-visible {
   color: #2f6f41;
   text-decoration: underline;
+  outline: none;
+}
+
+.install-app-dismiss-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(88, 138, 55, 0.76);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 8px 4px;
+  text-decoration: none;
+}
+
+.install-app-dismiss-button:hover,
+.install-app-dismiss-button:focus-visible {
+  color: #2f6f41;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   outline: none;
 }
 
@@ -32516,6 +32555,11 @@ body.theme-dark .theme-toggle-button:hover {
 
   .install-app-banner-ios-tip,
   .install-app-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .install-app-dismiss-button {
     width: 100%;
     text-align: center;
   }
