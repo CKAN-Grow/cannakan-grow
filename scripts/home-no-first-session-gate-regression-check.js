@@ -17,10 +17,9 @@ function rejectNeedle(source, needle, label = needle) {
   }
 }
 
-requireNeedle(appSource, "function isFirstSessionAccessGateActive(sessions = getSessions())");
-requireNeedle(appSource, "function isGrowNetworkUnlocked(sessions = getSessions())");
-requireNeedle(appSource, "function isCommunityGrowUnlocked(sessions = getSessions())");
-requireNeedle(appSource, "return false;");
+requireNeedle(appSource, "function routeRequiresSignedInUser(hash = window.location.hash || \"#home\")");
+requireNeedle(appSource, 'return route !== "learn";');
+requireNeedle(appSource, 'renderProtectedRouteSignInPrompt();');
 requireNeedle(indexSource, 'href="#home" data-profile-welcome-primary>Go to My Grow Home</a>');
 requireNeedle(indexSource, 'href="#seed-vault" data-profile-welcome-secondary>Open Seed Vault</a>');
 requireNeedle(indexSource, 'href="#new" data-session-entry="true">Start a New Session</a>');
@@ -32,6 +31,11 @@ const forbiddenUiPhrases = [
   ["Grow", "Experience", "Locked"].join(" "),
   ["Start My", "First", "Session"].join(" "),
   ["Create Your", "First", "Session"].join(" "),
+  "function isFirstSessionAccessGateActive",
+  "function isFirstSessionLockedRouteHash",
+  "function getFirstSessionAccessLockStateForHash",
+  "function isGrowNetworkUnlocked",
+  "function isCommunityGrowUnlocked",
 ];
 
 for (const forbidden of forbiddenUiPhrases) {

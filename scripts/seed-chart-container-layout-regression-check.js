@@ -32,7 +32,7 @@ const instructionStyles = instructionStyleStart >= 0 && instructionStyleEnd > in
   'class="seed-chart-instruction-callout"',
   'id="seed-chart-instruction-title"',
   "BUILD YOUR SESSION",
-  "Save your session to unlock germination tracking and completion results.",
+  "Save your session to begin germination tracking and completion results.",
   'id="partition-chart-header"',
   'id="partition-fields"',
   'class="custom-seed-row-actions"',

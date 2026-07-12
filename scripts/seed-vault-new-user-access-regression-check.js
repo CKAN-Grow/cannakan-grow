@@ -11,28 +11,29 @@ function requireNeedle(source, needle, label = needle) {
   }
 }
 
-requireNeedle(appSource, "function routeAllowsIncompleteProfile(hash = window.location.hash || \"#home\")");
-requireNeedle(appSource, "return route === \"seed-vault\";");
-requireNeedle(appSource, "appState.user && !hasCompletedProfile() && !routeAllowsIncompleteProfile");
-requireNeedle(appSource, "!hasCompletedProfile() && !routeAllowsIncompleteProfile");
-requireNeedle(appSource, "function isFirstSessionAccessGateActive(sessions = getSessions())");
+function rejectNeedle(source, needle, label = needle) {
+  if (source.includes(needle)) {
+    throw new Error(`Found obsolete Seed Vault access gate behavior: ${label}`);
+  }
+}
+
+requireNeedle(appSource, "function routeRequiresSignedInUser(hash = window.location.hash || \"#home\")");
+requireNeedle(appSource, 'return route !== "learn";', "signed-in routes are auth-only outside Learn");
+requireNeedle(appSource, 'route === "seed-vault"', "Seed Vault route still exists");
 requireNeedle(appSource, "Your Seed Vault is your private seed management and planning space.");
 requireNeedle(appSource, "Add Your First Seed");
 requireNeedle(appSource, "Explore Sources");
 requireNeedle(stylesSource, ".seed-vault-empty-state-actions");
 
-const firstSessionLockMatch = appSource.match(/function isFirstSessionLockedRouteHash[\s\S]*?function getFirstSessionAccessLockStateForHash/);
-if (!firstSessionLockMatch) {
-  throw new Error("Could not locate first-session access lock helper.");
-}
-
-if (firstSessionLockMatch[0].includes('route === "seed-vault"')) {
-  throw new Error("Seed Vault must not be locked behind first saved session access.");
-}
-
-const firstSessionGateMatch = appSource.match(/function isFirstSessionAccessGateActive\(sessions = getSessions\(\)\) \{[\s\S]*?\n}\n/);
-if (!firstSessionGateMatch || !firstSessionGateMatch[0].includes("return false;")) {
-  throw new Error("First-session access gate must not block brand-new authenticated users.");
-}
+[
+  "function routeAllowsIncompleteProfile",
+  "routeAllowsIncompleteProfile",
+  "appState.user && !hasCompletedProfile()",
+  "!hasCompletedProfile() &&",
+  "function isFirstSessionAccessGateActive",
+  "function isFirstSessionLockedRouteHash",
+  "function getFirstSessionAccessLockStateForHash",
+  "hasFirstSavedGrowSessionForAccessUnlock",
+].forEach((needle) => rejectNeedle(appSource, needle));
 
 console.log("Seed Vault new-user access regression check passed.");

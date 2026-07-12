@@ -56,7 +56,6 @@ async function prepareLocalQaStorage(page) {
     localStorage.setItem("cannakanGrowDevQaBypass", "true");
     localStorage.setItem("cannakanGrowProfileSetupComplete:local-dev-qa-user", "true");
     localStorage.setItem("cannakanGrowMethodSetupPreferences", "{}");
-    localStorage.setItem("cannakanGrowNetworkUnlocked", "true");
   });
 }
 
