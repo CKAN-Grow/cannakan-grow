@@ -22,8 +22,8 @@ function forbidNeedle(source, needle, label = needle) {
   "return buildSessionEngineState(sessionRecord, {",
   "function buildPublicSessionJourneyEvents(state = {})",
   "state.engineState.timelineSteps.filter",
-  "const useFirstGerminatedEvent = Boolean(firstPlantedAt && isPublicJourneyCheckStep(step));",
-  "label: getPublicJourneyDisplayLabel(step, { firstGerminated: useFirstGerminatedEvent }),",
+  "label: getPublicJourneyDisplayLabel(step),",
+  "if (firstPlantedAt) {",
   "engineState: buildPublicSessionJourneyEngineState({",
 ].forEach((needle) => requireNeedle(appSource, needle));
 
@@ -32,6 +32,9 @@ function forbidNeedle(source, needle, label = needle) {
   "const events = [\n    {\n      label: \"Started\",",
   "label: \"Soaking\",\n      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : \"Not shared\",",
   "label: \"Germination\",\n      timeLabel: formatPublicJourneyTimestamp(state.germinationStartedAt),",
+  "const useFirstGerminatedEvent = Boolean(firstPlantedAt && isPublicJourneyCheckStep(step));",
+  "label: getPublicJourneyDisplayLabel(step, { firstGerminated: useFirstGerminatedEvent }),",
+  "if (firstPlantedAt && !hasCheckStep) {",
 ].forEach((needle) => forbidNeedle(appSource, needle));
 
 [

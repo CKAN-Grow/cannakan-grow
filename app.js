@@ -100420,20 +100420,10 @@ function normalizePublicJourneyTone(tone = "", key = "") {
 }
 
 function getPublicJourneyDisplayLabel(step = {}, options = {}) {
-  const key = String(step?.key || "").trim().toLowerCase();
   if (options.firstGerminated === true) {
     return "First Germinated";
   }
-  if (key === "started") {
-    return "Started";
-  }
-  if (key === "complete" || key === "completed") {
-    return "Completed";
-  }
-  if (key === "soak" || key === "soaking") {
-    return "Soaking";
-  }
-  return step?.label || "Session Stage";
+  return String(step?.label || "").trim() || "Session Stage";
 }
 
 function isPublicJourneyCheckStep(step = {}) {
@@ -100467,9 +100457,6 @@ function getPublicJourneyStepDurationEndAt(step = {}, state = {}, nextStep = nul
   if (["soak", "soaking", "ready-transfer", "move-germination"].includes(key) && state.germinationStartedAt) {
     return state.germinationStartedAt;
   }
-  if (["germination", "paper-towel", "seeds-started", "seeds-planted"].includes(key) && state.firstPlantedAt) {
-    return state.firstPlantedAt;
-  }
   if (isPublicJourneyCheckStep(step) && state.completedAt) {
     return state.completedAt;
   }
@@ -100481,7 +100468,6 @@ function buildPublicSessionJourneyEvents(state = {}) {
     ? state.engineState.timelineSteps.filter((step) => String(step?.label || step?.key || "").trim())
     : [];
   const firstPlantedAt = state.firstPlantedAt || null;
-  const hasCheckStep = steps.some(isPublicJourneyCheckStep);
 
   if (steps.length) {
     const events = steps.map((step, index) => {
@@ -100489,37 +100475,33 @@ function buildPublicSessionJourneyEvents(state = {}) {
       const nextStep = steps[index + 1] || null;
       const isStarted = key === "started";
       const isCompleted = key === "complete" || key === "completed";
-      const useFirstGerminatedEvent = Boolean(firstPlantedAt && isPublicJourneyCheckStep(step));
       const startAt = isStarted
         ? state.startedAt
-        : (isCompleted ? state.completedAt : (useFirstGerminatedEvent ? firstPlantedAt : parseCompletedAtValue(step.startAt || "")));
+        : (isCompleted ? state.completedAt : parseCompletedAtValue(step.startAt || ""));
       const durationEndAt = getPublicJourneyStepDurationEndAt(step, state, nextStep);
       const durationLabel = isCompleted
         ? formatPublicTimelineElapsedDuration(state.startedAt, state.completedAt)
-        : (useFirstGerminatedEvent
-          ? formatPublicTimelineElapsedDuration(state.startedAt, firstPlantedAt, { includeDays: false })
-          : formatPublicTimelineElapsedDuration(parseCompletedAtValue(step.startAt || ""), durationEndAt, { includeDays: false }));
+        : formatPublicTimelineElapsedDuration(parseCompletedAtValue(step.startAt || ""), durationEndAt, { includeDays: false });
       const description = isStarted
         ? "Session opened"
         : (isCompleted
           ? formatPublicTimelineDurationDetail("Total duration", state.startedAt, state.completedAt)
-          : (useFirstGerminatedEvent
-            ? formatPublicTimelineDurationDetail("Time from start", state.startedAt, firstPlantedAt, { includeDays: false })
-            : formatPublicTimelineDurationDetail("Stage duration", parseCompletedAtValue(step.startAt || ""), durationEndAt, { includeDays: false })));
+          : formatPublicTimelineDurationDetail("Stage duration", parseCompletedAtValue(step.startAt || ""), durationEndAt, { includeDays: false }));
       return {
-        label: getPublicJourneyDisplayLabel(step, { firstGerminated: useFirstGerminatedEvent }),
+        label: getPublicJourneyDisplayLabel(step),
         timeLabel: startAt ? formatPublicJourneyTimestamp(startAt) : (isStarted ? (state.startedDisplayLabel || "Not shared") : "Not shared"),
         description,
         durationLabel: isStarted ? "" : durationLabel,
         statusLabel: isStarted || isCompleted ? "Completed" : "",
         durationIcon: isStarted || isCompleted ? "check" : "clock",
-        icon: getPublicJourneyIconName(step, { firstGerminated: useFirstGerminatedEvent }),
+        icon: getPublicJourneyIconName(step),
         tone: isStarted ? "started" : (isCompleted ? "completed" : normalizePublicJourneyTone(step.tone, step.key)),
         complete: Boolean(step.isComplete || isStarted || isCompleted || startAt),
+        startedAt: startAt,
       };
     });
 
-    if (firstPlantedAt && !hasCheckStep) {
+    if (firstPlantedAt) {
       const completeIndex = events.findIndex((event) => event.tone === "completed");
       const firstGerminatedEvent = {
         label: "First Germinated",
