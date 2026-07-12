@@ -9460,6 +9460,11 @@ function isLocalDevelopmentHost() {
     || hostname === "[::1]";
 }
 
+function isDevelopmentPreviewDataEnabled() {
+  return isLocalDevelopmentHost()
+    && window.CANNAKAN_SUPABASE_CONFIG?.devPreviewDataEnabled === true;
+}
+
 function isLocalDevQaBypassEnabled() {
   return isLocalDevelopmentHost()
     && window.CANNAKAN_SUPABASE_CONFIG?.localDemoAuthEnabled === true
@@ -11809,6 +11814,10 @@ function clearNewSessionNotesDraft() {
 }
 
 function ensureSampleSessions() {
+  if (!isDevelopmentPreviewDataEnabled()) {
+    return;
+  }
+
   if (isSupabaseConfigured()) {
     return;
   }
@@ -12915,11 +12924,14 @@ function isDebugUiEnabled() {
 }
 
 function canAccessMockDataControls() {
-  return hasResolvedAdminAccess();
+  return isDevelopmentPreviewDataEnabled() && hasResolvedAdminAccess();
 }
 
 function isMockDataEnabled() {
   if (!canAccessMockDataControls()) {
+    try {
+      localStorage.removeItem(MOCK_DATA_STORAGE_KEY);
+    } catch {}
     return false;
   }
 
@@ -12928,7 +12940,7 @@ function isMockDataEnabled() {
 }
 
 function setMockDataEnabled(enabled) {
-  if (enabled) {
+  if (enabled && canAccessMockDataControls()) {
     appState.mockGalleryReviewStatuses = {};
     localStorage.setItem(MOCK_DATA_STORAGE_KEY, "true");
     return;
@@ -21249,7 +21261,7 @@ function getAdminSourceReviewSubmittedByLabel(userId = "") {
 function getAdminSourceReviewCanonicalOptions() {
   const seen = new Set();
   const combinedNames = [
-    ...testedSourcesMock.map((source) => source?.name || ""),
+    ...(isDevelopmentPreviewDataEnabled() ? testedSourcesMock.map((source) => source?.name || "") : []),
     ...getSourceCatalogRecords({ includeHidden: true }).map((source) => source?.name || ""),
   ];
 
@@ -23696,7 +23708,8 @@ function shouldUseMockGrowNetworkNotifications() {
     return false;
   }
 
-  return isMockDataEnabled() || isGrowNetworkMockNotificationTestAccount();
+  return isMockDataEnabled()
+    || (isDevelopmentPreviewDataEnabled() && isGrowNetworkMockNotificationTestAccount());
 }
 
 function hasUnseenMockGrowNetworkNotifications() {
@@ -37089,7 +37102,7 @@ function getApprovedPublicGallerySnapshotById(snapshotId) {
   return getGallerySnapshotsForDisplay().find((snapshot) => (
     snapshot?.id === normalizedId
     && isGallerySnapshotAnalyticsEligible(snapshot)
-  )) || (normalizedId.startsWith("mock-gallery-")
+  )) || (isMockDataEnabled() && normalizedId.startsWith("mock-gallery-")
     ? (MOCK_GALLERY_SNAPSHOTS || []).find((snapshot) => snapshot?.id === normalizedId && isGallerySnapshotAnalyticsEligible(snapshot))
     : null) || null;
 }
@@ -37104,7 +37117,7 @@ function getViewablePublicSessionSnapshotById(snapshotId) {
   return getGallerySnapshotsForDisplay().find((snapshot) => (
     String(snapshot?.id || "").trim() === normalizedId
     && canCurrentViewerSeeGallerySnapshot(snapshot, { isAdminView })
-  )) || (normalizedId.startsWith("mock-gallery-")
+  )) || (isMockDataEnabled() && normalizedId.startsWith("mock-gallery-")
     ? (MOCK_GALLERY_SNAPSHOTS || []).find((snapshot) => String(snapshot?.id || "").trim() === normalizedId)
     : null) || null;
 }
@@ -51810,6 +51823,10 @@ function getSourceDirectoryTrackRecordForSource(sourceName = "", fallbackTrackRe
 }
 
 function getSourceProfileMockRecord(sourceId = "") {
+  if (!isMockDataEnabled()) {
+    return null;
+  }
+
   const normalizedId = String(sourceId || "").trim().toLowerCase();
   return normalizeTestedSourceMockRecord({
     ...SOURCE_PROFILE_DEMO_RECORD,
@@ -51818,6 +51835,10 @@ function getSourceProfileMockRecord(sourceId = "") {
 }
 
 function getSourceDirectoryPreviewMockRecord(sourceId = "") {
+  if (!isMockDataEnabled()) {
+    return null;
+  }
+
   const normalizedId = String(sourceId || "").trim().toLowerCase();
   if (!normalizedId) {
     return null;
@@ -51835,6 +51856,10 @@ function getSourceDirectoryPreviewMockRecord(sourceId = "") {
 }
 
 function getSampleSourceProfileRecord(sourceId = "") {
+  if (!isDevelopmentPreviewDataEnabled()) {
+    return null;
+  }
+
   const normalizedId = String(sourceId || "").trim().toLowerCase();
   if (!normalizedId) {
     return null;
@@ -52379,7 +52404,7 @@ function hasKnownSourceDirectoryRouteSource(sourceId = "") {
   if (!normalizedId) {
     return false;
   }
-  if (normalizedId === String(SOURCE_PROFILE_DEFAULT_MOCK_ID || "").trim().toLowerCase()) {
+  if (isMockDataEnabled() && normalizedId === String(SOURCE_PROFILE_DEFAULT_MOCK_ID || "").trim().toLowerCase()) {
     return true;
   }
   if (getSourceDirectoryPreviewMockRecord(normalizedId)) {
@@ -52490,7 +52515,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
   const directoryRecords = getSourceDirectoryMockRecords();
   const teaserRecords = directoryRecords.length
     ? directoryRecords
-    : testedSourcesMock.map((source) => {
+    : (isDevelopmentPreviewDataEnabled() ? testedSourcesMock : []).map((source) => {
       const sourceDirectoryStats = source?.id === SOURCE_PROFILE_DEFAULT_MOCK_ID
         ? SOURCE_PROFILE_DEMO_RECORD.directoryStats
         : source?.directoryStats;
@@ -52546,10 +52571,10 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         <div class="home-tested-sources-rankings">
           <div class="home-tested-sources-rankings-head">
             <p class="eyebrow">Trending Sources</p>
-            <span>Community evidence preview</span>
+            <span>${escapeHtml(previewSources.length ? "Community evidence preview" : "Awaiting community data")}</span>
           </div>
           <div class="home-tested-sources-list" role="list" aria-label="Trending Source Explorer sources">
-            ${previewSources.map((source) => {
+            ${previewSources.length ? previewSources.map((source) => {
               const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
               const confidenceMeta = getSourceDirectoryConfidenceMeta(getSourceDirectoryTrustScore(source));
               const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
@@ -52572,7 +52597,19 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
                   </span>
                 </article>
               `;
-            }).join("")}
+            }).join("") : `
+              <article class="home-tested-source-row" role="listitem">
+                ${renderAppIconMarkup("sourceDirectoryBars", {
+                  variant: "plate",
+                  className: "home-tested-source-logo",
+                })}
+                <span class="home-tested-source-row-copy">
+                  <strong>Community source data will appear here.</strong>
+                  <small>Approved public grow reports will build source performance summaries over time.</small>
+                </span>
+                <a class="button button-secondary button-compact" href="#sources">Explore Sources</a>
+              </article>
+            `}
           </div>
         </div>
       </div>
@@ -52641,7 +52678,7 @@ function getHomeSeedExplorerPreviewData() {
     totalVarieties: Math.max(liveVarietyRows.length, fallbackMetrics.totalVarieties),
     totalSessions: Math.max(state.overview?.totalPublicSessionsRepresented || 0, fallbackMetrics.totalSessions),
     rows: [...liveRows, ...fallbackRows].slice(0, 3),
-    source: liveRows.length ? "mixed" : "preview",
+    source: liveRows.length ? (fallbackRows.length ? "mixed" : "community") : (fallbackRows.length ? "preview" : "empty"),
   };
 }
 
@@ -52653,7 +52690,9 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
   ];
   const previewLabel = preview.source === "community"
     ? "Community evidence preview"
-    : "Seed Explorer preview";
+    : (preview.source === "preview" || preview.source === "mixed"
+      ? "Development preview"
+      : "Awaiting community data");
 
   return `
     <section class="card home-tested-sources-preview-section home-seed-explorer-preview-section">
@@ -52683,7 +52722,7 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
             <span>${escapeHtml(previewLabel)}</span>
           </div>
           <div class="home-tested-sources-list" role="list" aria-label="Trending Seed Explorer varieties">
-            ${preview.rows.map((row) => {
+            ${preview.rows.length ? preview.rows.map((row) => {
               const confidencePercent = Math.max(0, Math.min(100, Number(row.confidencePercent) || 0));
               const sessionSummary = row.sessionCount
                 ? `${formatPrivateAnalyticsNumber(row.sessionCount)} ${row.sessionCount === 1 ? "session" : "sessions"}`
@@ -52707,7 +52746,19 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
                   </span>
                 </a>
               `;
-            }).join("")}
+            }).join("") : `
+              <article class="home-tested-source-row home-seed-explorer-row" role="listitem">
+                ${renderAppIconMarkup("seedGermination", {
+                  variant: "plate",
+                  className: "home-seed-explorer-row-icon",
+                })}
+                <span class="home-tested-source-row-copy">
+                  <strong>Community variety data will appear here.</strong>
+                  <small>Approved public grow reports will build trusted seed and variety insights over time.</small>
+                </span>
+                <a class="button button-secondary button-compact" href="#new">Start a Session</a>
+              </article>
+            `}
           </div>
         </div>
       </div>
@@ -55152,7 +55203,7 @@ const SEED_EXPLORER_DEMO_SEEDS = Object.freeze([
 ]);
 
 function getSeedExplorerDemoSeeds() {
-  return [...SEED_EXPLORER_DEMO_SEEDS];
+  return isDevelopmentPreviewDataEnabled() ? [...SEED_EXPLORER_DEMO_SEEDS] : [];
 }
 
 function getSeedExplorerSeedById(seedId = "") {
@@ -55208,7 +55259,7 @@ function getSeedExplorerRowsForSource(source = {}) {
     ))
     .map((seed) => ({
       label: seed.varietyName,
-      imageUrl: seed.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
+      imageUrl: seed.thumbnail || "",
       rate: `${Number(seed.germinationSuccess) || 0}%`,
       germination: `${Number(seed.germinationSuccess) || 0}%`,
       confidence: seed.communityConfidence || "Early Signal",
@@ -55226,14 +55277,19 @@ function getExploreSourceTopSeedRows(source = {}, topVarietyLookup = new Map(), 
         return null;
       }
       const seed = getSeedExplorerSeedByVarietyLabel(label);
-      const baseRate = parseSourceDirectoryMetricNumber(variety?.rate || variety?.averageRate || "") || (92 - index);
+      const baseRate = parseSourceDirectoryMetricNumber(variety?.rate || variety?.averageRate || "");
+      if (!seed && !baseRate) {
+        return null;
+      }
       return {
         label,
-        imageUrl: seed?.thumbnail || variety?.imageUrl || DEMO_SNAPSHOT_IMAGE_URLS[index % DEMO_SNAPSHOT_IMAGE_URLS.length],
-        rate: seed ? `${seed.germinationSuccess}%` : `${Math.max(84, Math.min(99, baseRate))}%`,
-        germination: seed ? `${seed.germinationSuccess}%` : `${Math.max(84, Math.min(99, baseRate))}%`,
-        confidence: seed?.communityConfidence || "Community Signal",
-        sessions: seed ? Number(seed.communitySessions || 0).toLocaleString() : "Preview",
+        imageUrl: seed?.thumbnail || variety?.imageUrl || "",
+        rate: seed ? `${seed.germinationSuccess}%` : `${Math.max(0, Math.min(100, baseRate))}%`,
+        germination: seed ? `${seed.germinationSuccess}%` : `${Math.max(0, Math.min(100, baseRate))}%`,
+        confidence: seed?.communityConfidence || "Building Signal",
+        sessions: seed
+          ? Number(seed.communitySessions || 0).toLocaleString()
+          : String(variety?.sessions || variety?.sessionCount || "0"),
         href: seed ? `#seeds/${encodeURIComponent(seed.id)}` : "",
       };
     })
@@ -55449,9 +55505,9 @@ function renderSeedExplorerMetricCardsMarkup(records = getSeedExplorerDemoSeeds(
   const metrics = getSeedExplorerMetrics(records);
   return `
     <div class="summary-grid seed-explorer-metrics-grid">
-      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Varieties", value: metrics.totalVarieties.toLocaleString(), subtext: "preview seed profiles", icon: "sourceHeroSprout", modifier: "seed-explorer-stat-card seed-explorer-stat-card--varieties", visualization: "sessions" })}
-      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Seeds Reported", value: metrics.totalSeedsTracked.toLocaleString(), subtext: "across preview seeds", icon: "mySessionsSprout", modifier: "seed-explorer-stat-card seed-explorer-stat-card--seeds", visualization: "seeds" })}
-      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), subtext: "community preview signal", icon: "communityGroup", modifier: "seed-explorer-stat-card seed-explorer-stat-card--sessions", visualization: "sessions" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Varieties", value: metrics.totalVarieties.toLocaleString(), subtext: "public seed profiles", icon: "sourceHeroSprout", modifier: "seed-explorer-stat-card seed-explorer-stat-card--varieties", visualization: "sessions" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Seeds Reported", value: metrics.totalSeedsTracked.toLocaleString(), subtext: "from public grow reports", icon: "mySessionsSprout", modifier: "seed-explorer-stat-card seed-explorer-stat-card--seeds", visualization: "seeds" })}
+      ${renderSourceDirectoryHeroStatCardMarkup({ label: "Community Sessions", value: metrics.totalSessions.toLocaleString(), subtext: "approved public sessions", icon: "communityGroup", modifier: "seed-explorer-stat-card seed-explorer-stat-card--sessions", visualization: "sessions" })}
       ${renderSeedExplorerCommunityConfidenceMetricMarkup(metrics)}
     </div>
   `;
@@ -55554,7 +55610,7 @@ function renderSeedExplorerControlsMarkup(records = getSeedExplorerDemoSeeds()) 
           <h3>Explore Seed Reports</h3>
         </div>
         <div class="seed-explorer-controls-actions">
-          <span class="source-directory-mock-note">Preview Data</span>
+          ${isDevelopmentPreviewDataEnabled() ? '<span class="source-directory-mock-note">Development Preview</span>' : ""}
           <button type="button" class="button button-secondary seed-explorer-filter-trigger" data-seed-explorer-advanced-filter-trigger>
             Filter Seeds
             ${renderSeedExplorerAdvancedFilterCountMarkup()}
@@ -55734,6 +55790,7 @@ function renderSeedExplorerResultsMarkup(records = [], displayMode = getSeedExpl
 function renderSeedExplorerPanelMarkup({ active = false } = {}) {
   const records = getSeedExplorerDemoSeeds();
   const displayMode = getSeedExplorerDisplayModePreference();
+  const previewModeEnabled = isDevelopmentPreviewDataEnabled();
   return `
     <section id="explore-panel-seeds" class="seed-explorer-page" data-explore-panel="seeds" role="tabpanel" aria-labelledby="explore-tab-seeds"${active ? "" : " hidden"}>
       ${renderExplorerHeroMarkup({
@@ -55741,9 +55798,9 @@ function renderSeedExplorerPanelMarkup({ active = false } = {}) {
         iconMarkup: renderAppSectionHeaderIcon("plant"),
         eyebrow: "Seeds",
         title: "Seed Explorer",
-        descriptionMarkup: `Discover seed performance, community confidence, trusted sources, and grow intelligence through <span>community preview data</span>.`,
+        descriptionMarkup: `Discover seed performance, community confidence, trusted sources, and grow intelligence through <span>verified public grow data</span>.`,
         beforeActionsMarkup: `
-          <p class="source-directory-hero-proof">Seed Explorer uses curated preview data while the community intelligence model expands.</p>
+          <p class="source-directory-hero-proof">${previewModeEnabled ? "Development preview data is enabled for local review." : "Seed Explorer will populate as growers share approved public session reports."}</p>
           <div class="source-directory-hero-trust-list" aria-label="Seed Explorer trust signals">
             <span>Community Confidence</span>
             <span>Germination Success</span>
@@ -55771,10 +55828,10 @@ function renderSeedExplorerPanelMarkup({ active = false } = {}) {
       <div class="source-directory-results-head source-directory-results-head--cards seed-explorer-results-head">
         <div>
           <h3>Seed Performance Profiles</h3>
-          <p class="muted">Preview variety profiles shaped for future community-powered recommendations.</p>
+          <p class="muted">Public variety profiles built from approved Community Grow reports.</p>
         </div>
         <div class="source-directory-results-tools seed-explorer-results-tools">
-          <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} preview seeds</p>
+          <p id="seed-explorer-results-summary" class="muted seed-explorer-results-summary">Showing ${records.length} seed varieties</p>
           ${renderSeedExplorerViewToggleMarkup(displayMode)}
         </div>
       </div>
@@ -55893,7 +55950,7 @@ function bindSeedExplorerControls(scope = app) {
     results.className = isCardMode ? "source-directory-grid seed-explorer-grid" : "seed-explorer-list-results";
     results.setAttribute("aria-label", isCardMode ? "Seed Explorer cards" : "Seed Explorer list");
     results.innerHTML = renderSeedExplorerResultsMarkup(visibleSeeds, activeDisplayMode);
-    summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} preview seeds`;
+    summary.textContent = `Showing ${visibleSeeds.length} of ${getSeedExplorerDemoSeeds().length} seed varieties`;
     updateAdvancedFilterCount();
     viewButtons.forEach((button) => {
       const buttonMode = normalizeSeedExplorerDisplayMode(button.getAttribute("data-seed-explorer-view") || SEED_EXPLORER_DEFAULT_DISPLAY_MODE);
@@ -55956,12 +56013,11 @@ function renderSeedProfileUnavailablePage(seedId = "") {
           <div>
             <p class="eyebrow">Seed Report</p>
             <h2>Seed report unavailable</h2>
-            <p class="muted">The preview Seed Report for ${escapeHtml(seedId || "this variety")} is not available yet.</p>
+            <p class="muted">A public Seed Report for ${escapeHtml(seedId || "this variety")} is not available yet. Reports will appear as growers share approved public session data.</p>
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-primary" href="#seeds/banana-jealousy">Open Example Seed</a>
-          <a class="button button-secondary" href="#seeds">&larr; Back to Seed Explorer</a>
+          <a class="button button-primary" href="#seeds">&larr; Back to Seed Explorer</a>
         </div>
       </div>
     </section>
@@ -55979,21 +56035,21 @@ function getSeedReportAdoptionRankMeta(seed = {}) {
   if (rankIndex < 0) {
     return {
       value: "Emerging",
-      detail: "Preview seeds",
+      detail: "Community data building",
     };
   }
   const rank = rankIndex + 1;
   if (rank <= 3) {
     return {
       value: `#${rank}`,
-      detail: "Out of preview seeds",
+      detail: "Tracked varieties",
     };
   }
   const total = Math.max(rank, rankedSeeds.length || 0);
   const percentile = Math.max(1, Math.ceil((rank / total) * 100));
   return {
     value: `Top ${percentile}%`,
-    detail: "Of preview seeds",
+    detail: "Tracked varieties",
   };
 }
 
@@ -56005,39 +56061,25 @@ function getSeedReportActivityMetrics(seed = {}) {
   const sessions = Math.max(0, Number(seed.communitySessions) || 0);
   const seedsTracked = Math.max(0, Number(seed.seedsTracked) || 0);
   return {
-    newSessionsThisWeek: Math.max(1, Math.round(sessions * 0.08)),
-    seedsAddedThisMonth: Math.max(6, Math.round(seedsTracked * 0.07)),
-    sourcesCarrying: 3,
-    recentGrowReports: Math.max(2, Math.round(sessions * 0.12)),
-    lastUpdated: "2 hrs ago",
+    newSessionsThisWeek: Math.max(0, Number(seed.newSessionsThisWeek) || 0),
+    seedsAddedThisMonth: Math.max(0, Number(seed.seedsAddedThisMonth) || 0),
+    sourcesCarrying: Math.max(0, Number(seed.sourcesCarrying) || (seed.source ? 1 : 0)),
+    recentGrowReports: Math.max(0, Number(seed.recentGrowReports) || Math.round(sessions * 0.12)),
+    lastUpdated: String(seed.lastUpdated || seed.updatedAt || seed.publishedAt || "").trim() || "Awaiting public reports",
   };
 }
 
 function getSeedReportRelationshipRows(seed = {}) {
-  const baseSessions = Math.max(12, Number(seed.communitySessions) || 0);
+  const baseSessions = Math.max(0, Number(seed.communitySessions) || 0);
   const sourceRows = [
-    {
+    seed.source ? {
       label: seed.source || "Primary Source",
-      imageUrl: seed.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
+      imageUrl: seed.thumbnail || "",
       sessions: baseSessions,
-      detail: seed.sourceRelationship || "Primary preview source relationship.",
+      detail: seed.sourceRelationship || "Observed source relationship.",
       href: seed.sourceId ? `#sources/${encodeURIComponent(seed.sourceId)}` : "#sources",
-    },
-    {
-      label: "Poppin Fire",
-      imageUrl: "/assets/demo/snapshots/IMG_E5598.JPG",
-      sessions: Math.max(8, Math.round(baseSessions * 0.32)),
-      detail: "Comparable community adoption pattern in preview data.",
-      href: "#sources/poppin-fire",
-    },
-    {
-      label: "Good Genetix",
-      imageUrl: "/assets/demo/snapshots/pic3.jpg",
-      sessions: Math.max(6, Math.round(baseSessions * 0.17)),
-      detail: "Emerging source relationship for future comparison.",
-      href: "#sources/good-genetix",
-    },
-  ];
+    } : null,
+  ].filter(Boolean);
   const seen = new Set();
   return sourceRows.filter((row) => {
     const key = normalizeSourceNameForMatching(row.label || "");
@@ -56051,12 +56093,12 @@ function getSeedReportRelationshipRows(seed = {}) {
 
 function getSeedReportRelatedVarietyRows(seed = {}) {
   const related = (Array.isArray(seed.related) ? seed.related : []).slice(0, 3);
-  const images = Array.isArray(seed.gallery) && seed.gallery.length ? seed.gallery : DEMO_SNAPSHOT_IMAGE_URLS;
+  const images = Array.isArray(seed.gallery) && seed.gallery.length ? seed.gallery : [];
   return related.map((label, index) => ({
     label,
-    imageUrl: images[index % images.length],
-    rate: `${Math.max(24, Math.round((Number(seed.communitySessions) || 80) * (0.72 - (index * 0.12))))} sessions`,
-    detail: "Related through source overlap, seed type, or community adoption pattern.",
+    imageUrl: images.length ? images[index % images.length] : "",
+    rate: "",
+    detail: "Related variety signal from public data.",
     href: getSeedExplorerReportHrefForVariety(label),
   }));
 }
@@ -56073,39 +56115,31 @@ function getSeedReportSimilarAdoptionRows(seed = {}) {
     .slice(0, 3)
     .map((candidate) => ({
       label: candidate.varietyName,
-      imageUrl: candidate.thumbnail || DEMO_SNAPSHOT_IMAGE_URLS[0],
+      imageUrl: candidate.thumbnail || "",
       rate: `${Number(candidate.communitySessions || 0).toLocaleString()} sessions`,
-      detail: `${candidate.communityConfidence || "Community signal"} from ${candidate.source || "preview source"}.`,
+      detail: `${candidate.communityConfidence || "Community signal"}${candidate.source ? ` from ${candidate.source}` : ""}.`,
       href: `#seeds/${encodeURIComponent(candidate.id)}`,
     }));
 }
 
 function getSeedReportRegionRows(seed = {}) {
-  const sessions = Math.max(20, Number(seed.communitySessions) || 0);
-  const rows = [
-    { code: "US", country: "United States", share: 38 },
-    { code: "DE", country: "Germany", share: 21 },
-    { code: "CA", country: "Canada", share: 14 },
-    { code: "CO", country: "Colombia", share: 9 },
-    { code: "", country: "Other", share: 18 },
-  ];
+  const rows = Array.isArray(seed.regionRows) ? seed.regionRows : [];
   return rows.map((row) => ({
-    ...row,
-    sessions: Math.max(1, Math.round((sessions * row.share) / 100)),
-  }));
+    code: normalizeCountryCode(row.code || row.countryCode || ""),
+    country: String(row.country || row.label || "Region").trim(),
+    share: Math.max(0, Number(row.share) || 0),
+    sessions: Math.max(0, Number(row.sessions) || 0),
+  })).filter((row) => row.country && (row.share > 0 || row.sessions > 0));
 }
 
 function getSeedReportTimelineRows(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const varietyName = seed.varietyName || "this variety";
-  const activeRegions = getSeedReportRegionRows(seed).filter((row) => String(row.country || "").toLowerCase() !== "other");
-  const sourceName = seed.source || "Primary source";
-  return [
-    { text: `New grow report added for ${varietyName}`, meta: "Germany", time: "2 hrs ago", tone: "report" },
-    { text: `${Number(activity.seedsAddedThisMonth || 0).toLocaleString()} additional seeds tracked`, meta: "Community evidence", time: "Today", tone: "seeds" },
-    { text: `${seed.communityConfidence || "High Confidence"} achieved`, meta: "Evidence threshold", time: "1 day ago", tone: "confidence" },
-    { text: `New source now carrying ${varietyName}`, meta: sourceName, time: "2 days ago", tone: "source" },
-    { text: "Reports expanded into another region", meta: `${Math.max(1, activeRegions.length)} active regions`, time: "This week", tone: "region" },
-  ];
+  const rows = Array.isArray(seed.activityRows) ? seed.activityRows : [];
+  return rows.map((row) => ({
+    text: String(row.text || "").trim(),
+    meta: String(row.meta || "").trim(),
+    time: String(row.time || row.createdAt || "").trim(),
+    tone: String(row.tone || "activity").trim(),
+  })).filter((row) => row.text);
 }
 
 function renderSeedReportRecentActivityMarkup(rows = []) {
@@ -56143,8 +56177,11 @@ function renderSeedReportRelationshipListMarkup(rows = [], button = null) {
   return `
     <div class="source-report-variety-list seed-report-relationship-list">
       ${rows.map((row) => {
+        const imageMarkup = row.imageUrl
+          ? `<img src="${escapeHtml(row.imageUrl)}" alt="" loading="lazy" decoding="async">`
+          : `<span class="source-report-variety-placeholder" aria-hidden="true">${renderAppIconSvgMarkup("seedGermination")}</span>`;
         const content = `
-          <img src="${escapeHtml(row.imageUrl || DEMO_SNAPSHOT_IMAGE_URLS[0])}" alt="" loading="lazy" decoding="async">
+          ${imageMarkup}
           <strong>${escapeHtml(row.label || "Related record")}</strong>
           <span>${escapeHtml(row.rate || "")}</span>
         `;
@@ -56174,10 +56211,19 @@ function renderSeedReportSourceListMarkup(rows = []) {
 }
 
 function renderSeedReportAdoptionChartMarkup(seed = {}, activity = getSeedReportActivityMetrics(seed)) {
-  const sessions = Math.max(24, Number(seed.communitySessions) || 0);
+  const sessions = Math.max(0, Number(seed.communitySessions) || 0);
+  if (!sessions) {
+    return `
+      <div class="source-report-performance-layout seed-report-adoption-layout">
+        <div class="source-report-chart-shell source-report-chart-empty">
+          <p>Community activity trends will appear here once public grow reports exist for this variety.</p>
+        </div>
+      </div>
+    `;
+  }
   const values = [0.12, 0.18, 0.24, 0.34, 0.42, 0.52, 0.61, 0.69, 0.78, 0.86, 0.93, 1].map((share, index) => {
     const lift = index > 8 ? Math.round(activity.newSessionsThisWeek * (index - 8) * 0.18) : 0;
-    return Math.max(1, Math.round((sessions * share) + lift));
+    return Math.max(0, Math.round((sessions * share) + lift));
   });
   const width = 960;
   const height = 220;
@@ -56303,11 +56349,11 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
           <p>
             <span>${escapeHtml(seed.source || "Primary Source")}</span>
             <span>${escapeHtml(seed.seedType || "Seed")}</span>
-            <span>${escapeHtml(seed.batchAge || "Preview lot")}</span>
+            <span>${escapeHtml(seed.batchAge || "Lot age not reported")}</span>
           </p>
           <strong class="source-report-established-line">${escapeHtml(seed.summary || "Community-powered seed adoption report.")}</strong>
           <div class="source-report-hero-actions">
-            <span class="source-report-cstp-chip">Community Preview</span>
+            <span class="source-report-cstp-chip">Community Report</span>
             ${renderMetricBadgeMarkup(seed.communityConfidence || "Community Signal", { className: "source-directory-evidence-badge seed-explorer-badge seed-report-confidence-badge", tone: getSeedExplorerConfidenceTone(seed) })}
           </div>
         </div>
@@ -56317,7 +56363,7 @@ function renderSeedReportHeroMarkup(seed = {}, activity = getSeedReportActivityM
         ${renderSeedReportHeroMetricMarkup({ icon: "rank", value: adoptionRankMeta.value, label: "Popularity Rank", detail: adoptionRankMeta.detail, tone: "gold" })}
       </div>
       <div class="source-report-hero-note-row">
-        <p>Popularity and adoption are based on curated community preview signals for the Seed Explorer foundation. Germination remains available as supporting evidence.</p>
+        <p>Popularity and adoption are based on public community grow reports. Germination remains available as supporting evidence.</p>
         <span>Last Updated: ${escapeHtml(activity.lastUpdated)} <i aria-hidden="true"></i></span>
       </div>
     </article>
@@ -56367,9 +56413,9 @@ function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedRep
 
         <div class="seed-report-evidence-summary-row">
           ${[
-            { icon: "rank", label: "Popularity Rank", value: getSeedReportAdoptionRankLabel(seed), detail: "among preview seeds", tone: "gold" },
-            { icon: "calendar", label: "First Report", value: "Mar 2025", detail: "community activity began", tone: "green" },
-            { icon: "clock", label: "Last Updated", value: activity.lastUpdated, detail: "new activity detected", tone: "green" },
+            { icon: "rank", label: "Popularity Rank", value: getSeedReportAdoptionRankLabel(seed), detail: "among tracked varieties", tone: "gold" },
+            { icon: "calendar", label: "First Report", value: seed.firstReportAt || "Awaiting reports", detail: "community activity", tone: "green" },
+            { icon: "clock", label: "Last Updated", value: activity.lastUpdated, detail: activity.lastUpdated === "Awaiting public reports" ? "no public activity yet" : "latest public activity", tone: "green" },
           ].map((item) => `
             <article class="seed-report-evidence-summary-row-item is-${escapeHtml(item.tone)}">
               <span class="seed-report-evidence-summary-icon" aria-hidden="true">${item.icon === "rank" ? renderSeedReportHeroMetricIconMarkup("rank") : renderAppIconSvgMarkup(item.icon, { className: "source-report-activity-icon" })}</span>
@@ -56389,7 +56435,7 @@ function renderSeedReportEvidenceSnapshotMarkup(seed = {}, activity = getSeedRep
         ${renderSourceReportDistributionMarkup(seed.seedsTracked, seed.germinationSuccess)}
         <div class="seed-report-consistency-range-block">
           <span class="stat-label">Consistency Range</span>
-          <strong>84% - 100%</strong>
+          <strong>${escapeHtml(seed.consistencyRange || "Not enough data")}</strong>
         </div>
       </div>
     </div>
@@ -56407,7 +56453,7 @@ function getSeedReportGallerySessionRows(seed = {}) {
   const sourcedVarietyKey = normalizeSourceNameForMatching(`${sourceName} ${shortVarietyName}`.trim());
   const varietyMatchKeys = new Set([varietyKey, shortVarietyKey, sourcedVarietyKey].filter(Boolean));
   const publicSnapshots = getGallerySnapshotsForDisplay();
-  const candidateSnapshots = publicSnapshots.length ? publicSnapshots : (MOCK_GALLERY_SNAPSHOTS || []);
+  const candidateSnapshots = publicSnapshots;
   const snapshots = candidateSnapshots
     .filter((snapshot) => {
       const snapshotVarietyKey = normalizeSourceNameForMatching(snapshot.seedVarietyName || snapshot.seedVariety || "");
@@ -56420,9 +56466,9 @@ function getSeedReportGallerySessionRows(seed = {}) {
     })
     .slice(0, 3);
 
-  const fallbackImages = Array.isArray(seed.gallery) && seed.gallery.length ? seed.gallery : DEMO_SNAPSHOT_IMAGE_URLS;
+  const fallbackImages = Array.isArray(seed.gallery) && seed.gallery.length ? seed.gallery : [];
   const rows = snapshots.length ? snapshots : fallbackImages.slice(0, 3).map((imagePath, index) => ({
-    id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
+    id: `seed-gallery-${String(index + 1).padStart(2, "0")}`,
     imageUrl: imagePath,
     imagePath,
     countryCode: ["DE", "US", "CA"][index] || "",
@@ -56451,9 +56497,9 @@ function getSeedReportGallerySessionRows(seed = {}) {
       : (snapshot.sessionDate ? "42h" : "24h");
     const countryName = getCountryName(countryCode) || ["Germany", "USA", "Canada"][index] || "Community";
     return {
-      id: snapshot.id || `mock-gallery-${String(index + 1).padStart(2, "0")}`,
+      id: snapshot.id || `seed-gallery-${String(index + 1).padStart(2, "0")}`,
       href: snapshot.id ? `#sessions/public/${encodeURIComponent(snapshot.id)}` : "#gallery",
-      imageUrl: snapshot.imageUrl || snapshot.imagePath || fallbackImages[index % Math.max(1, fallbackImages.length)] || DEMO_SNAPSHOT_IMAGE_URLS[0],
+      imageUrl: snapshot.imageUrl || snapshot.imagePath || fallbackImages[index % Math.max(1, fallbackImages.length)] || "",
       countryLabel: `${getCountryFlagEmoji(countryCode) || ""} ${countryName}`.trim(),
       status: sessionStatus,
       duration: durationLabel || "42h",
@@ -56559,7 +56605,7 @@ function renderSeedProfilePage(seedId = "") {
       <a class="source-profile-back-link source-report-back-link" href="#seeds">&larr; Back to Seed Explorer</a>
       <div class="source-profile-title-block source-report-title-block">
         <h1>Seed Report</h1>
-        <span class="source-profile-demo-badge source-report-demo-badge">Preview Data</span>
+        ${isDevelopmentPreviewDataEnabled() ? `<span class="source-profile-demo-badge source-report-demo-badge">Development Preview</span>` : ""}
       </div>
 
       ${renderSeedReportHeroMarkup(seed, activity)}
@@ -56858,7 +56904,7 @@ function getSourceReportPercentileLabel(sourceProfile = {}, totalSources = 0) {
   const rank = parseSourceDirectoryMetricNumber(sourceProfile?.community?.rank);
   const total = Math.max(1, parseSourceDirectoryMetricNumber(totalSources) || getSourceDirectoryMockRecords().length || 1);
   if (!rank || rank <= 0) {
-    return "Top community source";
+    return "Not ranked yet";
   }
   const percentile = Math.max(1, Math.min(100, Math.ceil((rank / total) * 100)));
   return `Top ${percentile}%`;
@@ -56876,9 +56922,9 @@ function getSourceReportActivityMetrics(sourceProfile = {}) {
   const varieties = Math.max(0, parseSourceDirectoryMetricNumber(sourceProfile?.directoryStats?.varietiesLogged));
   const lastLoggedAt = String(sourceProfile?.directoryStats?.lastLoggedAt || "").trim();
   return {
-    newSessionsThisWeek: Math.max(1, Math.round(sessions * 0.09)),
-    seedsAddedThisMonth: Math.max(8, Math.round(seeds * 0.09)),
-    newVarietiesTracked: Math.max(1, Math.round(Math.max(varieties, 8) * 0.1)),
+    newSessionsThisWeek: Math.round(sessions * 0.09),
+    seedsAddedThisMonth: Math.round(seeds * 0.09),
+    newVarietiesTracked: Math.round(varieties * 0.1),
     lastUpdated: isMockDataEnabled() ? "2 hrs ago" : (lastLoggedAt ? formatSourceDirectoryLastLoggedDate(lastLoggedAt) : "Not logged yet"),
   };
 }
@@ -56902,59 +56948,48 @@ function getSourceReportTopVarieties(sourceProfile = {}, averageRate = 0) {
     return sourceSeedRows;
   }
   const varieties = getSourceDirectoryCardTopVarieties(sourceProfile, topVarietyLookup)
-    .map((variety) => ({ label: String(variety?.label || variety?.name || variety || "").trim() }))
+    .map((variety) => ({
+      label: String(variety?.label || variety?.name || variety || "").trim(),
+      imageUrl: String(variety?.imageUrl || "").trim(),
+      rate: String(variety?.rate || variety?.averageRate || "").trim(),
+      germination: String(variety?.germination || variety?.rate || variety?.averageRate || "").trim(),
+      confidence: String(variety?.confidence || "").trim(),
+      sessions: String(variety?.sessions || variety?.sessionCount || "").trim(),
+    }))
     .filter((variety) => variety.label);
-  const fallback = ["Banana Jealousy", "Gorilla Runtz", "Gelato OG", "White Widow", "Jack Herer"]
-    .map((label) => ({ label }));
   const sourceNamePrefix = String(sourceProfile?.name || "").trim();
-  const normalized = (varieties.length ? varieties : fallback).slice(0, 5).map((variety) => {
+  const normalized = varieties.slice(0, 5).map((variety) => {
     const sourcePrefix = sourceNamePrefix ? `${sourceNamePrefix.toLowerCase()} ` : "";
     const label = sourcePrefix && variety.label.toLowerCase().startsWith(sourcePrefix)
       ? variety.label.slice(sourceNamePrefix.length).trim()
       : variety.label;
     return { ...variety, label };
   });
-  const baseRate = Math.max(84, Math.min(99, Number(averageRate) || 92));
-  const demoImages = [
-    "/assets/demo/snapshots/IMG_0327.jpg",
-    "/assets/demo/snapshots/IMG_0086.jpg",
-    "/assets/demo/snapshots/7890.jpg",
-    "/assets/demo/snapshots/5678.jpg",
-    "/assets/demo/snapshots/pic1.jpg",
-  ];
-  return normalized.map((variety, index) => ({
+  return normalized.map((variety) => ({
     ...variety,
-    imageUrl: demoImages[index % demoImages.length],
-    rate: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
-    germination: `${Math.max(84, Math.min(99, Math.round(baseRate + 4 - index)))}%`,
-    confidence: "Community Signal",
-    sessions: "Preview",
+    imageUrl: variety.imageUrl || "",
+    rate: variety.rate || "",
+    germination: variety.germination || "",
+    confidence: variety.confidence || "Building Signal",
+    sessions: variety.sessions || "0",
     href: getSeedExplorerReportHrefForVariety(variety.label),
   }));
 }
 
 function getSourceReportRegionRows(sourceProfile = {}) {
-  const sessions = Math.max(20, parseSourceDirectoryMetricNumber(sourceProfile?.community?.sessions));
-  const countryCode = getSourceCountryCode(sourceProfile) || "US";
-  const primaryCountry = getCountryName(countryCode) || "United States";
-  const rows = [
-    { code: "US", country: "United States", share: 41 },
-    { code: "CO", country: "Colombia", share: 18 },
-    { code: "DE", country: "Germany", share: 14 },
-    { code: "CA", country: "Canada", share: 8 },
-    { code: "", country: "Other", share: 19 },
-  ];
-  const deduped = [];
-  rows.forEach((row) => {
-    if (deduped.some((item) => item.country === row.country)) {
-      return;
-    }
-    deduped.push({
-      ...row,
-      sessions: Math.max(1, Math.round((sessions * row.share) / 100)),
-    });
-  });
-  return deduped.slice(0, 5);
+  const sessions = parseSourceDirectoryMetricNumber(sourceProfile?.community?.sessions);
+  const countryCode = getSourceCountryCode(sourceProfile);
+  const countryName = getCountryName(countryCode);
+  if (!sessions || !countryName) {
+    return [];
+  }
+
+  return [{
+    code: countryCode,
+    country: countryName,
+    share: 100,
+    sessions,
+  }];
 }
 
 function renderSourceReportSectionTitle(index = 1, title = "") {
@@ -57067,7 +57102,9 @@ function renderSourceReportTopVarietiesMarkup(varieties = [], sourceProfile = {}
     <div class="source-report-variety-list source-report-variety-list--linked">
       ${varieties.map((variety) => `
         ${variety.href ? `<a class="source-report-variety-row source-report-variety-row--linked" href="${escapeHtml(variety.href)}">` : `<article class="source-report-variety-row">`}
-          <img src="${escapeHtml(variety.imageUrl || DEMO_SNAPSHOT_IMAGE_URLS[0])}" alt="" loading="lazy" decoding="async">
+          ${variety.imageUrl
+            ? `<img src="${escapeHtml(variety.imageUrl)}" alt="" loading="lazy" decoding="async">`
+            : `<span class="source-report-variety-image-placeholder" aria-hidden="true">${renderAppIconSvgMarkup("seedGermination")}</span>`}
           <strong>${escapeHtml(variety.label)}</strong>
           <span>${escapeHtml(variety.germination || variety.rate || "")}</span>
           <small>${escapeHtml(`${variety.confidence || "Community Signal"} · ${variety.sessions || "Preview"} sessions`)}</small>
@@ -57772,7 +57809,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Example Source</a>
+            ${isMockDataEnabled() ? `<a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Example Source</a>` : ""}
             <a class="button button-secondary" href="#sources">&larr; Back to Source Explorer</a>
           </div>
         </div>
@@ -57962,27 +57999,27 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
   const qualificationResult = publishedCertification
     ? normalizeAdminCstpQualificationResult(publishedCertification.qualificationResult)
     : (["gold", "silver"].includes(normalizedStatus) ? normalizedStatus : "");
-  if (!isAdminCstpCertificationEligible(qualificationResult)) {
+  if (!publishedCertification || !isAdminCstpCertificationEligible(qualificationResult)) {
     return null;
   }
 
   const qualificationLabel = getAdminCstpQualificationLabel(qualificationResult);
-  const sourceName = String(sourceProfile?.name || SOURCE_PROFILE_DEMO_RECORD.name || "Seedsman").trim();
-  const testedSeedCount = Math.max(1, parseSourceDirectoryMetricNumber(publishedCertification?.sampleSize || cstp.sampleSize || "") || 30);
-  const germinationPercent = Math.max(0, Math.min(100, parseSourceDirectoryMetricNumber(publishedCertification?.finalGerminationPercent || cstp.resultPercent || "") || (qualificationResult === "silver" ? 88 : 94)));
+  const sourceName = String(sourceProfile?.name || "Source").trim();
+  const testedSeedCount = Math.max(0, parseSourceDirectoryMetricNumber(publishedCertification?.sampleSize || cstp.sampleSize || ""));
+  const germinationPercent = Math.max(0, Math.min(100, parseSourceDirectoryMetricNumber(publishedCertification?.finalGerminationPercent || cstp.resultPercent || "")));
   const germinatedCount = Math.round((testedSeedCount * germinationPercent) / 100);
   const nonGerminatedCount = Math.max(0, testedSeedCount - germinatedCount);
-  const certifiedDate = publishedCertification?.publishedAt || (qualificationResult === "silver" ? "2026-02-14T16:20:00.000Z" : "2026-01-18T15:45:00.000Z");
+  const certifiedDate = publishedCertification?.publishedAt || publishedCertification?.completedAt || "";
   const lifecycleState = getAdminCstpCertificationLifecycleState({
     qualificationResult,
     publishedAt: certifiedDate,
   });
-  const expiresAt = lifecycleState.expiresAt || (qualificationResult === "silver" ? "2027-02-14T16:20:00.000Z" : "2027-01-18T15:45:00.000Z");
-  const variety = String(publishedCertification?.variety || "").trim() || (qualificationResult === "silver" ? "Seedsman White Widow Feminized" : "Seedsman Blue Dream Feminized");
-  const batchLot = String(publishedCertification?.batchLot || "").trim() || (qualificationResult === "silver" ? "SDM-WWF-0226-A" : "SDM-BDF-0126-A");
-  const partitionRates = qualificationResult === "silver"
-    ? [90, 90, 85]
-    : [100, 90, 93];
+  const expiresAt = lifecycleState.expiresAt || "";
+  const variety = String(publishedCertification?.variety || "").trim() || "Not reported";
+  const batchLot = String(publishedCertification?.batchLot || "").trim() || "Not reported";
+  const partitionRates = Array.isArray(publishedCertification?.partitionRates)
+    ? publishedCertification.partitionRates
+    : [];
 
   return {
     sourceName,
@@ -57997,17 +58034,17 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
     certifiedDate,
     expiresAt,
     variety,
-    certificationId: String(publishedCertification?.id || "").trim() || (qualificationResult === "silver" ? "CSTP-SIL-2026-0214-RQS" : "CSTP-GLD-2026-0118-GHSC"),
+    certificationId: String(publishedCertification?.id || "").trim(),
     batchLot,
-    testDuration: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours"),
-    observationWindow: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours"),
-    averageGerminationTiming: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "46 hrs" : "42 hrs"),
-    firstGermination: qualificationResult === "silver" ? "31 hrs" : "28 hrs",
+    testDuration: String(publishedCertification?.totalGerminationTime || "").trim() || "Not reported",
+    observationWindow: String(publishedCertification?.totalGerminationTime || "").trim() || "Not reported",
+    averageGerminationTiming: String(publishedCertification?.averageGerminationTiming || publishedCertification?.totalGerminationTime || "").trim() || "Not reported",
+    firstGermination: String(publishedCertification?.firstGermination || publishedCertification?.firstGerminationAt || "").trim() || "Not reported",
     methodologyReference: "CSTP v1 / Standard Report Framework v1",
-    completionRate: qualificationResult === "silver" ? 96 : 100,
-    environmentalConsistency: qualificationResult === "silver" ? 97 : 98,
-    kanSystemsUsed: 3,
-    partitionsTested: 3,
+    completionRate: parseSourceDirectoryMetricNumber(publishedCertification?.completionRate || ""),
+    environmentalConsistency: parseSourceDirectoryMetricNumber(publishedCertification?.environmentalConsistency || ""),
+    kanSystemsUsed: parseSourceDirectoryMetricNumber(publishedCertification?.kanSystemsUsed || ""),
+    partitionsTested: partitionRates.length,
     methodology: [
       {
         label: "Sample Tested",
@@ -58042,10 +58079,10 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
       note: index === 0 ? "Fastest emergence" : (index === 1 ? "Stable midpoint" : "Completed within window"),
     })),
     indicators: [
-      { label: "Average Germination Timing", value: qualificationResult === "silver" ? 46 : 42, display: qualificationResult === "silver" ? "46 hrs" : "42 hrs", max: 72 },
-      { label: "First Germination Observation", value: qualificationResult === "silver" ? 31 : 28, display: qualificationResult === "silver" ? "31 hrs" : "28 hrs", max: 72 },
-      { label: "Observation Window Completion", value: qualificationResult === "silver" ? 96 : 100, display: qualificationResult === "silver" ? "96%" : "100%", max: 100 },
-      { label: "Environmental Consistency", value: qualificationResult === "silver" ? 97 : 98, display: qualificationResult === "silver" ? "97%" : "98%", max: 100 },
+      { label: "Average Germination Timing", value: parseSourceDirectoryMetricNumber(publishedCertification?.averageGerminationTiming || ""), display: String(publishedCertification?.averageGerminationTiming || "Not reported").trim(), max: 72 },
+      { label: "First Germination Observation", value: parseSourceDirectoryMetricNumber(publishedCertification?.firstGermination || ""), display: String(publishedCertification?.firstGermination || "Not reported").trim(), max: 72 },
+      { label: "Observation Window Completion", value: parseSourceDirectoryMetricNumber(publishedCertification?.completionRate || ""), display: publishedCertification?.completionRate ? `${parseSourceDirectoryMetricNumber(publishedCertification.completionRate)}%` : "Not reported", max: 100 },
+      { label: "Environmental Consistency", value: parseSourceDirectoryMetricNumber(publishedCertification?.environmentalConsistency || ""), display: publishedCertification?.environmentalConsistency ? `${parseSourceDirectoryMetricNumber(publishedCertification.environmentalConsistency)}%` : "Not reported", max: 100 },
     ],
     media: [
       {
@@ -75204,12 +75241,12 @@ function setMockDataEnabledAndRefresh(enabled) {
 
 
 const COMMUNITY_REGION_DEFINITIONS = Object.freeze([
-  { key: "north-america", flag: "🇺🇸", label: "North America", countries: ["US", "CA", "MX"], marker: { x: 228, y: 142, pulse: 38 }, fallbackAccounts: 1247, fallbackReports: 96, fallbackActivity: 14 },
-  { key: "europe", flag: "🇪🇺", label: "Europe", countries: ["GB", "IE", "FR", "DE", "AT", "CH", "NL", "BE", "ES", "PT", "IT", "DK", "NO", "SE", "FI", "PL", "CZ", "SI", "GR"], marker: { x: 529, y: 108, pulse: 30 }, fallbackAccounts: 986, fallbackReports: 54, fallbackActivity: 22 },
-  { key: "south-america", flag: "🇧🇷", label: "South America", countries: ["CO", "BR", "AR", "CL", "PE", "UY", "EC", "BO", "PY", "VE"], marker: { x: 294, y: 237, pulse: 25 }, fallbackAccounts: 342, fallbackReports: 37, fallbackActivity: 18 },
-  { key: "asia", flag: "🇨🇳", label: "Asia", countries: ["CN", "JP", "KR", "IN", "TH", "VN", "PH", "SG", "MY", "ID", "TR", "IL", "AE"], marker: { x: 690, y: 170, pulse: 28 }, fallbackAccounts: 158, fallbackReports: 18, fallbackActivity: 12 },
-  { key: "australia", flag: "🇦🇺", label: "Australia", countries: ["AU", "NZ"], marker: { x: 780, y: 290, pulse: 24 }, fallbackAccounts: 116, fallbackReports: 12, fallbackActivity: 9 },
-  { key: "africa", flag: "🌍", label: "Africa", countries: ["ZA", "NG", "KE", "MA", "EG", "GH", "ET"], marker: { x: 545, y: 245, pulse: 22 }, fallbackAccounts: 74, fallbackReports: 8, fallbackActivity: 6 },
+  { key: "north-america", flag: "🇺🇸", label: "North America", countries: ["US", "CA", "MX"], marker: { x: 228, y: 142, pulse: 38 }, fallbackAccounts: 0, fallbackReports: 0, fallbackActivity: 0 },
+  { key: "europe", flag: "🇪🇺", label: "Europe", countries: ["GB", "IE", "FR", "DE", "AT", "CH", "NL", "BE", "ES", "PT", "IT", "DK", "NO", "SE", "FI", "PL", "CZ", "SI", "GR"], marker: { x: 529, y: 108, pulse: 30 }, fallbackAccounts: 0, fallbackReports: 0, fallbackActivity: 0 },
+  { key: "south-america", flag: "🇧🇷", label: "South America", countries: ["CO", "BR", "AR", "CL", "PE", "UY", "EC", "BO", "PY", "VE"], marker: { x: 294, y: 237, pulse: 25 }, fallbackAccounts: 0, fallbackReports: 0, fallbackActivity: 0 },
+  { key: "asia", flag: "🇨🇳", label: "Asia", countries: ["CN", "JP", "KR", "IN", "TH", "VN", "PH", "SG", "MY", "ID", "TR", "IL", "AE"], marker: { x: 690, y: 170, pulse: 28 }, fallbackAccounts: 0, fallbackReports: 0, fallbackActivity: 0 },
+  { key: "australia", flag: "🇦🇺", label: "Australia", countries: ["AU", "NZ"], marker: { x: 780, y: 290, pulse: 24 }, fallbackAccounts: 0, fallbackReports: 0, fallbackActivity: 0 },
+  { key: "africa", flag: "🌍", label: "Africa", countries: ["ZA", "NG", "KE", "MA", "EG", "GH", "ET"], marker: { x: 545, y: 245, pulse: 22 }, fallbackAccounts: 0, fallbackReports: 0, fallbackActivity: 0 },
 ]);
 
 const COMMUNITY_COUNTRY_MARKERS = Object.freeze({
@@ -75374,18 +75411,7 @@ function getCommunityMapExpansionCandidate(rows = [], primaryHubKey = "north-ame
 
   const representedCountryCodes = uniqueCandidates.map((candidate) => candidate.countryCode);
   if (!representedCountryCodes.length) {
-    const seenCountryCodes = readCommunityMapSessionCountryCodes();
-    if (seenCountryCodes.has("GB")) {
-      return null;
-    }
-    const fallbackRow = rows.find((row) => row.key === "europe") || rows.find((row) => row.key !== primaryHubKey) || {};
-    writeCommunityMapSessionCountryCodes([...seenCountryCodes, "GB"]);
-    writeCommunityMapActiveExpansion("GB");
-    return {
-      countryCode: "GB",
-      row: fallbackRow,
-      marker: getCommunityMapCountryMarker("GB", fallbackRow),
-    };
+    return null;
   }
 
   const seenCountryCodes = readCommunityMapSessionCountryCodes();
@@ -75424,9 +75450,9 @@ function getCommunityRegionRollups({
         region: "Other Regions",
         countries: [],
         marker: { x: 835, y: 210, pulse: 20 },
-        fallbackAccounts: 36,
-        fallbackReports: 5,
-        fallbackActivity: 4,
+        fallbackAccounts: 0,
+        fallbackReports: 0,
+        fallbackActivity: 0,
         accountIds: new Set(),
         reportIds: new Set(),
         activityIds: new Set(),
@@ -75490,10 +75516,12 @@ function getCommunityRegionRollups({
       const reportCount = rollup.reportIds.size;
       const activityCount = rollup.activityIds.size;
       const hasObservedSignals = accountCount > 0 || reportCount > 0 || activityCount > 0;
-      const adoptionCount = hasObservedSignals ? accountCount : rollup.fallbackAccounts;
-      const knowledgeSignals = hasObservedSignals ? reportCount : rollup.fallbackReports;
-      const liveSignals = hasObservedSignals ? activityCount : rollup.fallbackActivity;
-      const share = Math.max(8, Math.round((Math.max(1, accountCount || adoptionCount) / maxAccounts) * 100));
+      const adoptionCount = hasObservedSignals ? accountCount : 0;
+      const knowledgeSignals = hasObservedSignals ? reportCount : 0;
+      const liveSignals = hasObservedSignals ? activityCount : 0;
+      const share = hasObservedSignals
+        ? Math.max(8, Math.round((Math.max(1, accountCount || adoptionCount) / maxAccounts) * 100))
+        : 0;
       return {
         ...rollup,
         adoptionCount,
@@ -75506,7 +75534,7 @@ function getCommunityRegionRollups({
         hasLiveActivity: liveSignals >= COMMUNITY_LIVE_SIGNAL_THRESHOLD,
       };
     })
-    .filter((rollup) => rollup.hasObservedSignals || rollup.fallbackAccounts > 0)
+    .filter((rollup) => rollup.hasObservedSignals)
     .sort((left, right) => (
       (right.hasObservedSignals ? 1 : 0) - (left.hasObservedSignals ? 1 : 0)
       || right.adoptionCount - left.adoptionCount
@@ -75601,36 +75629,29 @@ function getCommunityLiveNetworkStats({
       Math.min(84, Math.max(activityEntries.length, activeSessions.length, contributorCount)),
     )
     : 0;
-  const displaySessionsStartedToday = inferredOnlineGrowers
-    ? Math.max(1, sessionsStartedToday, Math.min(monthlySnapshots.length, inferredOnlineGrowers))
-    : 0;
-  const displayReportsSubmittedToday = inferredOnlineGrowers
-    ? Math.max(1, reportsSubmittedToday, Math.min(monthlySnapshots.length, inferredOnlineGrowers))
-    : 0;
+  const displaySessionsStartedToday = inferredOnlineGrowers ? sessionsStartedToday : 0;
+  const displayReportsSubmittedToday = inferredOnlineGrowers ? reportsSubmittedToday : 0;
 
   return {
     growersOnline: inferredOnlineGrowers,
-    activeSessions: inferredOnlineGrowers
-      ? Math.max(1, activeSessions.length, Math.min(monthlySnapshots.length, inferredOnlineGrowers))
-      : 0,
-    countriesActive: inferredOnlineGrowers ? Math.max(1, countriesActive) : 0,
+    activeSessions: inferredOnlineGrowers ? activeSessions.length : 0,
+    countriesActive: inferredOnlineGrowers ? countriesActive : 0,
     sessionsStartedToday: displaySessionsStartedToday,
     reportsSubmittedToday: displayReportsSubmittedToday,
-    highConfidenceReportsToday: inferredOnlineGrowers
-      ? Math.max(1, highConfidenceReportsToday, Math.min(displayReportsSubmittedToday, Math.max(1, Math.round(displayReportsSubmittedToday / 4))))
-      : 0,
+    highConfidenceReportsToday: inferredOnlineGrowers ? highConfidenceReportsToday : 0,
     shouldDisplay: inferredOnlineGrowers >= COMMUNITY_LIVE_SIGNAL_THRESHOLD,
   };
 }
 
 function getCommunityIntelligenceDashboardData() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
-  const dashboardSnapshots = approvedSnapshots.length
-    ? approvedSnapshots
-    : sortGallerySnapshotsNewestFirst(MOCK_GALLERY_SNAPSHOTS || []);
+  const previewSnapshots = isMockDataEnabled()
+    ? sortGallerySnapshotsNewestFirst(MOCK_GALLERY_SNAPSHOTS || [])
+    : [];
+  const dashboardSnapshots = approvedSnapshots.length ? approvedSnapshots : previewSnapshots;
   const monthlySnapshots = approvedSnapshots.length
     ? getCurrentMonthApprovedGallerySnapshots()
-    : dashboardSnapshots.slice(0, Math.min(12, dashboardSnapshots.length));
+    : (isMockDataEnabled() ? dashboardSnapshots.slice(0, Math.min(12, dashboardSnapshots.length)) : []);
   const insightsState = buildCommunityInsightsState();
   const sourceLeaderboard = buildGalleryLeaderboardEntries(monthlySnapshots, "source").length
     ? buildGalleryLeaderboardEntries(monthlySnapshots, "source")
@@ -75643,7 +75664,8 @@ function getCommunityIntelligenceDashboardData() {
   const currentProfile = appState.profile && (appState.profile.countryCode || appState.profile.locationRegion)
     ? [appState.profile]
     : [];
-  const dashboardProfiles = publicProfiles.length ? [...publicProfiles, ...currentProfile] : [...DEMO_GALLERY_CONTRIBUTOR_PROFILES, ...currentProfile];
+  const previewProfiles = isMockDataEnabled() ? DEMO_GALLERY_CONTRIBUTOR_PROFILES : [];
+  const dashboardProfiles = publicProfiles.length ? [...publicProfiles, ...currentProfile] : [...previewProfiles, ...currentProfile];
   const activityEntries = getGrowNetworkActivityEntries()
     .map((activity) => buildCommunityActivityFeedEntry(activity) || activity)
     .filter(Boolean);
@@ -78707,6 +78729,10 @@ function getSeedVaultDirectoryMatchByName(entries = [], value = "", normalizer =
 }
 
 function getSeedVaultGlobalVarietyImageUrl(entryOrName = {}) {
+  if (!isDevelopmentPreviewDataEnabled()) {
+    return "";
+  }
+
   const varietyName = typeof entryOrName === "string"
     ? entryOrName
     : String(entryOrName.seedName || entryOrName.seedVariety || entryOrName.varietyName || entryOrName.variety_name || "").trim();
@@ -91217,7 +91243,6 @@ function renderGrowNetworkPage() {
   const myGrowJourneyImages = [
     ...currentUserPublicSnapshots.map((snapshot) => String(snapshot?.imageUrl || "").trim()),
     ...myGrowSeedVaultEntries.map((entry) => String(entry.varietyImageUrl || entry.thumbnailUrl || "").trim()),
-    ...(Array.isArray(DEMO_SNAPSHOT_IMAGE_URLS) ? DEMO_SNAPSHOT_IMAGE_URLS : []),
   ].filter(Boolean).slice(0, 6);
   const renderMyGrowJourneyMarkup = () => {
     if (!myGrowJourneyImages.length) {

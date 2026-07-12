@@ -3,6 +3,7 @@ window.CANNAKAN_SUPABASE_CONFIG = {
   anonKey: "",
   pushPublicKey: "",
   cloudflareStreamCustomerCode: "",
+  devPreviewDataEnabled: false,
   localDemoAuthEnabled: (() => {
     const hostname = String(globalThis.location?.hostname || "").trim().toLowerCase();
     return hostname === "localhost"

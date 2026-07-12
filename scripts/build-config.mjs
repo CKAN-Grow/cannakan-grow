@@ -10,6 +10,10 @@ const pushPublicKey = process.env.VAPID_PUBLIC_KEY
 const cloudflareStreamCustomerCode = process.env.CANNAKAN_CLOUDFLARE_STREAM_CUSTOMER_CODE
   || process.env.CLOUDFLARE_STREAM_CUSTOMER_CODE
   || "";
+const devPreviewDataEnabled = [
+  process.env.CANNAKAN_DEV_PREVIEW_DATA,
+  process.env.VITE_CANNAKAN_DEV_PREVIEW_DATA,
+].some((value) => ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase()));
 const isVercelBuild = process.env.VERCEL === "1";
 const localDemoAuthEnabledExpression = `(() => {
     const hostname = String(globalThis.location?.hostname || "").trim().toLowerCase();
@@ -43,6 +47,7 @@ const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   anonKey: ${JSON.stringify(anonKey)},
   pushPublicKey: ${JSON.stringify(pushPublicKey)},
   cloudflareStreamCustomerCode: ${JSON.stringify(cloudflareStreamCustomerCode)},
+  devPreviewDataEnabled: ${JSON.stringify(devPreviewDataEnabled)},
   localDemoAuthEnabled: ${localDemoAuthEnabledExpression},
 };
 `;
