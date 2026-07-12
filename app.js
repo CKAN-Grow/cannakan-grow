@@ -92764,47 +92764,6 @@ function renderSessionDetail(sessionId) {
       return;
     }
 
-    if (target.getAttribute("data-seed-vault-collection-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "CollectionFilter", normalizeSeedVaultDropdownFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
-
-    if (target.getAttribute("data-seed-vault-planning-status-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "PlanningStatusFilter", normalizeSeedVaultStatusFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
-
-    if (target.getAttribute("data-seed-vault-tag-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "TagFilter", normalizeSeedVaultDropdownFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
-
-    if (target.getAttribute("data-seed-vault-grow-along-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "GrowAlongFilter", normalizeSeedVaultBooleanFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
-
-    if (target.getAttribute("data-seed-vault-testing-program-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "TestingProgramFilter", normalizeSeedVaultBooleanFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
-
-    if (target.getAttribute("data-seed-vault-breeder-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "BreederFilter", normalizeSeedVaultDropdownFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
-
-    if (target.getAttribute("data-seed-vault-age-filter") === "true") {
-      setSeedVaultCollectionStateValue(getSeedVaultPanelModeFromElement(target), "AgeFilter", normalizeSeedVaultAgeFilter(target.value));
-      renderSeedVaultSection();
-      return;
-    }
     const isCustomMethod = usesCustomMethodWorkflow(sessionMethod.id);
     const isCompleted = normalizeSessionStatus(detail.statusField?.value || session.sessionStatus || "") === "completed";
     detail.customCompletionActions.hidden = !isCustomMethod || isCompleted;
