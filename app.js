@@ -6251,6 +6251,7 @@ function shouldAutoDeductFilterPaperForSessionStart(session) {
   const method = getMethodConfig(getSessionMethodType(session));
   return (
     method.supportsFilterInventory === true
+    && hasFilterPaperInventoryBeenSet()
     && inventory.autoSubtract
     && Boolean(String(session?.id || "").trim())
     && !getSessionFilterPaperDeducted(session)
@@ -41907,6 +41908,10 @@ function getNewSessionNameField(form) {
   return sessionNameField instanceof HTMLInputElement ? sessionNameField : null;
 }
 
+function hasValidSessionName(sessionName = "") {
+  return Boolean(String(sessionName || "").trim());
+}
+
 function getCurrentNewSessionForm() {
   const form = document.querySelector("#session-form");
   return form instanceof HTMLFormElement ? form : null;
@@ -42529,6 +42534,10 @@ function ensureNewSessionNamePrompt(form) {
 function openNewSessionNamePrompt(form) {
   const sessionNameField = getNewSessionNameField(form);
   if (!form || !sessionNameField) {
+    return false;
+  }
+  if (hasValidSessionName(sessionNameField.value)) {
+    syncNewSessionNameState(form);
     return false;
   }
 
@@ -47660,6 +47669,14 @@ function validateNewSessionName(form, { formMessage = null } = {}) {
   sessionNameField.setCustomValidity("");
   if (formMessage) {
     setFeedbackMessage(formMessage, "");
+  }
+  if (!hasValidSessionName(sessionNameField.value)) {
+    sessionNameField.setCustomValidity("Please enter a session name.");
+    openNewSessionNamePrompt(form);
+    if (formMessage) {
+      setFeedbackMessage(formMessage, "Please enter a session name before saving.", "error");
+    }
+    return false;
   }
   return true;
 }
@@ -85410,6 +85427,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     const sessionTimeValue = String(formData.get("time") || form.elements.time?.value || "").trim();
     const sessionMethodValue = normalizeMethodType(formData.get("systemType") || form.elements.systemType?.value || "KAN");
     const sessionUnitValue = formData.get("unitId") ?? form.elements.unitId?.value ?? "";
+    const sessionNameValue = String(formData.get("sessionName") || form.elements.sessionName?.value || "").trim();
     const pendingMethodType = sessionMethodValue;
     if (isPreparedMediaSetupMethod(pendingMethodType) && !getMethodSetupStateFromForm(form).choice) {
       openPreparedMediaSetupModal(pendingMethodType);
@@ -85466,7 +85484,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       methodSetup,
       unitId: normalizedUnitId,
       sessionName: buildFinalSessionName(
-        formData.get("sessionName"),
+        sessionNameValue,
         partitionEntries[0],
         sessionDateValue,
         {
@@ -85475,7 +85493,7 @@ function renderSessionForm(initialSystemType = "KAN") {
           unitId: rawUnitId,
         },
       ),
-      customSessionName: String(formData.get("sessionName") || "").trim(),
+      customSessionName: sessionNameValue,
       sessionNotes: String(formData.get("sessionNotes") || "").trim(),
       sessionImages: normalizePersistedSessionImages(existingSessionForUpdate?.sessionImages || []),
       snapshotState: normalizePersistedSessionSnapshotState(snapshotSection?.__snapshotState?.pendingSnapshotState),
@@ -95886,6 +95904,9 @@ function getInitialSoakStartedAt(sessionStartedAt = "", createdAt = "", sessionS
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
   if (!sessionStartedDate) {
     return graceDate?.toISOString() || new Date().toISOString();
+  }
+  if (["active", "soaking"].includes(normalizedStatus)) {
+    return sessionStartedDate.toISOString();
   }
   if (["germinating", "completed"].includes(normalizedStatus)) {
     return sessionStartedDate.toISOString();
