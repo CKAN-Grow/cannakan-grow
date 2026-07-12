@@ -84731,12 +84731,6 @@ function renderSessionForm(initialSystemType = "KAN") {
       dismissFilterPaperSetupBeforeNewSession();
       return;
     }
-    if (form.dataset.filterPaperSetupPromptedForKan === "true" || hasFilterPaperInventoryBeenSet()) {
-      return;
-    }
-
-    form.dataset.filterPaperSetupPromptedForKan = "true";
-    void promptFilterPaperSetupBeforeNewSession();
   }
 
   function closePaperTowelSetupModal() {
@@ -85412,7 +85406,11 @@ function renderSessionForm(initialSystemType = "KAN") {
     setFeedbackMessage(formMessage, "");
 
     const formData = new FormData(form);
-    const pendingMethodType = normalizeMethodType(formData.get("systemType"));
+    const sessionDateValue = String(formData.get("date") || form.elements.date?.value || "").trim();
+    const sessionTimeValue = String(formData.get("time") || form.elements.time?.value || "").trim();
+    const sessionMethodValue = normalizeMethodType(formData.get("systemType") || form.elements.systemType?.value || "KAN");
+    const sessionUnitValue = formData.get("unitId") ?? form.elements.unitId?.value ?? "";
+    const pendingMethodType = sessionMethodValue;
     if (isPreparedMediaSetupMethod(pendingMethodType) && !getMethodSetupStateFromForm(form).choice) {
       openPreparedMediaSetupModal(pendingMethodType);
       return null;
@@ -85439,38 +85437,41 @@ function renderSessionForm(initialSystemType = "KAN") {
     const isUpdatingExistingSession = Boolean(existingSessionId);
     const createdAt = new Date().toISOString();
     const sessionStartedAt = existingSessionForUpdate?.sessionStartedAt
-      || parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString()
+      || parseSessionStartDateTime(sessionDateValue, sessionTimeValue)?.toISOString()
       || createdAt;
-    const selectedMethod = getMethodConfig(formData.get("systemType"));
+    const selectedMethod = getMethodConfig(sessionMethodValue);
     const methodSetup = getMethodSetupStateFromForm(form);
     const requestedSessionStatus = normalizeSessionStatus(formData.get("sessionStatus"));
+    const persistedRequestedSessionStatus = selectedMethod.id === "KAN" && ["active", "setup", "start", "not-started", "unselected"].includes(requestedSessionStatus)
+      ? "soaking"
+      : requestedSessionStatus;
     const normalizedInitialStatus = requestedSessionStatus === "completed"
       ? "completed"
       : selectedMethod.supportsStageTracking
-        ? requestedSessionStatus
+        ? persistedRequestedSessionStatus
         : getMethodDefaultSessionStatus(selectedMethod.id);
     const soakStartedAt = selectedMethod.supportsStageTracking
       ? getInitialSoakStartedAt(sessionStartedAt, createdAt, normalizedInitialStatus)
       : "";
-    const rawUnitId = String(formData.get("unitId") || "").trim();
-    const normalizedUnitId = normalizeUnitIdValue(formData.get("unitId"));
+    const rawUnitId = String(sessionUnitValue || "").trim();
+    const normalizedUnitId = normalizeUnitIdValue(sessionUnitValue);
     const session = {
       id: existingSessionId || crypto.randomUUID(),
-      date: formData.get("date"),
-      time: formData.get("time"),
-      methodType: normalizeMethodType(formData.get("systemType")),
-      method_type: normalizeMethodType(formData.get("systemType")),
-      systemType: normalizeMethodType(formData.get("systemType")),
-      system_type: normalizeMethodType(formData.get("systemType")),
+      date: sessionDateValue,
+      time: sessionTimeValue,
+      methodType: sessionMethodValue,
+      method_type: sessionMethodValue,
+      systemType: sessionMethodValue,
+      system_type: sessionMethodValue,
       methodSetup,
       unitId: normalizedUnitId,
       sessionName: buildFinalSessionName(
         formData.get("sessionName"),
         partitionEntries[0],
-        formData.get("date"),
+        sessionDateValue,
         {
           partitions: partitionEntries,
-          systemType: formData.get("systemType"),
+          systemType: sessionMethodValue,
           unitId: rawUnitId,
         },
       ),
@@ -85571,7 +85572,12 @@ function renderSessionForm(initialSystemType = "KAN") {
         savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
       }
       if (!isUpdatingExistingSession && shouldAutoDeductFilterPaperForSessionStart(savedSession)) {
-        applyFilterPaperDeductionForStartedSession(savedSession);
+        try {
+          applyFilterPaperDeductionForStartedSession(savedSession);
+        } catch (filterPaperError) {
+          console.warn("[Filter Paper Supply] Session saved, but filter paper inventory could not be updated.", filterPaperError);
+          appState.filterPaperInventoryError = "Session saved, but filter paper inventory could not be updated.";
+        }
       }
       await refreshUserSessionsAfterSave(isUpdatingExistingSession ? "new-session:update" : "new-session:save");
       markUnsavedChangesSaved();
@@ -85602,7 +85608,21 @@ function renderSessionForm(initialSystemType = "KAN") {
       return savedSession;
     } catch (error) {
       const genericSaveError = "Something went wrong while saving your session. Please try again.";
-      console.error("Failed to save session", error);
+      console.error("Failed to save session", {
+        error,
+        message: error?.message || "",
+        details: error?.details || "",
+        hint: error?.hint || "",
+        code: error?.code || "",
+        sessionDraft: {
+          methodType: session?.methodType || "",
+          sessionStatus: session?.sessionStatus || "",
+          date: session?.date || "",
+          time: session?.time || "",
+          unitId: session?.unitId || "",
+          partitionCount: Array.isArray(session?.partitions) ? session.partitions.length : 0,
+        },
+      });
       setUnsavedChangesLastSaveError(new Error(genericSaveError), genericSaveError);
       setFeedbackMessage(formMessage, genericSaveError, "error");
       return null;
