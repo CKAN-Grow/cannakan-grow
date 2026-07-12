@@ -24,16 +24,20 @@ assertIncludes(appSource, 'function getAuthEmailRedirectUrl()');
 assertIncludes(appSource, 'options: { emailRedirectTo }');
 assertIncludes(appSource, 'appState.supabase.auth.resend({');
 assertIncludes(appSource, 'type: "signup"');
-assertIncludes(appSource, 'if (data?.session)');
+assertIncludes(appSource, 'function resolveSignupSessionForEmail(email = "", signUpSession = null)');
+assertIncludes(appSource, 'const signupSession = await resolveSignupSessionForEmail(email, data?.session || null);');
+assertIncludes(appSource, 'await handleAuthSession(signupSession');
+assertIncludes(appSource, 'if (signupSession)');
 assertIncludes(appSource, 'setPendingVerificationMode(email);');
 assertIncludes(appSource, 'logAuthSignupDiagnostics("signup:response"');
 assertIncludes(appSource, 'maskAuthEmailForLog');
+assertIncludes(appSource, 'function getAuthDisplayErrorMessage(error = null');
 
 assertIncludes(stylesSource, '.auth-form.is-pending-verification');
 assertIncludes(stylesSource, '.auth-pending-verification');
 assertIncludes(stylesSource, '.auth-pending-actions');
 
-assertIncludes(supabaseConfigSource, 'enable_confirmations = true');
+assertIncludes(supabaseConfigSource, 'enable_confirmations = false');
 assertIncludes(supabaseConfigSource, 'http://localhost:4174');
 
 console.log("Auth email confirmation regression check passed.");
