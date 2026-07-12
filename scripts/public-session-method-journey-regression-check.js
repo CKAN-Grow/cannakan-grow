@@ -20,14 +20,24 @@ function forbidNeedle(source, needle, label = needle) {
 [
   "function buildPublicSessionJourneyEngineState({",
   "return buildSessionEngineState(sessionRecord, {",
+  "function getPublicJourneyTimelineStep(state = {}, candidateKeys = [])",
+  "function getPublicJourneyTransitionStep(state = {})",
+  "function buildPublicJourneyEvent({",
   "function buildPublicSessionJourneyEvents(state = {})",
-  "state.engineState.timelineSteps.filter",
-  "label: getPublicJourneyDisplayLabel(step),",
+  "label: \"Session Started\"",
+  "const transitionStep = getPublicJourneyTransitionStep(state);",
+  "if (state.germinationStartedAt && transitionStep) {",
+  "label: getPublicJourneyDisplayLabel(transitionStep),",
   "if (firstPlantedAt) {",
+  "label: \"First Germinated\"",
+  "label: \"Session Completed\"",
   "engineState: buildPublicSessionJourneyEngineState({",
 ].forEach((needle) => requireNeedle(appSource, needle));
 
 [
+  "function getPublicJourneyStepDurationEndAt",
+  "state.engineState.timelineSteps.filter",
+  "const events = steps.map((step, index) => {",
   "const germinationDurationEndAt = state.firstPlantedAt || state.completedAt;",
   "const events = [\n    {\n      label: \"Started\",",
   "label: \"Soaking\",\n      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : \"Not shared\",",
