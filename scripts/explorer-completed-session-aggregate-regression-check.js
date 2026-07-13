@@ -37,6 +37,16 @@ const sourceAggregate = getBetween(
   "function buildSourceDirectorySessionAggregate",
   "function getSourceDirectoryTrackRecordForSource",
 );
+const sourceMetrics = getBetween(
+  app,
+  "function getSourceDirectoryMetrics",
+  "function getSourceDirectoryCommunityConfidenceLabel",
+);
+const seedMetrics = getBetween(
+  app,
+  "function getSeedExplorerMetrics",
+  "function renderSeedExplorerCommunityConfidenceMetricMarkup",
+);
 const seedPanel = getBetween(
   app,
   "function renderSeedExplorerPanelMarkup",
@@ -60,7 +70,12 @@ assert(app.includes('["completed", "complete"].includes(normalizedStatus)') && a
 assert(aggregateBuilder.includes("!partitionResult.hasSeeds") && aggregateBuilder.includes("!partitionResult.hasFinalResultValue"), "Aggregate builder must exclude invalid/incomplete result rows.");
 assert(aggregateBuilder.includes("sourceMap") && aggregateBuilder.includes("seedRecords"), "Aggregate builder must produce shared Source and Seed records.");
 assert(sourceAggregate.includes("buildExplorerCompletedSessionAggregate"), "Source Explorer must reuse the shared completed-session aggregate.");
+assert(sourceAggregate.includes("buildExplorerCompletedSessionAggregate();"), "Source Explorer must use the cached RPC aggregate instead of rebuilding from local session state.");
+assert(sourceAggregate.includes("totalCompletedSessions"), "Source Explorer aggregate must carry the shared completed-session count.");
+assert(sourceMetrics.includes("aggregate.totalCompletedSessions"), "Source Explorer metrics must use the shared completed-session count.");
 assert(seedRecords.includes("buildExplorerCompletedSessionAggregate().seedRecords"), "Seed Explorer must use the shared completed-session aggregate.");
+assert(seedRecords.includes("isMockDataEnabled() ? getSeedExplorerDemoSeeds() : []"), "Seed Explorer must not fall back to demo seed records in production.");
+assert(seedMetrics.includes("aggregate.totalCompletedSessions"), "Seed Explorer metrics must use the shared completed-session count.");
 assert(!seedPanel.includes("Public variety profiles built from approved Community Grow reports."), "Seed Explorer must not describe aggregate profiles as approved public reports.");
 assert(seedPanel.includes("Seed performance profiles built from anonymized completed session results."), "Seed Explorer aggregate copy is missing.");
 assert(galleryRows.includes("isGallerySnapshotPubliclyVisible"), "Seed report evidence must be limited to approved visible public snapshots.");
