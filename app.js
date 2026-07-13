@@ -20342,11 +20342,17 @@ function isExplorerCompletedSessionAggregateRpcMissingError(error = null) {
     || code === "PGRST204"
     || (
       message.includes("schema cache")
-      && message.includes("get_explorer_completed_session_aggregates")
+      && (
+        message.includes("get_gie_global_analytics")
+        || message.includes("get_explorer_completed_session_aggregates")
+      )
     )
     || (
       message.includes("could not find")
-      && message.includes("get_explorer_completed_session_aggregates")
+      && (
+        message.includes("get_gie_global_analytics")
+        || message.includes("get_explorer_completed_session_aggregates")
+      )
     )
   );
 }
@@ -20365,6 +20371,17 @@ function isGrowIntelligenceEngineRpcMissingError(error = null) {
       message.includes("could not find")
       && message.includes("get_grow_intelligence_engine_analytics")
     )
+  );
+}
+
+function hasCanonicalGieAnalyticsPayload(payload = null) {
+  return Boolean(
+    payload
+    && typeof payload === "object"
+    && !Array.isArray(payload)
+    && payload.analytics
+    && typeof payload.analytics === "object"
+    && !Array.isArray(payload.analytics)
   );
 }
 
@@ -20389,7 +20406,12 @@ async function loadExplorerCompletedSessionAggregate(reason = "explorer-aggregat
     throw error;
   }
 
-  const normalizedPayload = normalizeExplorerCompletedSessionAggregatePayload(data || {});
+  if (!hasCanonicalGieAnalyticsPayload(data)) {
+    console.error("Global Analytics returned an empty or invalid contract payload.", { reason });
+    return null;
+  }
+
+  const normalizedPayload = normalizeExplorerCompletedSessionAggregatePayload(data);
   logExplorerAggregateDebug("GIE RPC resolved", {
     reason,
     payload: data || {},
@@ -20566,7 +20588,11 @@ async function loadGieOwnerAnalytics(reason = "owner-analytics") {
     console.error("Failed to load canonical Owner Analytics.", { reason, error });
     throw error;
   }
-  return normalizeGieOwnerAnalyticsPayload(data || {});
+  if (!hasCanonicalGieAnalyticsPayload(data)) {
+    console.error("Owner Analytics returned an empty or invalid contract payload.", { reason });
+    return null;
+  }
+  return normalizeGieOwnerAnalyticsPayload(data);
 }
 
 function normalizeGieCommunityAnalyticsPayload(payload = {}) {
@@ -20686,7 +20712,11 @@ async function loadGieCommunityAnalytics(reason = "community-analytics") {
     console.error("Failed to load canonical Community Analytics.", { reason, error });
     throw error;
   }
-  return normalizeGieCommunityAnalyticsPayload(data || {});
+  if (!hasCanonicalGieAnalyticsPayload(data)) {
+    console.error("Community Analytics returned an empty or invalid contract payload.", { reason });
+    return null;
+  }
+  return normalizeGieCommunityAnalyticsPayload(data);
 }
 
 async function loadGieContractDiagnostics(reason = "gie-contract-diagnostics") {
@@ -20788,7 +20818,9 @@ async function refreshGrowAnalyticsAfterSessionMutation(sessionId = "", reason =
     normalizedSessionId && shouldClearCommunityActivity ? clearCommunityActivityForSession(normalizedSessionId) : Promise.resolve(0),
     refreshGallerySnapshots(`analytics-refresh:${reason}`),
     loadExplorerCompletedSessionAggregate(`analytics-refresh:${reason}`).then((aggregate) => {
-      appState.explorerCompletedSessionAggregate = aggregate;
+      if (aggregate) {
+        appState.explorerCompletedSessionAggregate = aggregate;
+      }
       appState.explorerCompletedSessionAggregateLoaded = true;
       if (aggregate && isExplorerRouteActive()) {
         safeRender();
@@ -21185,30 +21217,45 @@ async function loadGallerySnapshots(reason = "unspecified") {
     return [];
   }
 
-  const { data, error } = await appState.supabase
-    .from("grow_gallery_snapshots")
-    .select("*")
-    .order("published_at", { ascending: false });
+  const publicEvidenceRequest = appState.supabase.rpc("get_gie_community_gallery_evidence");
+  const operationalRequest = appState.user
+    ? appState.supabase.from("grow_gallery_snapshots").select("*").order("published_at", { ascending: false })
+    : Promise.resolve({ data: [], error: null });
+  const [publicEvidenceResult, operationalResult] = await Promise.all([publicEvidenceRequest, operationalRequest]);
 
-  if (error) {
-    logGrowGalleryDebug("loadGallerySnapshots:error", { reason, error });
-    console.error("Failed to load gallery snapshots", error);
-    return [];
+  if (publicEvidenceResult.error) {
+    logGrowGalleryDebug("loadGallerySnapshots:canonical-evidence-error", { reason, error: publicEvidenceResult.error });
+    console.error("Failed to load canonical Community evidence", publicEvidenceResult.error);
   }
+  if (operationalResult.error) {
+    logGrowGalleryDebug("loadGallerySnapshots:operational-error", { reason, error: operationalResult.error });
+    console.error("Failed to load owned or moderated gallery snapshots", operationalResult.error);
+  }
+
+  const mergedRows = new Map();
+  (operationalResult.data || []).forEach((row) => {
+    mergedRows.set(row.id, { row, communityEvidenceEligible: false });
+  });
+  (publicEvidenceResult.data || []).forEach((row) => {
+    mergedRows.set(row.id, { row, communityEvidenceEligible: true });
+  });
+  const data = [...mergedRows.values()]
+    .sort((left, right) => new Date(right.row?.published_at || right.row?.created_at || 0).getTime() - new Date(left.row?.published_at || left.row?.created_at || 0).getTime());
 
   logGrowGalleryDebug("loadGallerySnapshots:raw", {
     reason,
-    count: (data || []).length,
-    rows: (data || []).map((row) => ({
+    count: data.length,
+    rows: data.map(({ row, communityEvidenceEligible }) => ({
       id: row.id,
       status: row.status,
       isPublished: row.is_published,
       userId: row.user_id,
       sessionId: row.session_id,
+      communityEvidenceEligible,
     })),
   });
 
-  const mapped = (data || []).map(mapRowToGallerySnapshot);
+  const mapped = data.map(({ row, communityEvidenceEligible }) => mapRowToGallerySnapshot(row, { communityEvidenceEligible }));
   const likedSnapshots = await hydrateGallerySnapshotLikes(mapped, reason);
   logGrowGalleryDebug("loadGallerySnapshots:mapped", {
     reason,
@@ -25639,10 +25686,8 @@ async function loadApprovedGallerySnapshotForSession(sessionId = "") {
   }
 
   const { data, error } = await appState.supabase
-    .from("grow_gallery_snapshots")
-    .select("*")
+    .rpc("get_gie_community_gallery_evidence")
     .eq("session_id", normalizedSessionId)
-    .eq("status", "approved")
     .maybeSingle();
 
   if (error) {
@@ -25653,7 +25698,7 @@ async function loadApprovedGallerySnapshotForSession(sessionId = "") {
     return null;
   }
 
-  return mapRowToGallerySnapshot(data);
+  return mapRowToGallerySnapshot(data, { communityEvidenceEligible: true });
 }
 
 function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
@@ -29594,7 +29639,7 @@ async function findDuplicateGallerySnapshotByImageHash(imageHash, sessionId = ""
   };
 }
 
-function mapRowToGallerySnapshot(row) {
+function mapRowToGallerySnapshot(row, options = {}) {
   if (!row) {
     return null;
   }
@@ -29651,6 +29696,7 @@ function mapRowToGallerySnapshot(row) {
     analyticsExcluded: Boolean(row.analytics_excluded),
     analyticsExcludedReason: String(row.analytics_excluded_reason || "").trim(),
     analyticsExcludedAt: String(row.analytics_excluded_at || "").trim(),
+    communityEvidenceEligible: options.communityEvidenceEligible === true,
   };
 }
 
@@ -29869,6 +29915,9 @@ function isLatestActivePublicGallerySnapshot(snapshot = null, snapshots = getGal
 }
 
 function isGallerySnapshotPubliclyVisible(snapshot = null, snapshots = getGallerySnapshotsForDisplay()) {
+  if (snapshot && !isMockGallerySnapshot(snapshot)) {
+    return snapshot.communityEvidenceEligible === true;
+  }
   return Boolean(
     snapshot
     && isApprovedActiveGallerySnapshotStatus(snapshot)
@@ -30228,13 +30277,17 @@ async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
 
   if (nextStatus === "approved") {
     await retireOtherActivePublicGallerySnapshotsForSession(mapped.sessionId, mapped.id);
-    const sessionContext = await loadCommunityActivitySessionContext(mapped.sessionId || "");
-    await syncCommunityActivityForApprovedSnapshot(mapped, { sessionContext });
   } else if (!previousSnapshot || getGallerySnapshotDisplayStatus(previousSnapshot) === "approved") {
     await clearCommunityActivityForSnapshot(snapshotId);
   }
 
-  return mapped;
+  await refreshGallerySnapshots(`moderation:${nextStatus}`, mapped.id);
+  const canonicalSnapshot = appState.gallerySnapshots.find((entry) => entry.id === mapped.id) || mapped;
+  if (nextStatus === "approved") {
+    const sessionContext = await loadCommunityActivitySessionContext(canonicalSnapshot.sessionId || "");
+    await syncCommunityActivityForApprovedSnapshot(canonicalSnapshot, { sessionContext });
+  }
+  return canonicalSnapshot;
 }
 
 async function approveSnapshot(snapshotId) {
@@ -30434,14 +30487,17 @@ async function moderatePublishedGallerySnapshot(snapshotId = "", action = "hide"
     ...appState.gallerySnapshots.filter((entry) => entry.id !== normalizedSnapshotId),
   ]);
 
-  if (normalizedAction === "restore") {
-    const sessionContext = await loadCommunityActivitySessionContext(mapped.sessionId || "");
-    await syncCommunityActivityForApprovedSnapshot(mapped, { sessionContext });
-  } else {
+  if (normalizedAction !== "restore") {
     await clearCommunityActivityForSnapshot(normalizedSnapshotId);
   }
 
-  return mapped;
+  await refreshGallerySnapshots(`published-moderation:${normalizedAction}`, normalizedSnapshotId);
+  const canonicalSnapshot = appState.gallerySnapshots.find((entry) => entry.id === normalizedSnapshotId) || mapped;
+  if (normalizedAction === "restore") {
+    const sessionContext = await loadCommunityActivitySessionContext(canonicalSnapshot.sessionId || "");
+    await syncCommunityActivityForApprovedSnapshot(canonicalSnapshot, { sessionContext });
+  }
+  return canonicalSnapshot;
 }
 
 async function deletePublishedGallerySnapshot(snapshotId = "") {
@@ -30480,6 +30536,8 @@ async function deletePublishedGallerySnapshot(snapshotId = "") {
   if (existing?.sessionId) {
     await clearGallerySnapshotStateForSession(existing.sessionId);
   }
+
+  await refreshGallerySnapshots("published-delete", normalizedSnapshotId);
 
   return data || { deleted_snapshot_id: normalizedSnapshotId, image_path: imagePath };
 }
@@ -30529,7 +30587,8 @@ async function removeOwnedGallerySnapshotFromCommunity(snapshotId = "") {
   if (existing.sessionId) {
     await clearGallerySnapshotStateForSession(existing.sessionId);
   }
-  return mapped;
+  await refreshGallerySnapshots("owner-unpublish", normalizedSnapshotId);
+  return appState.gallerySnapshots.find((entry) => entry.id === normalizedSnapshotId) || mapped;
 }
 
 function buildClearedSessionSnapshotState(snapshotState) {
@@ -30614,6 +30673,7 @@ async function deleteGallerySnapshot(snapshotId) {
   if (existing.sessionId) {
     await clearGallerySnapshotStateForSession(existing.sessionId);
   }
+  await refreshGallerySnapshots("owner-delete", snapshotId);
 }
 
 async function toggleGallerySnapshotLike(snapshotId, options = {}) {
@@ -36705,7 +36765,10 @@ function buildHomeGalleryRankingsTeaserState() {
     topVariety: adapt(community.leaderboards.varieties[0]),
     topSeedType: null,
   };
-  return { analyticsState: appState.gieCommunityAnalytics ? "available" : "unavailable", rankings };
+  const analyticsState = !appState.gieCommunityAnalyticsLoaded
+    ? "loading"
+    : (appState.gieCommunityAnalytics ? "available" : "unavailable");
+  return { analyticsState, rankings };
 }
 
 function formatInstallPreviewElapsed(days, hours, minutes = 0) {
@@ -36774,7 +36837,11 @@ function renderHomeGalleryRankingsTeaser() {
       </div>
       <ul class="home-gallery-rankings-list" aria-label="Community insights preview">
         ${rankingRows.map((row) => {
-          const valueText = row.entry ? row.formatValue(row.entry) : "Not enough data yet";
+          const valueText = row.entry
+            ? row.formatValue(row.entry)
+            : (teaserState.analyticsState === "loading"
+              ? "Loading…"
+              : (teaserState.analyticsState === "unavailable" ? "Unavailable" : "Not enough data yet"));
           const valueMarkup = row.iconType === "member" && row.entry
             ? renderLeaderboardMemberIdentityMarkup(row.entry, "leaderboard-member-identity leaderboard-member-identity--compact")
             : escapeHtml(valueText);
@@ -36918,6 +36985,9 @@ function isGallerySnapshotAnalyticsEligible(snapshot = null) {
   if (isMockGallerySnapshot(snapshot) && !isMockDataEnabled()) {
     return false;
   }
+  if (!isMockGallerySnapshot(snapshot)) {
+    return snapshot.communityEvidenceEligible === true;
+  }
   if (!isGallerySnapshotPubliclyVisible(snapshot)) {
     return false;
   }
@@ -36930,6 +37000,7 @@ function getGallerySnapshotDebugSignature(snapshots) {
   return JSON.stringify((snapshots || []).map((snapshot) => ({
     id: snapshot.id,
     status: getGallerySnapshotDisplayStatus(snapshot),
+    communityEvidenceEligible: snapshot.communityEvidenceEligible === true,
     userId: snapshot.userId || "",
     sessionId: snapshot.sessionId || "",
   })));
@@ -36954,7 +37025,10 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       appState.gallerySnapshots = snapshots;
       appState.gallerySnapshotsLoaded = true;
       try {
-        appState.gieCommunityAnalytics = await loadGieCommunityAnalytics(`gallery-refresh:${reason}`);
+        const communityAnalytics = await loadGieCommunityAnalytics(`gallery-refresh:${reason}`);
+        if (communityAnalytics) {
+          appState.gieCommunityAnalytics = communityAnalytics;
+        }
         appState.gieCommunityAnalyticsLoaded = true;
       } catch (communityAnalyticsError) {
         console.error("Community snapshots refreshed, but canonical Community Analytics did not.", communityAnalyticsError);
@@ -52445,15 +52519,42 @@ function renderSourceDirectoryCstpCardBadgeMarkup(cstpState = {}) {
   `;
 }
 
+function getHomeGlobalAnalyticsCacheState() {
+  if (!appState.explorerCompletedSessionAggregateLoaded) {
+    return { state: "loading", analytics: null };
+  }
+  if (!appState.explorerCompletedSessionAggregate) {
+    return { state: "unavailable", analytics: null };
+  }
+  return { state: "available", analytics: appState.explorerCompletedSessionAggregate };
+}
+
+function formatHomeCanonicalMetric(value, analyticsState = "available", options = {}) {
+  if (analyticsState === "loading") return "…";
+  if (analyticsState !== "available") return "—";
+  const normalizedValue = Math.max(0, Number(value) || 0);
+  return options.percent ? `${normalizedValue.toLocaleString()}%` : normalizedValue.toLocaleString();
+}
+
 function renderHomeTestedSourcesPreviewSectionMarkup() {
   const directoryRecords = getSourceDirectoryMockRecords();
-  const community = getCanonicalCommunityAnalytics();
+  const { state: analyticsState, analytics: globalAnalytics } = getHomeGlobalAnalyticsCacheState();
+  const isAvailable = analyticsState === "available";
   const sourceByName = new Map(directoryRecords.map((source) => [normalizeSourceNameForMatching(source?.name || ""), source]));
-  const previewSources = community.topSources.slice(0, 3).map((row) => ({ ...(sourceByName.get(normalizeSourceNameForMatching(row.name || row.label || "")) || {}), name: row.name || row.label || "Source", gieAnalytics: row }));
+  const previewSources = (globalAnalytics?.sourceRecords || []).slice(0, 3).map((row) => ({
+    ...(sourceByName.get(normalizeSourceNameForMatching(row.name || "")) || {}),
+    name: row.name || "Source",
+    gieAnalytics: row,
+  }));
   const summaryStats = [
-    { label: "Trusted Sources", value: community.overview.sources },
-    { label: "Community Sessions", value: community.overview.totalPublicSessionsRepresented },
+    { label: "Completed Sessions", value: globalAnalytics?.totalCompletedSessions },
+    { label: "Seeds Tested", value: globalAnalytics?.totalSeedsTested },
+    { label: "Sources", value: globalAnalytics?.totalBreedersLogged },
+    { label: "Source Attribution", value: globalAnalytics?.sourceAttributionRate, percent: true },
   ];
+  const sourceAttributionDetail = isAvailable
+    ? `${globalAnalytics.totalSeedsWithSource.toLocaleString()} with source · ${globalAnalytics.totalSeedsWithoutSource.toLocaleString()} missing source`
+    : (analyticsState === "loading" ? "Loading canonical Global Analytics" : "Global Analytics unavailable");
 
   return `
     <section class="card home-tested-sources-preview-section">
@@ -52472,7 +52573,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         <div class="home-tested-sources-kpis" aria-label="Source Explorer preview summary">
           ${summaryStats.map((kpi) => `
             <article class="home-tested-source-kpi">
-              <strong>${escapeHtml(Number(kpi.value || 0).toLocaleString())}</strong>
+              <strong>${escapeHtml(formatHomeCanonicalMetric(kpi.value, analyticsState, { percent: kpi.percent }))}</strong>
               <span>${escapeHtml(kpi.label)}</span>
             </article>
           `).join("")}
@@ -52480,15 +52581,10 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         <div class="home-tested-sources-rankings">
           <div class="home-tested-sources-rankings-head">
             <p class="eyebrow">Trending Sources</p>
-            <span>${escapeHtml(previewSources.length ? "Community evidence preview" : "Awaiting community data")}</span>
+            <span>${escapeHtml(sourceAttributionDetail)}</span>
           </div>
           <div class="home-tested-sources-list" role="list" aria-label="Trending Source Explorer sources">
             ${previewSources.length ? previewSources.map((source) => {
-              const sourceReport = community.sourceReports.find((row) => row.key === source.gieAnalytics.key) || {};
-              const reportedRateLabel = source.gieAnalytics.averageRate === null ? "Insufficient evidence" : `${source.gieAnalytics.averageRate}%`;
-              const confidenceMeta = sourceReport.confidence || { label: "Insufficient evidence", percent: 0 };
-              const confidencePercent = Math.max(0, Math.min(100, Number(confidenceMeta.percent) || 0));
-
               return `
                 <article class="home-tested-source-row" role="listitem">
                   ${renderSourceLogoMarkup(source, {
@@ -52499,11 +52595,11 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
                   })}
                   <span class="home-tested-source-row-copy">
                     <strong>${escapeHtml(source.name || "Source")}</strong>
-                    <small><b>${escapeHtml(reportedRateLabel)}</b> Average Germination</small>
+                    <small><b>${escapeHtml(source.gieAnalytics.totalSeeds.toLocaleString())}</b> Seeds Tested</small>
                   </span>
-                  <span class="home-tested-source-confidence" aria-label="${escapeHtml(confidenceMeta.label)}">
-                    <span>${escapeHtml(confidenceMeta.label)}</span>
-                    <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
+                  <span class="home-tested-source-confidence" aria-label="Canonical completed sessions">
+                    <span>${escapeHtml(source.gieAnalytics.sessionsLogged.toLocaleString())}</span>
+                    <small>${escapeHtml(source.gieAnalytics.sessionsLogged === 1 ? "completed session" : "completed sessions")}</small>
                   </span>
                 </article>
               `;
@@ -52514,8 +52610,8 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
                   className: "home-tested-source-logo",
                 })}
                 <span class="home-tested-source-row-copy">
-                  <strong>Community source data will appear here.</strong>
-                  <small>Completed Grow Sessions will build anonymized source performance summaries over time.</small>
+                  <strong>${escapeHtml(isAvailable ? "Source evidence is still growing." : (analyticsState === "loading" ? "Loading Global Analytics…" : "Global Analytics is unavailable."))}</strong>
+                  <small>${escapeHtml(isAvailable ? "More eligible completed sessions will expand source rankings." : (analyticsState === "loading" ? "Canonical Source Explorer metrics are loading." : "Canonical Source Explorer metrics could not be loaded. Try again shortly."))}</small>
                 </span>
                 <a class="button button-secondary button-compact" href="#sources">Explore Sources</a>
               </article>
@@ -52528,46 +52624,57 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
 }
 
 function getHomeSeedExplorerPreviewData() {
-  const state = buildCommunityInsightsState();
-  if (!appState.gieCommunityAnalytics) {
-    return { totalVarieties: 0, totalSessions: 0, rows: [], source: "unavailable" };
+  const { state: analyticsState, analytics: globalAnalytics } = getHomeGlobalAnalyticsCacheState();
+  if (!globalAnalytics) {
+    return {
+      totalVarieties: null,
+      totalSessions: null,
+      totalSeedsTested: null,
+      totalSeedsGerminated: null,
+      confidence: "",
+      rows: [],
+      source: analyticsState,
+    };
   }
-  const rows = (Array.isArray(state.mostTestedVarieties) ? state.mostTestedVarieties : [])
-    .filter((row) => Number(row?.totalSeeds) > 0)
+  const rows = (Array.isArray(globalAnalytics.seedRecords) ? globalAnalytics.seedRecords : [])
+    .filter((row) => Number(row?.seedsTracked) > 0)
     .slice(0, 3)
     .map((row) => {
-      const report = state.varietyReports.find((candidate) => candidate.key === row.key) || {};
-      const seedProfile = getSeedExplorerSeedByVarietyLabel(row.label || "");
       return {
-        name: row.label || "Seed variety",
-        source: seedProfile?.source || "Community Sources",
-        averageRate: row.averageRate,
-        confidenceLabel: report.confidence?.label || "Insufficient evidence",
-        confidencePercent: Number(report.confidence?.percent || 0),
-        sessionCount: row.sessionCount || row.snapshotCount || 0,
-        seedsTracked: row.totalSeeds || 0,
-        href: seedProfile?.id ? `#seeds/${encodeURIComponent(seedProfile.id)}` : "#seeds",
+        name: row.varietyName || "Seed variety",
+        source: row.source || "Source not attributed",
+        averageRate: row.germinationSuccess,
+        confidenceLabel: row.communityConfidence || "Not available",
+        confidencePercent: Number(row.confidencePercent || 0),
+        sessionCount: row.communitySessions || 0,
+        seedsTracked: row.seedsTracked || 0,
+        href: row.id ? `#seeds/${encodeURIComponent(row.id)}` : "#seeds",
       };
     });
   return {
-    totalVarieties: state.overview?.varieties || 0,
-    totalSessions: state.overview?.totalPublicSessionsRepresented || 0,
+    totalVarieties: globalAnalytics.totalVarietiesLogged,
+    totalSessions: globalAnalytics.totalCompletedSessions,
+    totalSeedsTested: globalAnalytics.totalSeedsTested,
+    totalSeedsGerminated: globalAnalytics.totalSeedsGerminated,
+    confidence: globalAnalytics.communityConfidence,
     rows,
-    source: rows.length ? "community" : "insufficient",
+    source: rows.length ? "global" : "insufficient",
   };
 }
 
 function renderHomeSeedExplorerPreviewSectionMarkup() {
   const preview = getHomeSeedExplorerPreviewData();
   const summaryStats = [
-    { label: "Varieties Tracked", value: preview.totalVarieties },
-    { label: "Community Sessions", value: preview.totalSessions },
+    { label: "Completed Sessions", value: preview.totalSessions },
+    { label: "Seeds Tested", value: preview.totalSeedsTested },
+    { label: "Seeds Germinated", value: preview.totalSeedsGerminated },
+    { label: "Varieties", value: preview.totalVarieties },
   ];
-  const previewLabel = preview.source === "community"
-    ? "Community evidence preview"
-    : (preview.source === "preview" || preview.source === "mixed"
-      ? "Development preview"
-      : "Awaiting community data");
+  const previewLabel = preview.source === "loading"
+    ? "Loading Global Analytics"
+    : (preview.source === "unavailable"
+      ? "Global Analytics unavailable"
+      : `Global Analytics · ${preview.confidence || "Confidence unavailable"}`);
 
   return `
     <section class="card home-tested-sources-preview-section home-seed-explorer-preview-section">
@@ -52586,7 +52693,7 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
         <div class="home-tested-sources-kpis" aria-label="Seed Explorer preview summary">
           ${summaryStats.map((kpi) => `
             <article class="home-tested-source-kpi home-seed-explorer-kpi">
-              <strong>${escapeHtml(Number(kpi.value || 0).toLocaleString())}</strong>
+              <strong>${escapeHtml(formatHomeCanonicalMetric(kpi.value, preview.source))}</strong>
               <span>${escapeHtml(kpi.label)}</span>
             </article>
           `).join("")}
@@ -52628,8 +52735,8 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
                   className: "home-seed-explorer-row-icon",
                 })}
                 <span class="home-tested-source-row-copy">
-                  <strong>Community variety data will appear here.</strong>
-                  <small>Completed Grow Sessions will build anonymized seed and variety insights over time.</small>
+                  <strong>${escapeHtml(preview.source === "unavailable" ? "Global Analytics is unavailable." : (preview.source === "loading" ? "Loading Global Analytics…" : "Variety evidence is still growing."))}</strong>
+                  <small>${escapeHtml(preview.source === "unavailable" ? "Canonical Seed Explorer metrics could not be loaded. Try again shortly." : (preview.source === "loading" ? "Canonical Seed Explorer metrics are loading." : "More eligible completed sessions will expand variety rankings."))}</small>
                 </span>
                 <a class="button button-secondary button-compact" href="#new">Start a Session</a>
               </article>
@@ -73042,13 +73149,25 @@ function renderHomeOwnerAnalyticsSummaryMarkup() {
     return "";
   }
   const ownerAnalytics = getCanonicalOwnerAnalytics();
+  const ownerAnalyticsState = !appState.gieOwnerAnalyticsLoaded
+    ? "loading"
+    : (appState.gieOwnerAnalytics ? "available" : "unavailable");
+  const formatOwnerMetric = (value, options = {}) => {
+    const formatted = formatHomeCanonicalMetric(value, ownerAnalyticsState);
+    return options.percent && ownerAnalyticsState === "available" ? `${formatted}%` : formatted;
+  };
+  const formatOwnerLabel = (value) => {
+    if (ownerAnalyticsState === "loading") return "Loading…";
+    if (ownerAnalyticsState === "unavailable") return "Unavailable";
+    return value || "Not enough data";
+  };
   const rows = [
-    ["Completed Sessions", ownerAnalytics.completedSessions.toLocaleString()],
-    ["Seeds Tested", ownerAnalytics.seedsTested.toLocaleString()],
-    ["Overall Germination %", `${ownerAnalytics.overallGerminationRate}%`],
-    ["Favorite Method", ownerAnalytics.favoriteMethod || "Not enough data"],
-    ["Favorite Source", ownerAnalytics.favoriteSource || "Not enough data"],
-    ["Favorite Variety", ownerAnalytics.favoriteVariety || "Not enough data"],
+    ["Completed Sessions", formatOwnerMetric(ownerAnalytics.completedSessions)],
+    ["Seeds Tested", formatOwnerMetric(ownerAnalytics.seedsTested)],
+    ["Overall Germination %", formatOwnerMetric(ownerAnalytics.overallGerminationRate, { percent: true })],
+    ["Favorite Method", formatOwnerLabel(ownerAnalytics.favoriteMethod)],
+    ["Favorite Source", formatOwnerLabel(ownerAnalytics.favoriteSource)],
+    ["Favorite Variety", formatOwnerLabel(ownerAnalytics.favoriteVariety)],
   ];
   return `
     <section class="card home-owner-analytics" aria-label="Owner Analytics summary" data-gie-owner-consumer="home">
@@ -73083,9 +73202,35 @@ function renderHome() {
   app.replaceChildren(cloneTemplate(templates.home));
   hydrateAppIconSlots(app);
   app.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
-  if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
+  const homeNeedsGlobalAnalytics = !appState.explorerCompletedSessionAggregateLoaded || !appState.explorerCompletedSessionAggregate;
+  const homeNeedsOwnerAnalytics = Boolean(appState.user)
+    && (!appState.gieOwnerAnalyticsLoaded || !appState.gieOwnerAnalytics);
+  const homeNeedsCommunityAnalytics = !appState.gieCommunityAnalyticsLoaded || !appState.gieCommunityAnalytics;
+  const homeNeedsGalleryEvidence = !appState.gallerySnapshotsLoaded;
+  if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested
+    && (homeNeedsGlobalAnalytics || homeNeedsOwnerAnalytics || homeNeedsCommunityAnalytics || homeNeedsGalleryEvidence)) {
     appState.homeGalleryRankingsHydrationRequested = true;
-    void refreshGallerySnapshots("home-rankings-teaser").then(() => {
+    const homeAnalyticsLoads = [];
+    if (homeNeedsGlobalAnalytics) {
+      homeAnalyticsLoads.push(loadExplorerCompletedSessionAggregate("route:home").then((aggregate) => {
+        if (aggregate) {
+          appState.explorerCompletedSessionAggregate = aggregate;
+        }
+        appState.explorerCompletedSessionAggregateLoaded = true;
+      }));
+    }
+    if (homeNeedsOwnerAnalytics) {
+      homeAnalyticsLoads.push(loadGieOwnerAnalytics("route:home").then((ownerAnalytics) => {
+        if (ownerAnalytics) {
+          appState.gieOwnerAnalytics = ownerAnalytics;
+        }
+        appState.gieOwnerAnalyticsLoaded = true;
+      }));
+    }
+    if (homeNeedsCommunityAnalytics || homeNeedsGalleryEvidence) {
+      homeAnalyticsLoads.push(refreshGallerySnapshots("route:home"));
+    }
+    void Promise.allSettled(homeAnalyticsLoads).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#home" || currentHash === "") {
         safeRender();

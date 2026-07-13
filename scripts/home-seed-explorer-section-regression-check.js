@@ -51,9 +51,14 @@ assert(seedRenderer.includes("SEED EXPLORER") || seedRenderer.includes("Seed Exp
 assert(seedRenderer.includes("Discover seed varieties through real community germination data."), "Seed Explorer supporting copy is missing.");
 assert(seedRenderer.includes('href="#seeds"'), "Seed Explorer CTA must navigate to the existing Seed Explorer route.");
 assert(seedRenderer.includes("Trending Varieties"), "Seed Explorer preview must include Trending Varieties.");
-assert(seedDataHelper.includes("buildCommunityInsightsState()"), "Seed Explorer Home preview must reuse Community Insights data.");
-assert(seedDataHelper.includes("state.mostTestedVarieties"), "Seed Explorer Home preview must use canonical most-tested variety ranking.");
-assert(!seedDataHelper.includes("getSeedExplorerRecords().sort") && !seedDataHelper.includes("fallbackRows"), "Seed Explorer Home preview must not fall back to independently ranked Global records.");
+assert(seedDataHelper.includes("getHomeGlobalAnalyticsCacheState()"), "Seed Explorer Home preview must consume the normalized Global Analytics cache state.");
+assert(seedDataHelper.includes("globalAnalytics.seedRecords"), "Seed Explorer Home preview must use canonical Global variety rows.");
+for (const field of ["totalCompletedSessions", "totalSeedsTested", "totalSeedsGerminated", "totalVarietiesLogged", "communityConfidence"]) {
+  assert(seedDataHelper.includes(field), `Seed Explorer Home preview must render canonical Global ${field}.`);
+}
+assert(!seedDataHelper.includes("buildCommunityInsightsState") && !seedDataHelper.includes("gieCommunityAnalytics"), "Seed Explorer Home preview must not consume Community Analytics.");
+assert(!seedDataHelper.includes("getSeedExplorerRecords().sort") && !seedDataHelper.includes("fallbackRows") && !seedDataHelper.includes(".reduce("), "Seed Explorer Home preview must not calculate or independently rank analytics.");
+assert(seedRenderer.includes("formatHomeCanonicalMetric(kpi.value, preview.source)"), "Loading, unavailable, and true-zero Global metrics must remain distinct.");
 assert(!seedRenderer.includes("184") && !seedRenderer.includes("1,240"), "Seed Explorer preview must not hardcode sample stats.");
 assert(iconResolver.includes('case "seed"') && iconResolver.includes('return "seedGermination"'), "Shared section icon resolver must support seed markers.");
 assert(css.includes(".home-seed-explorer-row"), "Missing Seed Explorer row styling.");

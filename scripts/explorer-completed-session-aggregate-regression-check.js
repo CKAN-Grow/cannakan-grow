@@ -65,8 +65,8 @@ const varietyReport = getBetween(
 assert(app.includes("function resolveGrowSessionLifecycle"), "Missing canonical local Grow Session lifecycle resolver.");
 assert(app.includes("function getExplorerCompletedSessionAggregateExclusionReason"), "Missing local Explorer compatibility exclusion-reason helper.");
 assert(app.includes("function isExplorerCompletedSessionAggregateEligible"), "Missing Explorer completed-session eligibility helper.");
-assert(app.includes('appState.supabase.rpc("get_grow_intelligence_engine_analytics")'), "App must prefer the canonical GIE RPC.");
-assert(app.includes('appState.supabase.rpc("get_explorer_completed_session_aggregates")'), "App must keep the Explorer RPC fallback for compatibility.");
+assert(app.includes('appState.supabase.rpc("get_gie_global_analytics")'), "Explorer must consume the canonical Global Analytics Contract.");
+assert(!app.includes('appState.supabase.rpc("get_explorer_completed_session_aggregates")'), "Explorer UI must not call a legacy compatibility wrapper.");
 assert(app.includes("return getExplorerCompletedSessionAggregateExclusionReason(session, options) === \"\";"), "Explorer eligibility must resolve through the exclusion-reason helper.");
 assert(app.includes("return resolveGrowSessionLifecycle(session, options).included === true;"), "Analytics eligibility must resolve through the lifecycle resolver.");
 assert(app.includes('["completed", "complete"].includes(normalizedStatus)') && app.includes("hasCompletedTimestamp"), "Explorer eligibility must support legacy completed status and completed timestamps.");
