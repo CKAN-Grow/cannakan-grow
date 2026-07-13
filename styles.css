@@ -28401,6 +28401,18 @@ body.theme-dark .contact-reason-card.is-active {
   white-space: nowrap;
 }
 
+.gallery-admin-published-delete {
+  border-color: rgba(166, 61, 64, 0.42);
+  color: #b44d52;
+  background: rgba(166, 61, 64, 0.08);
+}
+
+.gallery-admin-published-delete:hover {
+  border-color: rgba(200, 84, 88, 0.52);
+  color: #c96266;
+  background: rgba(166, 61, 64, 0.12);
+}
+
 .gallery-review-status-badge.is-published,
 .gallery-review-status-badge.is-hidden {
   border: 1px solid currentColor;
