@@ -49134,20 +49134,26 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   margin-bottom: 22px;
 }
 
-.session-workspace-shell--detail .detail-top-grid {
-  display: block;
+.session-workspace-shell.session-workspace-shell--detail .session-top-grid.detail-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  padding: 16px;
 }
 
 .session-workspace-shell--detail .detail-top-stack {
+  width: 100%;
+  min-width: 0;
   gap: 12px;
 }
 
 .session-workspace-shell--detail .detail-header {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 12px;
   align-items: stretch;
   width: 100%;
+  max-width: none;
   padding: 14px;
   border: 1px solid rgba(148, 209, 89, 0.14);
   border-radius: 18px;
@@ -49171,8 +49177,9 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .session-workspace-shell--detail .detail-header .meta-card {
   display: grid;
   align-content: center;
-  gap: 8px;
-  min-height: 70px;
+  gap: 7px;
+  min-width: 0;
+  min-height: 78px;
   padding: 12px 14px;
   border-radius: 14px;
   background:
@@ -49182,16 +49189,22 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-workspace-shell--detail .detail-header .meta-card strong {
+  display: block;
   color: rgba(218, 229, 216, 0.76);
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  overflow-wrap: normal;
+  text-wrap: balance;
 }
 
 .session-workspace-shell--detail .detail-header .meta-card p {
+  margin: 0;
   color: #f3f8f0;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   font-weight: 760;
-  line-height: 1.25;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
 }
 
 .session-workspace-shell--detail .detail-header .meta-card--status {
@@ -49204,6 +49217,13 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 @media (max-width: 1120px) {
   .session-workspace-shell--detail .detail-header {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .session-workspace-shell--detail .detail-header {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px;
   }
 }
 
@@ -49234,7 +49254,13 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 
   .session-workspace-shell--detail .detail-header {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .session-workspace-shell--detail .detail-header {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
