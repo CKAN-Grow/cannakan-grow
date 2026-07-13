@@ -25,30 +25,30 @@ const consumers = [
   ["Home", "✅ Uses Owner Contract"],
   ["Sessions", "✅ Uses Owner Contract"],
   ["Session Analytics", "✅ Uses Owner Contract"],
-  ["Community", "❌ Legacy"],
-  ["Community Reports", "❌ Legacy"],
+  ["Community", "✅ Uses Community Contract"],
+  ["Community Reports", "✅ Uses Community Contract"],
   ["Seed Explorer", "✅ Uses GIE"],
   ["Source Explorer", "✅ Uses GIE"],
-  ["Variety Reports", "✅ Uses GIE"],
-  ["Source Reports", "❌ Legacy"],
+  ["Variety Reports", "✅ Uses Community Contract"],
+  ["Source Reports", "✅ Uses Community Contract"],
   ["Profile", "✅ Uses Owner Contract"],
   ["Grow Network", "❌ Legacy"],
   ["Seed Vault summaries", "✅ Uses Owner Contract"],
   ["Admin", "❌ Legacy"],
   ["Grow Intelligence Health", "✅ Uses GIE"],
-  ["Rankings", "❌ Legacy"],
-  ["Leaderboards", "❌ Legacy"],
-  ["Community Confidence", "⚠ Compatibility Wrapper"],
+  ["Rankings", "✅ Uses Community Contract"],
+  ["Leaderboards", "✅ Uses Community Contract"],
+  ["Community Confidence", "✅ Uses Community Contract"],
   ["Recommendations", "❌ Legacy"],
   ["AI integration hooks", "⚠ Compatibility Wrapper"],
-  ["Cached aggregate / RPC compatibility", "⚠ Compatibility Wrapper"],
+  ["Cached aggregate / RPC compatibility", "✅ Uses GIE"],
 ];
 
 for (const [consumer, status] of consumers) {
   assert(docs.includes(`| ${consumer} | ${status} |`), `Missing adoption classification for ${consumer}.`);
 }
-assert(consumers.filter(([, status]) => status.startsWith("✅")).length === 9, "Scoped adoption numerator changed; update the documented audit percentage.");
-assert(docs.includes("9 of 20") && docs.includes("(45%)"), "GIE adoption percentage is missing or stale.");
+assert(consumers.filter(([, status]) => status.startsWith("✅")).length === 16, "Scoped adoption numerator changed; update the documented audit percentage.");
+assert(docs.includes("16 of 20") && docs.includes("(80%)"), "GIE adoption percentage is missing or stale.");
 assert(docs.includes("No analytics without GIE."), "Permanent GIE development rule is missing.");
 
 const aggregateAdapter = getBetween(app, "function buildExplorerCompletedSessionAggregate", "function getSeedExplorerRecords");
@@ -64,12 +64,10 @@ assert(cachedAdapter.includes("engineVersion: normalizedPayload.engineVersion") 
 for (const legacyHelper of [
   "calculateProfileAnalyticsFromOwnerSessions",
   "calculateProfileAnalyticsFromPublicSnapshots",
-  "buildCommunityInsightsState",
   "buildSeedVaultAnalytics",
   "buildPrivateAnalyticsDashboardState",
   "renderMySessionsAnalyticsPanelMarkup",
   "buildHomeGalleryRankingsTeaserState",
-  "getSourceDirectoryTrustScore",
 ]) {
   assert(app.includes(`function ${legacyHelper}`), `Known legacy helper ${legacyHelper} changed; update the adoption audit.`);
 }
@@ -80,4 +78,7 @@ assert(browserConfig.includes("anonKey") && !/service.?role|secret.?key/i.test(b
 assert(buildConfig.includes("CANNAKAN_SUPABASE_ANON_KEY") && !/SERVICE_ROLE|SECRET_KEY/.test(buildConfig), "Client build config must never read server secrets.");
 assert(!/SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEY/.test(app), "Browser application code must not reference service-role or secret keys.");
 
-console.log("GIE adoption audit regression checks passed (45% scoped adoption; Group A migrated)." );
+assert(app.includes("function buildCommunityInsightsState") && app.includes("getCanonicalCommunityAnalytics()"), "Community adapter must consume canonical Community Analytics.");
+assert(app.includes("function getSourceDirectoryTrustScore") && app.includes("getCanonicalCommunitySourceReport"), "Public source confidence must consume canonical Community reports.");
+
+console.log("GIE adoption audit regression checks passed (80% scoped adoption; Groups A and B migrated)." );

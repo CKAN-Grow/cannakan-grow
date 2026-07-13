@@ -32,8 +32,6 @@ function requireNeedle(source, needle, label = needle) {
   "function inferCountryCodeFromLegacyRegion(value = \"\")",
   "function initProfileCountryCombobox(form, selectedCountryCode = \"\")",
   "country_code: countryCode || null",
-  "const countryCode = normalizeCountryCode(row.country_code || row.countryCode || \"\")",
-  "const countryCode = publicProfile?.countryCode || privateViewerProfile?.countryCode || \"\"",
   "renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, \"gallery-card-profile-name\")",
   "renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, \"gallery-tile-profile-name\")",
   "renderDisplayNameWithCountryFlag(displayName, countryCode, \"public-member-profile-name\")",

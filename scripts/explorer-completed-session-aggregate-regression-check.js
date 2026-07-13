@@ -56,15 +56,10 @@ const seedPanel = getBetween(
   "function renderSeedExplorerPanelMarkup",
   "function bindSeedExplorerControls",
 );
-const galleryRows = getBetween(
+const varietyReport = getBetween(
   app,
-  "function getSeedReportGallerySessionRows",
-  "function renderSeedReportGalleryMarkup",
-);
-const galleryMarkup = getBetween(
-  app,
-  "function renderSeedReportGalleryMarkup",
-  "function renderSeedReportInsightsMarkup",
+  "function renderSeedProfilePage",
+  "function renderExploreSegmentedNavItemMarkup",
 );
 
 assert(app.includes("function resolveGrowSessionLifecycle"), "Missing canonical local Grow Session lifecycle resolver.");
@@ -89,8 +84,8 @@ assert(seedRecords.includes("isMockDataEnabled() ? getSeedExplorerDemoSeeds() : 
 assert(seedMetrics.includes("aggregate.totalCompletedSessions"), "Seed Explorer metrics must use the shared completed-session count.");
 assert(!seedPanel.includes("Public variety profiles built from approved Community Grow reports."), "Seed Explorer must not describe aggregate profiles as approved public reports.");
 assert(seedPanel.includes("Seed performance profiles built from anonymized completed session results."), "Seed Explorer aggregate copy is missing.");
-assert(galleryRows.includes("isGallerySnapshotPubliclyVisible"), "Seed report evidence must be limited to approved visible public snapshots.");
-assert(galleryMarkup.includes("No public session reports available yet."), "Seed report must show a public-evidence empty state when aggregates exist without reports.");
+assert(varietyReport.includes("getCanonicalCommunityVarietyReport"), "Variety reports must use the canonical Community report payload.");
+assert(!varietyReport.includes("getApprovedPublicGallerySnapshots") && !varietyReport.includes(".reduce("), "Variety reports must not rebuild public analytics from snapshots.");
 assert(gieDocs.includes("The Grow Intelligence Engine (GIE) is the canonical analytics layer"), "Missing canonical GIE architecture documentation.");
 assert(gieDocs.includes("Do not create a second analytics engine."), "GIE docs must forbid duplicate analytics engines.");
 

@@ -23,7 +23,6 @@ for (const needle of [
   "function renderPublicCstpStatusBadge(source = {}, options = {})",
   "function renderPublicCstpTrustIndicatorsMarkup(source = {}, options = {})",
   "function renderPublicCstpTestingCertificationPanel(source = {}, options = {})",
-  "function buildCommunityInsightsCstpPublicHooks(approvedSnapshots = [])",
   "function getPublicCstpFutureRoutePlaceholder(sourceKey = \"\", routeType = \"report\")",
   "Testing &amp; Certification",
   "CSTP Status",
@@ -37,13 +36,6 @@ for (const needle of [
   "Displayed from explicit public-safe CSTP fields only.",
   "Tested Source",
   "Certified Source",
-  "CSTP Public Testing Statistics",
-  "Tested Source Counts",
-  "Certified Source Counts",
-  "Certification Participation Rates",
-  "Public Testing Statistics",
-  "cstpPublicStatistics",
-  "certificationAnalytics",
   "public-cstp-future-routes",
   "data-public-cstp-status",
   "data-public-cstp-panel=\"testing-certification\"",
@@ -107,6 +99,14 @@ if (!appSource.includes("presence.hasPublicCstpStatus ? presence.label : \"Pendi
 
 if (!appSource.includes("No certification inferred") && !appSource.includes("no certification inferred")) {
   throw new Error("CSTP presentation must state that certification is not inferred.");
+}
+
+if (appSource.includes("function buildCommunityInsightsCstpPublicHooks")) {
+  throw new Error("CSTP public aggregate statistics must originate in GIE, not a snapshot helper.");
+}
+
+if (!appSource.includes("renderPublicCstpTestingCertificationPanel(sourceProfile, { sourceKey: report.key })")) {
+  throw new Error("Source Reports must retain explicit public-safe CSTP presence without local aggregate statistics.");
 }
 
 console.log("CSTP public presence regression check passed.");

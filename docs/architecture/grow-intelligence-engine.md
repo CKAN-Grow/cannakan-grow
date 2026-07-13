@@ -49,8 +49,9 @@ APIs, not separate engines.
 
 All contracts expose `contract_name`, `contract_version`, `engine_version`,
 `schema_version`, `data_quality_version`, and `generated_at`. The frozen engine
-remains `gie.v1` with data quality `gie-dq.v1`. The Phase 2 additive Owner
-payload uses schema `2026-07-13.5`; Global and Community remain unchanged.
+remains `gie.v1` with data quality `gie-dq.v1`. The Phase 2 Owner payload uses
+schema `2026-07-13.5`; the Phase 2B Community payload uses schema
+`2026-07-13.6`; Global remains unchanged.
 
 ### Shared canonical pipeline
 
@@ -93,9 +94,11 @@ Owner implementation.
 
 Community `analytics` exposes approved public snapshot and contributor counts,
 seeds tested and germinated in public evidence, germination rate, varieties,
-sources, methods, seed-age buckets, public rankings, confidence, and scoped
-source quality. Phase 1 intentionally returns no identity-bearing evidence
-records.
+sources, methods, seed-age buckets, presentation-ready source and variety
+reports, deterministic rankings and leaderboards, canonical confidence, trend
+summaries, evidence counts, and scoped source quality. It returns no private
+identity, notes, images, report records, or owner fields. Contributor labels
+use only an explicitly published profile name; otherwise they are anonymous.
 
 ### Privacy and security boundaries
 
@@ -417,33 +420,33 @@ The diagnostic may expose session identifiers and names to admins for audit. Pub
 
 ## GIE Adoption Status
 
-Audit date: 2026-07-13. Phase 2 Group A raises scoped adoption to **9 of 20
-audited consumer groups (45%)**. All five Group A owner-private surfaces now
-use `get_gie_my_analytics()` exclusively for their analytics. Public/community
-facets on mixed pages remain assigned to Group B and are not migrated here.
+Audit date: 2026-07-13. Phase 2B raises scoped adoption to **16 of 20 audited
+consumer groups (80%)**. Group A owner-private surfaces use
+`get_gie_my_analytics()` and Group B public surfaces use
+`get_gie_community_analytics()` exclusively for analytics.
 
 | Consumer | Status | Audit result |
 | --- | --- | --- |
 | Home | ✅ Uses Owner Contract | Owner dashboard cards render the cached `gie-owner.v1` payload; the Community teaser remains a documented Group B compatibility surface. |
 | Sessions | ✅ Uses Owner Contract | Summary counts, leading session, seed totals, and germination rate render Owner Analytics; editing remains operational. |
 | Session Analytics | ✅ Uses Owner Contract | Private totals, history, rankings, seed-age summaries, confidence, and recommendations render Owner Analytics. |
-| Community | ❌ Legacy | `buildCommunityInsightsState()` aggregates approved snapshots client-side. |
-| Community Reports | ❌ Legacy | Public snapshot totals, rates, sources, and varieties are calculated outside GIE. |
+| Community | ✅ Uses Community Contract | Overview, totals, counts, summaries, and the gallery analytics dashboard render the cached Community payload. |
+| Community Reports | ✅ Uses Community Contract | Report summaries, evidence counts, totals, confidence, and trends render Community report fields. |
 | Seed Explorer | ✅ Uses GIE | Reads the cached canonical GIE payload; the local completed-session aggregate fallback was removed. |
 | Source Explorer | ✅ Uses GIE | Headlines and source records read the same cached canonical GIE payload. |
-| Variety Reports | ✅ Uses GIE | Aggregate variety performance comes from GIE; snapshots remain supporting public evidence. |
-| Source Reports | ❌ Legacy | Source trust/confidence scoring and some report summaries are calculated client-side. |
+| Variety Reports | ✅ Uses Community Contract | Variety analytics, rank, evidence, confidence, relationships, and public trends render the Community payload. |
+| Source Reports | ✅ Uses Community Contract | Source totals, evidence, confidence, relationships, quality, and public trends render the Community payload. |
 | Profile | ✅ Uses Owner Contract | Self-profile statistics render Owner Analytics; public member profiles remain Group B scope. |
 | Grow Network | ❌ Legacy | Member scores, averages, and achievements use profile/session calculations. |
 | Seed Vault summaries | ✅ Uses Owner Contract | Summary cards render canonical Owner Seed Vault overview and collection fields; CRUD and entry detail behavior remain operational. |
 | Admin | ❌ Legacy | Visitor analytics are operational, but Seed Age and other Grow analytics still calculate locally. |
 | Grow Intelligence Health | ✅ Uses GIE | Renders GIE engine, schema, data-quality version, score, status, and breakdown without reinterpretation. |
-| Rankings | ❌ Legacy | Home and Community ranking order is derived from snapshot/member rollups. |
-| Leaderboards | ❌ Legacy | Community leaderboard metrics and ordering are not in the GIE payload. |
-| Community Confidence | ⚠ Compatibility Wrapper | Explorer confidence is canonical GIE output; legacy public-directory confidence remains local. |
+| Rankings | ✅ Uses Community Contract | Community ranking pages preserve GIE order and render GIE rank fields. Home is outside Group B and retains its documented teaser wrapper. |
+| Leaderboards | ✅ Uses Community Contract | Community source, variety, and contributor leaderboards render GIE rows and ranks. |
+| Community Confidence | ✅ Uses Community Contract | Public Community and report confidence labels and percentages originate in GIE. |
 | Recommendations | ❌ Legacy | Private dashboard and session companion recommendations use locally derived metrics. |
 | AI integration hooks | ⚠ Compatibility Wrapper | No live AI analytics consumer exists; placeholder hooks still expose locally built private rollups. |
-| Cached aggregate / RPC compatibility | ⚠ Compatibility Wrapper | The cache contains normalized GIE output; the legacy Explorer RPC remains a GIE-delegating compatibility wrapper. |
+| Cached aggregate / RPC compatibility | ✅ Uses GIE | The cache contains normalized GIE output; the legacy Explorer RPC is a calculation-free GIE-delegating wrapper. |
 
 ### Permanent development rule
 
@@ -498,14 +501,17 @@ delegates immediately to the canonical Owner dashboard; the Phase 1 internal
 UUID Owner implementation remains non-browser-executable behind the secured
 normal/admin wrappers; and Home/public-profile Community facets remain Group B.
 
-**Group B — Community/public evidence (second, high evidence risk).** Migrate
-Community, Community Reports, Variety/Source report evidence, Rankings,
-Leaderboards, and Community Confidence after adding any required evidence and
-tie-break fields to `gie-community.v1`. Likely files are `app.js`, Community and
-report regressions, and contract SQL. Required coverage: approved/published
-only, hide/delete invalidation, identity visibility, deterministic ranking,
-snapshot deletion independence from Global, and no local confidence. Risk:
-high.
+**Group B — migrated in Phase 2B.** Community, Community Reports,
+Variety Reports, Source Reports, Rankings, Leaderboards, and Community
+Confidence consume `get_gie_community_analytics()`. The Community payload adds
+presentation-ready rollups while retaining `gie-community.v1` and advancing
+its additive schema to `2026-07-13.6`. Snapshot moderation and gallery display
+remain operational evidence flows; they do not calculate analytics.
+
+Compatibility wrapper retained: the Home Community teaser remains outside
+Group B by phase directive and continues using its legacy public-snapshot
+preview helper. The Global Explorer compatibility RPC remains a delegating GIE
+wrapper. Neither wrapper is used by the migrated Group B consumers.
 
 **Group C — extended intelligence (last, dependent on A/B).** Migrate Admin
 Grow analytics, Grow Network, Recommendations, and AI hooks only after their
@@ -540,8 +546,9 @@ npx.cmd serve .
 ```
 
 After applying `20260713190000_gie_multi_contract_phase1.sql`,
-`20260713200000_gie_owner_contract_auth_hardening.sql`, and
-`20260713210000_gie_phase2_group_a_owner_analytics.sql`, localhost may
+`20260713200000_gie_owner_contract_auth_hardening.sql`,
+`20260713210000_gie_phase2_group_a_owner_analytics.sql`, and
+`20260713220000_gie_phase2b_group_b_community_analytics.sql`, localhost may
 call the same Global, Owner, and Community RPCs as production. Owner calls use
 the signed-in browser session JWT and call `get_gie_my_analytics()` without a
 user-ID argument. Do not set `SUPABASE_SECRET_KEY`, a
@@ -561,10 +568,10 @@ state until GIE configuration is valid.
   universal.
 - Normalized GIE payloads are marked and reused so Explorer renders do not
   repeatedly normalize the same cache entry.
-- Group A uses one normalized Owner payload cache. The prior private dashboard
-  rollup helpers and Seed Vault summary reducer were removed. Community,
-  public-profile, Grow Network, and operational Vault entry-detail helpers stay
-  in their assigned future migration groups.
+- Group A uses one normalized Owner payload cache and Group B uses one
+  normalized Community payload cache. Community analytics renderers do not
+  inspect gallery snapshots. Grow Network and operational evidence/card flows
+  remain assigned to their later migration scope.
 - Rapid consecutive session mutations can initiate multiple refresh requests.
   A future non-semantic optimization may coalesce in-flight GIE refreshes.
 
@@ -649,6 +656,41 @@ select
 from (select public.get_gie_my_analytics() as owner_payload) canonical;
 ```
 
+Verify the Phase 2B public Community fields as either an anonymous or
+authenticated caller:
+
+```sql
+select
+  community_payload ->> 'contract_name' as contract_name,
+  community_payload ->> 'contract_version' as contract_version,
+  community_payload ->> 'engine_version' as engine_version,
+  community_payload ->> 'schema_version' as schema_version,
+  community_payload ->> 'data_quality_version' as data_quality_version,
+  community_payload ->> 'privacy_scope' as privacy_scope,
+  community_payload -> 'analytics' -> 'overview' as overview,
+  community_payload -> 'analytics' -> 'confidence' as confidence,
+  community_payload -> 'analytics' -> 'rankings' as rankings,
+  community_payload -> 'analytics' -> 'leaderboards' as leaderboards,
+  community_payload -> 'analytics' -> 'source_reports' as source_reports,
+  community_payload -> 'analytics' -> 'variety_reports' as variety_reports,
+  community_payload -> 'analytics' -> 'group_b_adoption' as group_b_adoption
+from (select public.get_gie_community_analytics() as community_payload) canonical;
+```
+
+Verify the evidence boundary independently:
+
+```sql
+select status, is_published, analytics_excluded, count(*)
+from public.grow_gallery_snapshots
+group by status, is_published, analytics_excluded
+order by status, is_published, analytics_excluded;
+```
+
+Only rows with `status = 'approved'`, `is_published = true`, and
+`analytics_excluded = false` can contribute. Hide or delete a test snapshot and
+confirm Community counts change while the Global completed-session totals do
+not.
+
 Confirm the browser contract has no UUID overload and is not anonymous:
 
 ```sql
@@ -660,9 +702,10 @@ select
 ```
 
 Expected: `true`, `true`, `false`, `true`. Grow Intelligence Health should
-report Home, Sessions, Session Analytics, Profile, and Seed Vault as
-`migrated`, contract `Owner Contract`, duplicated analytics `None`, and overall
-adoption `45`.
+report Group A on `Owner Contract`, Group B on `Community Contract`, duplicated
+analytics `None`, Community/Community Reports/Variety Reports/Source
+Reports/Rankings/Leaderboards/Community Confidence as `migrated`, overall
+adoption `80`, and the four remaining legacy consumers from diagnostics.
 
 ## Phase 1 Freeze Decision
 
