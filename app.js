@@ -29627,6 +29627,7 @@ function buildClearedSessionSnapshotState(snapshotState) {
     ...existingSnapshotState,
     submittedAt: "",
     galleryStatus: "social-only",
+    destination: "social",
     gallerySnapshotId: "",
     galleryRoute: "",
     imageUrl: "",
@@ -37246,11 +37247,20 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
 
   const hasIncludeProfilePreference = Object.prototype.hasOwnProperty.call(snapshotState, "includeProfileInGallery");
   const hasIncludePublicGrowNotePreference = Object.prototype.hasOwnProperty.call(snapshotState, "includePublicGrowNote");
+  const hasDestinationPreference = Object.prototype.hasOwnProperty.call(snapshotState, "destination")
+    || Object.prototype.hasOwnProperty.call(snapshotState, "snapshotDestination")
+    || Object.prototype.hasOwnProperty.call(snapshotState, "shareDestination");
   const normalized = {
     referenceId: String(snapshotState.referenceId || snapshotState.id || "").trim(),
     createdAt: String(snapshotState.createdAt || "").trim(),
     submittedAt: String(snapshotState.submittedAt || "").trim(),
     galleryStatus: normalizeSessionSnapshotGalleryStatus(snapshotState.galleryStatus),
+    destination: normalizeSnapshotDestinationPreference(
+      snapshotState.destination
+      || snapshotState.snapshotDestination
+      || snapshotState.shareDestination
+      || "",
+    ),
     selectedImageKey: String(snapshotState.selectedImageKey || "").trim(),
     renderKey: String(snapshotState.renderKey || "").trim(),
     imageUrl: String(snapshotState.imageUrl || "").trim(),
@@ -37282,7 +37292,7 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     normalized.galleryStatus = "private";
   }
 
-  return Object.values(normalized).some(Boolean) || hasIncludeProfilePreference || hasIncludePublicGrowNotePreference ? normalized : null;
+  return Object.values(normalized).some(Boolean) || hasIncludeProfilePreference || hasIncludePublicGrowNotePreference || hasDestinationPreference ? normalized : null;
 }
 
 function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotState = null) {
@@ -37302,6 +37312,7 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
     imagePath: String(snapshot.imagePath || normalizedBase?.imagePath || "").trim(),
     gallerySnapshotId: String(snapshot.id || normalizedBase?.gallerySnapshotId || "").trim(),
     galleryRoute: snapshot.id ? `#gallery/${snapshot.id}` : (normalizedBase?.galleryRoute || ""),
+    destination: normalizedBase?.destination || "",
     includeProfileInGallery: Object.prototype.hasOwnProperty.call(snapshot, "includeProfileInGallery")
       ? Boolean(snapshot.includeProfileInGallery)
       : normalizedBase?.includeProfileInGallery,
@@ -38504,7 +38515,7 @@ function initializeSnapshotSection(scope, options) {
     });
   });
   if (state.destinationInputs.length) {
-    setSnapshotDestinationValue(state, getInitialSnapshotDestinationValue(state));
+    void applySnapshotDestinationSelection(state, getInitialSnapshotDestinationValue(state), { syncControls: false });
   }
   renderSnapshotSourceSummary(state);
   syncSnapshotGalleryControls(state);
@@ -38579,19 +38590,16 @@ function initializeSnapshotSection(scope, options) {
   });
 
   state.destinationInputs.forEach((input) => {
-    input.addEventListener("change", () => {
+    input.addEventListener("change", async () => {
       if (!input.checked) {
         return;
       }
       if (hasExistingGallerySnapshotForState(state) && input.checked && (input.value === "social-gallery" || input.value === "gallery")) {
-        const socialInput = state.destinationInputs.find((item) => item.value === "social");
-        if (socialInput) {
-          socialInput.checked = true;
-        }
+        await applySnapshotDestinationSelection(state, "social", { persist: true, syncControls: true });
         setSnapshotMessage(state, getExistingGallerySnapshotMessage(input.value), false, "warning");
+        return;
       }
-      rememberSnapshotDestinationPreference(getSnapshotDestination(state));
-      syncSnapshotGalleryControls(state);
+      await applySnapshotDestinationSelection(state, input.value, { persist: true, syncControls: true });
     });
   });
 
@@ -38615,10 +38623,7 @@ function initializeSnapshotSection(scope, options) {
       }
 
       await deleteGallerySnapshot(existing.id);
-      const socialInput = state.destinationInputs.find((input) => input.value === "social");
-      if (socialInput) {
-        socialInput.checked = true;
-      }
+      await applySnapshotDestinationSelection(state, "social", { persist: false, syncControls: false });
       await persistSnapshotStateForSection(state, buildClearedSessionSnapshotState(getSnapshotStateForSection(state)));
       syncSnapshotGalleryControls(state);
       setSnapshotMessage(
@@ -38668,6 +38673,11 @@ function rememberSnapshotIncludeProfilePreference(value) {
 }
 
 function getInitialSnapshotDestinationValue(state) {
+  const persistedDestination = normalizeSnapshotDestinationPreference(getSnapshotStateForSection(state)?.destination);
+  if (persistedDestination && state?.destinationInputs?.some((input) => input.value === persistedDestination)) {
+    return persistedDestination;
+  }
+
   const rememberedDestination = normalizeSnapshotDestinationPreference(getSnapshotSharingPreferences().destination);
   const preferredDestination = rememberedDestination || "social-gallery";
   return state?.destinationInputs?.some((input) => input.value === preferredDestination)
@@ -38698,6 +38708,46 @@ function setSnapshotDestinationValue(state, destination = "social-gallery") {
     return input.value;
   }
   return "";
+}
+
+function syncSnapshotDestinationOptionState(state) {
+  state?.destinationInputs?.forEach((input) => {
+    const option = input.closest(".snapshot-destination-option");
+    if (!option) {
+      return;
+    }
+    const selected = Boolean(input.checked);
+    option.classList.toggle("is-selected", selected);
+    option.setAttribute("aria-checked", selected ? "true" : "false");
+  });
+}
+
+async function applySnapshotDestinationSelection(state, destination = "social-gallery", {
+  persist = false,
+  syncControls = true,
+} = {}) {
+  if (!state) {
+    return "";
+  }
+
+  const selectedDestination = setSnapshotDestinationValue(state, destination);
+  if (!selectedDestination) {
+    return "";
+  }
+
+  rememberSnapshotDestinationPreference(selectedDestination);
+  state.pendingSnapshotState = normalizePersistedSessionSnapshotState({
+    ...(getSnapshotStateForSection(state) || {}),
+    destination: selectedDestination,
+  });
+  syncSnapshotDestinationOptionState(state);
+  if (syncControls) {
+    syncSnapshotGalleryControls(state);
+  }
+  if (persist) {
+    await persistSnapshotStateForSection(state, state.pendingSnapshotState);
+  }
+  return selectedDestination;
 }
 
 const EXISTING_GALLERY_SNAPSHOT_TITLE = "Snapshot already shared to Community Grow.";
@@ -39112,6 +39162,7 @@ function buildGeneratedSessionSnapshotState(state) {
     createdAt: new Date().toISOString(),
     submittedAt: existingSnapshotState?.gallerySnapshotId ? existingSnapshotState.submittedAt || "" : "",
     galleryStatus: generatedStatus,
+    destination,
     gallerySnapshotId: existingSnapshotState?.gallerySnapshotId || "",
     galleryRoute: existingSnapshotState?.gallerySnapshotId ? (existingSnapshotState.galleryRoute || "") : "",
     selectedImageKey: String(state?.selectedImageKey || "").trim(),
@@ -39127,6 +39178,7 @@ function buildUnpublishedSessionSnapshotState(state) {
     createdAt: existingSnapshotState?.createdAt || new Date().toISOString(),
     submittedAt: "",
     galleryStatus: "social-only",
+    destination: "social",
     gallerySnapshotId: "",
     galleryRoute: "",
     imageUrl: "",
@@ -39145,19 +39197,31 @@ function syncSnapshotDestinationAvailability(state) {
   state?.destinationInputs?.forEach((input) => {
     const option = input.closest(".snapshot-destination-option");
     const isGalleryMode = input.value === "social-gallery" || input.value === "gallery";
-    option?.classList.toggle("is-unavailable", Boolean(hasExistingGallerySnapshot && isGalleryMode));
-    option?.setAttribute("aria-disabled", hasExistingGallerySnapshot && isGalleryMode ? "true" : "false");
-    input.disabled = Boolean(hasExistingGallerySnapshot && isGalleryMode);
+    const unavailable = Boolean(hasExistingGallerySnapshot && isGalleryMode);
+    option?.classList.toggle("is-unavailable", unavailable);
+    option?.setAttribute("aria-disabled", unavailable ? "true" : "false");
+    option?.setAttribute(
+      "title",
+      unavailable ? "This session already has one Community Grow submission. Use Social only for another shareable image." : "",
+    );
+    input.disabled = unavailable;
   });
 
   if (!hasExistingGallerySnapshot) {
+    syncSnapshotDestinationOptionState(state);
     return;
   }
 
   const selectedDestination = getSnapshotDestination(state);
   if ((selectedDestination === "social-gallery" || selectedDestination === "gallery") && socialInput) {
-    socialInput.checked = true;
+    setSnapshotDestinationValue(state, "social");
+    rememberSnapshotDestinationPreference("social");
+    state.pendingSnapshotState = normalizePersistedSessionSnapshotState({
+      ...(getSnapshotStateForSection(state) || {}),
+      destination: "social",
+    });
   }
+  syncSnapshotDestinationOptionState(state);
 }
 
 function syncSnapshotGalleryControls(state) {

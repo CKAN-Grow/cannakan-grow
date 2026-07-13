@@ -16,12 +16,18 @@ for (const needle of [
   'destination: "",',
   "includeProfileInGallery: null",
   "function getInitialSnapshotDestinationValue(state)",
+  "const persistedDestination = normalizeSnapshotDestinationPreference(getSnapshotStateForSection(state)?.destination);",
   'const preferredDestination = rememberedDestination || "social-gallery";',
+  "function applySnapshotDestinationSelection(state, destination = \"social-gallery\"",
+  "destination: selectedDestination,",
   "function getInitialSnapshotIncludeProfileValue(persistedSnapshotState = null)",
   "return preference === null || preference === undefined ? true : Boolean(preference);",
-  "setSnapshotDestinationValue(state, getInitialSnapshotDestinationValue(state));",
-  "rememberSnapshotDestinationPreference(getSnapshotDestination(state));",
+  "void applySnapshotDestinationSelection(state, getInitialSnapshotDestinationValue(state), { syncControls: false });",
+  "await applySnapshotDestinationSelection(state, input.value, { persist: true, syncControls: true });",
+  "await applySnapshotDestinationSelection(state, \"social\", { persist: true, syncControls: true });",
   "rememberSnapshotIncludeProfilePreference(state.includeProfileToggle.checked);",
+  "input.disabled = unavailable;",
+  "This session already has one Community Grow submission. Use Social only for another shareable image.",
 ]) {
   requireNeedle(appSource, needle);
 }
