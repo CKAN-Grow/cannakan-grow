@@ -228,6 +228,18 @@ function isGrowSessionAnalyticsEligible(session = {}) {
   if (session?.isMock || session?.is_mock) {
     return false;
   }
+  if (
+    session?.userDeleted
+    || session?.user_deleted
+    || String(session?.userDeletedAt || session?.user_deleted_at || "").trim()
+    || session?.isDeleted
+    || session?.is_deleted
+    || String(session?.deletedAt || session?.deleted_at || "").trim()
+    || ["deleted", "hidden", "archived", "archived_test"].includes(normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""))
+    || ["deleted", "archived", "archived_test"].includes(normalizeSessionStatus(session.sessionStatus || session.session_status || ""))
+  ) {
+    return false;
+  }
   if (normalizeGrowSessionLifecycleState(session) !== "completed") {
     return false;
   }
@@ -376,8 +388,8 @@ const completedAnalyticsSession = {
 assert.equal(isGrowSessionAnalyticsEligible(completedAnalyticsSession), true);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "germinating" }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "abandoned" }), false);
-assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, userDeleted: true }), true);
-assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isDeleted: true }), true);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, userDeleted: true }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isDeleted: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "archived_test", isDeleted: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isMock: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isTest: true }), false);
@@ -397,6 +409,6 @@ const visibleAndHiddenSessions = [
 const visibleSessions = getVisibleUserSessions(visibleAndHiddenSessions);
 assert.equal(visibleSessions.some((item) => item.userDeleted), false, "user-deleted sessions should be hidden from UI lists");
 assert.equal(visibleSessions.length, 2, "visible session counts should exclude hidden/deleted sessions");
-assert.equal(getAggregateStatsSessions(visibleAndHiddenSessions).length, 2, "completed real user-deleted sessions should still count anonymously");
+assert.equal(getAggregateStatsSessions(visibleAndHiddenSessions).length, 1, "session-level deleted/hidden sessions should not count in aggregate intelligence");
 
 console.log("Grow session save regression check passed.");

@@ -4,7 +4,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const migration = fs.readFileSync(
-  path.join(root, "supabase", "migrations", "20260713143000_explorer_aggregate_legacy_completed_sessions.sql"),
+  path.join(root, "supabase", "migrations", "20260713152000_grow_session_lifecycle_resolver_and_community_intelligence.sql"),
   "utf8",
 );
 
@@ -65,8 +65,13 @@ const galleryMarkup = getBetween(
 
 assert(app.includes("function getExplorerAggregateEligibleCompletedSessions"), "Missing shared Explorer completed-session eligibility helper.");
 assert(app.includes("function getExplorerAggregateEligibleCompletedSessions") && app.includes("isExplorerCompletedSessionAggregateEligible(session"), "Aggregate builder must use the Explorer completed-session eligibility helper.");
+assert(app.includes("function resolveGrowSessionLifecycle"), "Missing canonical local Grow Session lifecycle resolver.");
+assert(app.includes("function getExplorerCompletedSessionAggregateExclusionReason"), "Missing local Explorer compatibility exclusion-reason helper.");
 assert(app.includes("function isExplorerCompletedSessionAggregateEligible"), "Missing Explorer completed-session eligibility helper.");
+assert(app.includes("return getExplorerCompletedSessionAggregateExclusionReason(session, options) === \"\";"), "Explorer eligibility must resolve through the exclusion-reason helper.");
+assert(app.includes("return resolveGrowSessionLifecycle(session, options).included === true;"), "Analytics eligibility must resolve through the lifecycle resolver.");
 assert(app.includes('["completed", "complete"].includes(normalizedStatus)') && app.includes("hasCompletedTimestamp"), "Explorer eligibility must support legacy completed status and completed timestamps.");
+assert(app.includes('const hidden = visibilityStatus === "hidden";') && app.includes("userDeleted || hardDeleted || archived || hidden || deletedStatus"), "Lifecycle resolver must treat hidden/deleted visibility as excluded.");
 assert(aggregateBuilder.includes("!partitionResult.hasSeeds") && aggregateBuilder.includes("!partitionResult.hasFinalResultValue"), "Aggregate builder must exclude invalid/incomplete result rows.");
 assert(aggregateBuilder.includes("sourceMap") && aggregateBuilder.includes("seedRecords"), "Aggregate builder must produce shared Source and Seed records.");
 assert(sourceAggregate.includes("buildExplorerCompletedSessionAggregate"), "Source Explorer must reuse the shared completed-session aggregate.");
@@ -81,16 +86,37 @@ assert(seedPanel.includes("Seed performance profiles built from anonymized compl
 assert(galleryRows.includes("isGallerySnapshotPubliclyVisible"), "Seed report evidence must be limited to approved visible public snapshots.");
 assert(galleryMarkup.includes("No public session reports available yet."), "Seed report must show a public-evidence empty state when aggregates exist without reports.");
 
+const aggregateRpc = getBetween(
+  migration,
+  "create or replace function public.get_explorer_completed_session_aggregates()",
+  "revoke all on function public.get_explorer_completed_session_aggregates()",
+);
+const diagnosticRpc = getBetween(
+  migration,
+  "create or replace function public.get_explorer_completed_session_aggregate_diagnostics()",
+  "revoke all on function public.get_explorer_completed_session_aggregate_diagnostics()",
+);
+
+assert(migration.includes("create or replace function public.resolve_grow_session_lifecycle"), "Missing canonical SQL Grow Session lifecycle resolver.");
+assert(migration.includes("create or replace function public.get_grow_session_lifecycle_exclusion_reason"), "Missing canonical SQL lifecycle exclusion-reason helper.");
+assert(migration.includes("create or replace function public.is_community_intelligence_session_eligible"), "Missing canonical SQL Community Intelligence eligibility helper.");
+assert(migration.includes("create or replace function public.get_explorer_grow_session_exclusion_reason"), "Missing Explorer SQL compatibility exclusion-reason wrapper.");
+assert(migration.includes("create or replace function public.is_explorer_grow_session_eligible"), "Missing Explorer SQL compatibility eligibility wrapper.");
 assert(migration.includes("create or replace function public.get_explorer_completed_session_aggregates()"), "Missing Explorer aggregate RPC migration.");
 assert(migration.includes("create or replace function public.get_explorer_completed_session_aggregate_diagnostics()"), "Missing Explorer aggregate diagnostic RPC.");
 assert(migration.includes("security definer"), "Explorer aggregate RPC must be SECURITY DEFINER.");
 assert(migration.includes("normalized_status not in ('completed', 'complete')") && migration.includes("completed_at is null"), "RPC must support legacy completed sessions without requiring completed_at.");
+assert(migration.includes("grow_session_cleanup_audit") && migration.includes("cleanup_deleted_session"), "Canonical Explorer predicate must exclude confirmed Founder Cleanup-deleted sessions.");
+assert(migration.includes("normalized_visibility_status in ('deleted', 'hidden', 'archived', 'archived_test')"), "Canonical Explorer predicate must exclude hidden/deleted visibility states.");
+assert(aggregateRpc.includes("public.is_community_intelligence_session_eligible(grow_sessions.id)"), "Public aggregate RPC must use the canonical Community Intelligence eligibility helper.");
+assert(diagnosticRpc.includes("public.resolve_grow_session_lifecycle(grow_sessions.id)"), "Diagnostic RPC must use the canonical SQL lifecycle resolver.");
+assert(diagnosticRpc.includes("'lifecycle_state'") && diagnosticRpc.includes("'eligibility_state'") && diagnosticRpc.includes("'deletion_source'"), "Diagnostic RPC must expose lifecycle state, eligibility state, and deletion source.");
 assert(migration.includes("'germinatedCount'") && migration.includes("'totalGerminated'"), "RPC must support current and legacy germinated count fields.");
 assert(migration.includes("grant execute on function public.get_explorer_completed_session_aggregates() to anon"), "RPC must expose only aggregate results to anon clients.");
 assert(migration.includes("grant execute on function public.get_explorer_completed_session_aggregates() to authenticated"), "RPC must expose only aggregate results to authenticated clients.");
 assert(migration.includes("Admin or service-role access is required"), "Diagnostic RPC must be admin/service-role restricted.");
-assert(!migration.includes("session_name") && !migration.includes("session_notes") && !migration.includes("session_images"), "RPC must not return private session fields.");
-assert(!migration.includes("'userId'") && !migration.includes("'user_id'"), "RPC payload must not return user identifiers.");
-assert(!migration.includes("grow_gallery_snapshots"), "Aggregate RPC must not depend on Community snapshot publication state.");
+assert(!aggregateRpc.includes("session_name") && !aggregateRpc.includes("session_notes") && !aggregateRpc.includes("session_images"), "Public RPC must not return private session fields.");
+assert(!aggregateRpc.includes("'userId'") && !aggregateRpc.includes("'user_id'"), "Public RPC payload must not return user identifiers.");
+assert(!aggregateRpc.includes("grow_gallery_snapshots"), "Aggregate RPC must not depend on Community snapshot publication state.");
 
 console.log("Explorer completed-session aggregate regression checks passed.");
