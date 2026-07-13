@@ -81512,7 +81512,8 @@ function updateSeedVaultVisualPreview(form, kind = "thumbnail") {
 
   const uploadLabel = form.querySelector(`[data-seed-vault-visual-upload-label="${kind}"]`);
   if (uploadLabel) {
-    uploadLabel.textContent = state.isCustom || state.hasLibrary ? "Replace" : "Upload";
+    const assetLabel = kind === "source-logo" ? "Logo" : "Photo";
+    uploadLabel.textContent = `${state.isCustom || state.hasLibrary ? "Replace" : "Upload"} ${assetLabel}`;
   }
 }
 async function handleSeedVaultVisualFileSelection(form, input) {
@@ -81859,30 +81860,38 @@ function openSeedVaultEntryModal(entry = null) {
             <p>Starting a Grow Session automatically changes this status to Active. When the session is completed, the status updates automatically.</p>
           </div>
         </details>
-        <details class="seed-vault-form-section">
-          <summary>
-            <span>Grow Along</span>
-            <small>Optional independent Grow Along tracking</small>
-          </summary>
-          <label class="seed-vault-check-toggle">
-            <input name="growAlongEnabled" type="checkbox" data-seed-vault-conditional-toggle="grow-along"${normalizedEntry?.growAlongEnabled ? " checked" : ""}>
-            <span>Part of Grow Along</span>
-          </label>
-          <label data-seed-vault-conditional-panel="grow-along">
-            <span>Grow Along Name</span>
-            <input name="growAlongName" type="text" maxlength="160" autocomplete="off" placeholder="Purple Hunt, Fall Indoor..." value="${escapeHtml(normalizedEntry?.growAlongName || "")}">
-          </label>
-        </details>
-        <details class="seed-vault-form-section">
-          <summary>
-            <span>Testing Program</span>
-            <small>Optional testing-program tracking</small>
-          </summary>
-          <label class="seed-vault-check-toggle">
-            <input name="testingProgramEnabled" type="checkbox" data-seed-vault-conditional-toggle="testing-program"${normalizedEntry?.testingProgramEnabled ? " checked" : ""}>
-            <span>Part of Testing Program</span>
-          </label>
-          <div class="seed-vault-form-grid" data-seed-vault-conditional-panel="testing-program">
+        <section class="seed-vault-form-section seed-vault-optional-section" data-seed-vault-optional-section="grow-along">
+          <div class="seed-vault-optional-section-header">
+            <div class="seed-vault-optional-section-copy">
+              <strong>Grow Along</strong>
+              <small>Track this variety as part of an independent Grow Along.</small>
+            </div>
+            <div class="seed-vault-segmented-toggle" role="group" aria-label="Grow Along participation">
+              <input name="growAlongEnabled" type="checkbox" data-seed-vault-conditional-toggle="grow-along"${normalizedEntry?.growAlongEnabled ? " checked" : ""}>
+              <button type="button" data-seed-vault-conditional-choice="grow-along" data-choice-value="false">No</button>
+              <button type="button" data-seed-vault-conditional-choice="grow-along" data-choice-value="true">Yes</button>
+            </div>
+          </div>
+          <div class="seed-vault-optional-section-panel" data-seed-vault-conditional-panel="grow-along">
+            <label>
+              <span>Grow Along Name</span>
+              <input name="growAlongName" type="text" maxlength="160" autocomplete="off" placeholder="Purple Hunt, Fall Indoor..." value="${escapeHtml(normalizedEntry?.growAlongName || "")}">
+            </label>
+          </div>
+        </section>
+        <section class="seed-vault-form-section seed-vault-optional-section" data-seed-vault-optional-section="testing-program">
+          <div class="seed-vault-optional-section-header">
+            <div class="seed-vault-optional-section-copy">
+              <strong>Testing Program</strong>
+              <small>Organize this variety within an optional seed testing program.</small>
+            </div>
+            <div class="seed-vault-segmented-toggle" role="group" aria-label="Testing Program participation">
+              <input name="testingProgramEnabled" type="checkbox" data-seed-vault-conditional-toggle="testing-program"${normalizedEntry?.testingProgramEnabled ? " checked" : ""}>
+              <button type="button" data-seed-vault-conditional-choice="testing-program" data-choice-value="false">No</button>
+              <button type="button" data-seed-vault-conditional-choice="testing-program" data-choice-value="true">Yes</button>
+            </div>
+          </div>
+          <div class="seed-vault-form-grid seed-vault-optional-section-panel" data-seed-vault-conditional-panel="testing-program">
             <label>
               <span>Testing Program Name</span>
               <input name="testingProgramName" type="text" maxlength="160" autocomplete="off" value="${escapeHtml(normalizedEntry?.testingProgramName || "")}">
@@ -81895,45 +81904,45 @@ function openSeedVaultEntryModal(entry = null) {
               </select>
             </label>
           </div>
-        </details>
+        </section>
         <input type="hidden" name="thumbnailUrl" value="${escapeHtml(initialThumbnailFieldUrl)}">
         <input type="hidden" name="sourceLogoUrl" value="${escapeHtml(initialSourceLogoFieldUrl)}">
-        <details class="seed-vault-visuals-section">
+        <details class="seed-vault-visuals-section" open>
           <summary>
             <span>Visuals</span>
             <small>Optional photos and source logos</small>
           </summary>
           <div class="seed-vault-visuals-grid">
-            <section class="seed-vault-visual-control" aria-label="Variety Photo">
+            <section class="seed-vault-visual-control seed-vault-visual-control--primary" aria-label="Variety Photo">
               <div class="seed-vault-visual-preview" data-seed-vault-visual-preview="thumbnail">
                 ${renderSeedVaultVisualPreviewContent("thumbnail", initialThumbnailPreviewUrl, { variety: normalizedEntry?.seedName || "", source: normalizedEntry?.source || "", label: "Variety photo" })}
               </div>
               <div class="seed-vault-visual-copy">
                 <strong>Variety Photo</strong>
-                <span>Used for this Vault Entry only.</span>
+                <span>Used throughout your Vault, Sessions, and Community reports.</span>
                 <small class="seed-vault-visual-status" data-seed-vault-visual-status="thumbnail"></small>
                 <div class="seed-vault-visual-actions">
                   <label class="button button-secondary button-compact seed-vault-visual-upload-button">
                     <input type="file" accept="image/*" data-seed-vault-visual-file="thumbnail">
-                    <span data-seed-vault-visual-upload-label="thumbnail">${initialThumbnailFieldUrl || initialThumbnailPreviewUrl ? "Replace" : "Upload"}</span>
+                    <span data-seed-vault-visual-upload-label="thumbnail">${initialThumbnailFieldUrl || initialThumbnailPreviewUrl ? "Replace Photo" : "Upload Photo"}</span>
                   </label>
                   <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="thumbnail"${initialThumbnailFieldUrl ? "" : " disabled"}>Remove</button>
                   <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-revert="thumbnail"${initialThumbnailFieldUrl && getSeedVaultGlobalVarietyImageUrl(normalizedEntry || {}) ? "" : " disabled"}>Revert to Grow Library</button>
                 </div>
               </div>
             </section>
-            <section class="seed-vault-visual-control" aria-label="Source Logo">
+            <section class="seed-vault-visual-control seed-vault-visual-control--secondary" aria-label="Source Logo">
               <div class="seed-vault-visual-preview seed-vault-visual-preview--logo" data-seed-vault-visual-preview="source-logo">
                 ${renderSeedVaultVisualPreviewContent("source-logo", initialSourceLogoPreviewUrl, { source: normalizedEntry?.source || "", label: "Source logo" })}
               </div>
               <div class="seed-vault-visual-copy">
                 <strong>Source Logo</strong>
-                <span>Saved for future entries from this source.</span>
+                <span>Automatically reused for future entries from this source.</span>
                 <small class="seed-vault-visual-status" data-seed-vault-visual-status="source-logo"></small>
                 <div class="seed-vault-visual-actions">
                   <label class="button button-secondary button-compact seed-vault-visual-upload-button">
                     <input type="file" accept="image/*" data-seed-vault-visual-file="source-logo">
-                    <span data-seed-vault-visual-upload-label="source-logo">${initialSourceLogoFieldUrl || initialSourceLogoPreviewUrl ? "Replace" : "Upload"}</span>
+                    <span data-seed-vault-visual-upload-label="source-logo">${initialSourceLogoFieldUrl || initialSourceLogoPreviewUrl ? "Replace Logo" : "Upload Logo"}</span>
                   </label>
                   <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-remove="source-logo"${initialSourceLogoFieldUrl ? "" : " disabled"}>Remove</button>
                   <button type="button" class="button button-secondary button-compact" data-seed-vault-visual-revert="source-logo"${initialSourceLogoFieldUrl && getSeedVaultGlobalSourceLogoUrl(normalizedEntry?.source || "") ? "" : " disabled"}>Revert to Grow Library</button>
@@ -82031,10 +82040,25 @@ function openSeedVaultEntryModal(entry = null) {
       overlay.querySelectorAll(`[data-seed-vault-conditional-panel="${key.replace(/"/g, "")}"]`).forEach((panel) => {
         panel.hidden = !toggle.checked;
       });
+      overlay.querySelector(`[data-seed-vault-optional-section="${key.replace(/"/g, "")}"]`)?.classList.toggle("is-enabled", toggle.checked);
+      overlay.querySelectorAll(`[data-seed-vault-conditional-choice="${key.replace(/"/g, "")}"]`).forEach((choice) => {
+        const isSelected = choice.getAttribute("data-choice-value") === String(toggle.checked);
+        choice.classList.toggle("is-selected", isSelected);
+        choice.setAttribute("aria-pressed", String(isSelected));
+      });
     });
   };
   overlay.querySelectorAll("[data-seed-vault-conditional-toggle]").forEach((toggle) => {
     toggle.addEventListener("change", syncConditionalPanels);
+  });
+  overlay.querySelectorAll("[data-seed-vault-conditional-choice]").forEach((choice) => {
+    choice.addEventListener("click", () => {
+      const key = choice.getAttribute("data-seed-vault-conditional-choice") || "";
+      const toggle = overlay.querySelector(`[data-seed-vault-conditional-toggle="${key.replace(/"/g, "")}"]`);
+      if (!(toggle instanceof HTMLInputElement)) return;
+      toggle.checked = choice.getAttribute("data-choice-value") === "true";
+      toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    });
   });
   syncConditionalPanels();
 

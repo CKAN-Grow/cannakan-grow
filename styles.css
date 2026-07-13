@@ -62463,15 +62463,96 @@ body.theme-dark #session-analytics-section {
   line-height: 1.4;
 }
 
-.seed-vault-check-toggle {
-  display: flex;
-  flex-direction: row !important;
-  align-items: center;
-  gap: 10px;
+.seed-vault-optional-section {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.seed-vault-check-toggle input {
-  width: auto !important;
+.seed-vault-optional-section.is-enabled {
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(10, 18, 12, 0.64);
+}
+
+.seed-vault-optional-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 12px 14px;
+}
+
+.seed-vault-optional-section-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seed-vault-optional-section-copy strong {
+  color: #f4fff0;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.seed-vault-optional-section-copy small {
+  color: rgba(214, 228, 205, 0.66);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.seed-vault-segmented-toggle {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(46px, 1fr));
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 999px;
+  background: rgba(5, 10, 7, 0.72);
+}
+
+.seed-vault-segmented-toggle input {
+  position: absolute;
+  width: 1px !important;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seed-vault-segmented-toggle button {
+  min-height: 32px;
+  padding: 5px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(216, 226, 214, 0.66);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+
+.seed-vault-segmented-toggle button.is-selected {
+  background: linear-gradient(180deg, rgba(148, 209, 89, 0.28), rgba(91, 145, 45, 0.24));
+  color: #dfffc5;
+  box-shadow: inset 0 0 0 1px rgba(168, 230, 101, 0.28);
+}
+
+.seed-vault-segmented-toggle button:focus-visible {
+  outline: 2px solid rgba(184, 239, 125, 0.7);
+  outline-offset: 2px;
+}
+
+.seed-vault-optional-section-panel {
+  margin: 0 14px 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 209, 89, 0.12);
+}
+
+.seed-vault-optional-section-panel[hidden] {
+  display: none !important;
 }
 
 .seed-vault-grow-note-list {
@@ -62737,8 +62818,15 @@ body.theme-dark #session-analytics-section {
 
 .seed-vault-favorite-toggle input {
   position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.seed-vault-form-section > .button {
+  width: calc(100% - 28px);
 }
 
 .seed-vault-favorite-control {
@@ -70588,28 +70676,40 @@ body.theme-dark option[selected] {
 
 .seed-vault-visuals-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 7fr) minmax(230px, 3fr);
   gap: 12px;
   padding: 0 14px 14px;
 }
 
 .seed-vault-visual-control {
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr);
-  gap: 12px;
+  gap: 14px;
   align-items: center;
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.026);
 }
 
+.seed-vault-visual-control--primary {
+  grid-template-columns: minmax(190px, 44%) minmax(0, 1fr);
+  border-color: rgba(148, 209, 89, 0.17);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(148, 209, 89, 0.08), transparent 44%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.seed-vault-visual-control--secondary {
+  grid-template-columns: 1fr;
+  align-content: start;
+}
+
 .seed-vault-visual-preview {
   display: grid;
   place-items: center;
-  width: 118px;
-  height: 88px;
+  width: 100%;
+  height: 148px;
   border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 13px;
   overflow: hidden;
@@ -70618,8 +70718,8 @@ body.theme-dark option[selected] {
 }
 
 .seed-vault-visual-preview--logo {
-  width: 82px;
-  height: 82px;
+  width: 88px;
+  height: 88px;
   justify-self: center;
   border-radius: 999px;
 }
@@ -70667,11 +70767,20 @@ body.theme-dark option[selected] {
 }
 
 .seed-vault-visual-actions {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  flex-wrap: wrap;
   margin-top: 4px;
+}
+
+.seed-vault-visual-actions .button {
+  min-width: 0;
+  width: 100%;
+  justify-content: center;
+}
+
+.seed-vault-visual-actions [data-seed-vault-visual-revert] {
+  grid-column: 1 / -1;
 }
 
 .seed-vault-visual-upload-button {
@@ -70700,17 +70809,62 @@ body.theme-dark option[selected] {
   }
 
   .seed-vault-visual-control {
-    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-columns: 108px minmax(0, 1fr);
   }
 
   .seed-vault-visual-preview {
-    width: 96px;
-    height: 74px;
+    width: 108px;
+    height: 88px;
   }
 
   .seed-vault-visual-preview--logo {
     width: 70px;
     height: 70px;
+  }
+
+  .seed-vault-visual-control--secondary {
+    grid-template-columns: 108px minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .seed-vault-optional-section-header {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .seed-vault-optional-section-header {
+    display: grid;
+    gap: 10px;
+  }
+
+  .seed-vault-segmented-toggle {
+    width: 100%;
+  }
+
+  .seed-vault-visual-control,
+  .seed-vault-visual-control--primary,
+  .seed-vault-visual-control--secondary {
+    grid-template-columns: 84px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .seed-vault-visual-preview {
+    width: 84px;
+    height: 76px;
+  }
+
+  .seed-vault-visual-preview--logo {
+    width: 68px;
+    height: 68px;
+  }
+
+  .seed-vault-visual-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .seed-vault-visual-actions [data-seed-vault-visual-revert] {
+    grid-column: auto;
   }
 }
 
@@ -71742,14 +71896,6 @@ body.theme-dark option[selected] {
 
 .seed-vault-visual-status.is-placeholder {
   color: rgba(205, 214, 207, 0.58);
-}
-
-.seed-vault-visual-actions {
-  flex-wrap: wrap;
-}
-
-.seed-vault-visual-actions [data-seed-vault-visual-revert] {
-  min-width: max-content;
 }
 
 /* Seed Vault favorite + expanded detail polish */
