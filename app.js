@@ -170,6 +170,7 @@ const FOUNDERS_TABLE = "founders";
 const ADMIN_USERS_TABLE = "admin_users";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
 const SEED_VAULT_COLLECTIONS_STORAGE_KEY = "cannakanGrowSeedVaultCollections";
+const SEED_VAULT_COLLECTION_NAME_MAX_LENGTH = 120;
 const SEED_VAULT_SOURCE_LOGOS_STORAGE_KEY = "cannakanGrowSeedVaultSourceLogos";
 const SEED_VAULT_PREVIEW_ENABLED_STORAGE_KEY = "cannakanGrowSeedVaultPreviewEnabled";
 const SEED_VAULT_PREVIEW_SET_STORAGE_KEY = "cannakanGrowSeedVaultPreviewSet";
@@ -7453,56 +7454,380 @@ function saveSeedVaultCollections(collections = [], userId = appState.user?.id |
   return normalizedCollections;
 }
 
-async function manageSeedVaultCollections() {
-  assertSeedVaultWritesAllowed("manage collections");
-  const currentCollections = normalizeSeedVaultTextList([
+function getSeedVaultCollectionNames() {
+  return normalizeSeedVaultTextList([
     ...(appState.seedVaultCollections || []),
     ...(appState.seedVaultEntries || []).flatMap((entry) => entry.collections || []),
   ]);
-  const action = String(window.prompt(
-    `Seed Vault collections\n\nExisting: ${currentCollections.join(", ") || "none"}\n\nType: create, rename, or delete`,
-    "create",
-  ) || "").trim().toLowerCase();
-  if (!["create", "rename", "delete"].includes(action)) {
-    return;
+}
+
+function getSeedVaultCollectionEntryCount(collectionName = "") {
+  const collectionKey = String(collectionName || "").trim().toLowerCase();
+  if (!collectionKey) {
+    return 0;
+  }
+  return (appState.seedVaultEntries || []).filter((entry) => (entry.collections || [])
+    .some((collection) => String(collection || "").trim().toLowerCase() === collectionKey)).length;
+}
+
+function assertSeedVaultCollectionWritesAllowed(sourceElement = null) {
+  assertSeedVaultWritesAllowed("manage collections");
+  const isSharedPanel = sourceElement instanceof Element && getSeedVaultPanelModeFromElement(sourceElement) === "shared";
+  if (isSharedPanel || appState.seedVaultActiveView === "shared") {
+    throw new Error("Shared Vault collections are read-only. Only the Vault owner can manage collections.");
+  }
+}
+
+function validateSeedVaultCollectionName(value = "", options = {}) {
+  const normalizedName = String(value || "").replace(/\s+/g, " ").trim();
+  const currentNameKey = String(options.currentName || "").trim().toLowerCase();
+  if (!normalizedName) {
+    return { valid: false, name: "", message: "Enter a collection name." };
+  }
+  if (normalizedName.length > SEED_VAULT_COLLECTION_NAME_MAX_LENGTH) {
+    return { valid: false, name: normalizedName, message: `Collection names must be ${SEED_VAULT_COLLECTION_NAME_MAX_LENGTH} characters or fewer.` };
+  }
+  const nameKey = normalizedName.toLowerCase();
+  const duplicate = getSeedVaultCollectionNames().some((collection) => {
+    const collectionKey = collection.toLowerCase();
+    return collectionKey === nameKey && collectionKey !== currentNameKey;
+  });
+  if (duplicate) {
+    return { valid: false, name: normalizedName, message: "A collection with this name already exists." };
+  }
+  return { valid: true, name: normalizedName, message: "" };
+}
+
+async function persistSeedVaultCollectionMutation(action = "create", options = {}) {
+  assertSeedVaultCollectionWritesAllowed();
+  const normalizedAction = ["rename", "delete"].includes(action) ? action : "create";
+  const currentCollections = getSeedVaultCollectionNames();
+  const currentName = String(options.currentName || "").trim();
+  const currentKey = currentName.toLowerCase();
+  const existingName = currentCollections.find((collection) => collection.toLowerCase() === currentKey) || "";
+
+  if (normalizedAction === "create") {
+    const validation = validateSeedVaultCollectionName(options.nextName || "");
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+    const wasFirstCollection = currentCollections.length === 0;
+    saveSeedVaultCollections([...currentCollections, validation.name]);
+    return { action: "create", name: validation.name, wasFirstCollection };
   }
 
-  if (action === "create") {
-    const name = normalizeSeedVaultTextList([window.prompt("New collection name", "") || ""])[0] || "";
-    if (!name) return;
-    saveSeedVaultCollections([...currentCollections, name]);
-    return;
+  if (!existingName) {
+    throw new Error("This collection is no longer available.");
   }
 
-  const existingName = normalizeSeedVaultTextList([window.prompt("Collection name", currentCollections[0] || "") || ""])[0] || "";
-  if (!existingName) return;
-  const existingKey = existingName.toLowerCase();
-  if (action === "rename") {
-    const nextName = normalizeSeedVaultTextList([window.prompt("Rename collection to", existingName) || ""])[0] || "";
-    if (!nextName || nextName.toLowerCase() === existingKey) return;
-    const nextEntries = (appState.seedVaultEntries || []).map((entry) => normalizeSeedVaultEntry({
-      ...entry,
-      collections: (entry.collections || []).map((collection) => collection.toLowerCase() === existingKey ? nextName : collection),
-      updatedAt: new Date().toISOString(),
-    })).filter(Boolean);
+  if (normalizedAction === "rename") {
+    const validation = validateSeedVaultCollectionName(options.nextName || "", { currentName: existingName });
+    if (!validation.valid) {
+      throw new Error(validation.message);
+    }
+    const nextName = validation.name;
+    if (nextName === existingName) {
+      return { action: "rename", name: nextName, previousName: existingName, unchanged: true };
+    }
+    const changedEntryIds = new Set();
+    const nextEntries = (appState.seedVaultEntries || []).map((entry) => {
+      const hasCollection = (entry.collections || []).some((collection) => collection.toLowerCase() === currentKey);
+      if (!hasCollection) {
+        return normalizeSeedVaultEntry(entry);
+      }
+      changedEntryIds.add(entry.id);
+      return normalizeSeedVaultEntry({
+        ...entry,
+        collections: (entry.collections || []).map((collection) => collection.toLowerCase() === currentKey ? nextName : collection),
+        updatedAt: new Date().toISOString(),
+      });
+    }).filter(Boolean);
     saveSeedVaultEntries(nextEntries);
-    saveSeedVaultCollections(currentCollections.map((collection) => collection.toLowerCase() === existingKey ? nextName : collection));
+    saveSeedVaultCollections(currentCollections.map((collection) => collection.toLowerCase() === currentKey ? nextName : collection));
+    if (String(appState.seedVaultCollectionFilter || "").trim().toLowerCase() === currentKey) {
+      setSeedVaultCollectionStateValue("owner", "CollectionFilter", nextName);
+    }
     await Promise.allSettled(nextEntries
-      .filter((entry) => (entry.collections || []).some((collection) => collection.toLowerCase() === nextName.toLowerCase()))
+      .filter((entry) => changedEntryIds.has(entry.id))
       .map((entry) => persistSeedVaultEntry(entry)));
-    return;
+    return { action: "rename", name: nextName, previousName: existingName };
   }
 
-  if (window.confirm(`Delete collection "${existingName}"? Seed entries will stay in your Vault.`)) {
-    const nextEntries = (appState.seedVaultEntries || []).map((entry) => normalizeSeedVaultEntry({
+  const changedEntryIds = new Set();
+  const nextEntries = (appState.seedVaultEntries || []).map((entry) => {
+    const hasCollection = (entry.collections || []).some((collection) => collection.toLowerCase() === currentKey);
+    if (!hasCollection) {
+      return normalizeSeedVaultEntry(entry);
+    }
+    changedEntryIds.add(entry.id);
+    return normalizeSeedVaultEntry({
       ...entry,
-      collections: (entry.collections || []).filter((collection) => collection.toLowerCase() !== existingKey),
+      collections: (entry.collections || []).filter((collection) => collection.toLowerCase() !== currentKey),
       updatedAt: new Date().toISOString(),
-    })).filter(Boolean);
-    saveSeedVaultEntries(nextEntries);
-    saveSeedVaultCollections(currentCollections.filter((collection) => collection.toLowerCase() !== existingKey));
-    await Promise.allSettled(nextEntries.map((entry) => persistSeedVaultEntry(entry)));
+    });
+  }).filter(Boolean);
+  saveSeedVaultEntries(nextEntries);
+  saveSeedVaultCollections(currentCollections.filter((collection) => collection.toLowerCase() !== currentKey));
+  if (String(appState.seedVaultCollectionFilter || "").trim().toLowerCase() === currentKey) {
+    setSeedVaultCollectionStateValue("owner", "CollectionFilter", "all");
   }
+  await Promise.allSettled(nextEntries
+    .filter((entry) => changedEntryIds.has(entry.id))
+    .map((entry) => persistSeedVaultEntry(entry)));
+  return { action: "delete", name: existingName, removedMemberships: changedEntryIds.size };
+}
+
+function closeSeedVaultCollectionModal(options = {}) {
+  const overlay = document.querySelector("#seed-vault-collection-modal-overlay");
+  if (!overlay) {
+    return;
+  }
+  const trigger = overlay.__seedVaultCollectionTrigger;
+  if (overlay.__seedVaultCollectionKeydown) {
+    document.removeEventListener("keydown", overlay.__seedVaultCollectionKeydown, true);
+  }
+  overlay.remove();
+  if (!document.querySelector(".seed-vault-entry-modal-overlay")) {
+    document.body.classList.remove("modal-open");
+  }
+  if (options.restoreFocus !== false && trigger instanceof HTMLElement && trigger.isConnected) {
+    trigger.focus({ preventScroll: true });
+  }
+}
+
+function openSeedVaultCollectionModal(options = {}) {
+  const mode = ["manage", "rename", "delete"].includes(options.mode) ? options.mode : "create";
+  const collectionName = String(options.collectionName || "").trim();
+  const trigger = options.trigger instanceof HTMLElement ? options.trigger : document.activeElement;
+  const onChanged = typeof options.onChanged === "function" ? options.onChanged : () => {};
+  assertSeedVaultCollectionWritesAllowed(options.trigger || null);
+  closeSeedVaultCollectionModal({ restoreFocus: false });
+
+  const currentCollections = getSeedVaultCollectionNames();
+  const existingName = currentCollections.find((collection) => collection.toLowerCase() === collectionName.toLowerCase()) || collectionName;
+  const isNameForm = mode === "create" || mode === "rename";
+  const title = mode === "create" ? "Create Collection" : mode === "rename" ? "Rename Collection" : mode === "delete" ? "Delete Collection?" : "Manage Collections";
+  const helperText = mode === "create"
+    ? "Group seed entries for future grows, projects, sources, or favorites."
+    : mode === "rename"
+      ? "Update the collection name without changing its Seed Vault memberships."
+      : mode === "delete"
+        ? "Deleting this collection will not delete any Seed Vault entries. Seeds currently in this collection will remain in your Vault."
+        : "Create collections and manage the groups already in your Seed Vault.";
+  const overlay = document.createElement("div");
+  overlay.id = "seed-vault-collection-modal-overlay";
+  overlay.className = "seed-vault-entry-modal-overlay seed-vault-collection-modal-overlay";
+  overlay.setAttribute("style", renderSeedVaultThemeStyleAttribute(getCurrentProfilePageSettings().vaultTheme));
+  overlay.__seedVaultCollectionTrigger = trigger;
+  overlay.innerHTML = `
+    <div class="seed-vault-entry-modal seed-vault-collection-modal" role="dialog" aria-modal="true" aria-labelledby="seed-vault-collection-modal-title" aria-describedby="seed-vault-collection-modal-description">
+      <button type="button" class="modal-close seed-vault-modal-close" data-seed-vault-collection-close="true" aria-label="Close collection dialog">×</button>
+      <div class="seed-vault-modal-copy seed-vault-collection-modal-copy">
+        <p class="eyebrow">MY SEED VAULT</p>
+        <h3 id="seed-vault-collection-modal-title">${escapeHtml(title)}</h3>
+        <p id="seed-vault-collection-modal-description">${escapeHtml(helperText)}</p>
+      </div>
+      ${isNameForm ? `
+        <form class="seed-vault-collection-form" data-seed-vault-collection-form data-collection-mode="${escapeHtml(mode)}" data-original-name="${escapeHtml(mode === "rename" ? existingName : "")}">
+          <label>
+            <span>Collection Name</span>
+            <input type="text" name="collectionName" value="${escapeHtml(mode === "rename" ? existingName : "")}" placeholder="Example: Next Grow" autocomplete="off" aria-describedby="seed-vault-collection-name-message">
+          </label>
+          <p id="seed-vault-collection-name-message" class="seed-vault-collection-message" data-seed-vault-collection-message role="alert" aria-live="polite"></p>
+          <div class="seed-vault-collection-modal-actions">
+            <button type="button" class="button button-secondary" data-seed-vault-collection-close="true">Cancel</button>
+            <button type="submit" class="button button-primary" data-seed-vault-collection-submit>${mode === "rename" ? "Save Changes" : "Create Collection"}</button>
+          </div>
+        </form>
+      ` : mode === "delete" ? `
+        <div class="seed-vault-collection-delete-body">
+          <div class="seed-vault-collection-delete-summary">
+            <strong>${escapeHtml(existingName || "Collection")}</strong>
+            <span>${escapeHtml(`${getSeedVaultCollectionEntryCount(existingName)} seed ${getSeedVaultCollectionEntryCount(existingName) === 1 ? "membership" : "memberships"}`)}</span>
+          </div>
+          <p class="seed-vault-collection-message" data-seed-vault-collection-message role="alert" aria-live="polite"></p>
+          <div class="seed-vault-collection-modal-actions">
+            <button type="button" class="button button-secondary" data-seed-vault-collection-close="true">Cancel</button>
+            <button type="button" class="button button-danger" data-seed-vault-collection-delete-confirm>Delete Collection</button>
+          </div>
+        </div>
+      ` : `
+        <div class="seed-vault-collection-manager">
+          <div class="seed-vault-collection-manager-list" data-seed-vault-collection-manager-list>
+            ${currentCollections.length ? currentCollections.map((name) => `
+              <article class="seed-vault-collection-manager-row">
+                <div>
+                  <strong>${escapeHtml(name)}</strong>
+                  <span>${escapeHtml(`${getSeedVaultCollectionEntryCount(name)} ${getSeedVaultCollectionEntryCount(name) === 1 ? "seed" : "seeds"}`)}</span>
+                </div>
+                <div class="seed-vault-collection-manager-actions">
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-collection-view="${escapeHtml(name)}">View</button>
+                  <button type="button" class="button button-secondary button-compact" data-seed-vault-collection-modal-action="rename" data-collection-name="${escapeHtml(name)}">Rename</button>
+                  <button type="button" class="button button-secondary button-compact seed-vault-collection-delete-action" data-seed-vault-collection-modal-action="delete" data-collection-name="${escapeHtml(name)}">Delete</button>
+                </div>
+              </article>
+            `).join("") : `<p class="seed-vault-collection-manager-empty">No collections yet. Create one to organize future grows, projects, or favorites.</p>`}
+          </div>
+          <div class="seed-vault-collection-modal-actions">
+            <button type="button" class="button button-secondary" data-seed-vault-collection-close="true">Close</button>
+            <button type="button" class="button button-primary" data-seed-vault-collection-modal-action="create">New Collection</button>
+          </div>
+        </div>
+      `}
+    </div>
+  `;
+
+  const form = overlay.querySelector("[data-seed-vault-collection-form]");
+  const input = form?.querySelector('input[name="collectionName"]');
+  const message = overlay.querySelector("[data-seed-vault-collection-message]");
+  const submitButton = form?.querySelector("[data-seed-vault-collection-submit]");
+  const initialValue = input instanceof HTMLInputElement ? input.value : "";
+  const setMessage = (value = "", tone = "error") => {
+    if (message) {
+      message.textContent = value;
+      message.dataset.tone = value ? tone : "";
+    }
+  };
+  const syncNameValidation = ({ showMessage = true } = {}) => {
+    if (!(input instanceof HTMLInputElement) || !(submitButton instanceof HTMLButtonElement)) {
+      return { valid: false, name: "", message: "Collection form is unavailable." };
+    }
+    const validation = validateSeedVaultCollectionName(input.value, { currentName: mode === "rename" ? existingName : "" });
+    submitButton.disabled = !validation.valid;
+    input.classList.toggle("is-missing", !validation.valid && Boolean(input.value));
+    input.setAttribute("aria-invalid", String(!validation.valid));
+    if (showMessage) {
+      setMessage(validation.valid ? "" : validation.message);
+    }
+    return validation;
+  };
+  const hasUnsavedChanges = () => input instanceof HTMLInputElement && input.value !== initialValue;
+  const canDismissSafely = () => !hasUnsavedChanges();
+
+  overlay.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest("[data-seed-vault-collection-close='true']")) {
+      event.preventDefault();
+      closeSeedVaultCollectionModal();
+      return;
+    }
+    if (event.target === overlay && canDismissSafely()) {
+      closeSeedVaultCollectionModal();
+    }
+  });
+
+  overlay.querySelectorAll("[data-seed-vault-collection-modal-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openSeedVaultCollectionModal({
+        mode: button.getAttribute("data-seed-vault-collection-modal-action") || "create",
+        collectionName: button.getAttribute("data-collection-name") || "",
+        trigger,
+        onChanged,
+      });
+    });
+  });
+  overlay.querySelectorAll("[data-seed-vault-collection-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const name = String(button.getAttribute("data-seed-vault-collection-view") || "").trim();
+      setSeedVaultCollectionStateValue("owner", "CollectionFilter", name || "all");
+      closeSeedVaultCollectionModal({ restoreFocus: false });
+      onChanged({ action: "view", name });
+    });
+  });
+
+  input?.addEventListener("input", () => syncNameValidation());
+  input?.addEventListener("blur", () => syncNameValidation());
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (form.dataset.submitting === "true") {
+      return;
+    }
+    const validation = syncNameValidation();
+    if (!validation.valid || !(submitButton instanceof HTMLButtonElement)) {
+      input?.focus();
+      return;
+    }
+    form.dataset.submitting = "true";
+    submitButton.disabled = true;
+    submitButton.textContent = mode === "rename" ? "Saving..." : "Creating...";
+    setMessage(mode === "rename" ? "Saving collection..." : "Creating collection...", "status");
+    try {
+      const result = await persistSeedVaultCollectionMutation(mode, { currentName: existingName, nextName: validation.name });
+      closeSeedVaultCollectionModal({ restoreFocus: false });
+      onChanged(result);
+    } catch (error) {
+      form.dataset.submitting = "false";
+      submitButton.textContent = mode === "rename" ? "Save Changes" : "Create Collection";
+      setMessage(error?.message || "Collection could not be saved.");
+      syncNameValidation({ showMessage: false });
+    }
+  });
+
+  const deleteButton = overlay.querySelector("[data-seed-vault-collection-delete-confirm]");
+  deleteButton?.addEventListener("click", async () => {
+    if (!(deleteButton instanceof HTMLButtonElement) || deleteButton.dataset.submitting === "true") {
+      return;
+    }
+    deleteButton.dataset.submitting = "true";
+    deleteButton.disabled = true;
+    deleteButton.textContent = "Deleting...";
+    setMessage("Deleting collection...", "status");
+    try {
+      const result = await persistSeedVaultCollectionMutation("delete", { currentName: existingName });
+      closeSeedVaultCollectionModal({ restoreFocus: false });
+      onChanged(result);
+    } catch (error) {
+      deleteButton.dataset.submitting = "false";
+      deleteButton.disabled = false;
+      deleteButton.textContent = "Delete Collection";
+      setMessage(error?.message || "Collection could not be deleted.");
+    }
+  });
+
+  const handleKeydown = (event) => {
+    if (event.key === "Escape") {
+      if (canDismissSafely()) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeSeedVaultCollectionModal();
+      }
+      return;
+    }
+    if (event.key !== "Tab") {
+      return;
+    }
+    const focusable = [...overlay.querySelectorAll('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')]
+      .filter((element) => element instanceof HTMLElement && !element.hidden && element.offsetParent !== null);
+    if (!focusable.length) {
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  overlay.__seedVaultCollectionKeydown = handleKeydown;
+  document.addEventListener("keydown", handleKeydown, true);
+  document.body.appendChild(overlay);
+  document.body.classList.add("modal-open");
+  if (isNameForm) {
+    syncNameValidation({ showMessage: false });
+  }
+  window.setTimeout(() => {
+    const focusTarget = input || overlay.querySelector("[data-seed-vault-collection-modal-action='create'], [data-seed-vault-collection-close='true']");
+    if (focusTarget instanceof HTMLElement) {
+      focusTarget.focus();
+      if (mode === "rename" && input instanceof HTMLInputElement) {
+        input.select();
+      }
+    }
+  }, 0);
+  return overlay;
 }
 
 function normalizeSeedVaultEntry(entry = {}) {
@@ -7774,7 +8099,7 @@ function ensureSeedVaultPreviewFixturesLoaded() {
     script.onload = () => {
       appState.seedVaultPreviewFixtureLoadPromise = null;
       resolve(getSeedVaultPreviewSetIds().length > 0);
-      renderSeedVaultSection();
+      refreshSeedVaultViewAfterMutation();
     };
     script.onerror = () => {
       appState.seedVaultPreviewFixtureLoadPromise = null;
@@ -77779,11 +78104,11 @@ function renderSeedVaultViewToggleMarkup(activeLayout = "list") {
 function renderSeedVaultQuickViewTabsMarkup(activeQuickView = "all", entries = [], analytics = null) {
   const normalizedActiveQuickView = normalizeSeedVaultQuickView(activeQuickView);
   return `
-    <section class="seed-vault-collections" aria-label="Seed Vault collections">
+    <section class="seed-vault-collections" aria-label="Vault collection quick views">
       <div class="seed-vault-collections-header">
         <h4>Collections</h4>
       </div>
-      <div class="seed-vault-quick-views" role="tablist" aria-label="Seed Vault collections">
+      <div class="seed-vault-quick-views" role="tablist" aria-label="Vault collection quick views">
         ${getSeedVaultQuickViewItems(entries, analytics).map((item) => `
           <button type="button" class="seed-vault-quick-view${normalizedActiveQuickView === item.key ? " is-active" : ""}" data-seed-vault-quick-view="${escapeHtml(item.key)}" aria-selected="${normalizedActiveQuickView === item.key ? "true" : "false"}">
             <span class="seed-vault-quick-view-icon is-${escapeHtml(item.icon || item.key)}" aria-hidden="true">${escapeHtml(item.emoji || "🌱")}</span>
@@ -79032,20 +79357,30 @@ function renderSeedVaultOwnerOverviewMarkup(analytics = null, entries = [], coll
           title: "Collections",
           supportingText: "No collections yet.",
           actionLabel: "Create Collection",
-          actionAttributes: 'data-seed-vault-manage-collections="true"',
+          actionAttributes: 'data-seed-vault-collection-action="create"',
           iconName: "archive",
         })}
         ${hasCollections ? `<div class="seed-vault-overview-collection-grid">
           ${collectionCards.map((collection) => `
-            <button type="button" class="seed-vault-overview-collection-card" data-seed-vault-overview-collection="${escapeHtml(collection.name)}">
-              ${collection.coverEntry ? renderSeedVaultSeedThumbnailMarkup(collection.coverEntry) : `<span class="seed-vault-overview-collection-fallback" aria-hidden="true">${escapeHtml(getSeedVaultInitials(collection.name, "C"))}</span>`}
-              <span>
-                <strong>${escapeHtml(collection.name)}</strong>
-                <small>${escapeHtml(`${collection.count} ${collection.count === 1 ? "seed" : "seeds"}`)}</small>
-              </span>
-            </button>
+            <article class="seed-vault-overview-collection-card">
+              <button type="button" class="seed-vault-overview-collection-main" data-seed-vault-overview-collection="${escapeHtml(collection.name)}" aria-label="View ${escapeHtml(collection.name)} collection">
+                ${collection.coverEntry ? renderSeedVaultSeedThumbnailMarkup(collection.coverEntry) : `<span class="seed-vault-overview-collection-fallback" aria-hidden="true">${escapeHtml(getSeedVaultInitials(collection.name, "C"))}</span>`}
+                <span>
+                  <strong>${escapeHtml(collection.name)}</strong>
+                  <small>${escapeHtml(`${collection.count} ${collection.count === 1 ? "seed" : "seeds"}`)}</small>
+                </span>
+              </button>
+              <details class="seed-vault-collection-card-menu">
+                <summary aria-label="Collection actions for ${escapeHtml(collection.name)}">•••</summary>
+                <div role="menu">
+                  <button type="button" role="menuitem" data-seed-vault-overview-collection="${escapeHtml(collection.name)}">View Collection</button>
+                  <button type="button" role="menuitem" data-seed-vault-collection-action="rename" data-collection-name="${escapeHtml(collection.name)}">Rename</button>
+                  <button type="button" role="menuitem" class="is-danger" data-seed-vault-collection-action="delete" data-collection-name="${escapeHtml(collection.name)}">Delete</button>
+                </div>
+              </details>
+            </article>
           `).join("")}
-          <button type="button" class="seed-vault-overview-collection-card seed-vault-overview-collection-card--new" data-seed-vault-manage-collections="true">
+          <button type="button" class="seed-vault-overview-collection-card seed-vault-overview-collection-card--new" data-seed-vault-collection-action="create">
             <span class="seed-vault-overview-new-collection-icon" aria-hidden="true">+</span>
             <span>
               <strong>New Collection</strong>
@@ -79411,6 +79746,31 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
   }
 
   seedVaultSection.dataset.seedVaultPanelBound = "true";
+  const handleSeedVaultCollectionChanged = (result = {}) => {
+    renderSeedVaultSection();
+    requestAnimationFrame(() => {
+      if (result.action === "view") {
+        seedVaultSection.querySelector("#seed-vault-inventory")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      const collectionSection = seedVaultSection.querySelector(".seed-vault-overview-collections");
+      collectionSection?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const collectionButton = [...seedVaultSection.querySelectorAll("[data-seed-vault-overview-collection]")]
+        .find((button) => String(button.getAttribute("data-seed-vault-overview-collection") || "").toLowerCase() === String(result.name || "").toLowerCase());
+      const focusTarget = collectionButton || seedVaultSection.querySelector("[data-seed-vault-collection-action='create']");
+      if (focusTarget instanceof HTMLElement) {
+        focusTarget.focus({ preventScroll: true });
+      }
+    });
+  };
+  const reportSeedVaultCollectionAccessError = (error) => {
+    const message = error?.message || "Collection management is unavailable.";
+    if (typeof showNavigationLockToast === "function") {
+      showNavigationLockToast({ title: "My Seed Vault", message });
+    } else {
+      showSeedVaultSaveFailureToast(message);
+    }
+  };
   if (typeof window !== "undefined" && window.__seedVaultInlineNoteBeforeUnloadBound !== true) {
     window.__seedVaultInlineNoteBeforeUnloadBound = true;
     window.addEventListener("beforeunload", (event) => {
@@ -79495,6 +79855,23 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
         return;
       }
       openSeedVaultEntryModal();
+      return;
+    }
+
+    const collectionActionButton = target.closest("[data-seed-vault-collection-action]");
+    if (collectionActionButton) {
+      event.preventDefault();
+      try {
+        assertSeedVaultCollectionWritesAllowed(collectionActionButton);
+        openSeedVaultCollectionModal({
+          mode: collectionActionButton.getAttribute("data-seed-vault-collection-action") || "create",
+          collectionName: collectionActionButton.getAttribute("data-collection-name") || "",
+          trigger: collectionActionButton,
+          onChanged: handleSeedVaultCollectionChanged,
+        });
+      } catch (error) {
+        reportSeedVaultCollectionAccessError(error);
+      }
       return;
     }
 
@@ -79822,13 +80199,15 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
     if (manageCollectionsButton) {
       event.preventDefault();
       try {
-        assertSeedVaultWritesAllowed("manage collections");
+        assertSeedVaultCollectionWritesAllowed(manageCollectionsButton);
+        openSeedVaultCollectionModal({
+          mode: "manage",
+          trigger: manageCollectionsButton,
+          onChanged: handleSeedVaultCollectionChanged,
+        });
       } catch (error) {
-        window.alert(error.message);
-        return;
+        reportSeedVaultCollectionAccessError(error);
       }
-      await manageSeedVaultCollections();
-      renderSeedVaultSection();
       return;
     }
 
