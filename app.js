@@ -9338,6 +9338,16 @@ async function upsertSeedVaultRows(rowsOrRow, options = {}) {
   const isBulk = Array.isArray(rowsOrRow);
   const sanitizedPayload = sanitizeSeedVaultEntryWriteRows(rowsOrRow);
   const payloadRows = isBulk ? sanitizedPayload : (sanitizedPayload ? [sanitizedPayload] : []);
+  const invalidQuantityRow = payloadRows.find((row) => getSeedVaultQuantityValidationMessage(row?.quantity));
+  if (invalidQuantityRow) {
+    return {
+      data: isBulk ? [] : null,
+      error: {
+        code: "SEED_VAULT_QUANTITY_INVALID",
+        message: getSeedVaultQuantityValidationMessage(invalidQuantityRow.quantity),
+      },
+    };
+  }
   const payload = isBulk ? payloadRows : payloadRows[0];
   if (!payload || (Array.isArray(payload) && !payload.length)) {
     return { data: isBulk ? [] : null, error: null };
@@ -9513,6 +9523,11 @@ async function persistSeedVaultEntry(entry = {}) {
   assertSeedVaultWritesAllowed("save Vault entries");
   if (isSeedVaultPreviewRecord(entry)) {
     throw new Error("Developer Preview records cannot be saved.");
+  }
+  const rawQuantity = entry.quantity ?? entry.seedCount ?? entry.seed_count;
+  const quantityValidationMessage = getSeedVaultQuantityValidationMessage(rawQuantity);
+  if (quantityValidationMessage) {
+    throw new Error(quantityValidationMessage);
   }
   const normalizedEntry = normalizeSeedVaultEntry({
     ...entry,
@@ -81715,6 +81730,45 @@ function bindSeedVaultVisualFields(form) {
   updateSeedVaultVisualPreview(form, "thumbnail");
   updateSeedVaultVisualPreview(form, "source-logo");
 }
+function getSeedVaultQuantityValidationMessage(value) {
+  const normalizedValue = String(value ?? "").trim();
+  if (!normalizedValue) {
+    return "Seeds Owned is required.";
+  }
+  const numericValue = Number(normalizedValue);
+  if (!Number.isFinite(numericValue) || !Number.isInteger(numericValue)) {
+    return "Seeds Owned must be a whole number.";
+  }
+  if (numericValue < 1) {
+    return "Seeds Owned must be at least 1.";
+  }
+  return "";
+}
+
+function updateSeedVaultQuantityValidation(form, options = {}) {
+  if (!(form instanceof HTMLFormElement)) {
+    return { isValid: false, message: "Seeds Owned is required.", field: null };
+  }
+  const quantityInput = form.elements.quantity;
+  if (!(quantityInput instanceof HTMLInputElement)) {
+    return { isValid: false, message: "Seeds Owned is required.", field: null };
+  }
+  const message = quantityInput.validity.badInput
+    ? "Seeds Owned must be a whole number."
+    : getSeedVaultQuantityValidationMessage(quantityInput.value);
+  const showError = options.showError === true || quantityInput.dataset.seedVaultQuantityTouched === "true";
+  const fieldLabel = quantityInput.closest("label");
+  const inlineMessage = fieldLabel?.querySelector("[data-seed-vault-quantity-error]");
+  quantityInput.setCustomValidity(message);
+  quantityInput.setAttribute("aria-invalid", message ? "true" : "false");
+  quantityInput.classList.toggle("is-missing", Boolean(message && showError));
+  fieldLabel?.classList.toggle("field-has-warning", Boolean(message && showError));
+  if (inlineMessage) {
+    inlineMessage.textContent = showError ? message : "";
+  }
+  return { isValid: !message, message, field: quantityInput };
+}
+
 function validateSeedVaultEntryForm(form) {
   if (!(form instanceof HTMLFormElement)) {
     return {
@@ -81724,11 +81778,16 @@ function validateSeedVaultEntryForm(form) {
     };
   }
 
-  return {
-    isValid: true,
-    message: "",
-    firstInvalidField: null,
-  };
+  const quantityValidation = updateSeedVaultQuantityValidation(form, { showError: true });
+  if (!quantityValidation.isValid) {
+    return {
+      isValid: false,
+      message: quantityValidation.message,
+      firstInvalidField: quantityValidation.field,
+    };
+  }
+
+  return { isValid: true, message: "", firstInvalidField: null };
 }
 
 async function saveSeedVaultEntryForm(form, options = {}) {
@@ -81846,7 +81905,7 @@ function openSeedVaultEntryModal(entry = null) {
         <h3 id="seed-vault-entry-modal-title">${isEditing ? "Edit Vault Entry" : "Add Seeds"}</h3>
         <p>Track owner-only seed inventory that can safely prefill future grow sessions.</p>
       </div>
-      <form class="seed-vault-entry-form" data-seed-vault-entry-form>
+      <form class="seed-vault-entry-form" data-seed-vault-entry-form novalidate>
         <label class="partition-identity-field" data-identity-autocomplete="source" data-source-directory-autocomplete="true">
           <span>Source</span>
           <input name="source" type="text" maxlength="120" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.source || "")}">
@@ -81875,8 +81934,9 @@ function openSeedVaultEntryModal(entry = null) {
             <input name="breeder" type="text" maxlength="120" autocomplete="off" placeholder="Breeder / genetics creator" value="${escapeHtml(normalizedEntry?.breeder || "")}">
           </label>
           <label>
-            <span>Quantity</span>
-            <input name="quantity" type="number" min="0" step="1" inputmode="numeric" autocomplete="off" placeholder="#" value="${normalizedEntry?.quantity === null || normalizedEntry?.quantity === undefined ? "" : escapeHtml(String(normalizedEntry.quantity))}">
+            <span>Seeds Owned</span>
+            <input name="quantity" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="#" value="${normalizedEntry?.quantity === null || normalizedEntry?.quantity === undefined ? "" : escapeHtml(String(normalizedEntry.quantity))}" required aria-describedby="seed-vault-quantity-error" aria-invalid="false">
+            <small id="seed-vault-quantity-error" class="field-warning" data-seed-vault-quantity-error aria-live="polite"></small>
           </label>
           <label>
             <span>Year acquired</span>
@@ -82161,6 +82221,18 @@ function openSeedVaultEntryModal(entry = null) {
     initializeSessionSourceAndVarietyAutocompletes(form);
     initializePartitionIdentityAutocompletes(form);
     bindSeedVaultVisualFields(form);
+    const quantityInput = form.elements.quantity;
+    if (quantityInput instanceof HTMLInputElement) {
+      quantityInput.addEventListener("input", () => {
+        quantityInput.dataset.seedVaultQuantityTouched = "true";
+        updateSeedVaultQuantityValidation(form);
+      });
+      quantityInput.addEventListener("blur", () => {
+        quantityInput.dataset.seedVaultQuantityTouched = "true";
+        updateSeedVaultQuantityValidation(form);
+      });
+      updateSeedVaultQuantityValidation(form);
+    }
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       await saveSeedVaultEntryForm(form);

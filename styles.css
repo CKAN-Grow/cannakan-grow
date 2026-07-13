@@ -63062,6 +63062,17 @@ body.theme-dark #session-analytics-section {
   font-weight: 700;
 }
 
+.seed-vault-entry-form label.field-has-warning .field-warning {
+  display: block;
+  color: #f0b6ae;
+  font-weight: 700;
+}
+
+.seed-vault-entry-form input.is-missing {
+  border-color: rgba(221, 128, 69, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(221, 128, 69, 0.14);
+}
+
 .seed-vault-modal-actions {
   position: sticky;
   bottom: -1px;
