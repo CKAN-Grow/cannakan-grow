@@ -62454,11 +62454,47 @@ body.theme-dark #session-analytics-section {
   font-weight: 700;
 }
 
+.seed-vault-form-section--planning summary {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.seed-vault-form-section--planning summary small {
+  max-width: 520px;
+  line-height: 1.35;
+}
+
 .seed-vault-form-section > label,
 .seed-vault-form-section > .seed-vault-form-grid,
 .seed-vault-form-section > .seed-vault-grow-note-list,
-.seed-vault-form-section > .button {
+.seed-vault-form-section > .button,
+.seed-vault-form-section > .seed-vault-planning-field {
   margin: 0 14px 14px;
+}
+
+.seed-vault-planning-field {
+  display: grid;
+  gap: 9px;
+  max-width: 560px;
+}
+
+.seed-vault-planning-field label {
+  max-width: 360px;
+}
+
+.seed-vault-planning-description {
+  color: rgba(181, 232, 111, 0.88);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.seed-vault-planning-field p {
+  margin: 0;
+  color: rgba(214, 228, 205, 0.68);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .seed-vault-check-toggle {
