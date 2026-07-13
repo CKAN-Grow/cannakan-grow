@@ -73,11 +73,25 @@ Execute and remove publication-only generated storage objects:
 
 Required environment:
   SUPABASE_URL
-  SUPABASE_SERVICE_ROLE_KEY
+  SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY
 
 Before running, apply:
   supabase/migrations/20260713120000_community_grow_publication_reset.sql
 `);
+}
+
+function getApiKeyKind(apiKey = "") {
+  const normalizedKey = String(apiKey || "").trim();
+  if (normalizedKey.startsWith("sb_secret_")) {
+    return "secret";
+  }
+  if (normalizedKey.startsWith("sb_publishable_")) {
+    return "publishable";
+  }
+  if (normalizedKey.split(".").length === 3) {
+    return "legacy-jwt";
+  }
+  return "unknown";
 }
 
 function getSupabaseConfig() {
@@ -86,32 +100,97 @@ function getSupabaseConfig() {
     || process.env.NEXT_PUBLIC_SUPABASE_URL
     || process.env.PUBLIC_SUPABASE_URL
     || "";
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    || process.env.SUPABASE_SERVICE_KEY
-    || process.env.SUPABASE_ADMIN_KEY
-    || "";
+  const apiKeyEntries = [
+    ["SUPABASE_SECRET_KEY", process.env.SUPABASE_SECRET_KEY],
+    ["SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY],
+    ["SUPABASE_SERVICE_KEY", process.env.SUPABASE_SERVICE_KEY],
+    ["SUPABASE_ADMIN_KEY", process.env.SUPABASE_ADMIN_KEY],
+  ];
+  const [apiKeyEnvName, apiKey] = apiKeyEntries.find(([, value]) => String(value || "").trim()) || ["", ""];
 
-  if (!url || !serviceRoleKey) {
-    throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  if (!url || !apiKey) {
+    throw new Error("Missing SUPABASE_URL and elevated Supabase key. Set SUPABASE_SECRET_KEY for current Supabase projects, or SUPABASE_SERVICE_ROLE_KEY for legacy projects.");
+  }
+
+  let parsedUrl = null;
+  try {
+    parsedUrl = new URL(url);
+  } catch (error) {
+    throw new Error(`SUPABASE_URL is not a valid URL: ${url}`);
+  }
+  if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+    throw new Error(`SUPABASE_URL must start with http:// or https://. Received: ${url}`);
+  }
+
+  const apiKeyKind = getApiKeyKind(apiKey);
+  if (apiKeyKind === "publishable") {
+    throw new Error(`${apiKeyEnvName} is a publishable key. This maintenance script requires an elevated Supabase Secret Key (sb_secret_...) or legacy service_role JWT.`);
   }
 
   return {
-    url: url.replace(/\/+$/, ""),
-    serviceRoleKey,
+    url: parsedUrl.toString().replace(/\/+$/, ""),
+    apiKey: String(apiKey || "").trim(),
+    apiKeyEnvName,
+    apiKeyKind,
   };
 }
 
-async function callRpc({ url, serviceRoleKey }, functionName, payload = {}) {
-  const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
-    method: "POST",
-    headers: {
-      apikey: serviceRoleKey,
-      authorization: `Bearer ${serviceRoleKey}`,
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+function buildSupabaseHeaders({ apiKey, apiKeyKind }) {
+  const headers = {
+    apikey: apiKey,
+    "content-type": "application/json",
+    accept: "application/json",
+  };
+
+  if (apiKeyKind === "legacy-jwt") {
+    headers.authorization = `Bearer ${apiKey}`;
+  }
+
+  return headers;
+}
+
+function formatApiErrorBody(data, fallback = "") {
+  if (typeof data === "object" && data) {
+    return [
+      data.message,
+      data.msg,
+      data.error,
+      data.error_description,
+      data.details,
+      data.hint,
+      data.code ? `code=${data.code}` : "",
+    ].filter(Boolean).join(" ");
+  }
+  return String(data || fallback || "").trim();
+}
+
+function formatNetworkError(error, endpoint) {
+  const cause = error?.cause || null;
+  const causeParts = [
+    cause?.code,
+    cause?.errno,
+    cause?.syscall,
+    cause?.hostname,
+    cause?.message,
+  ].filter(Boolean);
+  const suffix = causeParts.length ? ` (${causeParts.join(" ")})` : "";
+  return `Network request failed before Supabase responded: ${endpoint}${suffix}. Check SUPABASE_URL, DNS/network access, firewall/proxy settings, and project availability.`;
+}
+
+async function requestSupabaseJson(supabase, pathName, options = {}) {
+  const endpoint = `${supabase.url}${pathName}`;
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      ...options,
+      headers: {
+        ...buildSupabaseHeaders(supabase),
+        ...(options.headers || {}),
+      },
+    });
+  } catch (error) {
+    throw new Error(formatNetworkError(error, endpoint));
+  }
 
   const text = await response.text();
   let data = null;
@@ -122,51 +201,45 @@ async function callRpc({ url, serviceRoleKey }, functionName, payload = {}) {
   }
 
   if (!response.ok) {
-    const message = typeof data === "object" && data
-      ? [data.message, data.details, data.hint].filter(Boolean).join(" ")
-      : text;
-    throw new Error(`RPC ${functionName} failed (${response.status}): ${message || response.statusText}`);
+    const message = formatApiErrorBody(data, response.statusText);
+    const authHint = [401, 403].includes(response.status)
+      ? ` Authentication failed or was refused. This run used ${supabase.apiKeyEnvName} as a ${supabase.apiKeyKind} key. Use SUPABASE_SECRET_KEY=sb_secret_... for current Supabase projects or SUPABASE_SERVICE_ROLE_KEY for legacy projects.`
+      : "";
+    throw new Error(`Supabase API request failed (${response.status} ${response.statusText}) at ${pathName}: ${message || "No response body."}${authHint}`);
   }
 
   return data;
 }
 
-async function removeStorageObjects({ url, serviceRoleKey }, paths = []) {
+async function callRpc(supabase, functionName, payload = {}) {
+  try {
+    return await requestSupabaseJson(supabase, `/rest/v1/rpc/${functionName}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    throw new Error(`RPC ${functionName} failed: ${error.message}`);
+  }
+}
+
+async function removeStorageObjects(supabase, paths = []) {
   const uniquePaths = [...new Set(paths.map((item) => String(item || "").trim()).filter(Boolean))];
   if (!uniquePaths.length) {
     return { removed: 0, skipped: true };
   }
 
-  const response = await fetch(`${url}/storage/v1/object/grow-gallery`, {
-    method: "DELETE",
-    headers: {
-      apikey: serviceRoleKey,
-      authorization: `Bearer ${serviceRoleKey}`,
-      "content-type": "application/json",
-      accept: "application/json",
-    },
-    body: JSON.stringify({ prefixes: uniquePaths }),
-  });
-
-  const text = await response.text();
-  let data = null;
   try {
-    data = text ? JSON.parse(text) : null;
+    const data = await requestSupabaseJson(supabase, "/storage/v1/object/grow-gallery", {
+      method: "DELETE",
+      body: JSON.stringify({ prefixes: uniquePaths }),
+    });
+    return {
+      removed: uniquePaths.length,
+      response: data,
+    };
   } catch (error) {
-    data = text;
+    throw new Error(`Storage cleanup failed: ${error.message}`);
   }
-
-  if (!response.ok) {
-    const message = typeof data === "object" && data
-      ? [data.message, data.error, data.details].filter(Boolean).join(" ")
-      : text;
-    throw new Error(`Storage cleanup failed (${response.status}): ${message || response.statusText}`);
-  }
-
-  return {
-    removed: uniquePaths.length,
-    response: data,
-  };
 }
 
 function printSection(title, value) {
@@ -233,7 +306,7 @@ async function main() {
 
 main().catch((error) => {
   console.error(`\nCommunity Grow reset failed: ${error.message}`);
-  if (/admin_preview_community_grow_publication_reset|admin_execute_community_grow_publication_reset/.test(error.message)) {
+  if (/PGRST202|Could not find the function|function .* does not exist|schema cache|404/i.test(error.message)) {
     console.error("Apply supabase/migrations/20260713120000_community_grow_publication_reset.sql before running this script.");
   }
   process.exitCode = 1;
