@@ -79,10 +79,27 @@ The payload includes:
 - completed-session totals
 - variety totals
 - source totals
-- seed-tested counts
-- germinated counts
-- germination percentages
-- confidence-ready sample fields
+- `total_seeds_tested`
+- `total_seeds_germinated`
+- `overall_germination_rate`
+- `total_seeds_with_source`
+- `total_seeds_without_source`
+- `source_attribution_rate`
+- `source_attribution_status`
+- `source_attribution_thresholds`
+- `varieties_missing_source`
+- `duplicate_sources`
+- `unknown_sources`
+- `unknown_varieties`
+- canonical Community Confidence values
+
+`total_seeds_tested` is the headline seed total everywhere. Source-attributed
+seed counts are data-quality metrics and must never replace that headline.
+
+Source attribution alert thresholds are stored in
+`public.grow_intelligence_engine_config`. The defaults are 95% Healthy, 90%
+Warning, and 80% Needs Attention. Changing these thresholds changes the GIE
+status output; consumers never classify attribution independently.
 
 The legacy Explorer RPC remains only as a compatibility wrapper:
 
@@ -134,6 +151,11 @@ Current and future consumers must read GIE output or lifecycle resolver output:
 
 UI components render GIE output. They do not independently calculate aggregate analytics.
 
+Canonical analytics terminology is: Completed Sessions, Seeds Tested, Seeds
+Germinated, Overall Germination %, Varieties, Sources, and Community Confidence.
+Canonical data-quality terminology is: Seeds With Source, Seeds Missing Source,
+Source Attribution %, Unknown Sources, and Unknown Varieties.
+
 ## Admin Data Health
 
 The admin diagnostic entry point is:
@@ -158,6 +180,11 @@ It is admin/service-role only and includes:
 - result-row counts
 - seeds tested
 - seeds germinated
+- seeds with and without source attribution
+- source attribution rate and status
+- varieties missing source
+- duplicate sources
+- unknown sources and varieties
 
 The diagnostic may expose session identifiers and names to admins for audit. Public GIE analytics must remain anonymous.
 

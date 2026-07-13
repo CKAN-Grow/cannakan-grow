@@ -63,7 +63,7 @@ for (const needle of [
   requireNeedle(stylesSource, needle);
 }
 
-const publicBlock = appSource.match(/function getSourceDirectoryPublicRoute[\s\S]*?function renderSourcesLandingPage/)?.[0] || "";
+const publicBlock = appSource.match(/function getSourceDirectoryPublicRoute[\s\S]*?function getSeedExplorerDemoSeeds/)?.[0] || "";
 if (!publicBlock) {
   throw new Error("Could not locate public Source Explorer helper block.");
 }

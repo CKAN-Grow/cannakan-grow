@@ -258,6 +258,23 @@ grant execute on function public.is_community_intelligence_session_eligible(uuid
 grant execute on function public.get_explorer_grow_session_exclusion_reason(uuid) to service_role;
 grant execute on function public.is_explorer_grow_session_eligible(uuid) to service_role;
 
+create table if not exists public.grow_intelligence_engine_config (
+  singleton boolean primary key default true check (singleton),
+  source_attribution_healthy_threshold numeric not null default 95 check (source_attribution_healthy_threshold between 0 and 100),
+  source_attribution_warning_threshold numeric not null default 90 check (source_attribution_warning_threshold between 0 and 100),
+  source_attribution_needs_attention_threshold numeric not null default 80 check (source_attribution_needs_attention_threshold between 0 and 100),
+  updated_at timestamptz not null default timezone('utc', now()),
+  check (source_attribution_healthy_threshold >= source_attribution_warning_threshold),
+  check (source_attribution_warning_threshold >= source_attribution_needs_attention_threshold)
+);
+
+insert into public.grow_intelligence_engine_config (singleton)
+values (true)
+on conflict (singleton) do nothing;
+
+revoke all on table public.grow_intelligence_engine_config from public;
+grant select, insert, update on table public.grow_intelligence_engine_config to service_role;
+
 create or replace function public.get_grow_intelligence_engine_analytics()
 returns jsonb
 language plpgsql
@@ -268,7 +285,15 @@ as $$
 declare
   aggregate_payload jsonb;
 begin
-  with eligible_sessions as (
+  with quality_thresholds as (
+    select
+      source_attribution_healthy_threshold as healthy,
+      source_attribution_warning_threshold as warning,
+      source_attribution_needs_attention_threshold as needs_attention
+    from public.grow_intelligence_engine_config
+    where singleton
+  ),
+  eligible_sessions as (
     select
       grow_sessions.id,
       coalesce(nullif(grow_sessions.system_type, ''), 'Grow Session') as method_type,
@@ -475,10 +500,30 @@ begin
         '{}'::jsonb
       ) as seed_type_stats
     from source_aggregate
+  ),
+  quality_metrics as (
+    select
+      coalesce(sum(valid_rows.seed_count), 0)::integer as total_seeds_tested,
+      coalesce(sum(valid_rows.germinated_count), 0)::integer as total_seeds_germinated,
+      coalesce(sum(valid_rows.seed_count) filter (where valid_rows.source_key is not null), 0)::integer as total_seeds_with_source,
+      coalesce(sum(valid_rows.seed_count) filter (where valid_rows.source_key is null), 0)::integer as total_seeds_without_source,
+      (count(distinct valid_rows.variety_key) filter (where valid_rows.source_key is null))::integer as varieties_missing_source,
+      (count(*) filter (where valid_rows.source_key is null))::integer as unknown_sources
+    from valid_rows
+  ),
+  duplicate_source_metrics as (
+    select count(*)::integer as duplicate_sources
+    from (
+      select valid_rows.source_key
+      from valid_rows
+      where valid_rows.source_key is not null
+      group by valid_rows.source_key
+      having count(distinct lower(valid_rows.source_name)) > 1
+    ) duplicate_source_keys
   )
   select jsonb_build_object(
     'engine_version', 'gie.v1',
-    'schema_version', '2026-07-13.1',
+    'schema_version', '2026-07-13.2',
     'generated_at', timezone('utc', now()),
     'seed_records',
     coalesce((
@@ -543,19 +588,75 @@ begin
     'total_varieties_logged',
     (select count(distinct variety_key) from valid_rows where variety_key is not null),
     'total_completed_sessions',
-    (select count(distinct session_id) from valid_rows)
+    (select count(distinct session_id) from valid_rows),
+    'total_seeds_tested', (select total_seeds_tested from quality_metrics),
+    'total_seeds_germinated', (select total_seeds_germinated from quality_metrics),
+    'overall_germination_rate', case
+      when (select total_seeds_tested from quality_metrics) > 0
+        then round(((select total_seeds_germinated from quality_metrics)::numeric / (select total_seeds_tested from quality_metrics)::numeric) * 100)::integer
+      else 0
+    end,
+    'total_seeds_with_source', (select total_seeds_with_source from quality_metrics),
+    'total_seeds_without_source', (select total_seeds_without_source from quality_metrics),
+    'source_attribution_rate', case
+      when (select total_seeds_tested from quality_metrics) > 0
+        then round(((select total_seeds_with_source from quality_metrics)::numeric / (select total_seeds_tested from quality_metrics)::numeric) * 100)::integer
+      else 0
+    end,
+    'source_attribution_status', case
+      when (case when (select total_seeds_tested from quality_metrics) > 0 then ((select total_seeds_with_source from quality_metrics)::numeric / (select total_seeds_tested from quality_metrics)::numeric) * 100 else 0 end) >= (select healthy from quality_thresholds) then 'Healthy'
+      when (case when (select total_seeds_tested from quality_metrics) > 0 then ((select total_seeds_with_source from quality_metrics)::numeric / (select total_seeds_tested from quality_metrics)::numeric) * 100 else 0 end) >= (select warning from quality_thresholds) then 'Warning'
+      else 'Needs Attention'
+    end,
+    'source_attribution_thresholds', jsonb_build_object(
+      'healthy', (select healthy from quality_thresholds),
+      'warning', (select warning from quality_thresholds),
+      'needs_attention', (select needs_attention from quality_thresholds)
+    ),
+    'varieties_missing_source', (select varieties_missing_source from quality_metrics),
+    'duplicate_sources', (select duplicate_sources from duplicate_source_metrics),
+    'unknown_sources', (select unknown_sources from quality_metrics),
+    'unknown_varieties', (select count(*) from normalized_rows where seed_count > 0 and variety_name is null),
+    'community_confidence', case
+      when (select count(distinct session_id) from valid_rows) >= 500 and (select total_seeds_tested from quality_metrics) >= 10000 then 'Very High'
+      when (select count(distinct session_id) from valid_rows) >= 200 and (select total_seeds_tested from quality_metrics) >= 4000 then 'High'
+      when (select count(distinct session_id) from valid_rows) >= 75 and (select total_seeds_tested from quality_metrics) >= 1500 then 'Moderate'
+      when (select count(distinct session_id) from valid_rows) > 0 or (select total_seeds_tested from quality_metrics) > 0 then 'Growing'
+      else 'Limited'
+    end,
+    'community_confidence_percent', case
+      when (select count(distinct session_id) from valid_rows) >= 500 and (select total_seeds_tested from quality_metrics) >= 10000 then 94
+      when (select count(distinct session_id) from valid_rows) >= 200 and (select total_seeds_tested from quality_metrics) >= 4000 then 78
+      when (select count(distinct session_id) from valid_rows) >= 75 and (select total_seeds_tested from quality_metrics) >= 1500 then 58
+      when (select count(distinct session_id) from valid_rows) > 0 or (select total_seeds_tested from quality_metrics) > 0 then 38
+      else 22
+    end
   )
   into aggregate_payload;
 
   return coalesce(aggregate_payload, jsonb_build_object(
     'engine_version', 'gie.v1',
-    'schema_version', '2026-07-13.1',
+    'schema_version', '2026-07-13.2',
     'generated_at', timezone('utc', now()),
     'seed_records', '[]'::jsonb,
     'source_records', '[]'::jsonb,
     'total_breeders_logged', 0,
     'total_varieties_logged', 0,
-    'total_completed_sessions', 0
+    'total_completed_sessions', 0,
+    'total_seeds_tested', 0,
+    'total_seeds_germinated', 0,
+    'overall_germination_rate', 0,
+    'total_seeds_with_source', 0,
+    'total_seeds_without_source', 0,
+    'source_attribution_rate', 0,
+    'source_attribution_status', 'Needs Attention',
+    'source_attribution_thresholds', jsonb_build_object('healthy', 95, 'warning', 90, 'needs_attention', 80),
+    'varieties_missing_source', 0,
+    'duplicate_sources', 0,
+    'unknown_sources', 0,
+    'unknown_varieties', 0,
+    'community_confidence', 'Limited',
+    'community_confidence_percent', 22
   ));
 end;
 $$;

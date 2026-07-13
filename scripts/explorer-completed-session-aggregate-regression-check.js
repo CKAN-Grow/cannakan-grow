@@ -114,7 +114,7 @@ assert(migration.includes("create or replace function public.resolve_grow_sessio
 assert(migration.includes("create or replace function public.get_grow_session_lifecycle_exclusion_reason"), "Missing canonical SQL lifecycle exclusion-reason helper.");
 assert(migration.includes("create or replace function public.is_community_intelligence_session_eligible"), "Missing canonical SQL Community Intelligence eligibility helper.");
 assert(migration.includes("create or replace function public.get_grow_intelligence_engine_analytics()"), "Missing canonical Grow Intelligence Engine analytics RPC.");
-assert(migration.includes("'engine_version', 'gie.v1'") && migration.includes("'schema_version', '2026-07-13.1'"), "GIE payload must expose engine and schema version metadata.");
+assert(migration.includes("'engine_version', 'gie.v1'") && migration.includes("'schema_version', '2026-07-13.2'"), "GIE payload must expose engine and schema version metadata.");
 assert(migration.includes("create or replace function public.get_explorer_grow_session_exclusion_reason"), "Missing Explorer SQL compatibility exclusion-reason wrapper.");
 assert(migration.includes("create or replace function public.is_explorer_grow_session_eligible"), "Missing Explorer SQL compatibility eligibility wrapper.");
 assert(migration.includes("create or replace function public.get_explorer_completed_session_aggregates()"), "Missing Explorer aggregate RPC migration.");
