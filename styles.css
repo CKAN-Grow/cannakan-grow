@@ -67998,39 +67998,7 @@ body.theme-dark option[selected] {
   background: rgba(148, 209, 89, 0.07);
 }
 
-.seed-vault-overview-collapse-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 34px;
-  padding: 0 10px;
-  border: 1px solid rgba(148, 209, 89, 0.16);
-  border-radius: 999px;
-  background: rgba(4, 9, 7, 0.58);
-  color: rgba(224, 234, 224, 0.82);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-}
-
-.seed-vault-overview-collapse-toggle i {
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-  transition: transform 160ms ease;
-}
-
-.seed-vault-overview-collapse-toggle[aria-expanded="true"] i {
-  transform: translateY(2px) rotate(225deg);
-}
-
-.seed-vault-overview-empty-action:focus-visible,
-.seed-vault-overview-collapse-toggle:focus-visible {
+.seed-vault-overview-empty-action:focus-visible {
   outline: 2px solid rgba(148, 209, 89, 0.78);
   outline-offset: 2px;
 }
@@ -68682,12 +68650,11 @@ body.theme-dark option[selected] {
 
   .seed-vault-overview-empty-collapse-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     width: 100%;
   }
 
-  .seed-vault-overview-empty-action,
-  .seed-vault-overview-collapse-toggle {
+  .seed-vault-overview-empty-action {
     width: 100%;
   }
 
@@ -78049,13 +78016,11 @@ a.source-directory-variety-chip:focus-visible {
   color: rgba(224, 234, 224, 0.72);
 }
 
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-link,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-collapse-toggle {
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-link {
   color: color-mix(in srgb, var(--vault-theme-primary) 88%, white 12%);
 }
 
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-empty-action,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-collapse-toggle {
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-empty-action {
   border-color: color-mix(in srgb, var(--vault-theme-border) 66%, rgba(255, 255, 255, 0.08));
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--vault-theme-surface) 62%, rgba(255, 255, 255, 0.02)), rgba(255, 255, 255, 0.012)),
@@ -78063,9 +78028,7 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-empty-action:hover,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-empty-action:focus-visible,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-collapse-toggle:hover,
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-collapse-toggle:focus-visible {
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-empty-action:focus-visible {
   border-color: color-mix(in srgb, var(--vault-theme-border) 92%, rgba(255, 255, 255, 0.1));
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.18);
 }
