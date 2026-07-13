@@ -28,6 +28,11 @@ if ((!url || !anonKey) && isVercelBuild) {
   process.exit(1);
 }
 
+if (devPreviewDataEnabled && isVercelBuild) {
+  console.error("CANNAKAN_DEV_PREVIEW_DATA must not be enabled for production/Vercel builds.");
+  process.exit(1);
+}
+
 if (!pushPublicKey && isVercelBuild) {
   console.warn("VAPID_PUBLIC_KEY was not available during this Vercel build. Push subscriptions will remain disabled until the public key is exposed to the build environment.");
 }

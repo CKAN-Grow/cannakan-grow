@@ -67352,6 +67352,102 @@ body.theme-dark option[selected] {
   gap: 10px;
 }
 
+.seed-vault-dev-preview-toolbar,
+.seed-vault-dev-preview-banner {
+  border: 1px solid rgba(245, 183, 75, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(245, 183, 75, 0.08), rgba(148, 209, 89, 0.04)),
+    rgba(5, 10, 8, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.seed-vault-dev-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+}
+
+.seed-vault-dev-preview-toolbar.is-active {
+  border-color: rgba(245, 183, 75, 0.36);
+}
+
+.seed-vault-dev-preview-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.seed-vault-dev-preview-copy strong,
+.seed-vault-dev-preview-banner strong {
+  color: #f5b74b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.seed-vault-dev-preview-copy span,
+.seed-vault-dev-preview-banner span {
+  color: rgba(238, 244, 235, 0.74);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.seed-vault-dev-preview-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.seed-vault-dev-preview-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(184, 239, 125, 0.78);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-dev-preview-controls select {
+  min-height: 34px;
+  min-width: 150px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  border-radius: 10px;
+  background: rgba(4, 9, 7, 0.72);
+  color: #f4f7ef;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  outline: none;
+  padding: 0 10px;
+}
+
+.seed-vault-dev-preview-controls select:disabled {
+  opacity: 0.5;
+}
+
+.seed-vault-dev-preview-controls .button {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 10px;
+}
+
+.seed-vault-dev-preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+}
+
 .seed-vault-header {
   align-items: center;
   gap: 12px;
@@ -67536,6 +67632,22 @@ body.theme-dark option[selected] {
 .seed-vault-overview-lock-icon {
   width: 16px;
   height: 16px;
+}
+
+.seed-vault-overview-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid rgba(245, 183, 75, 0.35);
+  border-radius: 999px;
+  background: rgba(245, 183, 75, 0.1);
+  color: #f5b74b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .seed-vault-overview-hero-actions {
@@ -68155,6 +68267,15 @@ body.theme-dark option[selected] {
 }
 
 @media (max-width: 860px) {
+  .seed-vault-dev-preview-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .seed-vault-dev-preview-controls {
+    justify-content: flex-start;
+  }
+
   .seed-vault-overview-hero {
     align-items: start;
     padding: 16px;
@@ -68263,6 +68384,24 @@ body.theme-dark option[selected] {
 }
 
 @media (max-width: 640px) {
+  .seed-vault-dev-preview-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .seed-vault-dev-preview-controls label,
+  .seed-vault-dev-preview-controls select,
+  .seed-vault-dev-preview-controls .button {
+    width: 100%;
+  }
+
+  .seed-vault-dev-preview-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
   .seed-vault-overview {
     gap: 9px;
   }
