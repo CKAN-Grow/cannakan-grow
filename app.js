@@ -52526,7 +52526,13 @@ function getHomeGlobalAnalyticsCacheState() {
   if (!appState.explorerCompletedSessionAggregate) {
     return { state: "unavailable", analytics: null };
   }
-  return { state: "available", analytics: appState.explorerCompletedSessionAggregate };
+  const analytics = appState.explorerCompletedSessionAggregate;
+  const requiredMetrics = analytics?.canonicalMetricAvailability || {};
+  if (["totalCompletedSessions", "totalSeedsTested", "totalSeedsGerminated", "totalVarietiesLogged"]
+    .some((field) => requiredMetrics[field] !== true)) {
+    return { state: "malformed", analytics: null };
+  }
+  return { state: "available", analytics };
 }
 
 function formatHomeCanonicalMetric(value, analyticsState = "available", options = {}) {
@@ -52633,7 +52639,8 @@ function getHomeSeedExplorerPreviewData() {
       totalSeedsGerminated: null,
       confidence: "",
       rows: [],
-      source: analyticsState,
+      state: analyticsState,
+      source: "global",
     };
   }
   const rows = (Array.isArray(globalAnalytics.seedRecords) ? globalAnalytics.seedRecords : [])
@@ -52644,10 +52651,12 @@ function getHomeSeedExplorerPreviewData() {
         name: row.varietyName || "Seed variety",
         source: row.source || "Source not attributed",
         averageRate: row.germinationSuccess,
-        confidenceLabel: row.communityConfidence || "Not available",
-        confidencePercent: Number(row.confidencePercent || 0),
-        sessionCount: row.communitySessions || 0,
-        seedsTracked: row.seedsTracked || 0,
+        sessionCount: row.communitySessions,
+        seedsTracked: row.seedsTracked,
+        totalGerminated: row.totalGerminated,
+        publicEvidenceCount: row.publicEvidenceCount,
+        growInsight: row.growInsight,
+        sourceRelationship: row.sourceRelationship,
         href: row.id ? `#seeds/${encodeURIComponent(row.id)}` : "#seeds",
       };
     });
@@ -52658,7 +52667,8 @@ function getHomeSeedExplorerPreviewData() {
     totalSeedsGerminated: globalAnalytics.totalSeedsGerminated,
     confidence: globalAnalytics.communityConfidence,
     rows,
-    source: rows.length ? "global" : "insufficient",
+    state: analyticsState,
+    source: "global",
   };
 }
 
@@ -52670,9 +52680,9 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
     { label: "Seeds Germinated", value: preview.totalSeedsGerminated },
     { label: "Varieties", value: preview.totalVarieties },
   ];
-  const previewLabel = preview.source === "loading"
+  const previewLabel = preview.state === "loading"
     ? "Loading Global Analytics"
-    : (preview.source === "unavailable"
+    : (preview.state === "unavailable" || preview.state === "malformed"
       ? "Global Analytics unavailable"
       : `Global Analytics · ${preview.confidence || "Confidence unavailable"}`);
 
@@ -52693,7 +52703,7 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
         <div class="home-tested-sources-kpis" aria-label="Seed Explorer preview summary">
           ${summaryStats.map((kpi) => `
             <article class="home-tested-source-kpi home-seed-explorer-kpi">
-              <strong>${escapeHtml(formatHomeCanonicalMetric(kpi.value, preview.source))}</strong>
+              <strong>${escapeHtml(formatHomeCanonicalMetric(kpi.value, preview.state))}</strong>
               <span>${escapeHtml(kpi.label)}</span>
             </article>
           `).join("")}
@@ -52705,10 +52715,8 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
           </div>
           <div class="home-tested-sources-list" role="list" aria-label="Trending Seed Explorer varieties">
             ${preview.rows.length ? preview.rows.map((row) => {
-              const confidencePercent = Math.max(0, Math.min(100, Number(row.confidencePercent) || 0));
-              const sessionSummary = row.sessionCount
-                ? `${formatPrivateAnalyticsNumber(row.sessionCount)} ${row.sessionCount === 1 ? "session" : "sessions"}`
-                : `${formatPrivateAnalyticsNumber(row.seedsTracked)} seeds tested`;
+              const sessionSummary = `${formatPrivateAnalyticsNumber(row.sessionCount)} ${row.sessionCount === 1 ? "session" : "sessions"}`;
+              const germinationSummary = `${formatPrivateAnalyticsNumber(row.totalGerminated)} germinated`;
 
               return `
                 <a class="home-tested-source-row home-seed-explorer-row" role="listitem" href="${escapeHtml(row.href || "#seeds")}">
@@ -52721,10 +52729,9 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
                     <small>${escapeHtml(row.source || "Community Sources")}</small>
                     <small><b>${escapeHtml(formatPrivateAnalyticsPercent(row.averageRate))}</b> Average Germination</small>
                   </span>
-                  <span class="home-tested-source-confidence" aria-label="${escapeHtml(row.confidenceLabel || sessionSummary)}">
-                    <span>${escapeHtml(row.confidenceLabel || sessionSummary)}</span>
+                  <span class="home-tested-source-confidence" aria-label="${escapeHtml(`${germinationSummary}; ${sessionSummary}`)}">
+                    <span>${escapeHtml(germinationSummary)}</span>
                     <small>${escapeHtml(sessionSummary)}</small>
-                    <i><b style="width:${escapeHtml(String(confidencePercent))}%"></b></i>
                   </span>
                 </a>
               `;
@@ -52735,8 +52742,8 @@ function renderHomeSeedExplorerPreviewSectionMarkup() {
                   className: "home-seed-explorer-row-icon",
                 })}
                 <span class="home-tested-source-row-copy">
-                  <strong>${escapeHtml(preview.source === "unavailable" ? "Global Analytics is unavailable." : (preview.source === "loading" ? "Loading Global Analytics…" : "Variety evidence is still growing."))}</strong>
-                  <small>${escapeHtml(preview.source === "unavailable" ? "Canonical Seed Explorer metrics could not be loaded. Try again shortly." : (preview.source === "loading" ? "Canonical Seed Explorer metrics are loading." : "More eligible completed sessions will expand variety rankings."))}</small>
+                  <strong>${escapeHtml(preview.state === "unavailable" || preview.state === "malformed" ? "Global Analytics is unavailable." : (preview.state === "loading" ? "Loading Global Analytics…" : "Variety evidence is still growing."))}</strong>
+                  <small>${escapeHtml(preview.state === "unavailable" || preview.state === "malformed" ? "Canonical Seed Explorer metrics could not be loaded. Try again shortly." : (preview.state === "loading" ? "Canonical Seed Explorer metrics are loading." : "More eligible completed sessions will expand variety rankings."))}</small>
                 </span>
                 <a class="button button-secondary button-compact" href="#new">Start a Session</a>
               </article>
@@ -55044,7 +55051,24 @@ function isExplorerCompletedSessionAggregateEligible(session = null, options = {
 
 function normalizeExplorerCompletedSessionAggregatePayload(payload = null) {
   const contractPayload = payload && typeof payload === "object" ? payload : {};
-  const sourcePayload = contractPayload?.analytics && typeof contractPayload.analytics === "object" ? { ...contractPayload.analytics, ...contractPayload } : contractPayload;
+  const sourcePayload = contractPayload?.analytics && typeof contractPayload.analytics === "object"
+    ? contractPayload.analytics
+    : contractPayload;
+  const normalizeCanonicalMetric = (value) => {
+    if (value === null || value === undefined || (typeof value === "string" && !value.trim())) {
+      return { available: false, value: 0 };
+    }
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue >= 0
+      ? { available: true, value: numericValue }
+      : { available: false, value: 0 };
+  };
+  const canonicalMetrics = {
+    totalCompletedSessions: normalizeCanonicalMetric(sourcePayload.total_completed_sessions ?? sourcePayload.totalCompletedSessions),
+    totalSeedsTested: normalizeCanonicalMetric(sourcePayload.total_seeds_tested ?? sourcePayload.totalSeedsTested),
+    totalSeedsGerminated: normalizeCanonicalMetric(sourcePayload.total_seeds_germinated ?? sourcePayload.totalSeedsGerminated),
+    totalVarietiesLogged: normalizeCanonicalMetric(sourcePayload.total_varieties_logged ?? sourcePayload.totalVarietiesLogged),
+  };
   const seedRecords = (Array.isArray(sourcePayload.seedRecords)
     ? sourcePayload.seedRecords
     : Array.isArray(sourcePayload.seed_records)
@@ -55122,17 +55146,18 @@ function normalizeExplorerCompletedSessionAggregatePayload(payload = null) {
 
   return {
     isCanonicalGiePayloadNormalized: true,
-    contractName: String(sourcePayload.contract_name || "global_analytics").trim(), contractVersion: String(sourcePayload.contract_version || "gie-global.v1").trim(), authorizationStatus: String(sourcePayload.authorization_status || "public").trim(),
-    engineVersion: String(sourcePayload.engineVersion || sourcePayload.engine_version || "").trim(),
-    schemaVersion: String(sourcePayload.schemaVersion || sourcePayload.schema_version || "").trim(),
-    generatedAt: String(sourcePayload.generatedAt || sourcePayload.generated_at || "").trim(),
+    contractName: String(contractPayload.contract_name || sourcePayload.contract_name || "global_analytics").trim(), contractVersion: String(contractPayload.contract_version || sourcePayload.contract_version || "gie-global.v1").trim(), authorizationStatus: String(contractPayload.authorization_status || sourcePayload.authorization_status || "public").trim(),
+    engineVersion: String(contractPayload.engine_version || sourcePayload.engineVersion || sourcePayload.engine_version || "").trim(),
+    schemaVersion: String(contractPayload.schema_version || sourcePayload.schemaVersion || sourcePayload.schema_version || "").trim(),
+    generatedAt: String(contractPayload.generated_at || sourcePayload.generatedAt || sourcePayload.generated_at || "").trim(),
+    canonicalMetricAvailability: Object.fromEntries(Object.entries(canonicalMetrics).map(([field, metric]) => [field, metric.available])),
     seedRecords,
     sourceRecords,
     totalBreedersLogged: Math.max(0, Number(sourcePayload.totalBreedersLogged ?? sourcePayload.total_breeders_logged) || 0),
-    totalVarietiesLogged: Math.max(0, Number(sourcePayload.totalVarietiesLogged ?? sourcePayload.total_varieties_logged) || 0),
-    totalCompletedSessions: Math.max(0, Number(sourcePayload.totalCompletedSessions ?? sourcePayload.total_completed_sessions) || 0),
-    totalSeedsTested: Math.max(0, Number(sourcePayload.totalSeedsTested ?? sourcePayload.total_seeds_tested) || 0),
-    totalSeedsGerminated: Math.max(0, Number(sourcePayload.totalSeedsGerminated ?? sourcePayload.total_seeds_germinated) || 0),
+    totalVarietiesLogged: canonicalMetrics.totalVarietiesLogged.value,
+    totalCompletedSessions: canonicalMetrics.totalCompletedSessions.value,
+    totalSeedsTested: canonicalMetrics.totalSeedsTested.value,
+    totalSeedsGerminated: canonicalMetrics.totalSeedsGerminated.value,
     overallGerminationRate: Math.max(0, Number(sourcePayload.overallGerminationRate ?? sourcePayload.overall_germination_rate) || 0),
     totalSeedsWithSource: Math.max(0, Number(sourcePayload.totalSeedsWithSource ?? sourcePayload.total_seeds_with_source) || 0),
     totalSeedsWithoutSource: Math.max(0, Number(sourcePayload.totalSeedsWithoutSource ?? sourcePayload.total_seeds_without_source) || 0),
