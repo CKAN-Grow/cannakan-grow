@@ -67,8 +67,6 @@ const galleryMarkup = getBetween(
   "function renderSeedReportInsightsMarkup",
 );
 
-assert(app.includes("function getExplorerAggregateEligibleCompletedSessions"), "Missing shared Explorer completed-session eligibility helper.");
-assert(app.includes("function getExplorerAggregateEligibleCompletedSessions") && app.includes("isExplorerCompletedSessionAggregateEligible(session"), "Aggregate builder must use the Explorer completed-session eligibility helper.");
 assert(app.includes("function resolveGrowSessionLifecycle"), "Missing canonical local Grow Session lifecycle resolver.");
 assert(app.includes("function getExplorerCompletedSessionAggregateExclusionReason"), "Missing local Explorer compatibility exclusion-reason helper.");
 assert(app.includes("function isExplorerCompletedSessionAggregateEligible"), "Missing Explorer completed-session eligibility helper.");
@@ -78,8 +76,10 @@ assert(app.includes("return getExplorerCompletedSessionAggregateExclusionReason(
 assert(app.includes("return resolveGrowSessionLifecycle(session, options).included === true;"), "Analytics eligibility must resolve through the lifecycle resolver.");
 assert(app.includes('["completed", "complete"].includes(normalizedStatus)') && app.includes("hasCompletedTimestamp"), "Explorer eligibility must support legacy completed status and completed timestamps.");
 assert(app.includes('const hidden = visibilityStatus === "hidden";') && app.includes("userDeleted || hardDeleted || archived || hidden || deletedStatus"), "Lifecycle resolver must treat hidden/deleted visibility as excluded.");
-assert(aggregateBuilder.includes("!partitionResult.hasSeeds") && aggregateBuilder.includes("!partitionResult.hasFinalResultValue"), "Aggregate builder must exclude invalid/incomplete result rows.");
-assert(aggregateBuilder.includes("sourceMap") && aggregateBuilder.includes("seedRecords"), "Aggregate builder must produce shared Source and Seed records.");
+assert(!app.includes("function getExplorerAggregateEligibleCompletedSessions"), "Explorer must not rebuild GIE aggregates from locally loaded sessions.");
+assert(aggregateBuilder.includes("buildExplorerAggregateFromCachedPayload(appState.explorerCompletedSessionAggregate)"), "Explorer must consume the cached canonical GIE payload.");
+assert(!aggregateBuilder.includes("getSessions(") && !aggregateBuilder.includes("resultSummary") && !aggregateBuilder.includes(".reduce("), "Explorer aggregate adapter must not calculate analytics locally.");
+assert(aggregateBuilder.includes("sourceMap") && aggregateBuilder.includes("seedRecords"), "Aggregate adapter must expose canonical Source and Seed records.");
 assert(sourceAggregate.includes("buildExplorerCompletedSessionAggregate"), "Source Explorer must reuse the shared completed-session aggregate.");
 assert(sourceAggregate.includes("buildExplorerCompletedSessionAggregate();"), "Source Explorer must use the cached RPC aggregate instead of rebuilding from local session state.");
 assert(sourceAggregate.includes("totalCompletedSessions"), "Source Explorer aggregate must carry the shared completed-session count.");

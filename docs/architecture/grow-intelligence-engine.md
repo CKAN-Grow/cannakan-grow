@@ -282,6 +282,108 @@ It is admin/service-role only and includes:
 
 The diagnostic may expose session identifiers and names to admins for audit. Public GIE analytics must remain anonymous.
 
+## GIE Adoption Status
+
+Audit date: 2026-07-13. Strict adoption is **4 of 20 audited consumer groups
+(20%)**. Compatibility consumers use at least one GIE surface but still contain
+another local analytics path. The architecture is therefore not ready to be
+declared frozen as fully adopted.
+
+| Consumer | Status | Audit result |
+| --- | --- | --- |
+| Home | ⚠ Compatibility Wrapper | Seed/Source previews consume GIE; Community rankings still use snapshot rollups. |
+| Sessions | ❌ Legacy | Owner session totals and lifecycle-filtered counts are calculated in browser helpers. |
+| Session Analytics | ❌ Legacy | Rates, totals, category rollups, and chart rankings are calculated from loaded sessions. |
+| Community | ❌ Legacy | `buildCommunityInsightsState()` aggregates approved snapshots client-side. |
+| Community Reports | ❌ Legacy | Public snapshot totals, rates, sources, and varieties are calculated outside GIE. |
+| Seed Explorer | ✅ Uses GIE | Reads the cached canonical GIE payload; the local completed-session aggregate fallback was removed. |
+| Source Explorer | ✅ Uses GIE | Headlines and source records read the same cached canonical GIE payload. |
+| Variety Reports | ✅ Uses GIE | Aggregate variety performance comes from GIE; snapshots remain supporting public evidence. |
+| Source Reports | ❌ Legacy | Source trust/confidence scoring and some report summaries are calculated client-side. |
+| Profile | ❌ Legacy | Owner and public profile analytics are independently aggregated. |
+| Grow Network | ❌ Legacy | Member scores, averages, and achievements use profile/session calculations. |
+| Seed Vault summaries | ❌ Legacy | Inventory, linked-session performance, age buckets, and rollups are calculated locally. |
+| Admin | ❌ Legacy | Visitor analytics are operational, but Seed Age and other Grow analytics still calculate locally. |
+| Grow Intelligence Health | ✅ Uses GIE | Renders GIE engine, schema, data-quality version, score, status, and breakdown without reinterpretation. |
+| Rankings | ❌ Legacy | Home and Community ranking order is derived from snapshot/member rollups. |
+| Leaderboards | ❌ Legacy | Community leaderboard metrics and ordering are not in the GIE payload. |
+| Community Confidence | ⚠ Compatibility Wrapper | Explorer confidence is canonical GIE output; legacy public-directory confidence remains local. |
+| Recommendations | ❌ Legacy | Private dashboard and session companion recommendations use locally derived metrics. |
+| AI integration hooks | ⚠ Compatibility Wrapper | No live AI analytics consumer exists; placeholder hooks still expose locally built private rollups. |
+| Cached aggregate / RPC compatibility | ⚠ Compatibility Wrapper | The cache contains normalized GIE output; the legacy Explorer RPC remains a GIE-delegating compatibility wrapper. |
+
+### Permanent development rule
+
+**No analytics without GIE.** A new analytics requirement must extend and
+version the GIE before any consumer renders it. New UI code must not introduce
+totals, percentages, confidence, ranking, or eligibility calculations.
+
+The remaining legacy consumers cannot be safely redirected to the existing
+anonymous global payload. They require explicit GIE contracts for authenticated
+owner-private analytics and public social-evidence analytics. Adding those
+contracts is a future architecture task, not a safe deletion in this adoption
+audit.
+
+### Localhost status
+
+Browser initialization reads only `window.CANNAKAN_SUPABASE_CONFIG.url` and
+`anonKey`. The checked-in generated configuration currently has empty values,
+which explains the prior localhost `0 / 0 / 0` display: no Supabase client and
+therefore no GIE RPC response. Configure `CANNAKAN_SUPABASE_URL` and
+`CANNAKAN_SUPABASE_ANON_KEY`, run `npm.cmd run build`, and serve the app. The
+browser then calls `public.get_grow_intelligence_engine_analytics()` exactly as
+production does. Service-role and secret keys are restricted to server-side API
+handlers and are not emitted into browser configuration.
+
+Explorer no longer reconstructs platform aggregates from locally loaded
+sessions when the RPC is unavailable. It renders an unavailable/empty canonical
+state until GIE configuration is valid.
+
+### Performance findings
+
+- GIE loads once during signed-in or signed-out hydration and refreshes after
+  analytics-relevant session mutations. No GIE polling loop exists.
+- The legacy Explorer RPC adds one fallback request only when the canonical RPC
+  is missing; it delegates to GIE and may be removed after migration adoption is
+  universal.
+- Normalized GIE payloads are marked and reused so Explorer renders do not
+  repeatedly normalize the same cache entry.
+- `buildCommunityInsightsState()`, profile analytics, private dashboard
+  rollups, and Seed Vault analytics repeatedly traverse the same local records.
+  Their eventual GIE contracts should return presentation-ready rollups and use
+  one versioned cache per scope.
+- Rapid consecutive session mutations can initiate multiple refresh requests.
+  A future non-semantic optimization may coalesce in-flight GIE refreshes.
+
+### Production parity target
+
+The canonical production payload is expected to report 4 completed sessions,
+262 seeds tested, 242 seeds germinated, 28 varieties, 9 sources, 234 seeds with
+source, 28 seeds missing source, and Data Quality 88 / Needs Attention. These
+figures are verification targets only and are not hardcoded into application
+logic.
+
+Verify the deployed payload directly:
+
+```sql
+select
+  payload ->> 'engine_version' as engine_version,
+  payload ->> 'schema_version' as schema_version,
+  payload ->> 'data_quality_version' as data_quality_version,
+  payload ->> 'total_completed_sessions' as completed_sessions,
+  payload ->> 'total_seeds_tested' as seeds_tested,
+  payload ->> 'total_seeds_germinated' as seeds_germinated,
+  payload ->> 'total_varieties_logged' as varieties,
+  payload ->> 'total_breeders_logged' as sources,
+  payload ->> 'total_seeds_with_source' as seeds_with_source,
+  payload ->> 'total_seeds_without_source' as seeds_missing_source,
+  payload ->> 'data_quality_score' as data_quality_score,
+  payload ->> 'data_quality_status' as data_quality_status
+from (
+  select public.get_grow_intelligence_engine_analytics() as payload
+) canonical;
+```
+
 ## Extension Guidelines
 
 When adding analytics:

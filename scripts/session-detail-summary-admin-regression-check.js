@@ -57,7 +57,7 @@ for (const needle of [
 
 for (const needle of [
   ".session-workspace-shell--detail .detail-header",
-  "grid-template-columns: repeat(5, minmax(112px, 1fr));",
+  "grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));",
   ".session-workspace-shell--detail .detail-header-label",
   ".session-workspace-shell--detail .detail-header .meta-card--status",
   ".session-workspace-shell--detail .session-workspace-header .inline-actions",
