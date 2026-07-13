@@ -23,7 +23,7 @@ for (const needle of [
   "function getInitialSnapshotIncludeProfileValue(persistedSnapshotState = null)",
   "return preference === null || preference === undefined ? true : Boolean(preference);",
   "void applySnapshotDestinationSelection(state, getInitialSnapshotDestinationValue(state), { syncControls: false });",
-  "await applySnapshotDestinationSelection(state, input.value, { persist: true, syncControls: true });",
+  "await handleSnapshotDestinationSelection(state, input);",
   "await applySnapshotDestinationSelection(state, \"social\", { persist: true, syncControls: true });",
   "rememberSnapshotIncludeProfilePreference(state.includeProfileToggle.checked);",
   "input.disabled = unavailable;",
