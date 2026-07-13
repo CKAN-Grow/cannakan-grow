@@ -7172,7 +7172,7 @@ body.theme-dark #active-sessions-section {
 }
 
 .session-result-partition-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .session-result-partition-chip,
@@ -7185,11 +7185,11 @@ body.theme-dark #active-sessions-section {
 
 .session-result-partition-chip {
   position: relative;
-  display: grid;
-  grid-template-rows: auto auto auto auto auto 1fr;
-  gap: 8px;
-  min-height: 236px;
-  padding: 28px 18px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 264px;
+  padding: 30px 18px 18px;
   overflow: hidden;
   border-color: var(--partition-success-border);
 }
@@ -7216,7 +7216,12 @@ body.theme-dark #active-sessions-section {
 .session-result-partition-label {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
+  margin-bottom: 8px;
+  font-size: 1.22rem;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  line-height: 1.06;
 }
 
 .session-result-partition-chip.partition-success-card {
@@ -7252,14 +7257,17 @@ body.theme-dark #active-sessions-section {
 
 .session-result-partition-chip .partition-success-badge {
   width: fit-content;
-  margin-top: 4px;
+  margin-top: 6px;
+  padding-inline: 0.66rem;
+  min-height: 1.42rem;
 }
 
 .session-result-partition-variety {
   align-self: end;
-  margin-top: 12px !important;
-  padding-top: 12px;
-  border-top: 1px solid rgba(24, 34, 24, 0.08);
+  width: 100%;
+  margin-top: auto !important;
+  padding-top: 16px;
+  border-top: 1.5px solid rgba(24, 34, 24, 0.14);
   color: var(--ink) !important;
   font-weight: 720;
 }
@@ -46594,19 +46602,23 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-results-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .public-session-partition-result {
   min-width: 0;
-  display: grid;
-  grid-template-rows: auto auto auto auto auto;
-  gap: 4px;
-  padding: 10px 12px 9px;
+  min-height: 226px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 14px;
   border: 1px solid rgba(24, 34, 24, 0.08);
   border-radius: 13px;
   background: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 3px 0 var(--partition-success-accent),
+    0 12px 22px var(--partition-success-glow);
 }
 
 .public-session-partition-result.partition-success-card {
@@ -46627,25 +46639,28 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-partition-result-variety {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1.5px solid rgba(24, 34, 24, 0.16);
   color: var(--ink);
-  font-size: 0.83rem;
-  font-weight: 780;
-  line-height: 1.2;
+  font-size: 0.88rem;
+  font-weight: 820;
+  line-height: 1.28;
   overflow-wrap: anywhere;
 }
 
 .public-session-partition-result-count {
   color: var(--ink);
-  font-size: 0.76rem;
-  font-weight: 760;
-  line-height: 1.18;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.24;
 }
 
 .public-session-partition-result-meta {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 680;
-  line-height: 1.22;
+  line-height: 1.28;
   overflow-wrap: anywhere;
 }
 
@@ -46665,23 +46680,34 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .public-session-partition-result-topline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 1.9rem;
+  justify-content: flex-start;
+  gap: 8px;
+  min-height: 2rem;
+  margin-bottom: 4px;
 }
 
 .public-session-partition-result-topline strong {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--ink);
-  font-size: 0.92rem;
-  line-height: 1;
+  font-size: 1.36rem;
+  font-weight: 900;
+  letter-spacing: 0.045em;
+  line-height: 1.04;
+  text-transform: uppercase;
 }
 
-.public-session-partition-result-topline > span {
+.public-session-partition-result-topline .partition-success-dot {
+  width: 0.52rem;
+  height: 0.52rem;
+  box-shadow: 0 0 0 3px var(--partition-success-accent-soft);
+}
+
+.public-session-partition-result .partition-success-rate {
+  display: block;
   color: var(--accent-dark);
-  font-size: 1.46rem;
+  font-size: 2.28rem;
   font-weight: 900;
   line-height: 0.95;
   font-variant-numeric: tabular-nums;
@@ -46690,11 +46716,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-result .partition-success-badge {
   justify-self: start;
-  margin-top: 2px;
-  min-height: 1.12rem;
-  padding: 0.13rem 0.42rem;
-  font-size: 0.6rem;
-  font-weight: 680;
+  align-self: flex-start;
+  margin-top: 3px;
+  min-height: 1.32rem;
+  padding: 0.18rem 0.58rem;
+  font-size: 0.66rem;
+  font-weight: 760;
   opacity: 0.86;
 }
 
@@ -46715,6 +46742,13 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   width: 0.36rem;
   height: 0.36rem;
   box-shadow: 0 0 0 2px var(--partition-success-accent-soft);
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .session-result-partition-grid,
+  .public-session-partition-results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .public-session-details {
@@ -59514,6 +59548,7 @@ body.theme-dark .session-result-breakdown-head h4,
 body.theme-dark .session-result-partition-chip strong,
 body.theme-dark .session-result-breakdown-overall > div > span,
 body.theme-dark .session-result-group-name,
+body.theme-dark .session-result-partition-label,
 body.theme-dark .session-result-partition-count,
 body.theme-dark .session-result-partition-variety {
   color: #f6f8f5;
@@ -59565,7 +59600,7 @@ body.theme-dark .session-result-overall-orb {
 body.theme-dark .session-result-group-list-head,
 body.theme-dark .session-result-group-row,
 body.theme-dark .session-result-partition-variety {
-  border-color: rgba(148, 209, 89, 0.11);
+  border-color: rgba(148, 209, 89, 0.2);
 }
 
 body.theme-dark .session-result-group-partitions {
@@ -59647,6 +59682,10 @@ body.theme-dark .public-session-partition-result.partition-success-card {
   background:
     linear-gradient(180deg, var(--partition-success-accent-soft), rgba(255, 255, 255, 0.018)),
     rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .public-session-partition-result-variety {
+  border-top-color: rgba(148, 209, 89, 0.2);
 }
 
 body.theme-dark .public-session-partition-results-empty {

@@ -94499,6 +94499,9 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
           const partitionLabel = method.isStandardized
             ? getNewSessionSeedVaultPartitionLabel(method.id, partitionId)
             : `${method.rowLabel} ${partitionId}`;
+          const partitionDisplayLabel = method.isStandardized
+            ? `${method.rowLabel} ${partitionId}`
+            : partitionLabel;
           const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "Not shared") : "Not shared";
           const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "Not shared") : "Not shared";
           const seedAgeLabel = getPublicSessionPartitionAgeLabel(partition, hasSeeds);
@@ -94514,13 +94517,13 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
           return `
             <article class="public-session-partition-result partition-success-card ${escapeHtml(successStatus.className)}${hasSeeds ? "" : " is-empty"}">
               <div class="public-session-partition-result-topline">
-                <strong><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partitionLabel)}</strong>
-                <span class="partition-success-rate">${escapeHtml(percentageLabel)}</span>
+                <strong><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partitionDisplayLabel)}</strong>
               </div>
-              <p class="public-session-partition-result-variety">${escapeHtml(varietyLabel)}</p>
+              <span class="partition-success-rate">${escapeHtml(percentageLabel)}</span>
               <p class="public-session-partition-result-count">${escapeHtml(countLabel)}</p>
               <p class="public-session-partition-result-meta">${escapeHtml(secondaryMeta)}</p>
               <span class="partition-success-badge">${escapeHtml(successStatus.label)}</span>
+              <p class="public-session-partition-result-variety">${escapeHtml(varietyLabel)}</p>
             </article>
           `;
           }).join("")}
@@ -94726,6 +94729,10 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
       </div>
       <div class="session-result-partition-grid">
         ${countedPartitions.map((partition) => {
+          const partitionLabelMatch = String(partition.label || "").trim().match(/^P\s*(\d+)$/i);
+          const partitionDisplayLabel = partitionLabelMatch
+            ? `${method.rowLabel} ${partitionLabelMatch[1]}`
+            : partition.label;
           const successStatus = isSetupSession
             ? setupStatus
             : isInProgressSession
@@ -94755,7 +94762,7 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
               : partition.percentageLabel;
           return `
             <article class="session-result-partition-chip partition-success-card ${escapeHtml(successStatus.className)}">
-              <span class="session-result-partition-label"><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partition.label)}</span>
+              <span class="session-result-partition-label"><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partitionDisplayLabel)}</span>
               <strong class="partition-success-rate">${escapeHtml(rateLabel)}</strong>
               <p class="session-result-partition-count">${escapeHtml(germinationLine)}</p>
               <p class="session-result-partition-meta">${escapeHtml(accountingLine)}</p>

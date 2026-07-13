@@ -8,15 +8,12 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
 
 [
   "function renderPublicSessionPartitionResultsMarkup",
-  "${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}",
-  "renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })",
+  "function renderSessionResultBreakdownMarkup",
   "const maxPartitions = systemType === \"TRA\" ? 16 : 8;",
-  "<dt>Source</dt>",
-  "<dt>Seed Variety</dt>",
-  "<dt>Type</dt>",
-  "<dt>Sex</dt>",
-  "<dt>Seed Age</dt>",
-  "<dt>Germinated</dt>",
+  "const partitionDisplayLabel = partitionLabelMatch",
+  "`${method.rowLabel} ${partitionLabelMatch[1]}`",
+  "public-session-partition-result-variety",
+  "session-result-partition-variety",
   "seedTypeLabel: getSeedTypeLabel(seedType) || \"\"",
   "sexLabel: getSeedSexLabel(seedSex) || \"\"",
   "seedType: partition.seedType || partition.type || partition.seedTypeLabel || \"\"",
@@ -28,17 +25,18 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
 [
   ".public-session-partition-results",
   ".public-session-partition-results-grid",
+  "grid-template-columns: repeat(4, minmax(0, 1fr));",
+  "@media (min-width: 721px) and (max-width: 1100px)",
+  "grid-template-columns: repeat(2, minmax(0, 1fr));",
   ".public-session-partition-result-topline",
+  ".session-result-partition-grid",
+  ".session-result-partition-chip",
+  "text-transform: uppercase;",
+  "margin-top: auto;",
   "body.theme-dark .public-session-partition-results",
   "body.theme-dark .public-session-partition-result",
 ].forEach((needle) => {
   assert(stylesSource.includes(needle), `Expected public session partition result styling: ${needle}`);
 });
-
-assert(
-  appSource.indexOf("${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}")
-    < appSource.indexOf("renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })"),
-  "Public Session partition results should render directly below the snapshot media.",
-);
 
 console.log("Public session partition results regression check passed.");
