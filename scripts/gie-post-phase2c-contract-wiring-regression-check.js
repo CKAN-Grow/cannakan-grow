@@ -28,7 +28,7 @@ const mutationRefresh = between(app, "async function refreshGrowAnalyticsAfterSe
 
 assert(migration.includes("get_gie_community_evidence_v1()"), "A canonical Community evidence resolver is required.");
 assert(migration.includes("from public.get_gie_community_evidence_v1() evidence"), "Community scoped rows must consume the canonical evidence resolver.");
-assert(migration.includes("partition_value ->> 'totalCount'"), "Current gallery partition totalCount must be recognized by GIE.");
+assert(migration.includes("get_gie_canonical_seed_count") && migration.includes("'totalCount'"), "Current gallery partition totalCount must be recognized by the canonical GIE parser.");
 for (const predicate of [
   "lower(coalesce(snapshot_row.status, '')) = 'approved'",
   "coalesce(snapshot_row.is_published, false) = true",
