@@ -122,6 +122,7 @@ select
   location_region,
   country_code,
   profile_visibility,
+  vault_theme,
   joined_at,
   show_profile_in_community_grow,
   show_grow_stats_publicly,
