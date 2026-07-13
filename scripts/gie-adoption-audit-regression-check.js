@@ -22,18 +22,18 @@ function getBetween(source, startNeedle, endNeedle) {
 }
 
 const consumers = [
-  ["Home", "⚠ Compatibility Wrapper"],
-  ["Sessions", "❌ Legacy"],
-  ["Session Analytics", "❌ Legacy"],
+  ["Home", "✅ Uses Owner Contract"],
+  ["Sessions", "✅ Uses Owner Contract"],
+  ["Session Analytics", "✅ Uses Owner Contract"],
   ["Community", "❌ Legacy"],
   ["Community Reports", "❌ Legacy"],
   ["Seed Explorer", "✅ Uses GIE"],
   ["Source Explorer", "✅ Uses GIE"],
   ["Variety Reports", "✅ Uses GIE"],
   ["Source Reports", "❌ Legacy"],
-  ["Profile", "❌ Legacy"],
+  ["Profile", "✅ Uses Owner Contract"],
   ["Grow Network", "❌ Legacy"],
-  ["Seed Vault summaries", "❌ Legacy"],
+  ["Seed Vault summaries", "✅ Uses Owner Contract"],
   ["Admin", "❌ Legacy"],
   ["Grow Intelligence Health", "✅ Uses GIE"],
   ["Rankings", "❌ Legacy"],
@@ -47,8 +47,8 @@ const consumers = [
 for (const [consumer, status] of consumers) {
   assert(docs.includes(`| ${consumer} | ${status} |`), `Missing adoption classification for ${consumer}.`);
 }
-assert(consumers.filter(([, status]) => status === "✅ Uses GIE").length === 4, "Strict adoption numerator changed; update the documented audit percentage.");
-assert(docs.includes("4 of 20 audited consumer groups") && docs.includes("(20%)"), "Strict GIE adoption percentage is missing or stale.");
+assert(consumers.filter(([, status]) => status.startsWith("✅")).length === 9, "Scoped adoption numerator changed; update the documented audit percentage.");
+assert(docs.includes("9 of 20") && docs.includes("(45%)"), "GIE adoption percentage is missing or stale.");
 assert(docs.includes("No analytics without GIE."), "Permanent GIE development rule is missing.");
 
 const aggregateAdapter = getBetween(app, "function buildExplorerCompletedSessionAggregate", "function getSeedExplorerRecords");
@@ -80,4 +80,4 @@ assert(browserConfig.includes("anonKey") && !/service.?role|secret.?key/i.test(b
 assert(buildConfig.includes("CANNAKAN_SUPABASE_ANON_KEY") && !/SERVICE_ROLE|SECRET_KEY/.test(buildConfig), "Client build config must never read server secrets.");
 assert(!/SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEY/.test(app), "Browser application code must not reference service-role or secret keys.");
 
-console.log("GIE adoption audit regression checks passed (20% strict adoption; 12 known legacy consumer groups)." );
+console.log("GIE adoption audit regression checks passed (45% scoped adoption; Group A migrated)." );
