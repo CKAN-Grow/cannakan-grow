@@ -77,6 +77,7 @@ Required environment:
 
 Before running, apply:
   supabase/migrations/20260713120000_community_grow_publication_reset.sql
+  supabase/migrations/20260713123000_community_grow_reset_service_role_grants.sql
 `);
 }
 
@@ -277,6 +278,7 @@ async function main() {
   }
 
   const dryRun = await callRpc(supabase, "admin_preview_community_grow_publication_reset");
+  console.log(`\nAuthentication succeeded. Supabase accepted ${supabase.apiKeyEnvName} as a ${supabase.apiKeyKind} key for the reset preview RPC.`);
   printSection("Dry Run Summary", dryRun);
 
   if (!shouldExecute) {
