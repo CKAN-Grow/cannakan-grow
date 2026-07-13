@@ -8,6 +8,31 @@ Operational systems own operational data. The GIE reads that data, validates it,
 
 The GIE does not mutate operational records. Session creation, completion, deletion, publication, snapshot management, Seed Vault records, and account settings remain owned by their existing domain flows.
 
+## Permanent Data Flow
+
+```text
+Raw Operational Data
+        ↓
+Canonical Grow Session Lifecycle Resolver
+        ↓
+Grow Intelligence Engine
+        ↓
+Canonical Versioned Analytics Payload
+        ↓
+Consumers
+        ↓
+UI
+```
+
+The lifecycle resolver determines whether a session participates. The GIE then
+transforms eligible operational data into analytics and data-quality measures.
+Consumers never calculate analytics independently, and UI components only
+render canonical payload values. Community snapshots are public evidence, not
+aggregate truth.
+
+New analytics and new data-quality measures must be added to the GIE first,
+versioned there, and only then exposed to consumers.
+
 ## Lifecycle Relationship
 
 The GIE sits on top of the canonical Grow Session lifecycle resolver.
@@ -91,6 +116,16 @@ The payload includes:
 - `duplicate_sources`
 - `unknown_sources`
 - `unknown_varieties`
+- `invalid_result_rows`
+- `duplicate_varieties`
+- `duplicate_result_rows`
+- `orphaned_aggregate_records`
+- `missing_required_result_fields`
+- `data_quality_score`
+- `data_quality_status`
+- `data_quality_breakdown`
+- `data_quality_thresholds`
+- `data_quality_version`
 - canonical Community Confidence values
 
 `total_seeds_tested` is the headline seed total everywhere. Source-attributed
@@ -128,9 +163,56 @@ The GIE payload exposes:
 
 - `engine_version`
 - `schema_version`
+- `data_quality_version`
 - `generated_at`
 
 Behavior-changing analytics updates should increment the appropriate version rather than silently changing output semantics.
+
+`schema_version` changes when the payload contract changes. `engine_version`
+changes when the overall analytics engine behavior requires a new compatibility
+generation. `data_quality_version` changes whenever scoring categories,
+weights, deductions, or status thresholds change. A score-formula change must
+never ship under an existing `data_quality_version`.
+
+## Data-Quality Score (`gie-dq.v1`)
+
+The canonical score is deterministic and calculated only by
+`public.get_grow_intelligence_engine_analytics()`:
+
+```text
+data_quality_score = round(100 - sum(category deductions))
+```
+
+The result is clamped to 0–100. Configuration lives in
+`public.grow_intelligence_engine_config`.
+
+| Category | Weight | Deduction model |
+| --- | ---: | --- |
+| Source attribution completeness | 70 | Missing attribution percentage, capped at 70 |
+| Varieties missing source | 5 | Audited separately; charged once through source attribution |
+| Unknown sources | 5 | Audited separately; charged once through source attribution |
+| Unknown varieties | 4 | Weighted share of audited result rows |
+| Duplicate sources | 3 | Weighted share of canonical sources |
+| Duplicate varieties | 3 | Weighted share of canonical varieties |
+| Invalid or missing seed counts | 3 | Weighted share of audited result rows |
+| Germinated count bounds | 2 | Weighted share of audited result rows |
+| Orphaned aggregate records | 2 | One point per orphan, capped at the weight |
+| Duplicate result rows | 1 | Weighted share of audited result rows |
+| Missing required result fields | 2 | Weighted share of audited result rows |
+
+Missing-source categories remain visible in the breakdown but are not charged a
+second time. This prevents one attribution defect from producing multiple
+opaque deductions.
+
+Canonical status thresholds are configurable and default to:
+
+- 95–100: Excellent
+- 90–94: Good
+- 80–89: Needs Attention
+- Below 80: Poor
+
+Every breakdown item includes its category, weight, measured value, deduction,
+status, and concise reason. Consumers must not reinterpret the score or status.
 
 ## Consumer Architecture
 
@@ -146,7 +228,7 @@ Current and future consumers must read GIE output or lifecycle resolver output:
 - Leaderboards
 - Confidence calculations
 - Admin dashboards
-- Explorer Data Health
+- Grow Intelligence Health
 - Future recommendations and AI analytics
 
 UI components render GIE output. They do not independently calculate aggregate analytics.
@@ -156,7 +238,17 @@ Germinated, Overall Germination %, Varieties, Sources, and Community Confidence.
 Canonical data-quality terminology is: Seeds With Source, Seeds Missing Source,
 Source Attribution %, Unknown Sources, and Unknown Varieties.
 
-## Admin Data Health
+## Grow Intelligence Health
+
+The previous `#admin/data-health`, `#admin/explorer-data-health`, and
+`#admin/gie` hashes remain aliases for `#admin/grow-intelligence-health`. They
+all open the same admin-only, read-only health surface.
+
+System Health and Data Quality remain separate. System Health describes RPC
+availability, engine/schema compatibility, consumer synchronization, response
+freshness, and integrity diagnostics. Data Quality describes attribution,
+completeness, duplicates, invalid fields, and aggregate cleanliness. A healthy
+engine may legitimately report a data-quality warning.
 
 The admin diagnostic entry point is:
 
@@ -185,6 +277,8 @@ It is admin/service-role only and includes:
 - varieties missing source
 - duplicate sources
 - unknown sources and varieties
+- canonical data-quality score, status, version, and explainable breakdown
+- invalid, duplicate, missing-field, and orphaned-record counts
 
 The diagnostic may expose session identifiers and names to admins for audit. Public GIE analytics must remain anonymous.
 

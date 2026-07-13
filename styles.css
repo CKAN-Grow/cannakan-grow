@@ -122,6 +122,37 @@ html {
   --space-stack: var(--space-3);
 }
 
+.grow-intelligence-data-quality-card {
+  border-color: color-mix(in srgb, var(--accent, #2f8f64) 42%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent, #2f8f64) 10%, var(--surface, #fff)), var(--surface, #fff));
+}
+
+.grow-intelligence-data-quality-score {
+  display: grid;
+  justify-items: end;
+  gap: 0.15rem;
+  min-width: 7rem;
+}
+
+.grow-intelligence-data-quality-score strong {
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.grow-intelligence-data-quality-score span {
+  font-weight: 700;
+}
+
+.grow-intelligence-data-quality-breakdown .table-wrap {
+  margin-top: 1rem;
+}
+
+@media (max-width: 720px) {
+  .grow-intelligence-data-quality-score {
+    justify-items: start;
+  }
+}
+
 @property --install-ring-angle {
   syntax: "<angle>";
   inherits: false;
