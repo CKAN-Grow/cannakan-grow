@@ -2,8 +2,8 @@ const fs = require("fs");
 const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
-const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
-const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
+const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 function requireNeedle(source, needle, label) {
   if (!source.includes(needle)) {

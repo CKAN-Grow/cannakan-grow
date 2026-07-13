@@ -174,7 +174,10 @@ function normalizeSessionStatus(value = "") {
   if (normalized === "soaking") {
     return "soaking";
   }
-  return "";
+  if (["active", "custom", "abandoned", "failed", "canceled", "cancelled"].includes(normalized)) {
+    return normalized === "custom" ? "active" : normalized;
+  }
+  return normalized;
 }
 
 function getSessionMethodKey(session = {}) {
@@ -211,13 +214,8 @@ function parseSessionStartDateTime(sessionDate = "", sessionTime = "") {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function getStageStartDateTime(session = {}, stage = "") {
-  if (stage === "germinating") {
-    return parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "");
-  }
-  return parseTimestamp(session?.soakStartedAt || session?.soak_started_at || "")
-    || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
-    || parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
+function getReminderStartDateTime(session = {}) {
+  return parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
     || parseSessionStartDateTime(session?.date || "", session?.time || "")
     || parseTimestamp(session?.createdAt || session?.created_at || "");
 }
@@ -226,11 +224,7 @@ function getLatestSessionLifecycleActivityAt(session = {}) {
   const candidates = [
     session?.updatedAt || session?.updated_at || "",
     session?.completedAt || session?.completed_at || "",
-    session?.firstPlantedAt || session?.first_planted_at || "",
-    session?.germinationStartedAt || session?.germination_started_at || "",
-    session?.soakStartedAt || session?.soak_started_at || "",
     session?.sessionStartedAt || session?.session_started_at || "",
-    session?.timerStartAt || session?.timer_start_at || "",
     session?.createdAt || session?.created_at || "",
   ]
     .map((value) => parseTimestamp(value))
@@ -255,24 +249,14 @@ function getSessionLifecycleHourDelta(startAt, now = new Date()) {
 }
 
 function getSessionLifecycleTimestampHealth(session = {}, now = new Date()) {
-  const sessionStartedAt = parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
+  const engineState = SessionEngine.calculateSessionState({ session, now, method: getSessionMethodKey(session) });
+  const sessionStartedAt = engineState?.startedAt instanceof Date && !Number.isNaN(engineState.startedAt.getTime())
+    ? engineState.startedAt
+    : parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
     || parseSessionStartDateTime(session?.date || "", session?.time || "")
     || parseTimestamp(session?.createdAt || session?.created_at || "");
-  const soakStartedAt = parseTimestamp(session?.soakStartedAt || session?.soak_started_at || "")
-    || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
-    || sessionStartedAt;
-  const germinationStartedAt = parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "");
   const completedAt = parseTimestamp(session?.completedAt || session?.completed_at || "");
 
-  if (sessionStartedAt && soakStartedAt && soakStartedAt < sessionStartedAt) {
-    return { isValid: false, reason: "invalid_timestamp_order" };
-  }
-  if (soakStartedAt && germinationStartedAt && germinationStartedAt < soakStartedAt) {
-    return { isValid: false, reason: "invalid_timestamp_order" };
-  }
-  if (germinationStartedAt && completedAt && completedAt < germinationStartedAt) {
-    return { isValid: false, reason: "invalid_timestamp_order" };
-  }
   if (sessionStartedAt && completedAt && completedAt < sessionStartedAt) {
     return { isValid: false, reason: "invalid_timestamp_order" };
   }
@@ -281,11 +265,7 @@ function getSessionLifecycleTimestampHealth(session = {}, now = new Date()) {
   const futureTimestamp = [
     session?.updatedAt || session?.updated_at || "",
     session?.completedAt || session?.completed_at || "",
-    session?.firstPlantedAt || session?.first_planted_at || "",
-    session?.germinationStartedAt || session?.germination_started_at || "",
-    session?.soakStartedAt || session?.soak_started_at || "",
     session?.sessionStartedAt || session?.session_started_at || "",
-    session?.timerStartAt || session?.timer_start_at || "",
     session?.createdAt || session?.created_at || "",
   ]
     .map((value) => parseTimestamp(value))
@@ -309,16 +289,13 @@ function getGrowSessionLifecycleHealth(session = {}, now = new Date()) {
     return { classification: "abandoned", suppressReminders: true, reason: "terminal_incomplete_status" };
   }
 
-  const sessionStartedAt = parseTimestamp(session?.soakStartedAt || session?.soak_started_at || "")
-    || parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
+  const sessionStartedAt = parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
     || parseSessionStartDateTime(session?.date || "", session?.time || "")
-    || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
     || parseTimestamp(session?.createdAt || session?.created_at || "");
-  const germinationStartedAt = parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "");
-  const lastActivityAt = getLatestSessionLifecycleActivityAt(session) || germinationStartedAt || sessionStartedAt;
+  const lastActivityAt = getLatestSessionLifecycleActivityAt(session) || sessionStartedAt;
   const sessionHours = getSessionLifecycleHourDelta(sessionStartedAt, now);
-  const germinationHours = getSessionLifecycleHourDelta(germinationStartedAt, now);
   const inactiveHours = getSessionLifecycleHourDelta(lastActivityAt, now);
+  const currentPhaseKey = String(engineState?.currentPhase?.key || "").trim();
 
   if (inactiveHours !== null && inactiveHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.inactiveAbandonedHours) {
     return { classification: "abandoned", suppressReminders: true, reason: "inactive_abandoned_threshold" };
@@ -326,10 +303,7 @@ function getGrowSessionLifecycleHealth(session = {}, now = new Date()) {
   if (inactiveHours !== null && inactiveHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.inactiveStaleHours) {
     return { classification: "stale", suppressReminders: true, reason: "inactive_stale_threshold" };
   }
-  if (normalizedStatus === "germinating" && !germinationStartedAt) {
-    return { classification: "needs_attention", suppressReminders: true, reason: "missing_germination_started_at" };
-  }
-  if (normalizedStatus === "soaking") {
+  if (["soaking", "soak", "transfer-window", "ready-transfer"].includes(currentPhaseKey)) {
     if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.soakingAbandonedHours) {
       return { classification: "abandoned", suppressReminders: true, reason: "soaking_abandoned_threshold" };
     }
@@ -340,14 +314,14 @@ function getGrowSessionLifecycleHealth(session = {}, now = new Date()) {
       return { classification: "needs_attention", suppressReminders: false, reason: "soaking_attention_threshold" };
     }
   }
-  if (normalizedStatus === "germinating") {
-    if (germinationHours !== null && germinationHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAbandonedHours) {
+  if (["germination", "check-window", "check-seeds", "first-check"].includes(currentPhaseKey)) {
+    if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAbandonedHours) {
       return { classification: "abandoned", suppressReminders: true, reason: "germination_abandoned_threshold" };
     }
-    if (germinationHours !== null && germinationHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationStaleHours) {
+    if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationStaleHours) {
       return { classification: "stale", suppressReminders: true, reason: "germination_stale_threshold" };
     }
-    if (germinationHours !== null && germinationHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAttentionHours) {
+    if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAttentionHours) {
       return { classification: "needs_attention", suppressReminders: false, reason: "germination_attention_threshold" };
     }
   }
@@ -356,11 +330,12 @@ function getGrowSessionLifecycleHealth(session = {}, now = new Date()) {
 }
 
 function isGrowSessionReminderLifecycleEligible(session = {}, now = new Date()) {
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
   const lifecycleHealth = getGrowSessionLifecycleHealth(session, now);
+  const engineState = SessionEngine.calculateSessionState({ session, now, method: getSessionMethodKey(session) });
   return Boolean(
-    ["soaking", "germinating"].includes(normalizedStatus)
-    && ["healthy", "needs_attention"].includes(lifecycleHealth.classification)
+    ["healthy", "needs_attention"].includes(lifecycleHealth.classification)
+    && engineState?.startedAt
+    && !engineState.completedAt
     && lifecycleHealth.suppressReminders !== true
   );
 }
@@ -408,7 +383,6 @@ function buildReminderActionRoute(sessionId = "", actionKind = "open-session", e
 
 function buildReminderAvailableActions(rule, session, eventKey) {
   const sessionId = String(session?.id || "").trim();
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   if (!sessionId) {
     return [];
   }
@@ -434,44 +408,26 @@ function buildReminderAvailableActions(rule, session, eventKey) {
       eventKey,
       snoozeOptions: PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS,
     },
-    {
-      kind: "session-update-stage",
-      action: "session-update-stage",
-      label: "Update Stage",
-      title: "Update Stage",
-      route: buildReminderActionRoute(sessionId, "update-stage", eventKey),
-      sessionId,
-      eventKey,
-    },
   ];
 
-  if (normalizedStatus === "soaking") {
+  const requiredAction = String(rule?.requiredAction || "").trim();
+  if (requiredAction === "complete-session") {
     actions.push({
-      kind: "session-stage-germinating",
-      action: "session-stage-germinating",
-      label: "Mark Germinating",
-      title: "Mark Germinating",
-      route: buildReminderActionRoute(sessionId, "mark-germinating", eventKey),
-      sessionId,
-      eventKey,
-    });
-  } else if (normalizedStatus === "germinating" && (String(rule?.key || "").trim() === "completion-urgent-54h" || String(rule?.requiredAction || "").trim() === "complete-session")) {
-    actions.push({
-      kind: "session-stage-completed",
-      action: "session-stage-completed",
-      label: "Mark Completed",
-      title: "Mark Completed",
+      kind: "session-complete",
+      action: "session-complete",
+      label: "Complete Session",
+      title: "Complete Session",
       route: buildReminderActionRoute(sessionId, "mark-completed", eventKey),
       sessionId,
       eventKey,
     });
-  } else if (normalizedStatus === "germinating") {
+  } else if (["check-seeds", "record-results", "record-germination-results"].includes(requiredAction)) {
     actions.push({
-      kind: "session-stage-first-germinated",
-      action: "session-stage-first-germinated",
-      label: "Mark Germination Started",
-      title: "Mark Germination Started",
-      route: buildReminderActionRoute(sessionId, "mark-first-germinated", eventKey),
+      kind: "session-focus-results",
+      action: "session-focus-results",
+      label: "Update Results",
+      title: "Update Results",
+      route: buildReminderActionRoute(sessionId, "focus-results", eventKey),
       sessionId,
       eventKey,
     });
@@ -797,7 +753,7 @@ function getRuleDueAt(session, rule) {
   if (SessionEngine.getMilestoneDueAt) {
     return SessionEngine.getMilestoneDueAt(session, rule, { method: getSessionMethodKey(session) });
   }
-  const stageStart = getStageStartDateTime(session, rule?.stage || "");
+  const stageStart = getReminderStartDateTime(session);
   if (!(stageStart instanceof Date) || Number.isNaN(stageStart.getTime())) {
     return null;
   }
@@ -805,7 +761,7 @@ function getRuleDueAt(session, rule) {
 }
 
 function getRuleElapsedHours(session, rule, now) {
-  const stageStart = getStageStartDateTime(session, rule?.stage || "");
+  const stageStart = getReminderStartDateTime(session);
   if (!(stageStart instanceof Date) || Number.isNaN(stageStart.getTime())) {
     return -1;
   }
@@ -845,15 +801,11 @@ function getCurrentActiveRule(session, now) {
 }
 
 function getSuppressionReason(session, rule, activeRule, now) {
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   const dueAt = getRuleDueAt(session, rule);
   if (!dueAt || now.getTime() < dueAt.getTime()) {
     return "";
   }
-  if (rule.stage === "soaking" && normalizedStatus !== "soaking") {
-    return "session-left-soaking-before-reminder";
-  }
-  if (rule.stage === "germinating" && normalizedStatus === "completed") {
+  if (SessionEngine.calculateSessionState({ session, now, method: getSessionMethodKey(session) })?.completedAt) {
     return "session-completed-before-reminder";
   }
   const elapsedHours = getRuleElapsedHours(session, rule, now);

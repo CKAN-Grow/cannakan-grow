@@ -177,15 +177,10 @@ function buildNotificationActionRoute(action = {}, fallback = {}) {
   switch (actionKind) {
     case "snooze-reminder":
       return `#sessions/${sessionId}/notify/snooze/${eventKey}`;
-    case "session-update-stage":
-      return `#sessions/${sessionId}/notify/update-stage/${eventKey}`;
-    case "session-stage-germinating":
-      return `#sessions/${sessionId}/notify/mark-germinating/${eventKey}`;
-    case "session-stage-first-germinated":
-      return `#sessions/${sessionId}/notify/mark-first-germinated/${eventKey}`;
-    case "session-stage-completed":
     case "session-complete":
       return `#sessions/${sessionId}/notify/mark-completed/${eventKey}`;
+    case "session-focus-results":
+      return `#sessions/${sessionId}/notify/focus-results/${eventKey}`;
     case "open-session":
     case "route":
     default:

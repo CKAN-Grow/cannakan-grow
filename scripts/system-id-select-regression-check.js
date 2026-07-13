@@ -39,7 +39,7 @@ if (!appSource.includes('unit_id: normalizeUnitIdValue(session.unitId)')) {
   throw new Error("Supabase save payload must continue persisting session.unitId to unit_id.");
 }
 
-const stageEditingMatch = appSource.match(/function applyStageEditingMode[\s\S]*?function closeGrowthStageModal/);
+const stageEditingMatch = appSource.match(/function applyStageEditingMode[\s\S]*?function getSessionStageDisplayLabel/);
 if (!stageEditingMatch || !stageEditingMatch[0].includes('select[name="systemType"]')) {
   throw new Error("Stage edit mode must continue guarding Method Type edits.");
 }

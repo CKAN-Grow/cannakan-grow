@@ -18,7 +18,6 @@ const requireSource = (source, needle, label) => {
   "sessionStatus: String(session.sessionStatus || session.session_status || \"\").trim()",
   "createdAt: String(session.createdAt || session.created_at || \"\").trim()",
   "parseCompletedAtValue(session.createdAt || session.created_at || \"\")",
-  "return parseCompletedAtValue(germinationStartedAt);",
   "<strong>Total Session Time</strong>",
   "function getSessionDurationStartAt(session = null)",
   "parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || \"\")",
@@ -41,23 +40,29 @@ const analyticsEligibilityMatch = appSource.match(/function isGrowSessionAnalyti
 if (!analyticsEligibilityMatch) {
   throw new Error("Could not locate analytics eligibility helper.");
 }
-if (analyticsEligibilityMatch[0].includes("isSessionSoftDeleted(normalizedSession)")) {
-  throw new Error("Analytics eligibility must preserve user-hidden historical sessions while excluding hard deleted/archived sessions explicitly.");
-}
-[
-  "normalizedSession.isDeleted",
-  "String(normalizedSession.deletedAt || normalizedSession.deleted_at || \"\").trim()",
-  "[\"deleted\", \"archived\", \"archived_test\"].includes(visibilityStatus)",
-].forEach((needle) => requireSource(analyticsEligibilityMatch[0], needle, "analytics visibility filter"));
+requireSource(
+  analyticsEligibilityMatch[0],
+  "return resolveGrowSessionLifecycle(session, options).included === true;",
+  "canonical lifecycle analytics eligibility",
+);
 
 [
-  "return parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || \"\");",
+  "function getReminderStartDateTime(session = {})",
   "parseTimestamp(session?.sessionStartedAt || session?.session_started_at || \"\")",
-  "parseTimestamp(session?.soakStartedAt || session?.soak_started_at || \"\")",
   "parseTimestamp(session?.createdAt || session?.created_at || \"\")",
   "function isReminderCandidateSessionVisible(row = {})",
   "session_started_at,soak_started_at,timer_start_at",
   "createdAt: String(row?.created_at || \"\").trim()",
 ].forEach((needle) => requireSource(reminderSource, needle, "reminder stabilization behavior"));
+
+const reminderStartFunction = reminderSource.match(/function getReminderStartDateTime[\s\S]*?\r?\n}/)?.[0] || "";
+if (
+  !reminderStartFunction
+  || reminderStartFunction.includes("germinationStartedAt")
+  || reminderStartFunction.includes("soakStartedAt")
+  || reminderStartFunction.includes("timerStartAt")
+) {
+  throw new Error("Reminder timing must use the canonical session start, not legacy stage timestamps.");
+}
 
 console.log("Session stabilization audit regression check passed.");

@@ -32,7 +32,9 @@ const nextActionDisplaySource = getFunctionSource(appSource, "getSessionProgress
 const lifecycleUpdaterSource = getFunctionSource(appSource, "updateSessionLifecycleTimeline");
 const companionScrollSource = getFunctionSource(appSource, "requestSessionProgressCompanionCurrentStepScroll");
 const sessionTimeDisplaySource = getFunctionSource(appSource, "getSessionEngineSessionTimeDisplay");
-const homeRendererSource = getFunctionSource(appSource, "renderHome");
+const homeRendererSource = getFunctionSource(appSource, "renderHomeCurrentSessionExperienceMarkup");
+const homeMountSource = getFunctionSource(appSource, "mountHomeCurrentSessionExperience");
+const homeOtherSessionSource = getFunctionSource(appSource, "renderHomeOtherActiveSessionCardMarkup");
 const commandCenterListSource = getFunctionSource(appSource, "renderMySessionsCommandCenterListMarkup");
 const commandCenterSectionSource = getFunctionSource(appSource, "renderMySessionsCommandCenterSectionMarkup");
 const commandCenterMountSource = getFunctionSource(appSource, "mountSharedSessionCommandCenter");
@@ -186,30 +188,47 @@ if (rendererSource.includes('<aside class="session-progress-companion-recommenda
 });
 
 [
-  "hideWhenNoActive: true",
-  "showMetrics: false",
-  "showSupply: false",
-  "sessionActionLabel: \"Open Session\"",
+  "getHomeCurrentSessionCompanionState(selectedSession)",
+  "renderSessionProgressCommandCenterMarkup(lifecycleState?.engineState || null",
+  "renderHomeOtherActiveSessionsMarkup(activeSessions",
 ].forEach((needle) => {
   if (!homeRendererSource.includes(needle)) {
-    throw new Error(`Home should mount compact active reminder sessions only after save: ${needle}`);
+    throw new Error(`Home current-session experience should render from Session Engine state: ${needle}`);
   }
 });
 
 [
-  "getSessionCommandCenterNextReminderMeta(session)",
+  "bindSessionProgressCommandActions(host)",
+  "startSessionTimer(renderHomeCurrentSession)",
+].forEach((needle) => {
+  if (!homeMountSource.includes(needle)) {
+    throw new Error(`Home current-session experience should stay synchronized: ${needle}`);
+  }
+});
+
+[
+  "const engineState = lifecycleState?.engineState || null",
+  "getSessionProgressCompanionNextActionDisplay(engineState)",
+  "formatSessionEngineDurationLabel(engineState.elapsedMs)",
+].forEach((needle) => {
+  if (!homeOtherSessionSource.includes(needle)) {
+    throw new Error(`Home active-session cards should use Session Engine fields: ${needle}`);
+  }
+});
+
+[
   "getSessionCommandCenterPhaseLabel(session)",
-  "getSessionCommandCenterElapsedLabel(session)",
   "getSessionCommandCenterMethodSummary(session)",
-  "session-command-session-reminder",
-  "reminderMeta.timeLabel || reminderMeta.countdown",
+  "getSessionCommandCenterRoadmapState(session)",
+  "getSessionCommandCenterActionMeta(session, roadmap)",
+  "session-command-session-focus",
 ].forEach((needle) => {
   if (!commandCenterListSource.includes(needle)) {
     throw new Error(`Home active session cards should include reminder fields: ${needle}`);
   }
 });
 
-if (!commandCenterSectionSource.includes("showSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : \"\"")) {
+if (!commandCenterSectionSource.includes("shouldRenderSupply ? renderSessionCommandCenterFilterPaperSupplyMarkup() : \"\"")) {
   throw new Error("Home should be able to hide supply management from the active reminder section.");
 }
 

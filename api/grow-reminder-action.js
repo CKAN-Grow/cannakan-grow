@@ -114,10 +114,8 @@ function resolveSnoozeUntil(optionKey = "") {
 function normalizeAction(action = "") {
   const normalized = String(action || "").trim();
   return [
-    "update-stage-opened",
     "snooze-reminder",
-    "mark-germinating",
-    "mark-first-germinated",
+    "focus-results",
     "mark-completed",
     "open-session",
   ].includes(normalized) ? normalized : "";
@@ -125,7 +123,7 @@ function normalizeAction(action = "") {
 
 function normalizeSessionStatus(value = "") {
   const normalized = String(value || "").trim().toLowerCase();
-  if (["soaking", "germinating", "completed"].includes(normalized)) {
+  if (["active", "soaking", "germinating", "completed"].includes(normalized)) {
     return normalized;
   }
   return "";

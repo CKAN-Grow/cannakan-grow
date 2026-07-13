@@ -5241,6 +5241,14 @@ body.theme-dark .spotlight-stat strong {
   box-shadow: 0 0 0 4px rgba(6, 12, 9, 0.88);
 }
 
+.session-progress-companion-roadmap-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px color-mix(in srgb, currentColor 38%, transparent);
+}
+
 .session-progress-companion-roadmap-step.is-complete .session-progress-companion-roadmap-node,
 .session-progress-companion-roadmap-step.is-preparation-complete .session-progress-companion-roadmap-node {
   color: #07100d;
@@ -33751,21 +33759,6 @@ body.theme-dark .theme-toggle-button:hover {
   animation: pulseGlow 2s infinite;
 }
 
-.growth-stage-modal-overlay {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background:
-    radial-gradient(circle at 50% 20%, rgba(148, 209, 89, 0.08), transparent 26%),
-    rgba(6, 10, 8, 0.62);
-  backdrop-filter: blur(12px);
-  z-index: 50;
-  opacity: 1;
-  transition: opacity 180ms ease;
-}
-
 .new-session-system-modal-overlay {
   position: fixed;
   inset: 0;
@@ -34080,255 +34073,6 @@ body.theme-dark .theme-toggle-button:hover {
   justify-content: flex-end;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.growth-stage-modal-overlay.closing {
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
-
-.growth-stage-modal-overlay[hidden] {
-  display: none !important;
-}
-
-.growth-stage-modal {
-  position: relative;
-  width: min(100%, 480px);
-  display: grid;
-  gap: 20px;
-  padding: 28px 24px 24px;
-  border-radius: 24px;
-  border: 1px solid rgba(148, 209, 89, 0.12);
-  background:
-    radial-gradient(circle at top left, rgba(148, 209, 89, 0.1), transparent 34%),
-    radial-gradient(circle at top right, rgba(131, 92, 56, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.015) 100%),
-    rgba(15, 20, 16, 0.86);
-  margin: auto;
-  box-shadow:
-    0 28px 60px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
-    inset 0 0 28px rgba(148, 209, 89, 0.035);
-  backdrop-filter: blur(18px);
-  animation: modalFadeIn 0.2s ease;
-  overflow: hidden;
-}
-
-.growth-stage-modal::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, transparent 28%),
-    radial-gradient(circle at 82% 16%, rgba(184, 126, 72, 0.12), transparent 22%);
-  opacity: 0.95;
-}
-
-.growth-stage-modal.closing {
-  opacity: 0;
-  transform: scale(0.96) translateY(6px);
-  transition: opacity 180ms ease, transform 180ms ease;
-}
-
-.growth-stage-modal > * {
-  position: relative;
-  z-index: 1;
-}
-
-.growth-stage-modal-copy h2 {
-  margin: 0;
-  font-size: 1.42rem;
-  font-weight: 700;
-  text-align: left;
-  color: #f4f8ef;
-  letter-spacing: -0.02em;
-}
-
-.growth-stage-modal-copy p {
-  margin: 0;
-}
-
-.growth-stage-modal-copy .growth-stage-modal-helper {
-  margin-top: 8px;
-  max-width: 34rem;
-  color: rgba(225, 236, 218, 0.82);
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.45;
-}
-
-.growth-stage-modal-copy .growth-stage-modal-helper[hidden] {
-  display: none;
-}
-
-.growth-stage-modal-actions {
-  display: grid;
-  gap: 12px;
-}
-
-.stage-button {
-  --stage-accent: #94d159;
-  --stage-accent-soft: rgba(148, 209, 89, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 66px;
-  padding: 16px 18px;
-  margin-bottom: 0;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.01) 100%),
-    rgba(18, 24, 19, 0.78);
-  color: #eef4e7;
-  font-size: 1rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  cursor: pointer;
-  transition: transform 160ms ease, border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.015);
-  text-align: left;
-}
-
-.stage-button:last-child {
-  margin-bottom: 0;
-}
-
-.stage-button > span:first-child {
-  min-width: 0;
-}
-
-.stage-button:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--stage-accent) 42%, rgba(255, 255, 255, 0.08));
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.18),
-    0 0 0 1px color-mix(in srgb, var(--stage-accent) 12%, transparent),
-    0 0 24px color-mix(in srgb, var(--stage-accent) 14%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.stage-button.is-soaking {
-  --stage-accent: #6faee6;
-  --stage-accent-soft: rgba(111, 174, 230, 0.16);
-}
-
-.stage-button.is-germinating {
-  --stage-accent: #e09a4f;
-  --stage-accent-soft: rgba(224, 154, 79, 0.16);
-}
-
-.stage-button.is-first-germinated,
-.stage-button.stage-button--first-germinated {
-  --stage-accent: #94d159;
-  --stage-accent-soft: rgba(148, 209, 89, 0.16);
-}
-
-.stage-button.is-completed {
-  --stage-accent: #b7885b;
-  --stage-accent-soft: rgba(183, 136, 91, 0.18);
-}
-
-.stage-button.is-active {
-  border-color: color-mix(in srgb, var(--stage-accent) 48%, rgba(255, 255, 255, 0.08));
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--stage-accent) 10%, rgba(255, 255, 255, 0.03)) 0%, rgba(255, 255, 255, 0.012) 100%),
-    rgba(18, 24, 19, 0.82);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--stage-accent) 18%, transparent),
-    0 0 22px var(--stage-accent-soft),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 0 18px color-mix(in srgb, var(--stage-accent) 8%, transparent);
-}
-
-.stage-option-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--stage-accent) 42%, rgba(255, 255, 255, 0.08));
-  background: rgba(8, 12, 9, 0.44);
-  color: var(--stage-accent);
-  font-weight: 800;
-  box-shadow: 0 0 14px var(--stage-accent-soft);
-}
-
-.growth-stage-modal .modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 3;
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  line-height: 1;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  cursor: pointer;
-  pointer-events: auto;
-  color: rgba(222, 230, 218, 0.72);
-  border-radius: 999px;
-  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
-}
-
-.growth-stage-modal .modal-close:hover {
-  color: #f2f7ed;
-  border-color: rgba(148, 209, 89, 0.16);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
-}
-
-.growth-stage-modal .modal-close:focus-visible,
-.stage-button:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px rgba(148, 209, 89, 0.18),
-    0 0 0 4px rgba(148, 209, 89, 0.08);
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@media (max-width: 640px) {
-  .growth-stage-modal-overlay {
-    padding: 16px;
-  }
-
-  .growth-stage-modal {
-    width: 100%;
-    padding: 24px 18px 18px;
-    border-radius: 22px;
-  }
-
-  .growth-stage-modal-copy h2 {
-    font-size: 1.28rem;
-    padding-right: 28px;
-  }
-
-  .stage-button {
-    min-height: 62px;
-    padding: 15px 16px;
-  }
-
 }
 
 .session-status-trigger.is-invalid {
@@ -54716,24 +54460,6 @@ body.modal-open {
     0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
-.session-engine-visual-timeline-index {
-  position: absolute;
-  top: -12px;
-  right: -5px;
-  display: grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  color: inherit;
-  background: rgba(9, 14, 11, 0.96);
-  font-size: 0.66rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
 .session-engine-visual-timeline-svg {
   width: 27px;
   height: 27px;
@@ -65274,12 +65000,6 @@ body.theme-dark .form-message.is-warning {
 
 body.theme-dark .session-status-error {
   color: #ff5c5c;
-}
-
-body.theme-dark .growth-stage-modal-overlay {
-  background:
-    radial-gradient(circle at 50% 20%, rgba(148, 209, 89, 0.08), transparent 26%),
-    rgba(6, 10, 8, 0.62);
 }
 
 body.theme-dark .snapshot-modal::backdrop {

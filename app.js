@@ -1705,18 +1705,6 @@ const TIMELINE_STAGE_ICON_ASSETS = Object.freeze({
   "stage-completed": "/src/assets/icons/timeline-icons-complete.png",
 });
 const GROW_GALLERY_DEBUG = true;
-const SESSION_STAGE_OPTIONS = [
-  { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
-  { value: "germinating", progressKey: "germination", label: "Germinating", modalLabel: "Germinating", tone: "is-germinating" },
-  { value: "germinating", progressKey: "first-germinated", label: "Germination Started", modalLabel: "Germination Started", tone: "is-first-germinated" },
-  { value: "completed", progressKey: "completed", label: "Completed", modalLabel: "Completed", tone: "is-completed" },
-];
-const ADMIN_CSTP_STAGE_OPTIONS = [
-  { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
-  { value: "germinating", progressKey: "germination", label: "Germinating", modalLabel: "Germinating", tone: "is-germinating" },
-  { value: "germinating", progressKey: "first-germinated", label: "Germination Started", modalLabel: "Germination Started", tone: "is-germinating" },
-  { value: "completed", progressKey: "completed", label: "Completed", modalLabel: "Completed", tone: "is-completed" },
-];
 const inlineSvgCache = {};
 
 function normalizeMethodType(value = "") {
@@ -3220,10 +3208,6 @@ const appState = {
   leaderboardAuditExpandedId: "",
   leaderboardAuditInsightsExpanded: false,
   growthStage: null,
-  growthStageModalOpen: false,
-  growthStageModalDismissed: false,
-  pendingGrowthStageInput: null,
-  growthStageModalSuppressedUntil: 0,
   newSessionSystemType: "",
   newSessionSystemModalOpen: false,
   newSessionReturnHash: "#home",
@@ -11568,11 +11552,7 @@ function getLatestSessionLifecycleActivityAt(session = null) {
   const candidates = [
     session.updatedAt || session.updated_at || "",
     session.completedAt || session.completed_at || "",
-    session.firstPlantedAt || session.first_planted_at || "",
-    session.germinationStartedAt || session.germination_started_at || "",
-    session.soakStartedAt || session.soak_started_at || "",
     session.sessionStartedAt || session.session_started_at || "",
-    session.timerStartAt || session.timer_start_at || "",
     session.createdAt || session.created_at || "",
   ]
     .map((value) => parseCompletedAtValue(value))
@@ -11588,28 +11568,20 @@ function getLatestSessionLifecycleActivityAt(session = null) {
 
 function getSessionLifecycleTimestampHealth(session = null, now = new Date()) {
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
-  const methodConfig = getMethodConfig(getSessionMethodType(session));
-  const requiresSoakTimestamp = methodConfig.supportsStageTracking === true;
   const sessionStartedAtIso = getSessionStartedAtIso(session)
     || parseCompletedAtValue(session?.createdAt || session?.created_at || "")?.toISOString()
     || "";
-  const soakStartedAtIso = getSessionSoakStartedAtIso(session)
-    || (requiresSoakTimestamp ? sessionStartedAtIso : "");
   const hasStartedIntent = Boolean(
-    ["soaking", "germinating", "completed"].includes(normalizedStatus)
+    ["active", "soaking", "germinating", "completed"].includes(normalizedStatus)
     || String(session?.sessionStartedAt || session?.session_started_at || "").trim()
-    || String(session?.soakStartedAt || session?.soak_started_at || "").trim()
-    || String(session?.timerStartAt || session?.timer_start_at || "").trim()
     || String(session?.date || "").trim()
   );
   const timelineValidation = validateGrowSessionTimelineOrder({
     sessionStartedAt: sessionStartedAtIso,
-    soakStartedAt: soakStartedAtIso,
-    germinationStartedAt: session?.germinationStartedAt || session?.germination_started_at || "",
     completedAt: session?.completedAt || session?.completed_at || "",
   }, {
     requireSessionStarted: hasStartedIntent,
-    requireSoakStarted: hasStartedIntent && requiresSoakTimestamp,
+    requireSoakStarted: false,
     requireCompleted: normalizedStatus === "completed",
   });
   if (!timelineValidation.isValid) {
@@ -11620,11 +11592,7 @@ function getSessionLifecycleTimestampHealth(session = null, now = new Date()) {
   const futureTimestamp = [
     session?.updatedAt || session?.updated_at || "",
     session?.completedAt || session?.completed_at || "",
-    session?.firstPlantedAt || session?.first_planted_at || "",
-    session?.germinationStartedAt || session?.germination_started_at || "",
-    session?.soakStartedAt || session?.soak_started_at || "",
     session?.sessionStartedAt || session?.session_started_at || "",
-    session?.timerStartAt || session?.timer_start_at || "",
     session?.createdAt || session?.created_at || "",
   ]
     .map((value) => parseCompletedAtValue(value))
@@ -11729,15 +11697,14 @@ function getGrowSessionLifecycleHealth(session = null, options = {}) {
     };
   }
 
-  const progressKey = getSessionProgressKeyFromSession(normalizedSession);
+  const engineState = buildSessionEngineState(normalizedSession, { now });
+  const progressKey = engineState?.currentPhase?.key || "";
   const sessionStartedAt = getSessionDurationStartAt(normalizedSession);
-  const stageStartedAt = getSessionStageDurationStartAt(normalizedSession);
+  const stageStartedAt = sessionStartedAt;
   const lastActivityAt = getLatestSessionLifecycleActivityAt(normalizedSession) || stageStartedAt || sessionStartedAt;
   const sessionHours = getDateHourDelta(sessionStartedAt, now);
   const stageHours = getDateHourDelta(stageStartedAt, now);
   const inactiveHours = getDateHourDelta(lastActivityAt, now);
-  const missingGerminationStartedAt = normalizedStatus === "germinating"
-    && !parseCompletedAtValue(normalizedSession.germinationStartedAt || normalizedSession.germination_started_at || "");
 
   const staleDetail = inactiveHours !== null
     ? `Inactive ${formatLifecycleHoursShort(inactiveHours)}`
@@ -11773,19 +11740,7 @@ function getGrowSessionLifecycleHealth(session = null, options = {}) {
     };
   }
 
-  if (missingGerminationStartedAt) {
-    return {
-      classification: "needs_attention",
-      lifecycleState: "active",
-      reason: "missing_germination_started_at",
-      label: "Needs attention",
-      detail: "Germination start time missing",
-      suppressReminders: true,
-      activeMetricEligible: true,
-    };
-  }
-
-  if (normalizedStatus === "soaking" || progressKey === "soaking") {
+  if (["soaking", "soak", "transfer-window", "ready-transfer"].includes(progressKey)) {
     if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.soakingAbandonedHours) {
       return {
         classification: "abandoned",
@@ -11821,7 +11776,7 @@ function getGrowSessionLifecycleHealth(session = null, options = {}) {
     }
   }
 
-  if (["germination", "first-germinated"].includes(progressKey) || normalizedStatus === "germinating") {
+  if (["germination", "check-window", "check-seeds", "first-check"].includes(progressKey)) {
     if (stageHours !== null && stageHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAbandonedHours) {
       return {
         classification: "abandoned",
@@ -11872,10 +11827,11 @@ function getGrowSessionLifecycleHealth(session = null, options = {}) {
 
 function isGrowSessionLifecycleRemindable(session = null) {
   const lifecycleHealth = getGrowSessionLifecycleHealth(session);
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  const engineState = buildSessionEngineState(session);
   return Boolean(
     ["healthy", "needs_attention"].includes(lifecycleHealth.classification)
-    && ["soaking", "germinating"].includes(normalizedStatus)
+    && engineState?.startedAt
+    && !engineState.completedAt
     && !lifecycleHealth.suppressReminders
   );
 }
@@ -31985,7 +31941,9 @@ function openGallerySnapshotOverview(snapshotId) {
     ? parseSessionStartDateTime(linkedSession.date, linkedSession.time || "00:00")
     : null;
   const durationLabel = formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) || "In progress";
-  const currentStageLabel = capitalize(normalizeSessionStatus(linkedSession?.sessionStatus || "") || "completed").replace("Unselected", "Not started");
+  const linkedSessionEngineState = buildSessionEngineState(linkedSession);
+  const currentStageLabel = linkedSessionEngineState?.phaseLabel
+    || (linkedSession?.completedAt || linkedSession?.completed_at ? "Completed" : "Not shared");
   const timelineFacts = [
     { label: "Current Phase", value: currentStageLabel || "Not shared" },
     { label: "Started", value: startedAt ? formatTimingDateTime(startedAt) : "Not shared" },
@@ -40427,13 +40385,13 @@ function buildSnapshotData(source) {
   const snapshotSystemType = source.systemType || "KAN";
   const snapshotPartitionMaxItems = String(snapshotSystemType).trim().toUpperCase() === "TRA" ? 16 : 8;
   const sessionStatus = normalizeSessionStatus(source.sessionStatus || source.status || "");
-  const progressKey = resolveGrowSessionCurrentProgressKey(source);
+  const snapshotEngineState = buildSessionEngineState(source);
 
   return {
     sessionName: source.sessionName || "Session",
     dateLabel: formatSessionNameDate(source.date),
     sessionStatus,
-    stageLabel: getCanonicalSessionStageDisplayLabel(progressKey || sessionStatus) || "Not Started",
+    stageLabel: snapshotEngineState?.phaseLabel || (sessionStatus === "completed" ? "Completed" : "Not Started"),
     sessionStartedAt: source.sessionStartedAt || source.session_started_at || "",
     soakStartedAt: source.soakStartedAt || source.soak_started_at || source.timerStartAt || source.timer_start_at || "",
     germinationStartedAt: source.germinationStartedAt || source.germination_started_at || "",
@@ -64430,62 +64388,6 @@ function syncAdminCstpLiveResultSections(detail, session = null) {
   );
 }
 
-function openAdminCstpStageModal({ stageField, stageTrigger } = {}) {
-  if (!stageField) {
-    return false;
-  }
-  if (appState.growthStageModalOpen) {
-    return true;
-  }
-
-  const overlay = ensureGrowthStageModal();
-  const actions = overlay.querySelector("#growth-stage-modal-actions");
-  const currentProgressKey = stageField.dataset.cstpStageProgressKey || getSessionStatusProgressKey(stageField);
-  if (!actions) {
-    return false;
-  }
-
-  actions.innerHTML = ADMIN_CSTP_STAGE_OPTIONS.map((option) => `
-    <button
-      type="button"
-      class="stage-button ${option.tone} stage-button--${escapeHtml(option.progressKey || option.value)} ${currentProgressKey === option.progressKey ? "is-active" : ""}"
-      data-admin-cstp-stage-progress="${option.progressKey}"
-      data-admin-cstp-stage-value="${option.value}"
-    >
-      <span>${escapeHtml(option.modalLabel)}</span>
-      ${currentProgressKey === option.progressKey ? '<span class="stage-option-check" aria-hidden="true">✓</span>' : ""}
-    </button>
-  `).join("");
-
-  actions.querySelectorAll("[data-admin-cstp-stage-progress]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const nextProgressKey = String(button.getAttribute("data-admin-cstp-stage-progress") || "").trim();
-      const nextValue = String(button.getAttribute("data-admin-cstp-stage-value") || "").trim();
-      stageField.dataset.cstpPendingProgressKey = nextProgressKey;
-      stageField.value = nextValue;
-      syncSessionStatusControlDatasets(stageField, {
-        germinationStartedAt: stageField.dataset.germinationStartedAt || "",
-        firstPlantedAt: stageField.dataset.firstPlantedAt || "",
-        completedAt: stageField.dataset.completedAt || "",
-      });
-      updateSessionStatusAppearance(stageField, stageTrigger);
-      stageField.dispatchEvent(new Event("change", { bubbles: true }));
-      closeGrowthStageModal();
-    });
-  });
-
-  overlay.__stageContext = { stageField, stageTrigger };
-  appState.growthStageModalOpen = true;
-  appState.pendingGrowthStageInput = stageField.name || stageField.id || "adminCstpStage";
-  overlay.hidden = false;
-  overlay.classList.add("is-open");
-  document.body.classList.add("modal-open");
-  overlay.querySelector(".modal-close")?.focus();
-  return true;
-}
-
 function renderAdminCstpPartitionDetailRows(container, session = null) {
   if (!container) {
     return;
@@ -70528,11 +70430,12 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
     updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
   }
   if (detail.statusTrigger) {
-    detail.statusTrigger.disabled = false;
+    detail.statusTrigger.disabled = true;
+    detail.statusTrigger.hidden = true;
     detail.statusTrigger.classList.remove("admin-cstp-session-status-trigger");
   }
   if (detail.statusHelp) {
-    detail.statusHelp.textContent = "Update the stage as your seeds progress through the session.";
+    detail.statusHelp.textContent = "Status follows elapsed time and recorded completion automatically.";
   }
   if (detail.statusReminder) {
     detail.statusReminder.textContent = "";
@@ -70703,17 +70606,17 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
     refreshDerivedViews(workingSession);
   };
 
-  const buildPersistedStageSession = (existingSession = null, progressKey = "") => {
+  const buildPersistedLifecycleSession = (existingSession = null, actionKey = "") => {
     const baseSession = buildDraftSession() || normalizeAdminCstpAssignedSessionRecord(existingSession);
     if (!baseSession) {
       return null;
     }
 
-    const nextProgressKey = String(progressKey || "").trim();
+    const nextActionKey = String(actionKey || "").trim();
     const timestamp = new Date().toISOString();
     const currentWorkflowStatus = normalizeAdminCstpTestSessionStatus(baseSession.status);
 
-    if (nextProgressKey === "soaking") {
+    if (nextActionKey === "start") {
       baseSession.status = currentWorkflowStatus === "completed" ? "active-test" : "active-test";
       baseSession.startedAt = baseSession.startedAt || timestamp;
       baseSession.germinationStartedAt = "";
@@ -70721,23 +70624,7 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       baseSession.firstPlantedAt = "";
       baseSession.completedAt = "";
       detail.statusField.value = "soaking";
-    } else if (nextProgressKey === "germination") {
-      baseSession.status = "active-test";
-      baseSession.startedAt = baseSession.startedAt || timestamp;
-      baseSession.germinationStartedAt = baseSession.germinationStartedAt || timestamp;
-      baseSession.firstGerminatedAt = "";
-      baseSession.firstPlantedAt = "";
-      baseSession.completedAt = "";
-      detail.statusField.value = "germinating";
-    } else if (nextProgressKey === "first-germinated") {
-      baseSession.status = "active-test";
-      baseSession.startedAt = baseSession.startedAt || timestamp;
-      baseSession.germinationStartedAt = baseSession.germinationStartedAt || timestamp;
-      baseSession.firstGerminatedAt = baseSession.firstGerminatedAt || timestamp;
-      baseSession.firstPlantedAt = baseSession.firstGerminatedAt;
-      baseSession.completedAt = "";
-      detail.statusField.value = "germinating";
-    } else if (nextProgressKey === "completed") {
+    } else if (nextActionKey === "complete") {
       baseSession.status = "completed";
       baseSession.startedAt = baseSession.startedAt || timestamp;
       baseSession.completedAt = baseSession.completedAt || timestamp;
@@ -70761,9 +70648,9 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       }
       const draftSession = buildDraftSession() || existingSession;
       if (actionKey === "start") {
-        updateAdminCstpAssignedSession(sessionId, buildPersistedStageSession(draftSession, "soaking"));
+        updateAdminCstpAssignedSession(sessionId, buildPersistedLifecycleSession(draftSession, "start"));
       } else if (actionKey === "complete") {
-        updateAdminCstpAssignedSession(sessionId, buildPersistedStageSession(draftSession, "completed"));
+        updateAdminCstpAssignedSession(sessionId, buildPersistedLifecycleSession(draftSession, "complete"));
         ensureAdminCstpCompletedTestSnapshot(sessionId, "session-complete");
       } else if (actionKey === "prepare-report") {
         const persistedDraft = updateAdminCstpAssignedSession(sessionId, draftSession) || existingSession;
@@ -70999,38 +70886,6 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
     }
 
     window.location.hash = "#admin";
-  });
-
-  detail.statusTrigger?.addEventListener("click", () => {
-    appState.growthStageModalDismissed = false;
-    openAdminCstpStageModal({ stageField: detail.statusField, stageTrigger: detail.statusTrigger });
-  });
-
-  detail.statusField?.addEventListener("change", () => {
-    const existingSession = getAdminCstpTestSessionById(sessionId);
-    if (!existingSession) {
-      return;
-    }
-
-    const progressKey = String(
-      detail.statusField.dataset.cstpPendingProgressKey
-      || detail.statusField.dataset.cstpStageProgressKey
-      || getSessionStatusProgressKey(detail.statusField),
-    ).trim();
-    delete detail.statusField.dataset.cstpPendingProgressKey;
-    if (!progressKey) {
-      return;
-    }
-
-    const nextSession = buildPersistedStageSession(existingSession, progressKey);
-    if (!nextSession) {
-      return;
-    }
-    updateAdminCstpAssignedSession(sessionId, nextSession);
-    if (progressKey === "completed") {
-      ensureAdminCstpCompletedTestSnapshot(sessionId, "stage-complete");
-    }
-    renderAdminCstpTestSessionPage(sessionId);
   });
 
   bindPartitionFieldEvents();
@@ -86670,96 +86525,13 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   }
 }
 
-function closeGrowthStageModal() {
-  const overlay = document.querySelector("#growth-stage-modal-overlay");
-  const modal = overlay?.querySelector(".growth-stage-modal");
-
-  if (!overlay || overlay.dataset.closing === "true") {
-    return;
-  }
-
-  overlay.dataset.closing = "true";
-  overlay.classList.add("closing");
-  modal?.classList.add("closing");
-
-  appState.growthStageModalOpen = false;
-  appState.growthStageModalDismissed = true;
-  appState.pendingGrowthStageInput = null;
-  document.body.classList.remove("modal-open");
-  appState.growthStageModalSuppressedUntil = Date.now() + 180;
-
-  window.setTimeout(() => {
-    overlay.hidden = true;
-    overlay.classList.remove("is-open", "closing");
-    overlay.dataset.closing = "false";
-    modal?.classList.remove("closing");
-    overlay.remove();
-  }, 180);
-}
-
-function bindGrowthStageModalCloseControls(overlay) {
-  if (!overlay || overlay.dataset.closeControlsBound === "true") {
-    return;
-  }
-
-  overlay.addEventListener("click", (event) => {
-    const closeButton = event.target instanceof Element
-      ? event.target.closest("[data-growth-stage-modal-close]")
-      : null;
-    if (closeButton || event.target === overlay) {
-      event.preventDefault();
-      event.stopPropagation();
-      closeGrowthStageModal();
-    }
-  });
-
-  overlay.dataset.closeControlsBound = "true";
-}
-
-function ensureGrowthStageModal() {
-  let overlay = document.querySelector("#growth-stage-modal-overlay");
-  if (overlay) {
-    bindGrowthStageModalCloseControls(overlay);
-    return overlay;
-  }
-
-  overlay = document.createElement("div");
-  overlay.id = "growth-stage-modal-overlay";
-  overlay.className = "growth-stage-modal-overlay";
-  overlay.hidden = true;
-  overlay.dataset.closing = "false";
-  overlay.innerHTML = `
-    <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title" aria-describedby="growth-stage-modal-helper">
-      <button type="button" class="modal-close" data-growth-stage-modal-close aria-label="Close">×</button>
-      <div class="growth-stage-modal-copy">
-        <h2 id="growth-stage-modal-title">Review Session Status</h2>
-        <p id="growth-stage-modal-helper" class="growth-stage-modal-helper" data-growth-stage-modal-helper hidden></p>
-      </div>
-      <div class="growth-stage-modal-actions" id="growth-stage-modal-actions"></div>
-    </div>
-  `;
-
-  bindGrowthStageModalCloseControls(overlay);
-
-  if (!ensureGrowthStageModal.escapeBound) {
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && appState.growthStageModalOpen) {
-        closeGrowthStageModal();
-      }
-    });
-    ensureGrowthStageModal.escapeBound = true;
-  }
-
-  document.body.appendChild(overlay);
-  return overlay;
-}
-
-function getSessionStageLabel(value) {
-  return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Review Session";
-}
-
 function getSessionStageDisplayLabel(value) {
-  return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Not Started";
+  const labelByStatus = {
+    soaking: "Active",
+    germinating: "Active",
+    completed: "Completed",
+  };
+  return labelByStatus[normalizeSessionStatus(value)] || "Not Started";
 }
 
 function getCanonicalSessionStageDisplayLabel(stageKey = "", options = {}) {
@@ -87039,7 +86811,6 @@ function handleSessionEnginePrimaryAction(control = null) {
     "check-emergence",
     "check-moisture",
     "check-sprouts",
-    "confirm-transfer-ready",
     "record-results",
     "record-germination-results",
     "complete-session",
@@ -87477,107 +87248,6 @@ function updateMethodTypeLayout(scope, methodType = "") {
   });
   syncMethodSeedAgeCopy(scope, method);
   updateMethodProgressHeading(scope, method);
-}
-
-function openGrowthStageModal({ stageField, stageTrigger, message = "", focusStageOptions = false } = {}) {
-  if (!stageField) {
-    return false;
-  }
-
-  if (appState.growthStageModalOpen) {
-    return true;
-  }
-
-  const overlay = ensureGrowthStageModal();
-  const actions = overlay.querySelector("#growth-stage-modal-actions");
-  const helper = overlay.querySelector("[data-growth-stage-modal-helper]");
-  const currentProgressKey = getSessionStatusProgressKey(stageField);
-  if (!actions) {
-    return false;
-  }
-
-  if (helper) {
-    helper.textContent = String(message || "").trim();
-    helper.hidden = !helper.textContent;
-  }
-
-  actions.innerHTML = SESSION_STAGE_OPTIONS.map((option) => `
-    <button
-      type="button"
-      class="stage-button ${option.tone} stage-button--${escapeHtml(option.progressKey || option.value)} ${currentProgressKey === (option.progressKey || option.value) ? "is-active" : ""}"
-      data-growth-stage-value="${option.value}"
-      data-growth-stage-progress="${escapeHtml(option.progressKey || option.value)}"
-    >
-      <span>${escapeHtml(option.modalLabel)}</span>
-      ${currentProgressKey === (option.progressKey || option.value) ? '<span class="stage-option-check" aria-hidden="true">✓</span>' : ""}
-    </button>
-  `).join("");
-
-  actions.querySelectorAll("[data-growth-stage-value]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const nextValue = button.getAttribute("data-growth-stage-value") || "";
-      const nextProgressKey = String(button.getAttribute("data-growth-stage-progress") || "").trim();
-      const timestamp = new Date().toISOString();
-      if (nextProgressKey === "soaking") {
-        stageField.dataset.germinationStartedAt = "";
-        stageField.dataset.firstPlantedAt = "";
-        stageField.dataset.completedAt = "";
-      } else if (nextProgressKey === "germination") {
-        stageField.dataset.germinationStartedAt = stageField.dataset.germinationStartedAt || timestamp;
-        stageField.dataset.firstPlantedAt = "";
-        stageField.dataset.completedAt = "";
-      } else if (nextProgressKey === "first-germinated") {
-        stageField.dataset.germinationStartedAt = stageField.dataset.germinationStartedAt || timestamp;
-        stageField.dataset.firstPlantedAt = stageField.dataset.firstPlantedAt || timestamp;
-        stageField.dataset.completedAt = "";
-      } else if (nextProgressKey === "completed") {
-        stageField.dataset.germinationStartedAt = stageField.dataset.germinationStartedAt || timestamp;
-        stageField.dataset.firstPlantedAt = stageField.dataset.firstPlantedAt || timestamp;
-        stageField.dataset.completedAt = stageField.dataset.completedAt || timestamp;
-      }
-      appState.growthStageModalDismissed = false;
-      appState.growthStage = nextValue || null;
-      stageField.value = nextValue;
-      syncSessionStatusControlDatasets(stageField, {
-        germinationStartedAt: stageField.dataset.germinationStartedAt || "",
-        firstPlantedAt: stageField.dataset.firstPlantedAt || "",
-        completedAt: stageField.dataset.completedAt || "",
-      });
-      updateSessionStatusAppearance(stageField, stageTrigger);
-      stageField.dispatchEvent(new Event("change", { bubbles: true }));
-      closeGrowthStageModal();
-    });
-  });
-
-  overlay.__stageContext = { stageField, stageTrigger };
-  appState.growthStageModalOpen = true;
-  appState.pendingGrowthStageInput = stageField.name || stageField.id || "sessionStatus";
-  overlay.hidden = false;
-  overlay.classList.add("is-open");
-  document.body.classList.add("modal-open");
-  const focusTarget = focusStageOptions
-    ? overlay.querySelector("[data-growth-stage-value]")
-    : overlay.querySelector(".modal-close");
-  focusTarget?.focus();
-  return true;
-}
-
-function maybePromptGrowthStage(form, stageField, stageTrigger) {
-  if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
-    return false;
-  }
-
-  if (appState.growthStageModalOpen) {
-    return true;
-  }
-
-  if (Date.now() < (appState.growthStageModalSuppressedUntil || 0)) {
-    return false;
-  }
-
-  return openGrowthStageModal({ stageField, stageTrigger });
 }
 
 function renderTraPartitionSections(container, partitions, options = {}) {
@@ -92446,17 +92116,10 @@ function renderSessionDetail(sessionId) {
 
   detail.statusField.addEventListener("change", async () => {
     const previousStatus = session.sessionStatus || "";
-    const previousProgressKey = getSessionProgressKeyFromSession(session);
     const selectedProgressKey = getSessionStatusProgressKey(detail.statusField);
-    const manuallyRevertedToSoaking = selectedProgressKey === "soaking"
-      && previousProgressKey
-      && previousProgressKey !== "soaking";
-    if (detail.seedAgeForm instanceof HTMLFormElement) {
-      detail.seedAgeForm.dataset.seedAgeEditingUnlocked = manuallyRevertedToSoaking ? "true" : "false";
-    }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
-    if (selectedProgressKey === "completed" && previousProgressKey !== "completed" && !areSessionSeedResultsFullyAccountedFor(session)) {
+    if (selectedProgressKey === "completed" && normalizeSessionStatus(previousStatus) !== "completed" && !areSessionSeedResultsFullyAccountedFor(session)) {
       detail.statusField.value = previousStatus || "";
       syncSessionStatusControlDatasets(detail.statusField, {
         startedAt: getSessionStatusStartedAtValue(session),
@@ -92473,9 +92136,6 @@ function renderSessionDetail(sessionId) {
     session.firstPlantedAt = detail.statusField.dataset.firstPlantedAt || "";
     session.completedAt = detail.statusField.dataset.completedAt || "";
     syncSessionDetailHeaderMeta(detail, session);
-    if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detail.statusField.value) === "germinating") {
-      session.germinationStartedAt = new Date().toISOString();
-    }
     if (detail.statusField.value === "completed" && previousStatus !== "completed") {
       session.completedAt = new Date().toISOString();
     }
@@ -96647,7 +96307,7 @@ function getSessionEngineVisualTimelineIconKey(step = {}, status = {}) {
   if (["soaking", "soak"].includes(stepKey)) {
     return "drop";
   }
-  if (["move-germination", "ready-transfer"].includes(stepKey)) {
+  if (["transfer-window", "ready-transfer"].includes(stepKey)) {
     return "transfer";
   }
   if (["paper-towel"].includes(stepKey)) {
@@ -96738,7 +96398,6 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null) {
             return `
               <li class="session-engine-visual-timeline-step is-${escapeHtml(status.key)}">
                 <span class="session-engine-visual-timeline-marker">
-                  <span class="session-engine-visual-timeline-index">${escapeHtml(String(index + 1))}</span>
                   ${renderSessionEngineVisualTimelineIconMarkup(step, index, status)}
                 </span>
                 <strong>${escapeHtml(step.label || "Step")}</strong>
@@ -97419,7 +97078,7 @@ function getSessionProgressCompanionGuidance(engineState = null) {
   if (["check-window", "check-seeds", "first-check"].includes(phaseKey)) {
     return "Check seeds carefully and record any germination results.";
   }
-  if (["ready-transfer", "move-germination", "move-paper-towel"].includes(phaseKey)) {
+  if (["ready-transfer", "transfer-window", "move-paper-towel"].includes(phaseKey)) {
     return "Follow the method timing and move seeds when they are ready; tracking continues automatically.";
   }
   if (["soak", "soaking"].includes(phaseKey)) {
@@ -97460,7 +97119,7 @@ function getSessionProgressCompanionRecommendation(engineState = null) {
   if (["check-window", "check-seeds", "first-check"].includes(phaseKey)) {
     return { title: "Check seeds.", detail: "Look for taproots or sprouts and update results when ready." };
   }
-  if (["ready-transfer", "move-germination", "move-paper-towel"].includes(phaseKey)) {
+  if (["ready-transfer", "transfer-window", "move-paper-towel"].includes(phaseKey)) {
     return { title: "Follow method timing.", detail: "Move seeds when the method timing and seed readiness indicate they are ready." };
   }
   if (["soak", "soaking"].includes(phaseKey)) {
@@ -97632,7 +97291,7 @@ function renderSessionProgressCompanionRoadmapMarkup(engineState = null) {
         const status = getSessionEngineVisualTimelineStatus(step, engineState);
         const nodeLabel = status.key === "complete" || status.key === "preparation-complete"
           ? renderSessionProgressCompanionIconMarkup("check", "session-progress-companion-roadmap-check")
-          : escapeHtml(String(index + 1));
+          : '<span class="session-progress-companion-roadmap-dot" aria-hidden="true"></span>';
         return `
           <li class="session-progress-companion-roadmap-step is-${escapeHtml(status.key)}" data-roadmap-step-key="${escapeHtml(step.key || `step-${index}`)}"${step.isCurrent ? ' data-current-roadmap-step="true"' : ""}>
             <span class="session-progress-companion-roadmap-node">${nodeLabel}</span>
@@ -97848,32 +97507,7 @@ function getSpotlightLifecycleEvents(session = null) {
     }));
   }
 
-  const currentProgressKey = session ? getSessionProgressKeyFromSession(session) : "";
-
-  const stageConfig = [
-    { key: "soaking", label: "Soaking", tone: "soaking", currentLabel: "Soaking" },
-    { key: "germination", label: "Germinating", tone: "germination", currentLabel: "Germinating" },
-    { key: "first-germinated", label: "Germination Started", tone: "green", currentLabel: "Germination Started" },
-    { key: "completed", label: "Completed", tone: "completed", currentLabel: "Completed" },
-  ];
-
-  const currentIndex = stageConfig.findIndex((event) => event.key === currentProgressKey);
-
-  return stageConfig.map((event, index) => {
-    const isCurrent = currentIndex === index;
-    const isComplete = currentIndex > index;
-    const statusText = isComplete
-      ? `${event.label} completed`
-      : (isCurrent ? event.currentLabel : "");
-
-    return {
-      ...event,
-      isCurrent,
-      isComplete,
-      isActive: isCurrent || isComplete,
-      statusText,
-    };
-  });
+  return [];
 }
 
 function renderSpotlightLifecycleMarkup(session = null) {
@@ -97973,228 +97607,6 @@ function getSessionCommandCenterProgressEvents(session = null) {
   });
 }
 
-function getSessionCommandCenterRawMethodType(session = null) {
-  return String(
-    session?.methodType
-    || session?.method_type
-    || session?.systemType
-    || session?.system_type
-    || "",
-  )
-    .trim()
-    .toUpperCase()
-    .replace(/[+&]+/g, "_")
-    .replace(/[\s-]+/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/[\u0100\u0101]/g, "A");
-}
-
-function getSessionCommandCenterMethodKey(session = null) {
-  const rawMethodType = getSessionCommandCenterRawMethodType(session);
-  if ([
-    "SOAK_PAPER",
-    "SOAK_AND_PAPER_TOWEL",
-    "SOAK_PAPER_TOWEL",
-    "SOAK_PLUS_PAPER_TOWEL",
-    "WATER_SOAK_PAPER_TOWEL",
-  ].includes(rawMethodType)) {
-    return "SOAK_PAPER_TOWEL";
-  }
-  return getSessionMethodType(session);
-}
-
-function getSessionCommandCenterMethodRoadmapTemplate(methodKey = "", methodSetup = {}) {
-  const preparedMedia = normalizeMethodSetupState(methodKey, methodSetup).preparedMedia === true;
-  switch (methodKey) {
-    case "KAN":
-      return {
-        title: "KAN",
-        tone: "green",
-        iconName: "method-kan",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "soaking", label: "Soaking", timing: "0-18h" },
-          { key: "move-germination", label: "Move to Germination", timing: "18-24h" },
-          { key: "germination", label: "Germination", timing: "24-36h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "36-56h" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-    case "TRA":
-      return {
-        title: "TR\u0101",
-        tone: "green",
-        iconName: "method-tra",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "soaking", label: "Soaking", timing: "0-18h" },
-          { key: "move-germination", label: "Move to Germination", timing: "18-24h" },
-          { key: "germination", label: "Germination", timing: "24-36h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "36-56h" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-    case "SOAK_PAPER_TOWEL":
-      return {
-        title: "Soak + Paper Towel",
-        tone: "silver",
-        iconName: "method-soak-paper",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "soaking", label: "Soak", timing: "0-12h" },
-          { key: "move-paper-towel", label: "Move to Paper Towel", timing: "12-18h" },
-          { key: "paper-towel", label: "Paper Towel", timing: "0-24h after move" },
-          { key: "check-seeds", label: "Check Seeds", timing: "24-48h after move" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-    case "PAPER_TOWEL":
-      return {
-        title: "Paper Towel Only",
-        tone: "silver",
-        iconName: "method-paper-towel",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "paper-towel", label: "Paper Towel", timing: "0-12h" },
-          { key: "first-check", label: "First Check", timing: "12-24h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "24-48h" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-    case "DIRECT_SOW":
-      return {
-        title: "Direct Soil",
-        tone: "orange",
-        iconName: "method-direct-sow",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-          { key: "keep-moist", label: "Keep Moist", timing: "Day 1-3" },
-          { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-    case "ROCKWOOL":
-      return {
-        title: "Rockwool",
-        tone: "orange",
-        iconName: "method-direct-sow",
-        stages: preparedMedia
-          ? [
-              { key: "started", label: "Started", timing: "Session started" },
-              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-              { key: "keep-cubes-moist", label: "Keep Moist", timing: "Day 1-3" },
-              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-              { key: "complete", label: "Complete", timing: "When results are recorded" },
-            ]
-          : [
-              { key: "started", label: "Started", timing: "Session started" },
-              { key: "prep-cubes", label: "Prep Cubes", timing: "Day 0" },
-              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-              { key: "keep-cubes-moist", label: "Keep Cubes Moist", timing: "Day 1-3" },
-              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-              { key: "complete", label: "Complete", timing: "When results are recorded" },
-            ],
-      };
-    case "RAPID_ROOTER":
-      return {
-        title: "Starter Plug",
-        tone: "orange",
-        iconName: "method-direct-sow",
-        stages: preparedMedia
-          ? [
-              { key: "started", label: "Started", timing: "Session started" },
-              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-              { key: "keep-plugs-moist", label: "Keep Moist", timing: "Day 1-3" },
-              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-              { key: "complete", label: "Complete", timing: "When results are recorded" },
-            ]
-          : [
-              { key: "started", label: "Started", timing: "Session started" },
-              { key: "prep-plugs", label: "Prep Plugs", timing: "Day 0" },
-              { key: "seeds-planted", label: "Seeds Planted", timing: "Day 0" },
-              { key: "keep-plugs-moist", label: "Keep Plugs Moist", timing: "Day 1-3" },
-              { key: "watch-sprouts", label: "Watch for Sprouts", timing: "Day 2-5" },
-              { key: "complete", label: "Complete", timing: "When results are recorded" },
-            ],
-      };
-    case "WATER_SOAK":
-      return {
-        title: "Water Glass",
-        tone: "cyan",
-        iconName: "method-soak-only",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "soaking", label: "Soak", timing: "0-12h" },
-          { key: "check-seeds", label: "Check Seeds", timing: "12-24h" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-    default:
-      return {
-        title: "Custom Method",
-        tone: "gray",
-        iconName: "method-custom",
-        stages: [
-          { key: "started", label: "Started", timing: "Session started" },
-          { key: "seeds-started", label: "Seeds Started", timing: "As needed" },
-          { key: "complete", label: "Complete", timing: "When results are recorded" },
-        ],
-      };
-  }
-}
-
-function findSessionCommandCenterRoadmapStageIndex(stages = [], candidateKeys = []) {
-  const stageIndex = stages.findIndex((stage) => candidateKeys.includes(stage.key));
-  return stageIndex >= 0 ? stageIndex : -1;
-}
-
-function getSessionCommandCenterRoadmapCurrentIndex(session = null, stages = []) {
-  if (!session || !stages.length) {
-    return 0;
-  }
-
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
-  const progressKey = getSessionProgressKeyFromSession(session);
-  if (normalizedStatus === "completed" || progressKey === "completed") {
-    return stages.length - 1;
-  }
-
-  if (progressKey === "first-germinated") {
-    const checkedIndex = findSessionCommandCenterRoadmapStageIndex(stages, ["check-seeds", "check-emergence"]);
-    return checkedIndex >= 0 ? checkedIndex : Math.max(0, stages.length - 2);
-  }
-
-  if (normalizedStatus === "germinating" || progressKey === "germination") {
-    const germinationIndex = findSessionCommandCenterRoadmapStageIndex(stages, [
-      "move-germination",
-      "move-paper-towel",
-      "check-moisture",
-      "check-medium",
-      "check-seeds",
-      "first-check",
-      "watch-sprouts",
-      "seeds-started",
-    ]);
-    return germinationIndex >= 0 ? germinationIndex : Math.min(1, stages.length - 1);
-  }
-
-  if (normalizedStatus === "soaking" || normalizedStatus === "active" || progressKey === "soaking") {
-    const activeIndex = findSessionCommandCenterRoadmapStageIndex(stages, [
-      "soaking",
-      "paper-towel",
-      "planted",
-      "seeds-planted",
-      "prep-cubes",
-      "prep-plugs",
-      "seeds-started",
-    ]);
-    return activeIndex >= 0 ? activeIndex : Math.min(1, stages.length - 1);
-  }
-
-  return 0;
-}
-
 function getSessionCommandCenterRoadmapState(session = null) {
   const engineState = buildSessionEngineState(session);
   if (engineState?.timelineSteps?.length) {
@@ -98211,30 +97623,21 @@ function getSessionCommandCenterRoadmapState(session = null) {
       title: engineState.methodName || formatMethodTypeLabel(getSessionMethodType(session)),
       tone: engineState.definition?.tone || "green",
       iconName: engineState.definition?.iconName || "method-custom",
-      currentIndex: Math.max(0, stages.findIndex((stage) => stage.isCurrent)),
-      isCompleted: normalizeSessionStatus(session?.sessionStatus || session?.session_status || "") === "completed"
-        || engineState.currentPhase?.key === "complete",
+      currentIndex: Math.max(0, stages.findIndex((stage) => stage.isCurrent || stage.isFuture)),
+      isCompleted: Boolean(engineState.completedAt),
       stages,
       engineState,
     };
   }
 
-  const methodKey = getSessionCommandCenterMethodKey(session);
-  const template = getSessionCommandCenterMethodRoadmapTemplate(methodKey, session?.methodSetup || session?.method_setup || {});
-  const currentIndex = getSessionCommandCenterRoadmapCurrentIndex(session, template.stages);
-  const isCompleted = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "") === "completed"
-    || getSessionProgressKeyFromSession(session) === "completed";
-
   return {
-    ...template,
-    currentIndex,
-    isCompleted,
-    stages: template.stages.map((stage, index) => ({
-      ...stage,
-      isComplete: isCompleted || index < currentIndex,
-      isCurrent: isCompleted ? index === template.stages.length - 1 : index === currentIndex,
-      isFuture: !isCompleted && index > currentIndex,
-    })),
+    title: "Timeline unavailable",
+    tone: "gray",
+    iconName: "method-custom",
+    currentIndex: 0,
+    isCompleted: false,
+    stages: [],
+    engineState: null,
   };
 }
 
@@ -98360,8 +97763,9 @@ function getSessionCommandCenterActionMeta(session = null, roadmap = null, optio
   }
 
   const reminderMeta = getSessionCommandCenterNextReminderMeta(session);
+  const enginePhaseLabel = roadmap?.engineState?.phaseLabel || "";
   return {
-    currentTitle: currentStage?.label || "Tracking",
+    currentTitle: enginePhaseLabel || currentStage?.label || "Tracking",
     currentTiming: currentStage?.timing || "In progress",
     nextTitle: reminderMeta?.label || nextStage?.label || "Complete when ready",
     nextTiming: reminderMeta?.countdown || nextStage?.timing || "No reminder scheduled",
@@ -99986,7 +99390,7 @@ function getPublicJourneyTransitionStep(state = {}) {
     return getPublicJourneyTimelineStep(state, ["ready-transfer", "move-paper-towel"]);
   }
   if (methodKey === "KAN" || methodKey === "TRA") {
-    return getPublicJourneyTimelineStep(state, ["move-germination", "germination"]);
+    return getPublicJourneyTimelineStep(state, ["transfer-window", "germination"]);
   }
   return null;
 }

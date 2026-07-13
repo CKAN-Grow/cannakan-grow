@@ -48,7 +48,6 @@
       timing: config.timing || "",
       tone: config.tone || "green",
       iconName: config.iconName || "",
-      requiredConfirmation: config.requiredConfirmation || "",
       preparationComplete: config.preparationComplete === true,
       statusLabel: config.statusLabel || "",
     };
@@ -60,11 +59,11 @@
       stage: "soaking",
       actionText: "Prepare the next germination surface and inspect seed readiness.",
     }),
-    reminder("move-germination-24h", 24, "Move to Germination if needed", "Move to Germination if the seeds are ready and have not already been transferred.", {
+    reminder("move-germination-24h", 24, "Transfer window", "Drain to germination if the seeds are ready and have not already been transferred.", {
       category: "soaking-reminder",
       stage: "soaking",
       level: "warning",
-      actionText: "Use the method timing as guidance; the timeline continues automatically.",
+      actionText: "Use seed readiness and the method timing as guidance; tracking continues automatically.",
     }),
     reminder("check-germination-36h", 36, "Check for germination", "Check for germination and record visible results.", {
       stage: "germinating",
@@ -150,7 +149,7 @@
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green", iconName: "method-kan" }),
         phase("soaking", "Soak", 0, 18, { timing: "0-18h", tone: "soaking" }),
-        phase("move-germination", "Move to Germination", 18, 24, { timing: "18-24h", tone: "germination" }),
+        phase("transfer-window", "Transfer Window", 18, 24, { timing: "18-24h", tone: "germination" }),
         phase("germination", "Germination", 24, 36, { timing: "24-36h", tone: "germination" }),
         phase("check-window", "Check Seeds", 36, 56, { timing: "36-56h", tone: "green" }),
         phase("complete", "Complete", 56, null, { timing: "Results recorded", tone: "completed" }),
@@ -169,7 +168,7 @@
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green", iconName: "method-tra" }),
         phase("soaking", "Soak", 0, 18, { timing: "0-18h", tone: "soaking" }),
-        phase("move-germination", "Move to Germination", 18, 24, { timing: "18-24h", tone: "germination" }),
+        phase("transfer-window", "Transfer Window", 18, 24, { timing: "18-24h", tone: "germination" }),
         phase("germination", "Germination", 24, 36, { timing: "24-36h", tone: "germination" }),
         phase("check-window", "Check Seeds", 36, 56, { timing: "36-56h", tone: "green" }),
         phase("complete", "Complete", 56, null, { timing: "Results recorded", tone: "completed" }),
@@ -517,9 +516,12 @@
     if (methodKey === "PAPER_TOWEL") {
       return startAt;
     }
-    return parseTimestamp(session?.paperTowelStartedAt || session?.paper_towel_started_at || "")
-      || parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "")
-      || null;
+    if (methodKey === "PAPER_TOWEL_SOAK") {
+      // This is an estimated method window, not a manually advanced stage.
+      // Legacy transition timestamps remain stored for historical compatibility.
+      return addHours(startAt, 18);
+    }
+    return startAt;
   }
 
   function getAnchorAt(anchorName, context) {
@@ -581,7 +583,8 @@
       const anchorAt = getAnchorAt(item.from, context);
       const startAt = addHours(anchorAt, item.startHour);
       const endAt = item.endHour === null || item.endHour === undefined ? null : addHours(anchorAt, item.endHour);
-      const isCurrent = item.key === currentKey;
+      const isTerminalStep = item.key === "complete";
+      const isCurrent = item.key === currentKey && (!isTerminalStep || completed);
       const isComplete = completed
         ? item.key !== "complete" || Boolean(state.completedAt)
         : Boolean(endAt && nowMs >= endAt.getTime() && !isCurrent);
@@ -596,7 +599,6 @@
         isCurrent,
         isComplete,
         isFuture: !isCurrent && !isComplete,
-        requiredConfirmation: item.requiredConfirmation || "",
         preparationComplete: item.preparationComplete === true,
         statusLabel: item.statusLabel || "",
       };
@@ -613,7 +615,7 @@
       "paper-towel",
       "seeds-started",
       "seeds-planted",
-      "move-germination",
+      "transfer-window",
       "keep-moist",
       "keep-cubes-moist",
       "keep-plugs-moist",
@@ -736,11 +738,13 @@
       definition,
       currentPhase: currentPhase ? {
         key: currentPhase.key,
-        label: currentPhase.label,
+        label: currentPhase.key === "complete" && !completedAt ? "Ready to Complete" : currentPhase.label,
         timing: currentPhase.timing || "",
         tone: currentPhase.tone || definition.tone || "green",
       } : null,
-      phaseLabel: currentPhase?.label || "Tracking",
+      phaseLabel: currentPhase?.key === "complete" && !completedAt
+        ? "Ready to Complete"
+        : (currentPhase?.label || "Tracking"),
       startedAt: startAt ? startAt.toISOString() : "",
       completedAt: completedAt ? completedAt.toISOString() : "",
       elapsedMs,

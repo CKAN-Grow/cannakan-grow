@@ -1,68 +1,36 @@
-const fs = require("fs");
-const path = require("path");
 const assert = require("assert");
+const path = require("path");
 
-const repoRoot = path.resolve(__dirname, "..");
-const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
+const engine = require(path.resolve(__dirname, "..", "src", "session-engine.js"));
+const startedAt = "2026-07-13T00:00:00.000Z";
 
-for (const needle of [
-  "function resolveGrowSessionCurrentProgressKey(source = {})",
-  "return resolveGrowSessionCurrentProgressKey({",
-  "function getSessionProgressKeyFromSession(session = {})",
-  "currentProgressKey: getSessionProgressKeyFromSession(session)",
-  "const currentProgressKey = String(state.currentProgressKey || \"\").trim();",
-  "const progressKeyIndex = events.findIndex((event) => event.key === resolvedProgressKey);",
-  "index < resolvedCurrentIndex || (event.complete && resolvedCurrentIndex >= index)",
-  "const currentProgressKey = session ? getSessionProgressKeyFromSession(session) : \"\";",
-]) {
-  if (!appSource.includes(needle)) {
-    throw new Error(`Missing shared current-stage timeline behavior: ${needle}`);
-  }
+function stateAt(hours, overrides = {}) {
+  return engine.calculateSessionState({
+    session: {
+      methodType: "KAN",
+      sessionStartedAt: startedAt,
+      sessionStatus: "active",
+      ...overrides,
+    },
+    now: new Date(Date.parse(startedAt) + (hours * engine.HOUR_MS)),
+  });
 }
 
-const timelineBoundsMatch = appSource.match(/function getSessionLifecycleTimelineStageBounds[\s\S]*?\r?\n}\r?\n\r?\nfunction getSessionLifecycleTimelineCardMeta/);
-if (!timelineBoundsMatch) {
-  throw new Error("Could not locate timeline stage bounds.");
-}
+const soaking = stateAt(12, { sessionStatus: "germinating", germinationStartedAt: "2026-07-13T01:00:00.000Z" });
+assert.equal(soaking.currentPhase.key, "soaking", "Elapsed time must override a legacy germinating status.");
+assert.equal(soaking.timelineSteps.find((step) => step.key === "soaking").isCurrent, true);
 
-if (!timelineBoundsMatch[0].includes('case "soaking"')
-  || !timelineBoundsMatch[0].includes("startAt: stageStarts.soaking || null")
-  || !timelineBoundsMatch[0].includes("finishAt: stageStarts.germination || null")) {
-  throw new Error("Soaking stage length must use soak start through germination-start transition.");
-}
+const germination = stateAt(30, { sessionStatus: "soaking" });
+assert.equal(germination.currentPhase.key, "germination", "Elapsed time must override a legacy soaking status.");
+assert.equal(germination.timelineSteps.find((step) => step.key === "germination").isCurrent, true);
+assert.equal(germination.timelineSteps.find((step) => step.key === "soaking").isComplete, true);
 
-const resolveGrowSessionCurrentProgressKey = (source = {}) => {
-  const normalizedStatus = String(source.sessionStatus || source.status || source.value || "").trim().toLowerCase() || "unselected";
-  const completedAt = String(source.completedAt || source.completed_at || "").trim();
-  const firstPlantedAt = String(source.firstPlantedAt || source.first_planted_at || "").trim();
-  const germinationStartedAt = String(source.germinationStartedAt || source.germination_started_at || "").trim();
+const ready = stateAt(60);
+assert.equal(ready.phaseLabel, "Ready to Complete");
+assert.equal(ready.timelineSteps.at(-1).isFuture, true, "Completion is not visualized until actually completed.");
 
-  if (normalizedStatus === "completed" || completedAt) {
-    return "completed";
-  }
-  if (firstPlantedAt) {
-    return "first-germinated";
-  }
-  if (normalizedStatus === "germinating" || germinationStartedAt) {
-    return "germination";
-  }
-  if (normalizedStatus === "soaking") {
-    return "soaking";
-  }
-  return "";
-};
+const completed = stateAt(60, { completedAt: "2026-07-15T02:00:00.000Z", sessionStatus: "completed" });
+assert.equal(completed.timelineSteps.at(-1).isCurrent, true);
+assert.equal(completed.timelineSteps.at(-1).isComplete, true);
 
-const stageEvents = ["soaking", "germination", "first-germinated", "completed"];
-const currentProgressKey = resolveGrowSessionCurrentProgressKey({
-  sessionStatus: "germinating",
-  completedAt: "",
-  firstPlantedAt: "",
-  germinationStartedAt: "",
-});
-const currentIndex = stageEvents.indexOf(currentProgressKey);
-
-assert.equal(currentProgressKey, "germination", "Germinating status should resolve to the Germinating timeline stage.");
-assert.equal(stageEvents[currentIndex], "germination", "Timeline current index should highlight Germinating.");
-assert.equal(stageEvents[0], "soaking", "Soaking remains the previous stage, not the current stage.");
-
-console.log("Session timeline current-stage regression check passed.");
+console.log("Session timeline automatic current-position regression check passed.");

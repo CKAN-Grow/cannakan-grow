@@ -40,7 +40,7 @@ if (detailRendererSource.includes("showSeedAgeInput: currentSeedAgeMetadata.trac
 
 const stageEditingSource = appSource.slice(
   appSource.indexOf("function applyStageEditingMode"),
-  appSource.indexOf("function closeGrowthStageModal"),
+  appSource.indexOf("function getSessionStageDisplayLabel"),
 );
 if (!stageEditingSource.includes('const isCreateSessionForm = scope instanceof HTMLFormElement && scope.id === "session-form";')) {
   throw new Error("New Session should be identified so KAN/TRa setup tools remain editable before save.");

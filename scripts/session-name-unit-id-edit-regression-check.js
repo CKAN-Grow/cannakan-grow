@@ -28,7 +28,7 @@ for (const needle of [
   }
 }
 
-const stageEditingMatch = appSource.match(/function applyStageEditingMode[\s\S]*?function closeGrowthStageModal/);
+const stageEditingMatch = appSource.match(/function applyStageEditingMode[\s\S]*?function getSessionStageDisplayLabel/);
 if (!stageEditingMatch) {
   throw new Error("Could not locate applyStageEditingMode.");
 }
