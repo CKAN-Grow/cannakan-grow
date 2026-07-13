@@ -73,6 +73,6 @@ assert(!migration.includes("md5(user_id") && !migration.includes("jsonb_agg(to_j
 assert(migration.includes("'evidence_records', '[]'::jsonb"), "Community contract must not return private evidence records.");
 
 assert(health.includes("gieGroupBAdoptionDiagnostics") && health.includes('data-gie-group-b-adoption="true"'), "Grow Intelligence Health must render Group B diagnostics.");
-assert(docs.includes("16 of 20") && docs.includes("80%") && docs.includes("Group B — migrated in Phase 2B"), "Phase 2B adoption documentation is stale.");
+assert(docs.includes("Group B — migrated in Phase 2B") && docs.includes("get_gie_community_analytics()"), "Phase 2B adoption documentation is stale.");
 
 console.log("GIE Phase 2B Group B regression checks passed.");

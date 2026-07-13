@@ -86,7 +86,8 @@ for (const value of [
 assert(diagnostics.includes("public.get_gie_my_analytics()"), "Diagnostics must exercise the canonical no-argument Owner RPC.");
 
 assert(!app.includes('.rpc("get_gie_owner_analytics"'), "Browser code must never call the legacy UUID Owner RPC.");
-assert(!app.includes('.rpc("get_gie_admin_owner_analytics"'), "Normal browser code must not use the admin cross-owner RPC.");
+const adminOwnerCall = between(app, 'if (normalizedScope === "admin-owner")', 'return { state: "unavailable", scope: normalizedScope');
+assert(adminOwnerCall.includes("isAdminUser()") && adminOwnerCall.includes('.rpc("get_gie_admin_owner_analytics"'), "Browser admin cross-owner access must be explicitly admin-gated and use only the admin RPC.");
 assert(app.includes('appState.supabase.rpc("get_gie_contract_diagnostics")'), "Health may read only the admin diagnostic envelope.");
 for (const field of ["canonicalRpc", "adminRpc", "callerSuppliedOwnerId", "crossOwnerAccessProtection", "adminAuthorizationStatus"]) {
   assert(app.includes(field), `Grow Intelligence Health must render ${field}.`);

@@ -420,10 +420,10 @@ The diagnostic may expose session identifiers and names to admins for audit. Pub
 
 ## GIE Adoption Status
 
-Audit date: 2026-07-13. Phase 2B raises scoped adoption to **16 of 20 audited
-consumer groups (80%)**. Group A owner-private surfaces use
-`get_gie_my_analytics()` and Group B public surfaces use
-`get_gie_community_analytics()` exclusively for analytics.
+Audit date: 2026-07-13. Phase 2C completes **20 of 20 audited consumer groups
+(100%)**. Owner-private surfaces use `get_gie_my_analytics()`, public evidence
+uses `get_gie_community_analytics()`, and anonymous platform intelligence uses
+`get_gie_global_analytics()` exclusively for analytics.
 
 | Consumer | Status | Audit result |
 | --- | --- | --- |
@@ -437,15 +437,15 @@ consumer groups (80%)**. Group A owner-private surfaces use
 | Variety Reports | ✅ Uses Community Contract | Variety analytics, rank, evidence, confidence, relationships, and public trends render the Community payload. |
 | Source Reports | ✅ Uses Community Contract | Source totals, evidence, confidence, relationships, quality, and public trends render the Community payload. |
 | Profile | ✅ Uses Owner Contract | Self-profile statistics render Owner Analytics; public member profiles remain Group B scope. |
-| Grow Network | ❌ Legacy | Member scores, averages, and achievements use profile/session calculations. |
+| Grow Network | ✅ Uses Owner + Community Contracts | Public profile/network evidence is Community-only; signed-in private insights are Owner-only; follows and visibility remain operational. |
 | Seed Vault summaries | ✅ Uses Owner Contract | Summary cards render canonical Owner Seed Vault overview and collection fields; CRUD and entry detail behavior remain operational. |
-| Admin | ❌ Legacy | Visitor analytics are operational, but Seed Age and other Grow analytics still calculate locally. |
+| Admin | ✅ Uses Global + Community + Admin Owner Contracts | Platform totals and seed-age analytics are Global, public evidence is Community, and cross-owner inspection uses the protected admin Owner RPC. |
 | Grow Intelligence Health | ✅ Uses GIE | Renders GIE engine, schema, data-quality version, score, status, and breakdown without reinterpretation. |
 | Rankings | ✅ Uses Community Contract | Community ranking pages preserve GIE order and render GIE rank fields. Home is outside Group B and retains its documented teaser wrapper. |
 | Leaderboards | ✅ Uses Community Contract | Community source, variety, and contributor leaderboards render GIE rows and ranks. |
 | Community Confidence | ✅ Uses Community Contract | Public Community and report confidence labels and percentages originate in GIE. |
-| Recommendations | ❌ Legacy | Private dashboard and session companion recommendations use locally derived metrics. |
-| AI integration hooks | ⚠ Compatibility Wrapper | No live AI analytics consumer exists; placeholder hooks still expose locally built private rollups. |
+| Recommendations | ✅ Uses scoped GIE Contracts | Canonical recommendations and contexts include evidence, confidence, scope, versions, and generation time; UI code only selects and presents returned items. |
+| AI integration hooks | ✅ Uses scoped GIE Contracts | One explicit-scope adapter whitelists Global, Community, Owner, or authorized Admin Owner context and returns unavailable/unauthorized states without raw-data fallback. |
 | Cached aggregate / RPC compatibility | ✅ Uses GIE | The cache contains normalized GIE output; the legacy Explorer RPC is a calculation-free GIE-delegating wrapper. |
 
 ### Permanent development rule
@@ -454,10 +454,9 @@ consumer groups (80%)**. Group A owner-private surfaces use
 version the GIE before any consumer renders it. New UI code must not introduce
 totals, percentages, confidence, ranking, or eligibility calculations.
 
-The three contracts now provide the Phase 1 migration boundary. The remaining
-legacy consumers are intentionally not redirected in this phase. Their Phase 2
-migrations must map each local calculation to an already documented contract
-field or version and extend the correct contract before removing local logic.
+The three contracts are the permanent analytics boundary. There are no legacy
+analytics consumers remaining; operational CRUD and workflow reads remain
+outside GIE only when they do not derive analytics.
 
 ### Phase 1 consumer migration inventory
 
@@ -513,13 +512,30 @@ Group B by phase directive and continues using its legacy public-snapshot
 preview helper. The Global Explorer compatibility RPC remains a delegating GIE
 wrapper. Neither wrapper is used by the migrated Group B consumers.
 
-**Group C — extended intelligence (last, dependent on A/B).** Migrate Admin
-Grow analytics, Grow Network, Recommendations, and AI hooks only after their
-underlying Owner or Community fields are stable. Likely files are `app.js`,
-server API handlers when AI is introduced, and admin/network/private-dashboard
-regressions. Required coverage: scoped authorization, prompt redaction,
-diagnostic read-only behavior, and canonical recommendation provenance. Risk:
-high.
+**Group C — migrated in Phase 2C.** Grow Network uses Community
+`network_profiles` for approved, explicitly profile-shared public evidence and
+Owner Analytics for the signed-in user's private insights. Admin Grow Analytics
+uses Global totals/seed-age output, Community evidence, diagnostics, and only
+the protected `get_gie_admin_owner_analytics(uuid)` path for cross-owner review.
+Recommendations are generated within the applicable existing contract and
+carry evidence count, confidence, scope, engine/contract versions, generation
+time, and an explicit evidence state. The single `getGieAiAnalyticsContext()`
+adapter accepts an explicit scope, preserves contract metadata, returns
+separate Global and Community objects for public context, whitelists fields,
+and never falls back to sessions, snapshots, secrets, notes, images, or tokens.
+
+Retained compatibility wrappers are calculation-free: the released
+`get_grow_intelligence_engine_analytics()` SQL wrapper delegates to Global GIE;
+legacy-named profile/Home adapters map normalized contract fields for unchanged
+renderers. Session editing, social follows, profile visibility/editing, Vault
+CRUD, moderation, publications, user/account management, and tutorial progress
+remain operational-only exceptions.
+
+Permanent workflow:
+
+Need analytics? → determine Global, Owner, or Community scope → extend the
+existing GIE contract if required → version the contract/schema → consume the
+normalized contract → never calculate analytics locally.
 
 Within each group: add/version fields, validate SQL privacy, add parity tests,
 switch one consumer, remove its local calculations, and only then continue to
@@ -548,7 +564,8 @@ npx.cmd serve .
 After applying `20260713190000_gie_multi_contract_phase1.sql`,
 `20260713200000_gie_owner_contract_auth_hardening.sql`,
 `20260713210000_gie_phase2_group_a_owner_analytics.sql`, and
-`20260713220000_gie_phase2b_group_b_community_analytics.sql`, localhost may
+`20260713220000_gie_phase2b_group_b_community_analytics.sql`, and
+`20260713230000_gie_phase2c_final_consumer_adoption.sql`, localhost may
 call the same Global, Owner, and Community RPCs as production. Owner calls use
 the signed-in browser session JWT and call `get_gie_my_analytics()` without a
 user-ID argument. Do not set `SUPABASE_SECRET_KEY`, a
@@ -563,15 +580,14 @@ state until GIE configuration is valid.
 
 - GIE loads once during signed-in or signed-out hydration and refreshes after
   analytics-relevant session mutations. No GIE polling loop exists.
-- The legacy Explorer RPC adds one fallback request only when the canonical RPC
-  is missing; it delegates to GIE and may be removed after migration adoption is
-  universal.
+- Explorer loads the Global contract directly. The legacy Explorer SQL RPC is
+  retained only as a calculation-free compatibility delegate.
 - Normalized GIE payloads are marked and reused so Explorer renders do not
   repeatedly normalize the same cache entry.
-- Group A uses one normalized Owner payload cache and Group B uses one
-  normalized Community payload cache. Community analytics renderers do not
-  inspect gallery snapshots. Grow Network and operational evidence/card flows
-  remain assigned to their later migration scope.
+- Group A and private Group C surfaces share one normalized Owner cache; Groups
+  B and public Group C surfaces share one normalized Community cache. Global
+  consumers share the normalized Global cache. Renderers do not aggregate raw
+  session or snapshot rows.
 - Rapid consecutive session mutations can initiate multiple refresh requests.
   A future non-semantic optimization may coalesce in-flight GIE refreshes.
 

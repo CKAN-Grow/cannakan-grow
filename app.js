@@ -3142,6 +3142,7 @@ const appState = {
   gieContractDiagnostics: [],
   gieGroupAAdoptionDiagnostics: null,
   gieGroupBAdoptionDiagnostics: null,
+  gieGroupCAdoptionDiagnostics: null,
   gieContractDiagnosticsLoaded: false,
   gieContractDiagnosticsError: "",
   snapshotSharingPreferences: {
@@ -3800,6 +3801,7 @@ function resetSessionScopedAppState() {
   appState.gieContractDiagnostics = [];
   appState.gieGroupAAdoptionDiagnostics = null;
   appState.gieGroupBAdoptionDiagnostics = null;
+  appState.gieGroupCAdoptionDiagnostics = null;
   appState.gieContractDiagnosticsLoaded = false;
   appState.gieContractDiagnosticsError = "";
   resetMemberCountState();
@@ -20371,12 +20373,7 @@ async function loadExplorerCompletedSessionAggregate(reason = "explorer-aggregat
     return null;
   }
 
-  let { data, error } = await appState.supabase.rpc("get_grow_intelligence_engine_analytics");
-  if (error && isGrowIntelligenceEngineRpcMissingError(error)) {
-    const fallbackResult = await appState.supabase.rpc("get_explorer_completed_session_aggregates");
-    data = fallbackResult.data;
-    error = fallbackResult.error;
-  }
+  const { data, error } = await appState.supabase.rpc("get_gie_global_analytics");
   if (error) {
     if (isExplorerCompletedSessionAggregateRpcMissingError(error)) {
       appState.explorerCompletedSessionAggregateUnavailable = true;
@@ -20518,6 +20515,7 @@ function normalizeGieOwnerAnalyticsPayload(payload = {}) {
       confidence: analytics?.confidence || {},
       dataQuality: analytics?.data_quality || {},
       recommendations: Array.isArray(analytics?.recommendations) ? analytics.recommendations : [],
+      recommendationContexts: Array.isArray(analytics?.recommendation_contexts) ? analytics.recommendation_contexts.map(String) : [],
       communityParticipation: {
         approvedPublicSnapshots: Number(community?.approved_public_snapshots || 0),
         bestGerminationRate: community?.best_germination_rate === null ? null : Number(community?.best_germination_rate || 0),
@@ -20661,6 +20659,15 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
       varietyReports: mapReports(analytics?.variety_reports, "top_sources"),
       confidence: analytics?.confidence || {},
       dataQuality: analytics?.data_quality || {},
+      networkProfiles: (Array.isArray(analytics?.network_profiles) ? analytics.network_profiles : []).map((row) => ({
+        publicProfileId: String(row?.public_profile_id || "").trim(), displayName: String(row?.display_name || "Community Grower").trim(),
+        evidenceCount: Number(row?.evidence_count || 0), sessionCount: Number(row?.session_count || 0), seedsTested: Number(row?.seeds_tested || 0),
+        seedsGerminated: Number(row?.seeds_germinated || 0), germinationRate: row?.germination_rate === null ? null : Number(row?.germination_rate || 0),
+        varietyCount: Number(row?.variety_count || 0), sourceCount: Number(row?.source_count || 0), latestAt: String(row?.latest_at || "").trim(),
+        rank: Number(row?.rank || 0), confidence: row?.confidence || {},
+      })).filter((row) => row.publicProfileId),
+      recommendations: Array.isArray(analytics?.recommendations) ? analytics.recommendations : [],
+      recommendationContexts: Array.isArray(analytics?.recommendation_contexts) ? analytics.recommendation_contexts.map(String) : [],
       groupBAdoption: analytics?.group_b_adoption || {},
     },
   };
@@ -20694,7 +20701,59 @@ async function loadGieContractDiagnostics(reason = "gie-contract-diagnostics") {
   }
   appState.gieGroupAAdoptionDiagnostics = data?.group_a_adoption || null;
   appState.gieGroupBAdoptionDiagnostics = data?.group_b_adoption || null;
+  appState.gieGroupCAdoptionDiagnostics = data?.group_c_adoption || null;
   return normalizeGieContractDiagnosticsPayload(data || {});
+}
+
+function normalizeGieRecommendation(row = {}, fallbackScope = "") {
+  return {
+    id: String(row?.id || "").trim(), title: String(row?.title || "Recommendation unavailable").trim(), detail: String(row?.detail || "").trim(),
+    evidenceCount: Math.max(0, Number(row?.evidence_count ?? row?.evidenceCount) || 0),
+    confidence: row?.confidence && typeof row.confidence === "object" ? row.confidence : { label: "Insufficient evidence", percent: 0 },
+    scope: String(row?.scope || fallbackScope || "").trim(), engineVersion: String(row?.engine_version || "").trim(),
+    contractVersion: String(row?.contract_version || "").trim(), generatedAt: String(row?.generated_at || "").trim(),
+    evidenceState: String(row?.evidence_state || "insufficient").trim(),
+  };
+}
+
+function getCanonicalGieRecommendations(scope = "owner") {
+  if (scope === "owner") return (getCanonicalOwnerAnalytics().recommendations || []).map((row) => normalizeGieRecommendation(row, "Owner"));
+  if (scope === "community") return (getCanonicalCommunityAnalytics().recommendations || []).map((row) => normalizeGieRecommendation(row, "Community"));
+  return (appState.explorerCompletedSessionAggregate?.recommendations || []).map((row) => normalizeGieRecommendation(row, "Global"));
+}
+
+function buildGieAiContractContext(contract = null, scope = "") {
+  if (!contract) return { state: "unavailable", scope, reason: `${scope} Analytics Contract is unavailable.` };
+  const analytics = contract.analytics || {};
+  const metadata = { contractName: contract.contractName || "global_analytics", contractVersion: contract.contractVersion || "gie-global.v1", engineVersion: contract.engineVersion || "", schemaVersion: contract.schemaVersion || "", dataQualityVersion: contract.dataQualityVersion || "", generatedAt: contract.generatedAt || "", authorizationStatus: contract.authorizationStatus || "public" };
+  const safeAnalytics = scope === "owner"
+    ? { completedSessions: analytics.completedSessions, activeSessions: analytics.activeSessions, seedsTested: analytics.seedsTested, seedsGerminated: analytics.seedsGerminated, overallGerminationRate: analytics.overallGerminationRate, rankings: analytics.rankings, seedAgeBuckets: analytics.seedAgeBuckets, confidence: analytics.confidence, dataQuality: analytics.dataQuality, recommendations: getCanonicalGieRecommendations("owner") }
+    : scope === "community"
+      ? { overview: analytics.overview, rankings: analytics.leaderboards, confidence: analytics.confidence, dataQuality: analytics.dataQuality, recommendations: getCanonicalGieRecommendations("community") }
+      : { completedSessions: contract.totalCompletedSessions, seedsTested: contract.totalSeedsTested, seedsGerminated: contract.totalSeedsGerminated, overallGerminationRate: contract.overallGerminationRate, varieties: contract.totalVarietiesLogged, sources: contract.totalBreedersLogged, communityConfidence: contract.communityConfidence, dataQualityScore: contract.dataQualityScore, dataQualityStatus: contract.dataQualityStatus, recommendations: getCanonicalGieRecommendations("global") };
+  return { state: "available", scope, metadata, analytics: safeAnalytics };
+}
+
+async function getGieAiAnalyticsContext(scope = "public", options = {}) {
+  const normalizedScope = String(scope || "").trim().toLowerCase();
+  if (normalizedScope === "owner") {
+    if (!appState.user) return { state: "unauthorized", scope: "owner", reason: "Owner authentication is required." };
+    return buildGieAiContractContext(appState.gieOwnerAnalytics || await loadGieOwnerAnalytics("ai-context:owner").catch(() => null), "owner");
+  }
+  if (normalizedScope === "community") return buildGieAiContractContext(appState.gieCommunityAnalytics || await loadGieCommunityAnalytics("ai-context:community").catch(() => null), "community");
+  if (normalizedScope === "global") return buildGieAiContractContext(appState.explorerCompletedSessionAggregate || await loadExplorerCompletedSessionAggregate("ai-context:global").catch(() => null), "global");
+  if (normalizedScope === "public") {
+    const [globalContext, communityContext] = await Promise.all([getGieAiAnalyticsContext("global"), getGieAiAnalyticsContext("community")]);
+    return globalContext.state === "available" && communityContext.state === "available" ? { state: "available", scope: "public", contracts: { global: globalContext, community: communityContext } } : { state: "unavailable", scope: "public", contracts: { global: globalContext, community: communityContext } };
+  }
+  if (normalizedScope === "admin-owner") {
+    if (!isAdminUser()) return { state: "unauthorized", scope: "admin-owner", reason: "Admin authorization is required." };
+    const targetOwnerId = String(options.targetOwnerId || "").trim();
+    if (!targetOwnerId || !appState.supabase) return { state: "unavailable", scope: "admin-owner", reason: "A target owner is required." };
+    const { data, error } = await appState.supabase.rpc("get_gie_admin_owner_analytics", { target_user_id: targetOwnerId });
+    return error ? { state: "unavailable", scope: "admin-owner", reason: "Authorized Owner Analytics could not load." } : buildGieAiContractContext(normalizeGieOwnerAnalyticsPayload(data || {}), "owner");
+  }
+  return { state: "unavailable", scope: normalizedScope, reason: "Unsupported GIE analytics scope." };
 }
 
 async function refreshUserSessionsAfterSave(reason = "session-save") {
@@ -23377,128 +23436,27 @@ function getProfileAnalyticsSessionRate(session = null) {
 }
 
 function calculateProfileAnalyticsFromOwnerSessions(sessions = []) {
-  const eligibleSessions = (sessions || []).filter((session) => isProfileAnalyticsBaseSessionEligible(session, {
-    includeMock: isMockDataEnabled(),
-  }));
-  const completedSessions = getProfileEligibleCompletedSessions(eligibleSessions, {
-    includeMock: isMockDataEnabled(),
-  });
-  const activeSessions = eligibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active");
-  const totals = completedSessions.reduce((accumulator, session) => {
-    const sessionTotals = getSessionSeedTotals(session);
-    accumulator.totalSeedsTested += Math.max(0, Number(sessionTotals.totalSeeds) || 0);
-    accumulator.totalSeedsGerminated += Math.max(0, Number(sessionTotals.totalPlanted) || 0);
-    normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
-      accumulator.sources.push(partition.sourceDisplayName || partition.source);
-      accumulator.varieties.push(partition.seedVarietyDisplayName || partition.seedVariety);
-    });
-    const sessionRate = getProfileAnalyticsSessionRate(session);
-    if (sessionRate !== null) {
-      accumulator.rates.push(sessionRate);
-    }
-    const durationMs = getSessionCompletedDurationMs(session);
-    if (Number.isFinite(durationMs)) {
-      accumulator.durations.push(durationMs);
-    }
-    return accumulator;
-  }, {
-    totalSeedsTested: 0,
-    totalSeedsGerminated: 0,
-    rates: [],
-    durations: [],
-    sources: [],
-    varieties: [],
-  });
-
-  const averageGerminationRate = totals.totalSeedsTested > 0
-    ? (totals.totalSeedsGerminated / totals.totalSeedsTested) * 100
-    : null;
-  const averageSessionDurationMs = totals.durations.length
-    ? Math.round(totals.durations.reduce((sum, durationMs) => sum + durationMs, 0) / totals.durations.length)
-    : null;
-
+  const analytics = getCanonicalOwnerAnalytics();
   return {
-    totalSessions: eligibleSessions.length,
-    completedSessions: completedSessions.length,
-    activeSessions: activeSessions.length,
-    averageGerminationRate: getRoundedProfileRate(averageGerminationRate),
-    bestGerminationRate: totals.rates.length ? getRoundedProfileRate(Math.max(...totals.rates)) : null,
-    totalSeedsTested: totals.totalSeedsTested,
-    totalSeedsGerminated: totals.totalSeedsGerminated,
-    completionRate: eligibleSessions.length ? getRoundedProfileRate((completedSessions.length / eligibleSessions.length) * 100) : null,
-    averageSessionDurationMs,
-    favoriteSource: getMostCommonProfileStatValue(totals.sources),
-    favoriteVariety: getMostCommonProfileStatValue(totals.varieties),
-    dataScope: "owner",
+    totalSessions: analytics.totalSessions, completedSessions: analytics.completedSessions, activeSessions: analytics.activeSessions,
+    averageGerminationRate: analytics.overallGerminationRate, bestGerminationRate: analytics.bestGerminationRate,
+    totalSeedsTested: analytics.seedsTested, totalSeedsGerminated: analytics.seedsGerminated, completionRate: analytics.completionRate,
+    averageSessionDurationMs: analytics.averageSessionDurationMs, favoriteSource: analytics.favoriteSource, favoriteVariety: analytics.favoriteVariety,
+    dataScope: "owner", analyticsState: appState.gieOwnerAnalytics ? "available" : "unavailable",
   };
 }
 
 function calculateProfileAnalyticsFromPublicSnapshots(snapshots = []) {
-  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
-  const publicSessionSnapshots = [];
-  const publicSessionKeys = new Set();
-  safeSnapshots.forEach((snapshot) => {
-    const sessionKey = String(snapshot?.sessionId || snapshot?.id || "").trim();
-    if (!sessionKey || publicSessionKeys.has(sessionKey)) {
-      return;
-    }
-    publicSessionKeys.add(sessionKey);
-    publicSessionSnapshots.push(snapshot);
-  });
-  const rates = [];
-  const sources = [];
-  const varieties = [];
-  const durations = [];
-  const totals = publicSessionSnapshots.reduce((accumulator, snapshot) => {
-    const feedDetails = getGallerySnapshotFeedDetails(snapshot);
-    const totalSeeds = Math.max(0, Number(feedDetails.totalSeeds || snapshot?.totalSeeds) || 0);
-    const totalGerminated = Math.max(0, Number(feedDetails.totalPlanted || snapshot?.totalPlanted) || 0);
-    accumulator.totalSeedsTested += totalSeeds;
-    accumulator.totalSeedsGerminated += totalGerminated;
-    return accumulator;
-  }, {
-    totalSeedsTested: 0,
-    totalSeedsGerminated: 0,
-  });
-
-  publicSessionSnapshots.forEach((snapshot) => {
-    const rate = getGallerySnapshotSuccessRate(snapshot);
-    if (Number.isFinite(rate)) {
-      rates.push(rate);
-    }
-    const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
-    sources.push(publicDetails.sourceLabel);
-    varieties.push(publicDetails.seedVarietyLabel);
-    const durationMs = getGallerySnapshotCompletedDurationMs(snapshot);
-    if (Number.isFinite(durationMs)) {
-      durations.push(durationMs);
-    }
-  });
-
-  const publicSessionCount = publicSessionSnapshots.length;
-  const averageRate = totals.totalSeedsTested > 0
-    ? (totals.totalSeedsGerminated / totals.totalSeedsTested) * 100
-    : null;
-  const bestRate = rates.length ? Math.max(...rates) : null;
-  const averageSessionDurationMs = durations.length
-    ? Math.round(durations.reduce((sum, durationMs) => sum + durationMs, 0) / durations.length)
-    : null;
-
+  const memberId = String(snapshots?.[0]?.userId || snapshots?.[0]?.user_id || "").trim();
+  const profile = getCanonicalCommunityAnalytics().networkProfiles.find((row) => row.publicProfileId === memberId) || null;
   return {
-    totalSessions: publicSessionCount,
-    totalPublicSnapshots: safeSnapshots.length,
-    completedSessions: publicSessionCount,
+    totalSessions: profile?.sessionCount || 0, totalPublicSnapshots: profile?.evidenceCount || 0, completedSessions: profile?.sessionCount || 0,
     activeSessions: 0,
-    averageGerminationRate: getRoundedProfileRate(averageRate),
-    bestGerminationRate: getRoundedProfileRate(bestRate),
-    bestGerminationResult: getRoundedProfileRate(bestRate),
-    totalSeedsTested: totals.totalSeedsTested,
-    totalSeedsGerminated: totals.totalSeedsGerminated,
-    completionRate: publicSessionCount ? 100 : null,
-    averageSessionDurationMs,
-    favoriteSource: getMostCommonProfileStatValue(sources),
-    favoriteVariety: getMostCommonProfileStatValue(varieties),
-    dataScope: "public",
+    averageGerminationRate: profile?.germinationRate ?? null, bestGerminationRate: null, bestGerminationResult: null,
+    totalSeedsTested: profile?.seedsTested || 0, totalSeedsGerminated: profile?.seedsGerminated || 0, completionRate: profile ? 100 : null,
+    averageSessionDurationMs: null, favoriteSource: "", favoriteVariety: "", dataScope: "public",
+    confidence: profile?.confidence || { label: "Insufficient evidence", percent: 0 }, rank: profile?.rank || 0, latestAt: profile?.latestAt || "",
+    analyticsState: profile ? "available" : (appState.gieCommunityAnalytics ? "insufficient" : "unavailable"),
   };
 }
 
@@ -23542,113 +23500,23 @@ function getProfileDistinctPublicSessionSnapshots(snapshots = []) {
   return publicSessionSnapshots;
 }
 
-function buildProfileParticipationConsistency(snapshots = []) {
-  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
-  const monthKeys = new Set();
-  safeSnapshots.forEach((snapshot) => {
-    const parsedDate = getProfileActivityDateValue(getProfileSnapshotActivityDate(snapshot));
-    if (parsedDate) {
-      monthKeys.add(`${parsedDate.getUTCFullYear()}-${String(parsedDate.getUTCMonth() + 1).padStart(2, "0")}`);
-    }
-  });
-  const latestDate = getProfileActivityDateValue(getProfileSnapshotActivityDate(safeSnapshots[0]));
-  const latestAgeDays = latestDate
-    ? Math.floor((Date.now() - latestDate.getTime()) / (24 * 60 * 60 * 1000))
-    : null;
-  const isConsistent = safeSnapshots.length >= 3 && monthKeys.size >= 2 && (latestAgeDays === null || latestAgeDays <= 120);
-  return {
-    isConsistent,
-    publicSnapshotCount: safeSnapshots.length,
-    activeMonthCount: monthKeys.size,
-    latestAgeDays,
-  };
+function buildProfileParticipationConsistency() {
+  return { isConsistent: false, publicSnapshotCount: 0, activeMonthCount: 0, latestAgeDays: null, analyticsState: "not-provided-by-community-contract" };
 }
 
-function buildProfileMilestones({
-  analytics = {},
-  profile = null,
-  publicSnapshots = [],
-  ownerSessions = [],
-  includeOwnerPrivate = false,
-} = {}) {
-  const safePublicSnapshots = sortGallerySnapshotsNewestFirst((publicSnapshots || []).filter(isGallerySnapshotAnalyticsEligible));
-  const publicSessionSnapshots = getProfileDistinctPublicSessionSnapshots(safePublicSnapshots);
-  const ownerCompletedSessions = includeOwnerPrivate
-    ? getProfileEligibleCompletedSessions(ownerSessions, { includeMock: isMockDataEnabled() })
-    : [];
-  const oldestOwnerCompletedSession = ownerCompletedSessions[ownerCompletedSessions.length - 1] || null;
-  const oldestPublicSessionSnapshot = publicSessionSnapshots[publicSessionSnapshots.length - 1] || null;
-  const firstCompletedAt = includeOwnerPrivate
-    ? (oldestOwnerCompletedSession?.completedAt || oldestOwnerCompletedSession?.completed_at || oldestOwnerCompletedSession?.createdAt || "")
-    : getProfileSnapshotActivityDate(oldestPublicSessionSnapshot);
-  const firstApprovedSnapshot = safePublicSnapshots[safePublicSnapshots.length - 1] || null;
-  const profileCompleteness = calculateProfileCompleteness(profile);
-  const consistency = buildProfileParticipationConsistency(safePublicSnapshots);
-  const milestoneSpecs = [
-    {
-      key: "first-completed-session",
-      label: "First completed session",
-      detail: firstCompletedAt ? formatProfileActivityDateLabel(firstCompletedAt) : "Eligible completed session not available yet",
-      achieved: Boolean(firstCompletedAt),
-    },
-    {
-      key: "first-approved-snapshot",
-      label: "First approved Community Grow snapshot",
-      detail: firstApprovedSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(firstApprovedSnapshot)) : "Approved public snapshot not available yet",
-      achieved: Boolean(firstApprovedSnapshot),
-    },
-    ...[5, 10, 25].map((threshold) => ({
-      key: `${threshold}-completed-sessions`,
-      label: `${threshold} completed sessions`,
-      detail: `${Math.max(0, Number(analytics.completedSessions) || 0).toLocaleString()} eligible session${Number(analytics.completedSessions) === 1 ? "" : "s"} recorded`,
-      achieved: Math.max(0, Number(analytics.completedSessions) || 0) >= threshold,
-    })),
-    {
-      key: "perfect-germination-result",
-      label: "100% germination result",
-      detail: analytics.bestGerminationRate !== null && analytics.bestGerminationRate !== undefined
-        ? `${getProfileAnalyticsRateLabel(analytics.bestGerminationRate)} best result`
-        : "Best result not available yet",
-      achieved: Number(analytics.bestGerminationRate) >= 100,
-    },
-    {
-      key: "consistent-participation",
-      label: "Consistent public participation",
-      detail: `${consistency.publicSnapshotCount.toLocaleString()} approved snapshot${consistency.publicSnapshotCount === 1 ? "" : "s"} across ${consistency.activeMonthCount.toLocaleString()} active month${consistency.activeMonthCount === 1 ? "" : "s"}`,
-      achieved: consistency.isConsistent,
-    },
-    {
-      key: "profile-completed",
-      label: "Profile completed",
-      detail: `${Math.round(profileCompleteness * 100)}% of public profile fields completed`,
-      achieved: profileCompleteness >= 1,
-    },
-  ];
-  const achievedMilestones = milestoneSpecs.filter((milestone) => milestone.achieved);
-  return achievedMilestones.length
-    ? achievedMilestones
-    : [{
-      key: "milestones-pending",
-      label: "Cultivation milestones pending",
-      detail: "Milestones appear after eligible public grow history or owner-visible session history is available.",
-      achieved: false,
-    }];
+function buildProfileMilestones() {
+  return [{ key: "milestones-unavailable", label: "Milestones unavailable", detail: "Canonical milestone analytics are not currently provided by the selected GIE contract.", achieved: false }];
 }
 
 function buildProfileParticipationHistory(snapshots = [], analytics = {}) {
-  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
-  const latestSnapshot = safeSnapshots[0] || null;
-  const consistency = buildProfileParticipationConsistency(safeSnapshots);
   return {
-    latestPublicActivityLabel: latestSnapshot
-      ? `Latest public snapshot ${getGallerySnapshotSubmittedDateLabel(latestSnapshot)}`
-      : "No public snapshot activity yet",
-    lastPublicContributionDate: latestSnapshot ? getProfileSnapshotActivityDate(latestSnapshot) : "",
-    lastPublicContributionLabel: latestSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(latestSnapshot)) : "No public contributions yet",
-    publicSnapshotCount: safeSnapshots.length,
+    latestPublicActivityLabel: analytics.latestAt ? `Latest public evidence ${formatProfileActivityDateLabel(analytics.latestAt)}` : "No canonical public activity yet",
+    lastPublicContributionDate: analytics.latestAt || "",
+    lastPublicContributionLabel: analytics.latestAt ? formatProfileActivityDateLabel(analytics.latestAt) : "No public contributions yet",
+    publicSnapshotCount: Math.max(0, Number(analytics.totalPublicSnapshots) || 0),
     completedSessionCount: Math.max(0, Number(analytics.completedSessions) || 0),
     activeSessionCount: Math.max(0, Number(analytics.activeSessions) || 0),
-    consistency,
+    consistency: { analyticsState: "not-provided-by-community-contract" },
   };
 }
 
@@ -23664,29 +23532,8 @@ function calculateProfileCompleteness(profile = null) {
   return fields.length ? completedCount / fields.length : 0;
 }
 
-function buildProfileReputationFoundation({
-  profile = null,
-  analytics = {},
-  publicSnapshots = [],
-  referenceDate = new Date(),
-} = {}) {
-  const accountCreatedAt = parseCompletedAtValue(profile?.joinedAt || profile?.createdAt || "");
-  const accountAgeDays = accountCreatedAt
-    ? Math.max(0, Math.floor((referenceDate.getTime() - accountCreatedAt.getTime()) / (24 * 60 * 60 * 1000)))
-    : 0;
-  const latestSnapshotAt = sortGallerySnapshotsNewestFirst(publicSnapshots || [])[0]?.publishedAt || "";
-  return {
-    inputs: {
-      completedSessions: Math.max(0, Number(analytics.completedSessions) || 0),
-      approvedPublicSnapshots: Math.max(0, Number(analytics.totalPublicSnapshots) || 0),
-      participationConsistency: buildProfileParticipationHistory(publicSnapshots, analytics),
-      accountAgeDays,
-      profileCompleteness: calculateProfileCompleteness(profile),
-      latestPublicSnapshotAt: latestSnapshotAt,
-    },
-    visibleScore: null,
-    scoreEnabled: false,
-  };
+function buildProfileReputationFoundation() {
+  return { inputs: {}, visibleScore: null, scoreEnabled: false, analyticsState: "not-provided-by-community-contract" };
 }
 
 function buildProfileTrustHooks(profile = null, options = {}) {
@@ -23749,39 +23596,11 @@ function buildProfilePerformanceHighlights(analytics = {}) {
   ].filter(Boolean);
 }
 
-function buildProfileActivitySummary({
-  profile = null,
-  analytics = {},
-  publicSnapshots = [],
-  ownerSessions = [],
-  includeOwnerPrivate = false,
-} = {}) {
-  const recentPublicSnapshots = sortGallerySnapshotsNewestFirst((publicSnapshots || []).filter(isGallerySnapshotAnalyticsEligible))
-    .slice(0, 3)
-    .map((snapshot) => ({
-      key: `snapshot:${snapshot.id}`,
-      type: "snapshot",
-      label: snapshot.title || "Community Grow snapshot",
-      detail: getGallerySnapshotPublicSessionDetails(snapshot).germinationRateLabel,
-      dateLabel: formatProfileActivityDateLabel(getProfileSnapshotActivityDate(snapshot)),
-      href: snapshot.id ? `#sessions/public/${encodeURIComponent(snapshot.id)}` : "",
-    }));
-  const recentOwnerCompletedSessions = includeOwnerPrivate
-    ? getProfileEligibleCompletedSessions(ownerSessions, { includeMock: isMockDataEnabled() })
-      .slice(0, 3)
-      .map((session) => ({
-        key: `session:${session.id || session.sessionName || session.completedAt}`,
-        type: "owner-session",
-        label: formatSessionLabel(session),
-        detail: getProfileAnalyticsRateLabel(getProfileAnalyticsSessionRate(session)),
-        dateLabel: formatProfileActivityDateLabel(session.completedAt || session.completed_at || session.updatedAt || session.createdAt || ""),
-        href: session.id ? `#sessions/${encodeURIComponent(session.id)}` : "",
-      }))
-    : [];
-  const participationHistory = buildProfileParticipationHistory(publicSnapshots, analytics);
+function buildProfileActivitySummary({ profile = null, analytics = {} } = {}) {
+  const participationHistory = buildProfileParticipationHistory([], analytics);
   return {
-    recentPublicSnapshots,
-    recentOwnerCompletedSessions,
+    recentPublicSnapshots: [],
+    recentOwnerCompletedSessions: [],
     participationHistory,
     memberSinceLabel: profile?.joinedAt ? formatPublicMemberJoinedDateLabel(profile.joinedAt) : "Not available",
     lastPublicContributionLabel: participationHistory.lastPublicContributionLabel,
@@ -25638,17 +25457,6 @@ function buildCommunityActivityFeedEntry(activity) {
   );
   const avatarUrl = profile?.avatarUrl || "";
   const metadata = normalizedActivity.metadata || {};
-  const fallbackRateLabel = `${Math.max(0, Number(metadata.germinationRate) || 0)}%`;
-  const seedAgeLabel = metadata.seedAgeSummaryLabel || buildSeedAgeDisplayLabel({
-    seedAgeTrackingEnabled: metadata.seedAgeTrackingEnabled,
-    seedAgeMode: metadata.seedAgeMode,
-    sessionSeedAgeYears: metadata.sessionSeedAgeYears,
-  }, {
-    samePrefix: "Age",
-    mixedLabel: "Age: Mixed",
-    unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
-    disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
-  });
 
   return {
     id: normalizedActivity.id,
@@ -25657,7 +25465,6 @@ function buildCommunityActivityFeedEntry(activity) {
     typeMeta: typeDetails.typeMeta,
     title: normalizedActivity.title || "Grow activity",
     summary: normalizedActivity.summary || "",
-    successPercent: Math.max(0, Number(metadata.germinationRate) || 0),
     occurredAt: normalizedActivity.createdAt || "",
     memberId: normalizedActivity.userId,
     displayName,
@@ -25666,11 +25473,7 @@ function buildCommunityActivityFeedEntry(activity) {
     profileRoute: getPublicMemberProfileRoute(normalizedActivity.userId),
     sessionRoute: normalizedActivity.snapshotId ? `#sessions/public/${normalizedActivity.snapshotId}` : "#gallery",
     sessionDateLabel: metadata.sessionDateLabel || "",
-    sourceLabel: metadata.sourceLabel || "",
-    germinationRateLabel: metadata.germinationRateLabel || fallbackRateLabel,
-    systemLabel: standardizeMethodDisplayLabel(metadata.systemLabel || ""),
-    seedAgeSummaryKey: metadata.seedAgeSummaryKey || "unknown",
-    seedAgeLabel,
+    analyticsState: "not-included-in-operational-feed",
   };
 }
 
@@ -36894,27 +36697,15 @@ function formatHomeGalleryRankingMetric(entry) {
 }
 
 function buildHomeGalleryRankingsTeaserState() {
-  const snapshots = Array.isArray(appState.gallerySnapshots) ? appState.gallerySnapshots : [];
-  const approvedPublicSnapshots = getApprovedPublicGallerySnapshots();
-  const currentMonthKey = getLeaderboardMonthKey(new Date());
-  const monthlySnapshots = approvedPublicSnapshots.filter((snapshot) => (
-    getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
-  ));
-  const topMemberEntry = buildGalleryTopMemberEntries(monthlySnapshots)[0]
-    || (isMockDataEnabled() ? { ...GALLERY_TOP_MEMBERS_MOCK_ENTRIES[0] } : null);
+  const community = getCanonicalCommunityAnalytics();
+  const adapt = (row) => row ? { ...row, name: row.name || row.label, averagePercent: row.averageRate } : null;
   const rankings = {
-    topMember: topMemberEntry,
-    topSource: buildGalleryLeaderboardEntries(monthlySnapshots, "source")[0] || null,
-    topVariety: buildGalleryLeaderboardEntries(monthlySnapshots, "variety")[0] || null,
-    topSeedType: buildGallerySeedTypeHighlightEntry(monthlySnapshots),
+    topMember: adapt(community.leaderboards.contributors[0]),
+    topSource: adapt(community.leaderboards.sources[0]),
+    topVariety: adapt(community.leaderboards.varieties[0]),
+    topSeedType: null,
   };
-
-  return {
-    snapshots,
-    approvedPublicSnapshots,
-    monthlySnapshots,
-    rankings,
-  };
+  return { analyticsState: appState.gieCommunityAnalytics ? "available" : "unavailable", rankings };
 }
 
 function formatInstallPreviewElapsed(days, hours, minutes = 0) {
@@ -45744,46 +45535,7 @@ function getLearnRecommendationSignals(options = {}) {
     return new Set(explicitContexts);
   }
 
-  const signals = new Set();
-  const sessions = (Array.isArray(options.sessions) ? options.sessions : getSessions())
-    .filter((session) => !isSessionSoftDeleted(session));
-  const routeHash = String(options.routeHash || appState.currentRouteHash || window.location.hash || "").toLowerCase();
-  const activity = loadLearnRecommendationActivityFromStorage();
-
-  if (!sessions.length) {
-    signals.add("new_user");
-    signals.add("no_sessions");
-  }
-
-  if (sessions.some((session) => {
-    const status = normalizeSessionStatus(session?.sessionStatus || "");
-    return status && !["unselected", "completed"].includes(status);
-  })) {
-    signals.add("active_session");
-  }
-
-  if (!sessions.some((session) => hasCreatedMeaningfulSnapshotState(session?.snapshotState))) {
-    signals.add("first_snapshot");
-  }
-
-  if ((Array.isArray(appState.gallerySnapshots) && appState.gallerySnapshots.length > 0)
-    || routeHash.includes("gallery")
-    || routeHash.includes("community")) {
-    signals.add("community_grow");
-  }
-
-  if (routeHash.includes("analytics")
-    || activity.analytics) {
-    signals.add("analytics");
-  }
-
-  Object.keys(activity).forEach((context) => {
-    if (["community_grow", "analytics", "cstp_future"].includes(context)) {
-      signals.add(context);
-    }
-  });
-
-  return signals;
+  return new Set(appState.user ? getCanonicalOwnerAnalytics().recommendationContexts : getCanonicalCommunityAnalytics().recommendationContexts);
 }
 
 function getRecommendedLearnTutorials(categories = getLearnTutorialCategories(), options = {}) {
@@ -45804,17 +45556,6 @@ function getRecommendedLearnTutorials(categories = getLearnTutorialCategories(),
       && canCurrentUserViewLearnItem(tutorial)
       && (options.includeCompleted || !isTutorialCompleted(tutorial.id))
     ))
-    .sort((left, right) => {
-      const priorityDelta = (Number(left.tutorial.priority) || 999) - (Number(right.tutorial.priority) || 999);
-      if (priorityDelta !== 0) {
-        return priorityDelta;
-      }
-      const matchDelta = right.matchedContexts.length - left.matchedContexts.length;
-      if (matchDelta !== 0) {
-        return matchDelta;
-      }
-      return String(left.tutorial.title || "").localeCompare(String(right.tutorial.title || ""));
-    })
     .slice(0, limit);
 }
 
@@ -52706,37 +52447,12 @@ function renderSourceDirectoryCstpCardBadgeMarkup(cstpState = {}) {
 
 function renderHomeTestedSourcesPreviewSectionMarkup() {
   const directoryRecords = getSourceDirectoryMockRecords();
-  const teaserRecords = directoryRecords.length
-    ? directoryRecords
-    : (isDevelopmentPreviewDataEnabled() ? testedSourcesMock : []).map((source) => {
-      const sourceDirectoryStats = source?.id === SOURCE_PROFILE_DEFAULT_MOCK_ID
-        ? SOURCE_PROFILE_DEMO_RECORD.directoryStats
-        : source?.directoryStats;
-      return normalizeTestedSourceMockRecord({
-        ...source,
-        directoryStats: {
-          ...(sourceDirectoryStats || {}),
-          sessionsLogged: parseSourceDirectoryMetricNumber(sourceDirectoryStats?.sessionsLogged)
-            || parseSourceDirectoryMetricNumber(source?.community?.sessions),
-          varietiesLogged: parseSourceDirectoryMetricNumber(sourceDirectoryStats?.varietiesLogged),
-          lastLoggedAt: String(sourceDirectoryStats?.lastLoggedAt || source?.cstp?.testedDate || "").trim(),
-        },
-      });
-    }).filter(Boolean);
-  const directoryMetrics = getSourceDirectoryMetrics(teaserRecords);
-  const sessionsLogged = teaserRecords.reduce((total, source) => (
-    total + parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged)
-  ), 0);
-  const featuredSourceNames = ["Seedsman", "Good Genetix", "Poppin Fire"];
-  const sourceByName = new Map(teaserRecords.map((source) => [normalizeSourceNameForMatching(source?.name || ""), source]));
-  const topSources = featuredSourceNames
-    .map((sourceName) => sourceByName.get(normalizeSourceNameForMatching(sourceName)))
-    .filter(Boolean);
-  const fallbackTopSources = teaserRecords.filter((source) => !topSources.includes(source)).slice(0, Math.max(0, 3 - topSources.length));
-  const previewSources = [...topSources, ...fallbackTopSources].slice(0, 3);
+  const community = getCanonicalCommunityAnalytics();
+  const sourceByName = new Map(directoryRecords.map((source) => [normalizeSourceNameForMatching(source?.name || ""), source]));
+  const previewSources = community.topSources.slice(0, 3).map((row) => ({ ...(sourceByName.get(normalizeSourceNameForMatching(row.name || row.label || "")) || {}), name: row.name || row.label || "Source", gieAnalytics: row }));
   const summaryStats = [
-    { label: "Trusted Sources", value: directoryMetrics.totalSourcesLogged },
-    { label: "Community Sessions", value: sessionsLogged },
+    { label: "Trusted Sources", value: community.overview.sources },
+    { label: "Community Sessions", value: community.overview.totalPublicSessionsRepresented },
   ];
 
   return `
@@ -52768,9 +52484,10 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
           </div>
           <div class="home-tested-sources-list" role="list" aria-label="Trending Source Explorer sources">
             ${previewSources.length ? previewSources.map((source) => {
-              const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
-              const confidenceMeta = getSourceDirectoryConfidenceMeta(getSourceDirectoryTrustScore(source));
-              const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
+              const sourceReport = community.sourceReports.find((row) => row.key === source.gieAnalytics.key) || {};
+              const reportedRateLabel = source.gieAnalytics.averageRate === null ? "Insufficient evidence" : `${source.gieAnalytics.averageRate}%`;
+              const confidenceMeta = sourceReport.confidence || { label: "Insufficient evidence", percent: 0 };
+              const confidencePercent = Math.max(0, Math.min(100, Number(confidenceMeta.percent) || 0));
 
               return `
                 <article class="home-tested-source-row" role="listitem">
@@ -52810,68 +52527,33 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
   `;
 }
 
-function getHomeSeedExplorerConfidencePercent(totalSeeds = 0) {
-  const seedCount = Math.max(0, Number(totalSeeds) || 0);
-  if (seedCount >= 100) {
-    return 100;
-  }
-  if (seedCount >= 20) {
-    return 72;
-  }
-  return seedCount > 0 ? 44 : 0;
-}
-
 function getHomeSeedExplorerPreviewData() {
   const state = buildCommunityInsightsState();
-  const liveVarietyRows = Array.isArray(state.mostTestedVarieties)
-    ? state.mostTestedVarieties.filter((row) => Number(row?.totalSeeds) > 0)
-    : [];
-  const liveRows = liveVarietyRows.map((row) => {
-    const seedProfile = getSeedExplorerSeedByVarietyLabel(row.label || "");
-    const signal = getPublicAnalyticsSignalStrength(row.totalSeeds);
-    return {
-      name: row.label || "Seed variety",
-      source: seedProfile?.source || "Community Sources",
-      averageRate: row.averageRate,
-      confidenceLabel: signal.label,
-      confidencePercent: getHomeSeedExplorerConfidencePercent(row.totalSeeds),
-      sessionCount: row.sessionCount || row.snapshotCount || 0,
-      seedsTracked: row.totalSeeds || 0,
-      href: seedProfile?.id ? `#seeds/${encodeURIComponent(seedProfile.id)}` : "#seeds",
-    };
-  });
-
-  if (liveRows.length >= 3) {
-    return {
-      totalVarieties: liveVarietyRows.length,
-      totalSessions: state.overview?.totalPublicSessionsRepresented || liveRows.reduce((sum, row) => sum + row.sessionCount, 0),
-      rows: liveRows.slice(0, 3),
-      source: "community",
-    };
+  if (!appState.gieCommunityAnalytics) {
+    return { totalVarieties: 0, totalSessions: 0, rows: [], source: "unavailable" };
   }
-
-  const fallbackRecords = getSeedExplorerRecords().sort((left, right) => (
-    (Number(right.communitySessions) || 0) - (Number(left.communitySessions) || 0)
-    || (Number(right.confidencePercent) || 0) - (Number(left.confidencePercent) || 0)
-    || String(left.varietyName || "").localeCompare(String(right.varietyName || ""))
-  ));
-  const fallbackMetrics = getSeedExplorerMetrics(fallbackRecords);
-  const fallbackRows = fallbackRecords.slice(0, 3).map((seed) => ({
-    name: seed.varietyName || "Seed variety",
-    source: seed.source || "Source not shared",
-    averageRate: Number(seed.germinationSuccess) || null,
-    confidenceLabel: seed.communityConfidence || getPublicAnalyticsSignalStrength(seed.seedsTracked).label,
-    confidencePercent: Math.max(0, Math.min(100, Number(seed.confidencePercent) || getHomeSeedExplorerConfidencePercent(seed.seedsTracked))),
-    sessionCount: Number(seed.communitySessions) || 0,
-    seedsTracked: Number(seed.seedsTracked) || 0,
-    href: seed.id ? `#seeds/${encodeURIComponent(seed.id)}` : "#seeds",
-  }));
-
+  const rows = (Array.isArray(state.mostTestedVarieties) ? state.mostTestedVarieties : [])
+    .filter((row) => Number(row?.totalSeeds) > 0)
+    .slice(0, 3)
+    .map((row) => {
+      const report = state.varietyReports.find((candidate) => candidate.key === row.key) || {};
+      const seedProfile = getSeedExplorerSeedByVarietyLabel(row.label || "");
+      return {
+        name: row.label || "Seed variety",
+        source: seedProfile?.source || "Community Sources",
+        averageRate: row.averageRate,
+        confidenceLabel: report.confidence?.label || "Insufficient evidence",
+        confidencePercent: Number(report.confidence?.percent || 0),
+        sessionCount: row.sessionCount || row.snapshotCount || 0,
+        seedsTracked: row.totalSeeds || 0,
+        href: seedProfile?.id ? `#seeds/${encodeURIComponent(seedProfile.id)}` : "#seeds",
+      };
+    });
   return {
-    totalVarieties: Math.max(liveVarietyRows.length, fallbackMetrics.totalVarieties),
-    totalSessions: Math.max(state.overview?.totalPublicSessionsRepresented || 0, fallbackMetrics.totalSessions),
-    rows: [...liveRows, ...fallbackRows].slice(0, 3),
-    source: liveRows.length ? (fallbackRows.length ? "mixed" : "community") : (fallbackRows.length ? "preview" : "empty"),
+    totalVarieties: state.overview?.varieties || 0,
+    totalSessions: state.overview?.totalPublicSessionsRepresented || 0,
+    rows,
+    source: rows.length ? "community" : "insufficient",
   };
 }
 
@@ -55254,7 +54936,8 @@ function isExplorerCompletedSessionAggregateEligible(session = null, options = {
 }
 
 function normalizeExplorerCompletedSessionAggregatePayload(payload = null) {
-  const sourcePayload = payload && typeof payload === "object" ? payload : {};
+  const contractPayload = payload && typeof payload === "object" ? payload : {};
+  const sourcePayload = contractPayload?.analytics && typeof contractPayload.analytics === "object" ? { ...contractPayload.analytics, ...contractPayload } : contractPayload;
   const seedRecords = (Array.isArray(sourcePayload.seedRecords)
     ? sourcePayload.seedRecords
     : Array.isArray(sourcePayload.seed_records)
@@ -55332,6 +55015,7 @@ function normalizeExplorerCompletedSessionAggregatePayload(payload = null) {
 
   return {
     isCanonicalGiePayloadNormalized: true,
+    contractName: String(sourcePayload.contract_name || "global_analytics").trim(), contractVersion: String(sourcePayload.contract_version || "gie-global.v1").trim(), authorizationStatus: String(sourcePayload.authorization_status || "public").trim(),
     engineVersion: String(sourcePayload.engineVersion || sourcePayload.engine_version || "").trim(),
     schemaVersion: String(sourcePayload.schemaVersion || sourcePayload.schema_version || "").trim(),
     generatedAt: String(sourcePayload.generatedAt || sourcePayload.generated_at || "").trim(),
@@ -55370,6 +55054,7 @@ function normalizeExplorerCompletedSessionAggregatePayload(payload = null) {
     duplicateResultRows: Math.max(0, Number(sourcePayload.duplicateResultRows ?? sourcePayload.duplicate_result_rows) || 0),
     duplicateVarieties: Math.max(0, Number(sourcePayload.duplicateVarieties ?? sourcePayload.duplicate_varieties) || 0),
     missingRequiredResultFields: Math.max(0, Number(sourcePayload.missingRequiredResultFields ?? sourcePayload.missing_required_result_fields) || 0),
+    recommendations: Array.isArray(sourcePayload.recommendations) ? sourcePayload.recommendations : [], recommendationContexts: Array.isArray(sourcePayload.recommendation_contexts) ? sourcePayload.recommendation_contexts : [], adminSeedAgeAnalytics: sourcePayload.admin_seed_age_analytics || {},
   };
 }
 
@@ -72620,6 +72305,8 @@ function renderGrowIntelligenceHealthSectionMarkup() {
   const groupBConsumers = groupBAdoption?.consumers && typeof groupBAdoption.consumers === "object"
     ? groupBAdoption.consumers
     : {};
+  const groupCAdoption = appState.gieGroupCAdoptionDiagnostics || {};
+  const groupCConsumers = groupCAdoption?.consumers && typeof groupCAdoption.consumers === "object" ? groupCAdoption.consumers : {};
   const hasPayload = Boolean(appState.explorerCompletedSessionAggregateLoaded && appState.explorerCompletedSessionAggregate);
   const hasRecords = Boolean(aggregate.seedRecords.length || aggregate.sourceRecords.length || aggregate.totalCompletedSessions);
   const canonicalRpcAvailable = !appState.explorerCompletedSessionAggregateUnavailable;
@@ -72634,8 +72321,11 @@ function renderGrowIntelligenceHealthSectionMarkup() {
     ? formatDateTimeForDisplay(aggregate.generatedAt)
     : "Not available";
   const dataQualityMetrics = [
+    ["Seeds Tested", aggregate.totalSeedsTested.toLocaleString()],
+    ["Seeds With Source", aggregate.totalSeedsWithSource.toLocaleString()],
     ["Source Attribution Rate", `${aggregate.sourceAttributionRate}%`],
     ["Seeds Missing Source", aggregate.totalSeedsWithoutSource.toLocaleString()],
+    ["Varieties Missing Source", aggregate.varietiesMissingSource.toLocaleString()],
     ["Unknown Sources", aggregate.unknownSources.toLocaleString()],
     ["Unknown Varieties", aggregate.unknownVarieties.toLocaleString()],
     ["Duplicate Sources", aggregate.duplicateSources.toLocaleString()],
@@ -72793,6 +72483,12 @@ function renderGrowIntelligenceHealthSectionMarkup() {
         <p class="muted"><strong>Remaining legacy consumers:</strong> ${escapeHtml((Array.isArray(groupBAdoption.remaining_legacy_consumers) ? groupBAdoption.remaining_legacy_consumers : []).join(", ") || "Not available")}</p>
       </div>
       <div class="summary-grid admin-overview-grid">
+        <article class="meta-card" data-gie-group-c-adoption="true">
+          <span class="eyebrow">Phase 2C Adoption</span>
+          <strong>${escapeHtml(groupCAdoption.adoption_percentage === undefined ? "Not available" : `${groupCAdoption.adoption_percentage}%`)}</strong>
+          <p class="muted">${escapeHtml(groupCAdoption.status || "Not available")} · AI ${escapeHtml(groupCAdoption.ai_context_adapter || "Not available")} · Recommendations ${escapeHtml(groupCAdoption.recommendation_contract || "Not available")}</p>
+          <small>${escapeHtml(Object.entries(groupCConsumers).map(([consumer, contracts]) => `${consumer.replaceAll("_", " ")}: ${(Array.isArray(contracts) ? contracts : [contracts]).join(" + ")}`).join(" · ") || "Contract mapping unavailable")}</small>
+        </article>
         <article class="meta-card">
           <span class="eyebrow">System Health</span>
           <strong>${escapeHtml(systemHealthStatus)}</strong>
@@ -73178,10 +72874,8 @@ function renderAdminPage() {
     });
   }
 
-  const displaySnapshots = getGallerySnapshotsForDisplay();
-  const approvedSnapshots = displaySnapshots.filter(isGallerySnapshotAnalyticsEligible);
   const pendingSnapshots = getAdminReviewPendingSnapshots();
-  const sharedProfileSnapshots = approvedSnapshots.filter((snapshot) => snapshot.includeProfileInGallery);
+  const communityAnalytics = getCanonicalCommunityAnalytics();
   const overviewGrid = app.querySelector(".admin-overview-grid");
   if (overviewGrid) {
     const memberCount = getRegisteredMemberCount();
@@ -73197,7 +72891,7 @@ function renderAdminPage() {
       }),
       renderAdminOverviewCardMarkup({
         label: "Approved Community Grow Snapshots",
-        value: approvedSnapshots.length.toLocaleString(),
+        value: appState.gieCommunityAnalytics ? communityAnalytics.overview.totalApprovedCommunityGrowEntries.toLocaleString() : "--",
         subtext: "used in Community Grow views",
       }),
       renderAdminOverviewCardMarkup({
@@ -73207,7 +72901,7 @@ function renderAdminPage() {
       }),
       renderAdminOverviewCardMarkup({
         label: "Shared Community Grow Profiles",
-        value: sharedProfileSnapshots.length.toLocaleString(),
+        value: appState.gieCommunityAnalytics ? communityAnalytics.networkProfiles.length.toLocaleString() : "--",
         subtext: "approved snapshots with shared profile info",
       }),
       renderAdminOverviewCardMarkup({
@@ -83779,87 +83473,15 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
 
 function buildAdminSeedAgeAnalyticsState(filter = appState.adminSeedAgeAnalyticsFilter) {
   const normalizedFilter = normalizeSeedAgeBucketFilter(filter);
-  const completedSessions = sortSessionsNewestFirst(getAggregateStatsSessions(getSessions()));
-  const entries = buildSeedAgeBucketSessionEntries(completedSessions);
-  const bucketRows = buildSeedAgeBucketAnalytics(entries);
-  const visibleRows = normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER
-    ? bucketRows
-    : bucketRows.filter((row) => row.key === normalizedFilter);
-  const nonZeroVisibleRows = visibleRows.filter((row) => row.totalSeeds > 0);
-  const maxSeedCount = visibleRows.reduce((maxValue, row) => Math.max(maxValue, row.totalSeeds), 0);
-  const representedSessionIds = new Set(
-    entries
-      .filter((entry) => normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER || entry.bucketKey === normalizedFilter)
-      .map((entry) => entry.sessionId)
-      .filter(Boolean),
-  );
-  const totals = visibleRows.reduce((accumulator, row) => {
-    accumulator.totalSeeds += row.totalSeeds;
-    accumulator.totalPlanted += row.totalPlanted;
-    accumulator.completedSessionCount += row.completedSessionCount;
-    return accumulator;
-  }, {
-    totalSeeds: 0,
-    totalPlanted: 0,
-    completedSessionCount: 0,
-  });
-  const overallRate = totals.totalSeeds > 0
-    ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
-    : 0;
-  const bestPerformingGroup = nonZeroVisibleRows.length
-    ? [...nonZeroVisibleRows].sort((left, right) => (
-      right.germinationRate - left.germinationRate
-      || right.totalSeeds - left.totalSeeds
-      || left.label.localeCompare(right.label)
-    ))[0]
-    : null;
-  const lowestPerformingGroup = nonZeroVisibleRows.length
-    ? [...nonZeroVisibleRows].sort((left, right) => (
-      left.germinationRate - right.germinationRate
-      || right.totalSeeds - left.totalSeeds
-      || left.label.localeCompare(right.label)
-    ))[0]
-    : null;
-
-  return {
-    filter: normalizedFilter,
-    filterLabel: getSeedAgeBucketLabel(normalizedFilter),
-    completedSessions,
-    entries,
-    rows: visibleRows,
-    hasData: nonZeroVisibleRows.length > 0,
-    totals: {
-      totalSeeds: totals.totalSeeds,
-      totalPlanted: totals.totalPlanted,
-      representedCompletedSessions: representedSessionIds.size,
-    },
-    overallRate,
-    bestPerformingGroup,
-    lowestPerformingGroup,
-    germinationRateRows: visibleRows.map((row) => ({
-      label: row.label,
-      fillWidth: `${row.germinationRate}%`,
-      totalWidth: "100%",
-      value: row.totalSeeds > 0
-        ? `${row.germinationRate}%`
-        : "No data",
-    })),
-    totalSeedRows: visibleRows.map((row) => ({
-      label: row.label,
-      fillWidth: maxSeedCount > 0 ? `${Math.round((row.totalSeeds / maxSeedCount) * 100)}%` : "0%",
-      totalWidth: "100%",
-      value: `${row.totalSeeds} seeds`,
-    })),
-    completedSessionRows: visibleRows.map((row) => ({
-      label: row.label,
-      fillWidth: representedSessionIds.size > 0
-        ? `${Math.round((row.completedSessionCount / representedSessionIds.size) * 100)}%`
-        : "0%",
-      totalWidth: "100%",
-      value: `${row.completedSessionCount} session${row.completedSessionCount === 1 ? "" : "s"}`,
-    })),
-  };
+  const canonical = appState.explorerCompletedSessionAggregate?.adminSeedAgeAnalytics || {};
+  const rows = (Array.isArray(canonical.rows) ? canonical.rows : []).map((row) => ({ key: String(row?.key || "unknown"), label: String(row?.label || "Unknown age"), totalSeeds: Number(row?.total_seeds || 0), totalPlanted: Number(row?.total_planted || 0), completedSessionCount: Number(row?.completed_session_count || 0), germinationRate: Number(row?.germination_rate || 0) }));
+  const visibleRows = normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER ? rows : rows.filter((row) => row.key === normalizedFilter);
+  const selected = normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER ? null : visibleRows[0] || null;
+  const totals = canonical.totals || {};
+  const mapGroup = (row) => row ? ({ key: row.key, label: row.label, totalSeeds: Number(row.total_seeds || 0), totalPlanted: Number(row.total_planted || 0), completedSessionCount: Number(row.completed_session_count || 0), germinationRate: Number(row.germination_rate || 0) }) : null;
+  return { filter: normalizedFilter, filterLabel: getSeedAgeBucketLabel(normalizedFilter), analyticsState: appState.explorerCompletedSessionAggregate ? "available" : "unavailable", rows: visibleRows, hasData: visibleRows.some((row) => row.totalSeeds > 0), totals: selected ? { totalSeeds: selected.totalSeeds, totalPlanted: selected.totalPlanted, representedCompletedSessions: selected.completedSessionCount } : { totalSeeds: Number(totals.total_seeds || 0), totalPlanted: Number(totals.total_planted || 0), representedCompletedSessions: Number(totals.represented_completed_sessions || 0) }, overallRate: selected ? selected.germinationRate : Number(totals.overall_rate || 0), bestPerformingGroup: selected || mapGroup(canonical.best_performing_group), lowestPerformingGroup: selected || mapGroup(canonical.lowest_performing_group), germinationRateRows: visibleRows.map((row) => ({ label: row.label, fillWidth: `${row.germinationRate}%`, totalWidth: "100%", value: row.totalSeeds > 0 ? `${row.germinationRate}%` : "No data" })), totalSeedRows: visibleRows.map((row) => ({ label: row.label, fillWidth: row.totalSeeds > 0 ? "100%" : "0%", totalWidth: "100%", value: `${row.totalSeeds} seeds` })), completedSessionRows: visibleRows.map((row) => ({ label: row.label, fillWidth: row.completedSessionCount > 0 ? "100%" : "0%", totalWidth: "100%", value: `${row.completedSessionCount} session${row.completedSessionCount === 1 ? "" : "s"}` })) };
 }
+
 
 function renderAdminSeedAgeAnalyticsSection(target = app) {
   if (!target || !isAdminUser()) {
@@ -84016,33 +83638,6 @@ function renderAdminSeedAgeAnalyticsSection(target = app) {
   bindAdminCollapsibleSections(section);
   target.appendChild(section);
   return section.querySelector(".admin-seed-age-analytics-section");
-}
-
-function getBestCompletedSession(sessions) {
-  const completedSessions = (sessions || [])
-    .filter(isCompletedValidSessionForAnalytics)
-    .map((session) => {
-      const totals = getSessionSeedTotals(session);
-      const percentage = totals.totalSeeds > 0
-        ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
-        : -1;
-      return {
-        session,
-        percentage,
-        sortTime: getSessionSortTime(session),
-        durationMs: getSessionCompletedDurationMs(session),
-      };
-    })
-    .filter((item) => item.percentage >= 0)
-    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
-      getRate: (item) => item.percentage,
-      getDurationMs: (item) => item.durationMs,
-      getSortTime: (item) => item.sortTime,
-      getFallbackLabel: (item) => formatSessionLabel(item.session),
-      sortDirection: "desc",
-    }));
-
-  return completedSessions[0]?.session || null;
 }
 
 function renderSessionForm(initialSystemType = "KAN") {
@@ -89373,12 +88968,10 @@ function renderGrowNetworkPage() {
   const headerFollowersValue = useMockPresentation
     ? "128"
     : (currentUserFollowSummary ? currentUserFollowSummary.followerCount.toLocaleString() : "0");
-  const headerLikesValue = useMockPresentation
-    ? "2.4K"
-    : "0";
+  const headerLikesValue = appState.gieCommunityAnalytics ? getCanonicalCommunityAnalytics().overview.totalApprovedCommunityGrowEntries.toLocaleString() : "--";
   const headerStats = [
     { label: "Total Followers", value: headerFollowersValue },
-    { label: "Total Likes", value: headerLikesValue },
+    { label: "Community Evidence", value: headerLikesValue },
   ];
 
   const renderGrowNetworkNotificationTypeIcon = (type = "follow") => {
@@ -89463,77 +89056,16 @@ function renderGrowNetworkPage() {
     </a>
   `;
 
-  const recentWindowMs = 14 * 24 * 60 * 60 * 1000;
-  const nowMs = Date.now();
   const currentUserId = String(appState.user?.id || "").trim();
-  const currentUserFollowList = currentUserId ? getPublicMemberFollowList(currentUserId, "followers") : null;
   const approvedPublicSnapshots = getApprovedPublicGallerySnapshots();
-  const currentUserPublicSnapshots = approvedPublicSnapshots.filter((snapshot) => (
-    String(snapshot?.userId || "").trim() === currentUserId
-  ));
-  const isWithinRecentWindow = (value = "") => {
-    const dateMs = parseCompletedAtValue(value)?.getTime() || 0;
-    return dateMs > 0 && (nowMs - dateMs) <= recentWindowMs;
-  };
-  const formatGrowNetworkStatValue = (value = 0) => {
-    const normalizedValue = Math.max(0, Number(value) || 0);
-    if (normalizedValue >= 1000) {
-      return new Intl.NumberFormat("en-US", {
-        notation: "compact",
-        maximumFractionDigits: 1,
-      }).format(normalizedValue);
-    }
-    return normalizedValue.toLocaleString();
-  };
-
-  let totalFollowersCount = 0;
-  let activeGrowersCount = 0;
-  let likesReceivedCount = 0;
-  let sessionsTrendingCount = 0;
-
-  if (showPreviewStats) {
-    const mockPrimaryProfile = getMockGrowNetworkProfiles().find((profile) => profile.id === "mock-seedsman-lab")
-      || getMockGrowNetworkProfiles()[0]
-      || null;
-    const mockActivityEntries = buildMockGrowNetworkActivityEntries();
-    const mockRecentNotifications = getMockGrowNetworkNotifications().filter((notification) => isWithinRecentWindow(notification.occurredAt));
-
-    // Temporary preview fallback: until live social aggregates exist for the signed-in account,
-    // Grow Network preview mode uses the canonical mock profile and mock notification feed.
-    totalFollowersCount = Math.max(0, Number(mockPrimaryProfile?.followerCount) || 0);
-    likesReceivedCount = Math.max(0, Number(mockPrimaryProfile?.likes) || 0);
-    activeGrowersCount = new Set(mockActivityEntries.map((activity) => activity.memberId).filter(Boolean)).size;
-    sessionsTrendingCount = new Set(mockRecentNotifications
-      .filter((notification) => (
-        ["like", "system"].includes(String(notification?.type || "").trim().toLowerCase())
-        && ["session", "snapshot"].includes(String(notification?.targetType || "").trim().toLowerCase())
-        && String(notification?.targetId || "").trim()
-      ))
-      .map((notification) => String(notification.targetId || "").trim())).size;
-  } else {
-    totalFollowersCount = currentUserFollowSummary
-      ? Math.max(0, Number(currentUserFollowSummary.followerCount) || 0)
-      : (Array.isArray(currentUserFollowList) ? currentUserFollowList.length : 0);
-
-    const recentActivityEntries = activities.filter((activity) => isWithinRecentWindow(activity.occurredAt));
-    const recentApprovedSnapshots = approvedPublicSnapshots.filter((snapshot) => (
-      isWithinRecentWindow(snapshot.publishedAt || snapshot.createdAt || "")
-    ));
-    activeGrowersCount = recentActivityEntries.length
-      ? new Set(recentActivityEntries.map((activity) => activity.memberId).filter(Boolean)).size
-      : new Set(recentApprovedSnapshots.map((snapshot) => String(snapshot?.userId || "").trim()).filter(Boolean)).size;
-
-    likesReceivedCount = currentUserPublicSnapshots.reduce((sum, snapshot) => (
-      sum + Math.max(0, Number(snapshot?.likeCount) || 0)
-    ), 0);
-
-    // Temporary engagement proxy: the app does not yet store like timestamps, so "trending"
-    // uses recently published public snapshots with at least one like.
-    sessionsTrendingCount = currentUserPublicSnapshots.filter((snapshot) => (
-      isWithinRecentWindow(snapshot.publishedAt || snapshot.createdAt || "")
-      && Math.max(0, Number(snapshot?.likeCount) || 0) > 0
-    )).length;
-  }
+  const currentUserPublicSnapshots = approvedPublicSnapshots.filter((snapshot) => String(snapshot?.userId || "").trim() === currentUserId);
+  const formatGrowNetworkStatValue = (value = 0) => Math.max(0, Number(value) || 0).toLocaleString();
+  const communityNetworkAnalytics = getCanonicalCommunityAnalytics();
+  const ownerNetworkAnalytics = getCanonicalOwnerAnalytics();
+  const totalFollowersCount = currentUserFollowSummary ? Math.max(0, Number(currentUserFollowSummary.followerCount) || 0) : 0;
+  const activeGrowersCount = communityNetworkAnalytics.overview.activeCommunityContributors;
+  const likesReceivedCount = ownerNetworkAnalytics.communityParticipation.approvedPublicSnapshots;
+  const sessionsTrendingCount = communityNetworkAnalytics.overview.totalPublicSessionsRepresented;
 
   const growNetworkStats = [
     {
@@ -89547,22 +89079,22 @@ function renderGrowNetworkPage() {
       icon: "plant",
       tone: "green",
       value: formatGrowNetworkStatValue(activeGrowersCount),
-      label: "Active Growers",
-      detail: showPreviewStats ? "with recent public activity" : "recent public growers",
+      label: "Community Contributors",
+      detail: appState.gieCommunityAnalytics ? "approved public evidence" : "Community Analytics unavailable",
     },
     {
       icon: "heart",
       tone: "red",
       value: formatGrowNetworkStatValue(likesReceivedCount),
-      label: "Likes Received",
-      detail: appState.gallerySnapshotLikesTableUnavailable ? "likes fallback active" : "across your public grow",
+      label: "Your Public Evidence",
+      detail: appState.gieOwnerAnalytics ? "Owner Analytics" : "Owner Analytics unavailable",
     },
     {
       icon: "trending",
       tone: "gold",
       value: formatGrowNetworkStatValue(sessionsTrendingCount),
-      label: "Sessions Trending",
-      detail: showPreviewStats ? "recent engagement signals" : "recent public sessions with likes",
+      label: "Public Sessions",
+      detail: appState.gieCommunityAnalytics ? "Community Analytics" : "Community Analytics unavailable",
     },
   ];
 
@@ -89571,24 +89103,16 @@ function renderGrowNetworkPage() {
     ? (getPublicMemberProfile(currentUserId) || buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, currentProfileSettings))
     : null;
   const ownerSessions = getSessions();
-  const ownerAnalytics = calculateProfileAnalyticsFromOwnerSessions(ownerSessions);
-  const ownerCompletedSessions = getProfileEligibleCompletedSessions(ownerSessions, {
-    includeMock: isMockDataEnabled(),
-  });
-  const publicContributionCount = currentUserPublicSnapshots.length;
+  const ownerContractAnalytics = getCanonicalOwnerAnalytics();
+  const communityAnalytics = getCanonicalCommunityAnalytics();
+  const ownerAnalytics = calculateProfileAnalyticsFromOwnerSessions();
+  const ownerCompletedSessions = ownerContractAnalytics.sessionHistory.map((session) => ({ ...session, completedAt: session.completedAt, totalSeeds: session.seedsTested, totalPlanted: session.seedsGerminated }));
+  const ownerNetworkProfile = communityAnalytics.networkProfiles.find((row) => row.publicProfileId === currentUserId) || null;
+  const publicContributionCount = ownerContractAnalytics.communityParticipation.approvedPublicSnapshots;
   const followingCount = followingEntries.length;
   const followerCount = Math.max(0, Number(currentUserFollowSummary?.followerCount || totalFollowersCount) || 0);
-  const growScoreBase = (
-    (Math.min(ownerAnalytics.completedSessions, 18) * 3.4)
-    + (Math.min(ownerAnalytics.totalSeedsTested, 240) * 0.08)
-    + (Math.min(Number(ownerAnalytics.averageGerminationRate) || 0, 100) * 0.26)
-    + (Math.min(publicContributionCount, 18) * 1.8)
-    + (Math.min(followerCount, 160) * 0.04)
-  );
-  const growScore = Math.max(12, Math.min(99, Math.round(growScoreBase || (ownerAnalytics.completedSessions ? 42 : 18))));
-  const growTitle = growScore >= 88
-    ? "Elite Grower"
-    : (growScore >= 74 ? "Expert Grower" : (growScore >= 42 ? "Grower" : "Seedling"));
+  const growScore = Number(ownerContractAnalytics.confidence?.percent || 0);
+  const growTitle = String(ownerContractAnalytics.confidence?.label || "Building Evidence");
   const memberSinceLabel = formatPublicMemberJoinedDateLabel(
     currentPublicProfile?.joinedAt || currentPublicProfile?.createdAt || appState.profile?.createdAt || appState.user?.created_at || "",
   );
@@ -89609,58 +89133,16 @@ function renderGrowNetworkPage() {
   const averageGerminationLabel = getProfileAnalyticsRateLabel(ownerAnalytics.averageGerminationRate, "Pending");
   const totalSeedsStarted = Math.max(0, Number(ownerAnalytics.totalSeedsTested) || 0);
   const totalCommunityContributions = publicContributionCount;
-  const getGrowerReportTopValues = (fieldResolver) => {
-    const valueCounts = new Map();
-    ownerCompletedSessions.forEach((session) => {
-      normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
-        const value = String(fieldResolver(partition) || "").trim();
-        if (!value) {
-          return;
-        }
-        valueCounts.set(value, (valueCounts.get(value) || 0) + 1);
-      });
-    });
-    return [...valueCounts.entries()]
-      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
-      .slice(0, 4);
-  };
-
-  const favoriteSources = getGrowerReportTopValues((partition) => partition.sourceDisplayName || partition.source);
-  const favoriteVarieties = getGrowerReportTopValues((partition) => partition.seedVarietyDisplayName || partition.seedVariety);
+  const favoriteSources = ownerContractAnalytics.rankings.sources.slice(0, 4).map((row) => [row.name, row.sessionCount]);
+  const favoriteVarieties = ownerContractAnalytics.rankings.varieties.slice(0, 4).map((row) => [row.name, row.sessionCount]);
   const latestSession = ownerCompletedSessions[0] || null;
-  const latestPublicSnapshot = currentUserPublicSnapshots[0] || null;
+  const latestPublicSnapshot = ownerNetworkProfile?.latestAt ? { title: "Community Grow report", publishedAt: ownerNetworkProfile.latestAt } : null;
   const publicVisibilityLabel = isMyGrowProfilePublic ? "Public" : "Private";
   const statsVisibilityLabel = currentProfileSettings.showGrowStatsPublicly !== false ? "Public" : "Private";
   const followerVisibilityLabel = currentProfileSettings.allowFollowers !== false ? "Followers enabled" : "Private";
   const profileTagline = String(currentPublicProfile?.bio || "").trim()
     || "Building a personal germination record from sessions, seed evidence, and community contributions.";
-  const achievementItems = [
-    {
-      label: "Session Starter",
-      detail: "Started your Grow record",
-      earned: ownerAnalytics.totalSessions > 0,
-    },
-    {
-      label: "Session Completed",
-      detail: "Completed a tracked grow session",
-      earned: ownerAnalytics.completedSessions > 0,
-    },
-    {
-      label: "Reliable Results",
-      detail: "Strong germination consistency",
-      earned: Number(ownerAnalytics.averageGerminationRate) >= 90,
-    },
-    {
-      label: "Community Contributor",
-      detail: "Shared public evidence",
-      earned: totalCommunityContributions > 0,
-    },
-    {
-      label: "Grow Card Ready",
-      detail: "Identity foundation active",
-      earned: true,
-    },
-  ];
+  const achievementItems = [{ label: "Achievements unavailable", detail: "Canonical achievement analytics are not currently provided by GIE.", earned: false }];
   const achievementsEarnedCount = achievementItems.filter((item) => item.earned).length;
   const growCardsCollectedCount = followingCount;
   const heroStatStrip = [
@@ -90142,9 +89624,6 @@ function renderGrowNetworkPage() {
               ${activity.summary ? `<p class="muted">${escapeHtml(activity.summary)}</p>` : ""}
               <div class="grow-network-feed-meta">
                 <span class="gallery-card-chip">${escapeHtml(activity.typeLabel)}</span>
-                <span class="gallery-card-chip">${escapeHtml(`${activity.germinationRateLabel} germination`)}</span>
-                ${activity.sourceLabel && activity.sourceLabel !== "Unknown source" ? `<span class="gallery-card-chip">${escapeHtml(activity.sourceLabel)}</span>` : ""}
-                ${activity.seedAgeLabel ? `<span class="gallery-card-chip">${escapeHtml(activity.seedAgeLabel)}</span>` : ""}
                 ${activity.typeMeta ? `<span class="gallery-card-chip">${escapeHtml(activity.typeMeta)}</span>` : ""}
               </div>
             </div>
@@ -90211,19 +89690,14 @@ function renderGrowNetworkPage() {
     `;
   };
 
-  const myGrowSeedVaultEntries = (Array.isArray(appState.seedVaultEntries) ? appState.seedVaultEntries : [])
-    .map(normalizeSeedVaultEntry)
-    .filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
-  const myGrowVaultVarietyCount = new Set(myGrowSeedVaultEntries.map((entry) => entry.seedName).filter(Boolean)).size;
-  const myGrowVaultSourceCount = new Set(myGrowSeedVaultEntries.map((entry) => entry.source).filter(Boolean)).size;
-  const myGrowVaultSeedCount = myGrowSeedVaultEntries.reduce((sum, entry) => (
-    sum + Math.max(0, Number(entry.remainingCount ?? entry.seedCount ?? entry.quantity) || 0)
-  ), 0);
-  const myGrowNewestVaultEntry = myGrowSeedVaultEntries
-    .slice()
-    .sort((left, right) => getSeedVaultEntrySortTimestamp(right) - getSeedVaultEntrySortTimestamp(left))[0] || null;
+  const myGrowSeedVaultEntries = (Array.isArray(appState.seedVaultEntries) ? appState.seedVaultEntries : []).map(normalizeSeedVaultEntry).filter((entry) => entry && !entry.isDeleted && !entry.isArchived);
+  const ownerVaultAnalytics = ownerContractAnalytics.seedVault;
+  const myGrowVaultVarietyCount = ownerVaultAnalytics.overview.totalVarieties;
+  const myGrowVaultSourceCount = ownerVaultAnalytics.overview.totalSources;
+  const myGrowVaultSeedCount = ownerVaultAnalytics.overview.totalSeedsOwned;
+  const myGrowNewestVaultEntry = ownerVaultAnalytics.newestEntry;
   const myGrowGrowLevel = growTitle.replace(/\s+Grower$/i, "") || "Grower";
-  const myGrowSourceCount = Math.max(favoriteSources.length, myGrowVaultSourceCount);
+  const myGrowSourceCount = myGrowVaultSourceCount;
   const myGrowActiveSession = ownerSessions
     .map((session) => normalizeStoredSession(session) || session)
     .filter((session) => normalizeGrowSessionLifecycleState(session) === "active")
@@ -90281,13 +89755,11 @@ function renderGrowNetworkPage() {
   const allMyGrowTrendPoints = ownerCompletedSessions
     .slice()
     .map((session) => {
-      const rate = getProfileAnalyticsSessionRate(session);
+      const rate = Number(session.germinationRate);
       const date = getMyGrowTrendSessionDate(session);
-      const totals = getSessionSeedTotals(session);
-      if (!Number.isFinite(rate) || !date || !totals || Math.max(0, Number(totals.totalSeeds) || 0) <= 0) {
+      if (!Number.isFinite(rate) || !date || Math.max(0, Number(session.seedsTested) || 0) <= 0) {
         return null;
       }
-      const method = getMethodConfig(getSessionMethodType(session));
       const sessionTitle = getMyGrowSessionTitle(session);
       const completedDateLabel = formatMyGrowTrendCompletedDateLabel(date);
       return {
@@ -90295,10 +89767,10 @@ function renderGrowNetworkPage() {
         label: "",
         timestamp: date.getTime(),
         sessionTitle,
-        methodLabel: formatMethodTypeLabel(method.id),
+        methodLabel: session.method,
         completedDateLabel,
-        germinated: Math.max(0, Number(totals.totalGerminated ?? totals.totalPlanted) || 0),
-        totalSeeds: Math.max(0, Number(totals.totalSeeds) || 0),
+        germinated: Math.max(0, Number(session.seedsGerminated) || 0),
+        totalSeeds: Math.max(0, Number(session.seedsTested) || 0),
       };
     })
     .filter(Boolean)
@@ -90313,12 +89785,8 @@ function renderGrowNetworkPage() {
       ...point,
       label: `Session ${index + 1}`,
     }));
-  const myGrowTrendAverage = myGrowTrendValues.length
-    ? Math.round(myGrowTrendValues.reduce((sum, point) => sum + Math.max(0, Math.min(100, Number(point.value) || 0)), 0) / myGrowTrendValues.length)
-    : null;
-  const myGrowTrendBest = myGrowTrendValues.length
-    ? Math.round(Math.max(...myGrowTrendValues.map((point) => Math.max(0, Math.min(100, Number(point.value) || 0)))))
-    : null;
+  const myGrowTrendAverage = ownerContractAnalytics.averageSessionGerminationRate;
+  const myGrowTrendBest = ownerContractAnalytics.bestGerminationRate;
   const myGrowTrendLimitLabel = selectedMyGrowTrendWindow.key === "all"
     ? "All eligible sessions"
     : `${selectedMyGrowTrendWindow.label} sessions`;
@@ -90527,17 +89995,7 @@ function renderGrowNetworkPage() {
     { icon: "seedVault", label: "Seeds Started", value: getProfileAnalyticsCountLabel(totalSeedsStarted), detail: "Total", tone: "orange" },
     { icon: "sourceTrustStar", label: "Sources", value: getProfileAnalyticsCountLabel(myGrowSourceCount), detail: "Tracked", tone: "gold" },
   ];
-  const myGrowInsights = [
-    Number(ownerAnalytics.averageGerminationRate) >= 90
-      ? `Your germination rate is ${Math.round(ownerAnalytics.averageGerminationRate)}%, a strong signal across completed sessions.`
-      : "Your germination trend will sharpen as more completed sessions are added.",
-    ownerAnalytics.completedSessions >= 3
-      ? "Your consistency is growing. Recent sessions are building a clearer personal baseline."
-      : "Complete a few more sessions to build stronger personal consistency insights.",
-    totalSeedsStarted > 0
-      ? `You have started ${getProfileAnalyticsCountLabel(totalSeedsStarted)} seeds across your Grow record.`
-      : "Your seed history will appear here after your first completed session.",
-  ];
+  const myGrowInsights = getCanonicalGieRecommendations("owner").map((recommendation) => recommendation.detail).filter(Boolean);
   const myGrowActivityRows = [
     {
       icon: "reportDocument",

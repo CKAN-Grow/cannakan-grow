@@ -53,7 +53,7 @@ assert(seedRenderer.includes('href="#seeds"'), "Seed Explorer CTA must navigate 
 assert(seedRenderer.includes("Trending Varieties"), "Seed Explorer preview must include Trending Varieties.");
 assert(seedDataHelper.includes("buildCommunityInsightsState()"), "Seed Explorer Home preview must reuse Community Insights data.");
 assert(seedDataHelper.includes("state.mostTestedVarieties"), "Seed Explorer Home preview must use canonical most-tested variety ranking.");
-assert(seedDataHelper.includes("getSeedExplorerRecords().sort"), "Seed Explorer Home preview must use the shared completed-session Seed Explorer records.");
+assert(!seedDataHelper.includes("getSeedExplorerRecords().sort") && !seedDataHelper.includes("fallbackRows"), "Seed Explorer Home preview must not fall back to independently ranked Global records.");
 assert(!seedRenderer.includes("184") && !seedRenderer.includes("1,240"), "Seed Explorer preview must not hardcode sample stats.");
 assert(iconResolver.includes('case "seed"') && iconResolver.includes('return "seedGermination"'), "Shared section icon resolver must support seed markers.");
 assert(css.includes(".home-seed-explorer-row"), "Missing Seed Explorer row styling.");

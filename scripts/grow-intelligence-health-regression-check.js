@@ -29,7 +29,7 @@ assert(routeConfig.includes('label: "Grow Intelligence Health"'), "Admin route l
 assert(routeConfig.includes('case "data-health"') && routeConfig.includes('case "explorer-data-health"') && routeConfig.includes('case "gie"'), "Legacy health hashes must remain aliases.");
 assert(app.includes('storedKey === "explorer-data-health" ? "grow-intelligence-health"'), "Saved admin layouts must migrate the legacy panel key.");
 
-assert(loader.includes('appState.supabase.rpc("get_grow_intelligence_engine_analytics")'), "Grow Intelligence Health must load the canonical GIE RPC.");
+assert(loader.includes('appState.supabase.rpc("get_gie_global_analytics")'), "Grow Intelligence Health must load the canonical Global GIE contract.");
 assert(healthMarkup.includes("System Health") && healthMarkup.includes("Data Quality"), "System health and data quality must be presented separately.");
 assert(healthMarkup.includes("aggregate.dataQualityScore") && healthMarkup.includes("aggregate.dataQualityStatus"), "Health UI must render canonical score fields.");
 assert(!healthMarkup.includes("Math.round") && !healthMarkup.includes("getGrowIntelligenceEngineAttributionStatus"), "Health UI must not calculate GIE quality classifications.");

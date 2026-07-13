@@ -32,23 +32,23 @@ const consumers = [
   ["Variety Reports", "✅ Uses Community Contract"],
   ["Source Reports", "✅ Uses Community Contract"],
   ["Profile", "✅ Uses Owner Contract"],
-  ["Grow Network", "❌ Legacy"],
+  ["Grow Network", "✅ Uses Owner + Community Contracts"],
   ["Seed Vault summaries", "✅ Uses Owner Contract"],
-  ["Admin", "❌ Legacy"],
+  ["Admin", "✅ Uses Global + Community + Admin Owner Contracts"],
   ["Grow Intelligence Health", "✅ Uses GIE"],
   ["Rankings", "✅ Uses Community Contract"],
   ["Leaderboards", "✅ Uses Community Contract"],
   ["Community Confidence", "✅ Uses Community Contract"],
-  ["Recommendations", "❌ Legacy"],
-  ["AI integration hooks", "⚠ Compatibility Wrapper"],
+  ["Recommendations", "✅ Uses scoped GIE Contracts"],
+  ["AI integration hooks", "✅ Uses scoped GIE Contracts"],
   ["Cached aggregate / RPC compatibility", "✅ Uses GIE"],
 ];
 
 for (const [consumer, status] of consumers) {
   assert(docs.includes(`| ${consumer} | ${status} |`), `Missing adoption classification for ${consumer}.`);
 }
-assert(consumers.filter(([, status]) => status.startsWith("✅")).length === 16, "Scoped adoption numerator changed; update the documented audit percentage.");
-assert(docs.includes("16 of 20") && docs.includes("(80%)"), "GIE adoption percentage is missing or stale.");
+assert(consumers.filter(([, status]) => status.startsWith("✅")).length === 20, "Final adoption numerator must remain complete.");
+assert(docs.includes("20 of 20") && docs.includes("(100%)"), "Final GIE adoption percentage is missing or stale.");
 assert(docs.includes("No analytics without GIE."), "Permanent GIE development rule is missing.");
 
 const aggregateAdapter = getBetween(app, "function buildExplorerCompletedSessionAggregate", "function getSeedExplorerRecords");
@@ -61,19 +61,13 @@ assert(!app.includes("function getExplorerAggregateEligibleCompletedSessions"), 
 assert(!normalizer.includes("Math.round((totalGerminated / seedsTracked)") && !normalizer.includes("getSourceDirectoryCommunityConfidenceLabel({ communitySessions"), "GIE payload normalization must not recalculate rates or confidence.");
 assert(cachedAdapter.includes("engineVersion: normalizedPayload.engineVersion") && cachedAdapter.includes("schemaVersion: normalizedPayload.schemaVersion") && cachedAdapter.includes("dataQualityVersion: normalizedPayload.dataQualityVersion"), "Cached consumers must share canonical engine/schema/data-quality versions.");
 
-for (const legacyHelper of [
-  "calculateProfileAnalyticsFromOwnerSessions",
-  "calculateProfileAnalyticsFromPublicSnapshots",
-  "buildSeedVaultAnalytics",
-  "buildPrivateAnalyticsDashboardState",
-  "renderMySessionsAnalyticsPanelMarkup",
-  "buildHomeGalleryRankingsTeaserState",
-]) {
-  assert(app.includes(`function ${legacyHelper}`), `Known legacy helper ${legacyHelper} changed; update the adoption audit.`);
-}
+const ownerProfileAdapter = getBetween(app, "function calculateProfileAnalyticsFromOwnerSessions", "function calculateProfileAnalyticsFromPublicSnapshots");
+const publicProfileAdapter = getBetween(app, "function calculateProfileAnalyticsFromPublicSnapshots", "function calculateOwnerProfilePrivateStats");
+assert(ownerProfileAdapter.includes("getCanonicalOwnerAnalytics()") && !ownerProfileAdapter.includes(".reduce("), "Owner profile compatibility adapter must be calculation-free.");
+assert(publicProfileAdapter.includes("networkProfiles.find") && !publicProfileAdapter.includes("getGallerySnapshotSuccessRate"), "Public profile compatibility adapter must use Community network profiles.");
 
-const canonicalRpcCalls = app.match(/appState\.supabase\.rpc\("get_grow_intelligence_engine_analytics"\)/g) || [];
-assert(canonicalRpcCalls.length === 1, "Browser code should have one canonical GIE request implementation.");
+const canonicalRpcCalls = app.match(/appState\.supabase\.rpc\("get_gie_global_analytics"\)/g) || [];
+assert(canonicalRpcCalls.length === 1, "Browser code should have one canonical Global Analytics request implementation.");
 assert(browserConfig.includes("anonKey") && !/service.?role|secret.?key/i.test(browserConfig), "Browser config must contain only a public anon/publishable key slot.");
 assert(buildConfig.includes("CANNAKAN_SUPABASE_ANON_KEY") && !/SERVICE_ROLE|SECRET_KEY/.test(buildConfig), "Client build config must never read server secrets.");
 assert(!/SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEY/.test(app), "Browser application code must not reference service-role or secret keys.");
@@ -81,4 +75,4 @@ assert(!/SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEY/.test(app), "Browser appl
 assert(app.includes("function buildCommunityInsightsState") && app.includes("getCanonicalCommunityAnalytics()"), "Community adapter must consume canonical Community Analytics.");
 assert(app.includes("function getSourceDirectoryTrustScore") && app.includes("getCanonicalCommunitySourceReport"), "Public source confidence must consume canonical Community reports.");
 
-console.log("GIE adoption audit regression checks passed (80% scoped adoption; Groups A and B migrated)." );
+console.log("GIE adoption audit regression checks passed (100% analytics consumer adoption)." );

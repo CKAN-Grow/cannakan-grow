@@ -114,7 +114,7 @@ const compatibilityWrapper = between(
 );
 assert(compatibilityWrapper.includes("select public.get_gie_global_analytics() -> 'analytics'"), "The released GIE RPC must delegate to the Global contract.");
 assert(!compatibilityWrapper.includes("from public.grow_sessions") && !compatibilityWrapper.includes("jsonb_array_elements"), "Compatibility wrapper must contain no analytics implementation.");
-assert(app.includes('appState.supabase.rpc("get_grow_intelligence_engine_analytics")'), "Seed and Source Explorer compatibility must remain intact.");
+assert(app.includes('appState.supabase.rpc("get_gie_global_analytics")'), "Seed and Source Explorer must consume the Global contract directly.");
 
 const healthMarkup = between(app, "function renderGrowIntelligenceHealthSectionMarkup", "function renderAdminPage");
 assert(app.includes('appState.supabase.rpc("get_gie_contract_diagnostics")'), "Grow Intelligence Health must load contract diagnostics.");

@@ -21,7 +21,7 @@ function between(source, start, end) {
 const ownerLoader = between(app, "async function loadGieOwnerAnalytics", "async function loadGieContractDiagnostics");
 assert(ownerLoader.includes('appState.supabase.rpc("get_gie_my_analytics")'), "The browser must call the canonical no-argument Owner RPC.");
 assert(!ownerLoader.includes("user.id") && !ownerLoader.includes("owner_id") && !ownerLoader.includes("ownerId"), "The Owner RPC loader must not send a browser UUID.");
-assert(!app.includes('.rpc("get_gie_owner_analytics"') && !app.includes('.rpc("get_gie_admin_owner_analytics"'), "Group A browser code must not use UUID Owner RPCs.");
+assert(!app.includes('.rpc("get_gie_owner_analytics"'), "Group A browser code must not use the legacy UUID Owner RPC.");
 
 const sessionsMetrics = between(app, "function renderMySessionsCommandCenterMetricsMarkup", "function renderMySessionsCommandCenterSectionMarkup");
 const sessionsAnalytics = between(app, "function renderMySessionsAnalyticsPanelMarkup", "function buildAdminSeedAgeAnalyticsState");
@@ -59,6 +59,6 @@ assert(migration.includes("public.get_gie_scoped_result_rows_v1('owner', target_
 assert(migration.includes("public.is_community_intelligence_session_eligible(grow_sessions.id)"), "Phase 2 must reuse canonical lifecycle eligibility.");
 assert(!migration.includes("create or replace function public.get_gie_global_analytics") && !migration.includes("create or replace function public.get_gie_community_analytics"), "Phase 2 must not change other contracts.");
 assert(migration.includes("'schema_version', '2026-07-13.5'") && migration.includes("'adoption_percentage', 45"), "Phase 2 schema/adoption diagnostics are stale.");
-assert(docs.includes("Group A — migrated in Phase 2") && docs.includes("16 of 20") && docs.includes("80%"), "Phase 2 adoption documentation is incomplete.");
+assert(docs.includes("Group A — migrated in Phase 2") && docs.includes("20 of 20") && docs.includes("100%"), "Phase 2 adoption documentation is incomplete.");
 
 console.log("GIE Phase 2 Group A regression checks passed.");
