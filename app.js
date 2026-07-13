@@ -2913,6 +2913,7 @@ const appState = {
   seedVaultSharedWithMeLoaded: false,
   seedVaultSharedWithMeError: "",
   seedVaultActiveView: "mine",
+  seedVaultOpenAddOnRender: false,
   seedVaultActiveSharedOwnerId: "",
   seedVaultActiveSharedPayload: null,
   seedVaultSharedExpandedEntryIds: new Set(),
@@ -73215,6 +73216,54 @@ function renderHomeOwnerAnalyticsSummaryMarkup() {
   `;
 }
 
+function renderHomeSeedVaultAccessMarkup() {
+  if (!appState.user) {
+    return "";
+  }
+  const ownerAnalyticsState = !appState.gieOwnerAnalyticsLoaded
+    ? "loading"
+    : (appState.gieOwnerAnalytics ? "available" : "unavailable");
+  const vaultOverview = getCanonicalOwnerAnalytics().seedVault.overview;
+  const isEmpty = ownerAnalyticsState === "available"
+    && vaultOverview.totalVarieties === 0
+    && vaultOverview.totalSeedsOwned === 0
+    && vaultOverview.totalSources === 0;
+  const summary = [
+    ["Varieties", vaultOverview.totalVarieties],
+    ["Seeds", vaultOverview.totalSeedsOwned],
+    ["Sources", vaultOverview.totalSources],
+  ];
+  const title = isEmpty ? "Start Your Seed Vault" : "My Seed Vault";
+  const helper = isEmpty
+    ? "Keep your varieties, sources, notes, and future plans organized in one place."
+    : "Manage your seed library, planning, notes, collections, and testing programs.";
+
+  return `
+    <section class="card home-seed-vault-card" aria-labelledby="home-seed-vault-title" data-gie-owner-consumer="home-seed-vault">
+      <div class="home-seed-vault-copy">
+        ${renderMySessionsInlineIconMarkup("vault", "home-seed-vault-icon")}
+        <div>
+          <p class="eyebrow">MY SEED VAULT</p>
+          <h3 id="home-seed-vault-title">${escapeHtml(title)}</h3>
+          <p>${escapeHtml(helper)}</p>
+        </div>
+      </div>
+      <div class="home-seed-vault-summary" aria-label="Canonical Owner Analytics Seed Vault summary">
+        ${summary.map(([label, value]) => `
+          <span><strong>${escapeHtml(formatHomeCanonicalMetric(value, ownerAnalyticsState))}</strong><small>${escapeHtml(label)}</small></span>
+        `).join("")}
+      </div>
+      <div class="home-seed-vault-actions">
+        ${isEmpty
+          ? `<a class="button button-primary" href="#seed-vault" data-home-seed-vault-add="true"><span aria-hidden="true">+</span> Add Your First Seed</a>
+             <a class="button button-secondary" href="#seed-vault">Open Seed Vault</a>`
+          : `<a class="button button-primary" href="#seed-vault">Open Seed Vault</a>
+             <a class="button button-secondary" href="#seed-vault" data-home-seed-vault-add="true"><span aria-hidden="true">+</span> Add Seed</a>`}
+      </div>
+    </section>
+  `;
+}
+
 function renderHome() {
   console.log("[Cannakan Home] render", {
     route: window.location.hash || "#home",
@@ -73282,6 +73331,10 @@ function renderHome() {
     requiresSignIn: !appState.user,
   });
 
+  if (currentSessionHost) {
+    currentSessionHost.insertAdjacentHTML("afterend", renderHomeSeedVaultAccessMarkup());
+  }
+
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
   const homeEcosystemMarkup = `
     ${renderHomeLearnSectionMarkup()}
@@ -73302,6 +73355,10 @@ function renderHome() {
   });
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
+  });
+  app.querySelector("[data-home-seed-vault-add='true']")?.addEventListener("click", () => {
+    appState.seedVaultActiveView = "mine";
+    appState.seedVaultOpenAddOnRender = true;
   });
   app.querySelector(".home-dashboard-secondary-row [data-dev-demo-reseed='true']")?.addEventListener("click", () => {
     resetAndReseedDevModeMockData();
@@ -81002,6 +81059,10 @@ function renderSeedVaultPage() {
 
   renderSeedVaultSection();
   bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection);
+  if (appState.seedVaultOpenAddOnRender) {
+    appState.seedVaultOpenAddOnRender = false;
+    openSeedVaultEntryModal();
+  }
 
   app.querySelectorAll("[data-seed-vault-page-view]").forEach((button) => {
     button.addEventListener("click", (event) => {

@@ -36,7 +36,7 @@ assert(
   'function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = () => {})',
   'if (route === "seed-vault") {',
   'renderSeedVaultPage();',
-  '<nav class="seed-vault-page-nav" aria-label="Seed Vault navigation">',
+  '<nav class="seed-vault-page-nav seed-vault-page-nav--tabs" aria-label="Seed Vault navigation">',
   'seed-vault-back-button',
   'href="#sessions">Back to My Sessions</a>',
   'pageLabel: "My Seed Vault"',
