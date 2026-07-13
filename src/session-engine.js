@@ -55,36 +55,34 @@
   }
 
   const STANDARD_KAN_REMINDERS = [
-    reminder("soaking-prepare-18h", 18, "Prepare to move to germination", "Prepare to move this session into germination.", {
+    reminder("drain-germination-soon-18h", 18, "Drain to Germination soon", "Drain to Germination soon.", {
       category: "soaking-reminder",
       stage: "soaking",
-      actionText: "Confirm moved to germination when the seeds are ready.",
-      requiredAction: "confirm-moved-to-germination",
+      actionText: "Prepare the next germination surface and inspect seed readiness.",
     }),
-    reminder("germination-expected-24h", 24, "Expected germination phase", "Expected transition into germination.", {
+    reminder("move-germination-24h", 24, "Move to Germination if needed", "Move to Germination if the seeds are ready and have not already been transferred.", {
       category: "soaking-reminder",
       stage: "soaking",
       level: "warning",
-      actionText: "Confirm moved to germination if the transfer is complete.",
-      requiredAction: "confirm-moved-to-germination",
+      actionText: "Use the method timing as guidance; the timeline continues automatically.",
     }),
-    reminder("check-seeds-36h", 36, "Check seeds", "Check seed progress.", {
+    reminder("check-germination-36h", 36, "Check for germination", "Check for germination and record visible results.", {
       stage: "germinating",
       requiredAction: "check-seeds",
     }),
-    reminder("completion-window-42h", 42, "Completion window begins", "Expected completion window begins.", {
+    reminder("recommended-inspection-42h", 42, "Recommended germination inspection", "Recommended germination inspection window.", {
       stage: "germinating",
       actionText: "Review results and complete the session when ready.",
       requiredAction: "complete-session",
     }),
-    reminder("complete-session-48h", 48, "Complete session", "Reminder to complete this session.", {
+    reminder("review-results-48h", 48, "Review results", "Review results and complete the session if finished.", {
       stage: "germinating",
       actionText: "Complete the session or record why it needs more time.",
       requiredAction: "complete-session",
       supportsPostpone: true,
       postponeOptionsHours: [2, 6, 12],
     }),
-    reminder("urgent-complete-56h", 56, "Urgent completion reminder", "This session needs attention.", {
+    reminder("urgent-inspection-56h", 56, "Urgent inspection reminder", "Urgent reminder to inspect remaining seeds.", {
       stage: "germinating",
       level: "critical",
       actionText: "Complete the session or snooze this reminder.",
@@ -151,8 +149,8 @@
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green", iconName: "method-kan" }),
-        phase("soaking", "Soak", 0, 18, { timing: "0-18h", tone: "soaking", requiredConfirmation: "confirm-moved-to-germination" }),
-        phase("move-germination", "Move to Germination", 18, 24, { timing: "18-24h", tone: "germination", requiredConfirmation: "confirm-moved-to-germination" }),
+        phase("soaking", "Soak", 0, 18, { timing: "0-18h", tone: "soaking" }),
+        phase("move-germination", "Move to Germination", 18, 24, { timing: "18-24h", tone: "germination" }),
         phase("germination", "Germination", 24, 36, { timing: "24-36h", tone: "germination" }),
         phase("check-window", "Check Seeds", 36, 56, { timing: "36-56h", tone: "green" }),
         phase("complete", "Complete", 56, null, { timing: "Results recorded", tone: "completed" }),
@@ -170,8 +168,8 @@
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "green", iconName: "method-tra" }),
-        phase("soaking", "Soak", 0, 18, { timing: "0-18h", tone: "soaking", requiredConfirmation: "confirm-moved-to-germination" }),
-        phase("move-germination", "Move to Germination", 18, 24, { timing: "18-24h", tone: "germination", requiredConfirmation: "confirm-moved-to-germination" }),
+        phase("soaking", "Soak", 0, 18, { timing: "0-18h", tone: "soaking" }),
+        phase("move-germination", "Move to Germination", 18, 24, { timing: "18-24h", tone: "germination" }),
         phase("germination", "Germination", 24, 36, { timing: "24-36h", tone: "germination" }),
         phase("check-window", "Check Seeds", 36, 56, { timing: "36-56h", tone: "green" }),
         phase("complete", "Complete", 56, null, { timing: "Results recorded", tone: "completed" }),
@@ -189,8 +187,8 @@
       resultRequired: true,
       phases: [
         phase("started", "Start", 0, 0, { timing: "Session started", tone: "silver" }),
-        phase("soak", "Soak", 0, 12, { timing: "0-12h", tone: "soaking", requiredConfirmation: "confirm-moved-to-paper-towel" }),
-        phase("ready-transfer", "Move to Paper Towel", 12, null, { timing: "12-18h", tone: "germination", requiredConfirmation: "confirm-moved-to-paper-towel" }),
+        phase("soak", "Soak", 0, 12, { timing: "0-12h", tone: "soaking" }),
+        phase("ready-transfer", "Move to Paper Towel", 12, null, { timing: "12-18h", tone: "germination" }),
         phase("paper-towel", "Paper Towel", 0, 24, { from: "paperTowelStart", timing: "0-24h", tone: "germination" }),
         phase("check-window", "Check Seeds", 24, 48, { from: "paperTowelStart", timing: "24-48h", tone: "green" }),
         phase("complete", "Complete", 48, null, { from: "paperTowelStart", timing: "48h+", tone: "completed" }),
@@ -199,13 +197,13 @@
         reminder("move-paper-towel-12h", 12, "Move to paper towel soon", "Prepare to move seeds to paper towel.", {
           category: "soaking-reminder",
           stage: "soaking",
-          requiredAction: "confirm-moved-to-paper-towel",
+          actionText: "Prepare the paper towel surface and inspect seed readiness.",
         }),
         reminder("move-paper-towel-18h", 18, "Move to paper towel", "Move seeds to paper towel if soaking is complete.", {
           category: "soaking-reminder",
           stage: "soaking",
           level: "warning",
-          requiredAction: "confirm-moved-to-paper-towel",
+          actionText: "Use the Paper Towel schedule as guidance; tracking continues automatically.",
         }),
         ...PAPER_TOWEL_REMINDERS,
       ],
