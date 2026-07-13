@@ -120,7 +120,12 @@ as $$
           and coalesce(is_deleted, false) = false and lower(coalesce(planning_status, 'inventory')) = 'planned')::integer as planned_entries,
       (select created_at from public.profiles where id = p_user_id) as joined_at
   )
-  select candidates.* from stats cross join lateral (
+  select
+    candidates.recognition_id,
+    candidates.earned_at,
+    candidates.assignment_source,
+    candidates.evidence
+  from stats cross join lateral (
     values
       ('early-supporter', stats.joined_at, 'automatic', jsonb_build_object('joined_at', stats.joined_at), stats.joined_at <= '2026-07-13 23:59:59+00'::timestamptz),
       ('first-session', stats.first_session_at, 'automatic', jsonb_build_object('completed_sessions', stats.completed_sessions), stats.completed_sessions >= 1),
