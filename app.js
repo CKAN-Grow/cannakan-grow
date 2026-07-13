@@ -3137,6 +3137,12 @@ const appState = {
   gieOwnerAnalytics: null,
   gieOwnerAnalyticsLoaded: false,
   gieOwnerAnalyticsError: "",
+  identityRecognition: null,
+  identityRecognitionLoaded: false,
+  identityRecognitionLoadPromise: null,
+  publicIdentityRecognition: {},
+  publicIdentityRecognitionLoadPromises: {},
+  recognitionGalleryFilter: "all",
   gieCommunityAnalytics: null,
   gieCommunityAnalyticsLoaded: false,
   gieCommunityAnalyticsError: "",
@@ -3796,6 +3802,12 @@ function resetSessionScopedAppState() {
   appState.gieOwnerAnalytics = null;
   appState.gieOwnerAnalyticsLoaded = false;
   appState.gieOwnerAnalyticsError = "";
+  appState.identityRecognition = null;
+  appState.identityRecognitionLoaded = false;
+  appState.identityRecognitionLoadPromise = null;
+  appState.publicIdentityRecognition = {};
+  appState.publicIdentityRecognitionLoadPromises = {};
+  appState.recognitionGalleryFilter = "all";
   appState.gieCommunityAnalytics = null;
   appState.gieCommunityAnalyticsLoaded = false;
   appState.gieCommunityAnalyticsError = "";
@@ -20718,6 +20730,97 @@ async function loadGieCommunityAnalytics(reason = "community-analytics") {
     return null;
   }
   return normalizeGieCommunityAnalyticsPayload(data);
+}
+
+function normalizeIdentityRecognitionPayload(payload = null) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const recognitions = (Array.isArray(payload.recognitions) ? payload.recognitions : []).map((row) => ({
+    id: String(row?.id || "").trim(),
+    title: String(row?.title || "Recognition").trim(),
+    category: String(row?.category || "participation").trim(),
+    description: String(row?.description || "").trim(),
+    unlockDescription: String(row?.unlock_description || "").trim(),
+    icon: String(row?.icon || "seal").trim(),
+    rarity: String(row?.rarity || "standard").trim(),
+    displayPriority: Number(row?.display_priority || 0),
+    hidden: Boolean(row?.hidden),
+    manualAssignment: Boolean(row?.manual_assignment),
+    featuredEligible: row?.featured_eligible !== false,
+    earned: Boolean(row?.earned),
+    earnedAt: String(row?.earned_at || "").trim(),
+    assignmentSource: String(row?.assignment_source || "").trim(),
+    featured: Boolean(row?.featured),
+  })).filter((row) => row.id);
+  return {
+    version: String(payload.version || "recognition.v1").trim(),
+    userId: String(payload.user_id || "").trim(),
+    identityLabel: String(payload?.identity?.label || "Grower").trim() || "Grower",
+    featuredRecognitionId: String(payload.featured_recognition_id || "").trim(),
+    recognitions,
+    generatedAt: String(payload.generated_at || "").trim(),
+  };
+}
+
+async function loadMyIdentityRecognition(reason = "profile-identity-recognition") {
+  if (!appState.supabase || !appState.user) return null;
+  if (appState.identityRecognitionLoadPromise) return appState.identityRecognitionLoadPromise;
+  const request = appState.supabase.rpc("get_my_identity_and_recognition").then(({ data, error }) => {
+    if (error) {
+      console.error("Failed to load Identity & Recognition.", { reason, error });
+      return null;
+    }
+    const normalized = normalizeIdentityRecognitionPayload(data);
+    appState.identityRecognition = normalized;
+    appState.identityRecognitionLoaded = true;
+    return normalized;
+  }).finally(() => {
+    appState.identityRecognitionLoadPromise = null;
+  });
+  appState.identityRecognitionLoadPromise = request;
+  return request;
+}
+
+async function loadPublicIdentityRecognition(userId = "", reason = "public-profile-recognition") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!appState.supabase || !normalizedUserId) return null;
+  if (appState.publicIdentityRecognitionLoadPromises[normalizedUserId]) return appState.publicIdentityRecognitionLoadPromises[normalizedUserId];
+  const request = appState.supabase.rpc("get_public_identity_and_recognition", { p_user_id: normalizedUserId }).then(({ data, error }) => {
+    if (error) {
+      console.error("Failed to load public Identity & Recognition.", { reason, userId: normalizedUserId, error });
+      return null;
+    }
+    const normalized = normalizeIdentityRecognitionPayload(data);
+    appState.publicIdentityRecognition[normalizedUserId] = normalized;
+    return normalized;
+  }).finally(() => {
+    delete appState.publicIdentityRecognitionLoadPromises[normalizedUserId];
+  });
+  appState.publicIdentityRecognitionLoadPromises[normalizedUserId] = request;
+  return request;
+}
+
+function getProfileIdentityRecognition(userId = "", options = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  if (options.owner === true || normalizedUserId === String(appState.user?.id || "").trim()) {
+    return appState.identityRecognition;
+  }
+  return appState.publicIdentityRecognition[normalizedUserId] || null;
+}
+
+function getProfileIdentityLabel(profile = null, recognition = null) {
+  if (recognition?.identityLabel) return recognition.identityLabel;
+  if (profile?.isAdmin || profile?.founderAdmin || (profile?.id === appState.user?.id && appState.isAdmin)) return "Administrator";
+  const profileType = String(profile?.profileType || profile?.accountType || "").trim().toLowerCase();
+  if (profileType === "source") return "Source";
+  if (profileType === "breeder") return "Breeder";
+  return "Grower";
+}
+
+function getFeaturedProfileRecognition(recognition = null) {
+  const earned = (recognition?.recognitions || []).filter((row) => row.earned);
+  return earned.find((row) => row.featured)
+    || earned.sort((left, right) => right.displayPriority - left.displayPriority || Date.parse(right.earnedAt || 0) - Date.parse(left.earnedAt || 0))[0]
+    || null;
 }
 
 async function loadGieContractDiagnostics(reason = "gie-contract-diagnostics") {
@@ -88775,6 +88878,184 @@ function renderPrivateGrowProfilePage(isLoading = false) {
   `;
 }
 
+function renderProfileRecognitionSealMarkup(recognition = {}, size = "compact") {
+  return renderCommunityRecognitionIconMarkup(recognition.title || recognition.category || "Recognition", {
+    size,
+    className: `profile-recognition-seal is-${recognition.rarity || "standard"}`,
+  });
+}
+
+function renderProfileFeaturedRecognitionMarkup(recognition = null) {
+  if (!recognition) return "";
+  return `
+    <button type="button" class="profile-featured-recognition" data-recognition-open="${escapeHtml(recognition.id)}">
+      <span aria-hidden="true">★</span>
+      <strong>${escapeHtml(recognition.title)}</strong>
+    </button>
+  `;
+}
+
+function sortProfileRecognitions(recognitions = []) {
+  const rarityRank = { rare: 4, founding: 3, notable: 2, standard: 1 };
+  return [...recognitions].sort((left, right) => (
+    (rarityRank[right.rarity] || 0) - (rarityRank[left.rarity] || 0)
+    || Date.parse(right.earnedAt || 0) - Date.parse(left.earnedAt || 0)
+    || right.displayPriority - left.displayPriority
+  ));
+}
+
+function renderProfileRecognitionSectionMarkup(payload = null, options = {}) {
+  const earned = sortProfileRecognitions((payload?.recognitions || []).filter((row) => row.earned)).slice(0, 6);
+  if (!earned.length && !options.showEmpty) return "";
+  return `
+    <section class="profile-recognition-section" aria-labelledby="profile-recognition-title" data-recognition-user-id="${escapeHtml(options.userId || payload?.userId || "")}">
+      <div class="my-grow-section-head profile-recognition-head">
+        <div>
+          <h3 id="profile-recognition-title">Recognition</h3>
+          <p>Milestones and contributions earned throughout your Grow journey.</p>
+        </div>
+        <button type="button" class="profile-recognition-view-all" data-recognition-gallery-open="true">View All <span aria-hidden="true">→</span></button>
+      </div>
+      <div class="profile-recognition-row" role="list">
+        ${earned.length ? earned.map((recognition) => `
+          <button type="button" class="profile-recognition-card is-${escapeHtml(recognition.rarity)}" data-recognition-open="${escapeHtml(recognition.id)}" role="listitem">
+            ${renderProfileRecognitionSealMarkup(recognition)}
+            <span><strong>${escapeHtml(recognition.title)}</strong><small>${escapeHtml(recognition.description)}</small></span>
+            <em>Earned</em>
+          </button>
+        `).join("") : '<p class="profile-recognition-admin-empty">No Recognition has been earned. Open the Gallery to manage manual assignments.</p>'}
+      </div>
+    </section>
+  `;
+}
+
+function getRecognitionById(payload = null, recognitionId = "") {
+  return (payload?.recognitions || []).find((row) => row.id === recognitionId) || null;
+}
+
+function closeProfileRecognitionDialog() {
+  document.querySelector("#profile-recognition-dialog")?.remove();
+  document.body.classList.remove("modal-open");
+}
+
+function openProfileRecognitionDetail(recognition = null, options = {}) {
+  if (!recognition) return;
+  closeProfileRecognitionDialog();
+  const isOwner = options.isOwner === true;
+  const canAdminManage = Boolean(options.canAdminManage && recognition.manualAssignment);
+  const dialog = document.createElement("dialog");
+  dialog.id = "profile-recognition-dialog";
+  dialog.className = "profile-recognition-dialog";
+  dialog.innerHTML = `
+    <div class="profile-recognition-dialog-card">
+      <button type="button" class="modal-close" data-recognition-dialog-close aria-label="Close">×</button>
+      <div class="profile-recognition-artwork">${renderProfileRecognitionSealMarkup(recognition, "hero")}</div>
+      <p class="eyebrow">${escapeHtml(recognition.earned ? "RECOGNITION" : "LOCKED")}</p>
+      <h3>${escapeHtml(recognition.title)}</h3>
+      <p>${escapeHtml(recognition.description)}</p>
+      <dl>
+        <div><dt>How it is earned</dt><dd>${escapeHtml(recognition.unlockDescription)}</dd></div>
+        ${recognition.earned ? `<div><dt>Earned date</dt><dd>${escapeHtml(formatProfileActivityDateLabel(recognition.earnedAt, "Recorded"))}</dd></div>` : ""}
+        <div><dt>Category</dt><dd>${escapeHtml(capitalize(recognition.category))}</dd></div>
+        <div><dt>Rarity</dt><dd>${escapeHtml(capitalize(recognition.rarity))}</dd></div>
+        ${recognition.earned ? `<div><dt>Assignment source</dt><dd>${escapeHtml(capitalize(recognition.assignmentSource || "automatic"))}</dd></div>` : ""}
+      </dl>
+      <div class="profile-recognition-dialog-actions">
+        ${isOwner && recognition.earned && recognition.featuredEligible && !recognition.featured ? `<button type="button" class="button button-primary" data-recognition-feature="${escapeHtml(recognition.id)}">Set as Featured Recognition</button>` : ""}
+        ${canAdminManage ? `<button type="button" class="button ${recognition.earned ? "button-danger" : "button-primary"}" data-recognition-admin-action="${recognition.earned ? "remove" : "assign"}" data-recognition-id="${escapeHtml(recognition.id)}">${recognition.earned ? "Remove Recognition" : "Assign Recognition"}</button>` : ""}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  document.body.classList.add("modal-open");
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog || event.target.closest("[data-recognition-dialog-close]")) closeProfileRecognitionDialog();
+  });
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+    document.body.classList.remove("modal-open");
+  }, { once: true });
+  dialog.querySelector("[data-recognition-feature]")?.addEventListener("click", async () => {
+    const { data, error } = await appState.supabase.rpc("set_my_featured_recognition", { p_recognition_id: recognition.id });
+    if (error) return window.alert(error.message || "Featured Recognition could not be updated.");
+    appState.identityRecognition = normalizeIdentityRecognitionPayload(data);
+    closeProfileRecognitionDialog();
+    renderGrowNetworkPage();
+  });
+  dialog.querySelector("[data-recognition-admin-action]")?.addEventListener("click", async (event) => {
+    const action = event.currentTarget.dataset.recognitionAdminAction;
+    const { data, error } = await appState.supabase.rpc("admin_manage_user_recognition", {
+      p_user_id: options.userId,
+      p_recognition_id: recognition.id,
+      p_action: action,
+    });
+    if (error) return window.alert(error.message || "Recognition assignment could not be updated.");
+    appState.publicIdentityRecognition[options.userId] = normalizeIdentityRecognitionPayload(data);
+    closeProfileRecognitionDialog();
+    renderPublicMemberProfile(options.userId);
+  });
+  if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+}
+
+function openProfileRecognitionGallery(payload = null, options = {}) {
+  if (!payload) return;
+  closeProfileRecognitionDialog();
+  const dialog = document.createElement("dialog");
+  dialog.id = "profile-recognition-dialog";
+  dialog.className = "profile-recognition-dialog profile-recognition-gallery-dialog";
+  const categories = ["all", "founding", "participation", "documentation", "community", "testing"];
+  dialog.innerHTML = `
+    <div class="profile-recognition-dialog-card">
+      <button type="button" class="modal-close" data-recognition-dialog-close aria-label="Close">×</button>
+      <p class="eyebrow">IDENTITY & RECOGNITION</p>
+      <h3>Recognition Gallery</h3>
+      <div class="profile-recognition-filters" aria-label="Recognition categories">
+        ${categories.map((category) => `<button type="button" data-recognition-filter="${category}" class="${category === appState.recognitionGalleryFilter ? "is-active" : ""}">${escapeHtml(capitalize(category))}</button>`).join("")}
+      </div>
+      <div data-recognition-gallery-content></div>
+    </div>
+  `;
+  const renderRows = () => {
+    const filter = appState.recognitionGalleryFilter || "all";
+    const rows = payload.recognitions.filter((row) => filter === "all" || row.category === filter);
+    const renderGroup = (title, items) => items.length ? `
+      <section><h4>${title}</h4><div class="profile-recognition-gallery-grid">
+        ${items.map((row) => `<button type="button" class="profile-recognition-gallery-card${row.earned ? " is-earned" : " is-locked"}" data-recognition-gallery-item="${escapeHtml(row.id)}">
+          ${renderProfileRecognitionSealMarkup(row)}<span><strong>${escapeHtml(row.title)}</strong><small>${escapeHtml(row.earned ? row.description : row.unlockDescription)}</small></span><em>${row.earned ? "Earned" : "Locked"}</em>
+        </button>`).join("")}
+      </div></section>` : "";
+    dialog.querySelector("[data-recognition-gallery-content]").innerHTML = renderGroup("Earned", rows.filter((row) => row.earned)) + renderGroup("Locked", rows.filter((row) => !row.earned));
+  };
+  renderRows();
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog || event.target.closest("[data-recognition-dialog-close]")) return closeProfileRecognitionDialog();
+    const filter = event.target.closest("[data-recognition-filter]");
+    if (filter) {
+      appState.recognitionGalleryFilter = filter.dataset.recognitionFilter;
+      dialog.querySelectorAll("[data-recognition-filter]").forEach((button) => button.classList.toggle("is-active", button === filter));
+      renderRows();
+      return;
+    }
+    const item = event.target.closest("[data-recognition-gallery-item]");
+    if (item) openProfileRecognitionDetail(getRecognitionById(payload, item.dataset.recognitionGalleryItem), options);
+  });
+  dialog.addEventListener("close", () => {
+    dialog.remove();
+    document.body.classList.remove("modal-open");
+  }, { once: true });
+  document.body.appendChild(dialog);
+  document.body.classList.add("modal-open");
+  if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+}
+
+function bindProfileRecognitionInteractions(scope, payload = null, options = {}) {
+  if (!scope || !payload) return;
+  scope.querySelectorAll("[data-recognition-open]").forEach((button) => button.addEventListener("click", () => {
+    openProfileRecognitionDetail(getRecognitionById(payload, button.dataset.recognitionOpen), options);
+  }));
+  scope.querySelector("[data-recognition-gallery-open]")?.addEventListener("click", () => openProfileRecognitionGallery(payload, options));
+}
+
 function renderPublicMemberProfile(memberId) {
   const profileKey = String(memberId || "").trim();
   const normalizedId = resolvePublicMemberProfileId(profileKey) || (isUuidLike(profileKey) ? profileKey : "");
@@ -88799,8 +89080,18 @@ function renderPublicMemberProfile(memberId) {
     renderGrowNetworkPage();
     return;
   }
+  if (normalizedId && !Object.prototype.hasOwnProperty.call(appState.publicIdentityRecognition, normalizedId)
+    && !appState.publicIdentityRecognitionLoadPromises[normalizedId]) {
+    void loadPublicIdentityRecognition(normalizedId, "route:public-grow-profile").then(() => {
+      const activeRoute = String(getCurrentAppRawRoute() || "").replace(/^#/, "");
+      if (activeRoute.startsWith("members/")) renderPublicMemberProfile(normalizedId);
+    });
+  }
   const approvedSnapshots = sortGallerySnapshotsNewestFirst(getApprovedPublicSnapshotsForMember(normalizedId));
   const profile = getPublicMemberProfile(normalizedId);
+  const identityRecognition = getProfileIdentityRecognition(normalizedId);
+  const identityLabel = getProfileIdentityLabel(profile, identityRecognition);
+  const featuredRecognition = getFeaturedProfileRecognition(identityRecognition);
   const canShowPublicProfileData = Boolean(profile && (profile.isPublicVisible !== false || isOwnProfile || isAdminUser()));
   const publicStats = calculatePublicProfileStats({
     memberId: normalizedId,
@@ -88875,13 +89166,6 @@ function renderPublicMemberProfile(memberId) {
   const profileBio = canShowPublicProfileData ? profile?.bio || "" : "";
   const showPublicStats = isOwnProfile || profile?.showGrowStatsPublicly !== false;
   const publicAnalytics = publicStats.publicAnalytics || calculateProfileAnalyticsFromPublicSnapshots(approvedSnapshots);
-  const profileMilestones = buildProfileMilestones({
-    analytics: publicStats,
-    profile,
-    publicSnapshots: approvedSnapshots,
-    ownerSessions: isOwnProfile ? getSessions() : [],
-    includeOwnerPrivate: isOwnProfile,
-  });
   const participationHistory = buildProfileParticipationHistory(approvedSnapshots, publicStats);
   const reputationFoundation = buildProfileReputationFoundation({
     profile,
@@ -88957,7 +89241,8 @@ function renderPublicMemberProfile(memberId) {
           </div>
         <div class="public-member-profile-copy">
           <p class="eyebrow">Community Member</p>
-          <h2>${renderDisplayNameWithCountryFlag(displayName, countryCode, "public-member-profile-name")}</h2>
+          <h2>${renderDisplayNameWithCountryFlag(displayName, countryCode, "public-member-profile-name")}<span class="profile-identity-label">${escapeHtml(identityLabel)}</span></h2>
+            ${renderProfileFeaturedRecognitionMarkup(featuredRecognition)}
             <p class="muted">Public grow profile</p>
             ${trustIndicators.length ? `
               <div class="public-member-profile-trust-row" aria-label="Profile trust indicators">
@@ -88976,6 +89261,7 @@ function renderPublicMemberProfile(memberId) {
           <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
       </div>
+      ${renderProfileRecognitionSectionMarkup(identityRecognition, { userId: normalizedId, showEmpty: isAdminUser() })}
       <div class="public-member-profile-stats">
         ${stats.map((stat) => `
           <article class="meta-card public-member-profile-stat-card">
@@ -89023,17 +89309,6 @@ function renderPublicMemberProfile(memberId) {
             `).join("")}
           </div>
           <div class="public-member-profile-history-grid">
-            <article class="public-member-profile-history-card">
-              <strong>Professional milestones</strong>
-              <div class="public-member-profile-milestone-list">
-                ${profileMilestones.map((milestone) => `
-                  <div class="public-member-profile-milestone${milestone.achieved ? " is-achieved" : ""}">
-                    <span>${escapeHtml(milestone.label)}</span>
-                    <small>${escapeHtml(milestone.detail)}</small>
-                  </div>
-                `).join("")}
-              </div>
-            </article>
             <article class="public-member-profile-history-card">
               <strong>Participation history</strong>
               <p>${escapeHtml(participationHistory.latestPublicActivityLabel)}</p>
@@ -89117,6 +89392,11 @@ function renderPublicMemberProfile(memberId) {
       openPublicMemberConnectionsModal(normalizedId, button.dataset.publicMemberOpenList || "followers");
     });
   });
+  bindProfileRecognitionInteractions(app, identityRecognition, {
+    userId: normalizedId,
+    isOwner: false,
+    canAdminManage: isAdminUser(),
+  });
 
   const profileGrid = app.querySelector("#public-member-profile-grid");
   if (!profileGrid) {
@@ -89141,6 +89421,11 @@ function renderPublicMemberProfile(memberId) {
 }
 
 function renderGrowNetworkPage() {
+  if (appState.user && !appState.identityRecognitionLoaded && !appState.identityRecognitionLoadPromise) {
+    void loadMyIdentityRecognition("route:my-grow-profile").then(() => {
+      if (getCurrentAppRawRoute().split("/")[0] === "network") renderGrowNetworkPage();
+    });
+  }
   const followingEntries = getGrowNetworkFollowingEntries();
   const useMockNotifications = shouldUseMockGrowNetworkNotifications();
   const useMockPresentation = isMockDataEnabled() || useMockNotifications;
@@ -89343,7 +89628,9 @@ function renderGrowNetworkPage() {
   const followingCount = followingEntries.length;
   const followerCount = Math.max(0, Number(currentUserFollowSummary?.followerCount || totalFollowersCount) || 0);
   const growScore = Number(ownerContractAnalytics.confidence?.percent || 0);
-  const growTitle = String(ownerContractAnalytics.confidence?.label || "Building Evidence");
+  const identityRecognition = getProfileIdentityRecognition(currentUserId, { owner: true });
+  const identityLabel = getProfileIdentityLabel(currentPublicProfile || appState.profile, identityRecognition);
+  const featuredRecognition = getFeaturedProfileRecognition(identityRecognition);
   const memberSinceLabel = formatPublicMemberJoinedDateLabel(
     currentPublicProfile?.joinedAt || currentPublicProfile?.createdAt || appState.profile?.createdAt || appState.user?.created_at || "",
   );
@@ -89373,8 +89660,8 @@ function renderGrowNetworkPage() {
   const followerVisibilityLabel = currentProfileSettings.allowFollowers !== false ? "Followers enabled" : "Private";
   const profileTagline = String(currentPublicProfile?.bio || "").trim()
     || "Building a personal germination record from sessions, seed evidence, and community contributions.";
-  const achievementItems = [{ label: "Achievements unavailable", detail: "Canonical achievement analytics are not currently provided by GIE.", earned: false }];
-  const achievementsEarnedCount = achievementItems.filter((item) => item.earned).length;
+  const recognitionItems = (identityRecognition?.recognitions || []).filter((item) => item.earned);
+  const recognitionsEarnedCount = recognitionItems.length;
   const growCardsCollectedCount = followingCount;
   const heroStatStrip = [
     {
@@ -89399,8 +89686,8 @@ function renderGrowNetworkPage() {
     },
     {
       icon: "sourceTrustStar",
-      value: getProfileAnalyticsCountLabel(achievementsEarnedCount),
-      label: "Achievements Earned",
+      value: getProfileAnalyticsCountLabel(recognitionsEarnedCount),
+      label: "Recognitions Earned",
     },
   ];
 
@@ -89542,13 +89829,13 @@ function renderGrowNetworkPage() {
       ],
     },
     {
-      key: "achievements",
-      label: "Achievements",
+      key: "recognition",
+      label: "Recognition",
       icon: "sourceTrustStar",
-      count: achievementsEarnedCount,
-      items: achievementItems.slice(0, 3).map((item) => ({
-        label: item.label,
-        detail: item.earned ? "Earned" : "Preview",
+      count: recognitionsEarnedCount,
+      items: recognitionItems.slice(0, 3).map((item) => ({
+        label: item.title,
+        detail: "Earned",
       })),
     },
   ];
@@ -89589,13 +89876,13 @@ function renderGrowNetworkPage() {
       body: renderGrowerReportSessionRowsMarkup(ownerCompletedSessions),
     }),
     renderGrowerReportModuleMarkup({
-      title: "Achievements",
-      eyebrow: "Future Ready",
+      title: "Recognition",
+      eyebrow: "Identity & Recognition",
       icon: "sourceTrustStar",
-      description: "Recognition badges will attach to profiles and Grow Cards.",
+      description: "Permanent milestones and contributions recorded on your Grow Profile.",
       body: `
         <div class="grower-report-pill-list">
-          ${achievementItems.slice(0, 5).map((item) => `<span>${escapeHtml(`${item.label}: ${item.earned ? "Earned" : "Preview"}`)}</span>`).join("")}
+          ${recognitionItems.length ? recognitionItems.slice(0, 5).map((item) => `<span>${escapeHtml(`${item.title}: Earned`)}</span>`).join("") : "<span>No Recognition earned yet.</span>"}
         </div>
       `,
     }),
@@ -89927,7 +90214,7 @@ function renderGrowNetworkPage() {
   const myGrowVaultSourceCount = ownerVaultAnalytics.overview.totalSources;
   const myGrowVaultSeedCount = ownerVaultAnalytics.overview.totalSeedsOwned;
   const myGrowNewestVaultEntry = ownerVaultAnalytics.newestEntry;
-  const myGrowGrowLevel = growTitle.replace(/\s+Grower$/i, "") || "Grower";
+  const myGrowGrowLevel = identityLabel;
   const myGrowSourceCount = myGrowVaultSourceCount;
   const myGrowActiveSession = ownerSessions
     .map((session) => normalizeStoredSession(session) || session)
@@ -90580,7 +90867,8 @@ function renderGrowNetworkPage() {
             </span>
             <div class="my-grow-home-identity-copy">
               <h3>${escapeHtml(growerDisplayName)}</h3>
-              <span class="my-grow-level-pill">${renderAppIconSvgMarkup("sourceTrustStar")}${escapeHtml(growTitle)}</span>
+              <span class="my-grow-level-pill profile-identity-label">${escapeHtml(identityLabel)}</span>
+              ${renderProfileFeaturedRecognitionMarkup(featuredRecognition)}
               <p class="my-grow-home-meta">Member since ${escapeHtml(memberSinceLabel)} <span aria-hidden="true">•</span> ${escapeHtml(locationLabel)}</p>
               <blockquote>“${escapeHtml(profileTagline)}”</blockquote>
             </div>
@@ -90598,6 +90886,8 @@ function renderGrowNetworkPage() {
             </div>
           </aside>
         </div>
+
+        ${renderProfileRecognitionSectionMarkup(identityRecognition, { userId: currentUserId, isOwner: true })}
 
         <section class="my-grow-summary-panel" aria-label="Your Grow Summary">
           <div class="my-grow-section-head">
@@ -90797,6 +91087,11 @@ function renderGrowNetworkPage() {
   `;
 
   void renderGrowIdQrCodes(app);
+  bindProfileRecognitionInteractions(app, identityRecognition, {
+    userId: currentUserId,
+    isOwner: true,
+    canAdminManage: false,
+  });
   app.querySelectorAll("[data-grow-id-open='true']").forEach((button) => {
     button.addEventListener("click", async (event) => {
       event.stopPropagation();
