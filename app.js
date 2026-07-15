@@ -37130,7 +37130,7 @@ function renderSeedAgeAnalyticsPage() {
     <section class="seed-age-analytics-page" data-gie-community-consumer="community-report-seed-age">
       <header class="card seed-age-analytics-hero">
         <div>
-          <p class="eyebrow">Community Analytics Contract</p>
+          <p class="eyebrow">Grow Intelligence Engine</p>
           <h2>Seed Age Analytics</h2>
           <p>Canonical age-bucket performance from approved, published Community evidence.</p>
         </div>
@@ -56552,7 +56552,7 @@ function renderSeedProfilePage(seedId = "") {
         <div class="source-report-hero-main">
           ${seed?.id ? renderSeedExplorerThumbnailMarkup(seed, "source-report-hero-logo seed-report-hero-image") : ""}
           <div class="source-report-hero-copy">
-            <p class="eyebrow">Community Analytics Contract</p>
+            <p class="eyebrow">Canonical GIE Report</p>
             <h2>${escapeHtml(report.label)}</h2>
             ${sourceProfile ? renderSourceCountryMarkup(sourceProfile, "source-report-country source-country-badge") : ""}
             <p>Approved, published Community evidence only.</p>
@@ -57336,6 +57336,88 @@ function getCanonicalCommunitySourceReport(sourceId = "", sourceProfile = null) 
   )) || null;
 }
 
+function renderSourceReportDashboardCardHeader(title = "", actionMarkup = "") {
+  return `
+    <div class="source-report-dashboard-card-header">
+      <h3>${escapeHtml(title)}</h3>
+      ${actionMarkup}
+    </div>`;
+}
+
+function renderSourceReportUnavailableState(message = "Canonical data is not available.") {
+  return `
+    <div class="source-report-unavailable-state" role="status">
+      <span aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-unavailable-icon")}</span>
+      <p>${escapeHtml(message)}</p>
+    </div>`;
+}
+
+function renderSourceReportTopVarietiesTable(report = {}, reportHref = "#sources") {
+  const rows = Array.isArray(report.relationships) ? report.relationships.slice(0, 5) : [];
+  if (!rows.length) {
+    return renderSourceReportUnavailableState("No approved canonical variety evidence is available for this source.");
+  }
+  return `
+    <div class="source-report-table-wrap">
+      <table class="source-report-data-table source-report-varieties-table">
+        <thead><tr><th>Rank</th><th>Variety</th><th>Average Germination</th><th>Sessions</th><th>Seeds Tested</th></tr></thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td><span class="source-report-rank-badge">${row.performanceRank ? escapeHtml(String(row.performanceRank)) : "—"}</span></td>
+              <td><strong>${escapeHtml(row.label || "Not shared")}</strong></td>
+              <td class="source-report-positive-value">${escapeHtml(formatPrivateAnalyticsPercent(row.averageRate))}</td>
+              <td>${escapeHtml(formatPrivateAnalyticsNumber(row.sessionCount))}</td>
+              <td>${escapeHtml(formatPrivateAnalyticsNumber(row.totalSeeds))}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <p class="source-report-canonical-note">Canonical GIE order. No client-side ranking or sorting.</p>`;
+}
+
+function renderSourceReportRankingsTable(currentReport = {}, sourceReports = []) {
+  const rows = Array.isArray(sourceReports) ? sourceReports.slice(0, 5) : [];
+  if (!rows.length) {
+    return renderSourceReportUnavailableState("Not enough approved evidence to display source rankings.");
+  }
+  const currentKey = String(currentReport.key || "").trim().toLowerCase();
+  return `
+    <div class="source-report-table-wrap">
+      <table class="source-report-data-table source-report-rankings-table">
+        <thead><tr><th>Rank</th><th>Source</th><th>Average Germination</th><th>Confidence</th><th>Sessions</th><th>Seeds Tested</th></tr></thead>
+        <tbody>
+          ${rows.map((row) => {
+            const isCurrent = String(row.key || "").trim().toLowerCase() === currentKey;
+            return `
+              <tr${isCurrent ? ' class="is-current-source" aria-current="true"' : ""}>
+                <td>${row.performanceRank ? escapeHtml(String(row.performanceRank)) : "—"}</td>
+                <td><strong>${escapeHtml(row.label || "Not shared")}</strong></td>
+                <td>${escapeHtml(formatPrivateAnalyticsPercent(row.averageRate))}</td>
+                <td class="source-report-positive-value">${escapeHtml(String(row.confidence?.label || "Limited"))}</td>
+                <td>${escapeHtml(formatPrivateAnalyticsNumber(row.sessionCount))}</td>
+                <td>${escapeHtml(formatPrivateAnalyticsNumber(row.totalSeeds))}</td>
+              </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function formatSourceReportGeneratedAt(value = "") {
+  const parsed = parseCompletedAtValue(String(value || "").trim());
+  if (!parsed) {
+    return "Not available";
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
 function renderSourceProfilePage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
   const sourceProfile = getSourceProfileRecord(requestedId);
@@ -57353,26 +57435,35 @@ function renderSourceProfilePage(sourceId = "") {
       </section>`;
     return;
   }
-  const relationshipRows = buildCommunityInsightsChartRows(report.relationships, {
-    limit: report.relationships.length || 1,
-    valueFormatter: (row) => formatPublicAnalyticsSuccessRate(row.averageRate),
-    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds · ${formatPrivateAnalyticsNumber(row.sessionCount)} sessions`,
-  });
-  const cards = [
-    { label: "Community Sessions", value: formatPrivateAnalyticsNumber(report.sessionCount), detail: "approved public evidence" },
-    { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds), detail: "canonical Community total" },
-    { label: "Seeds Germinated", value: formatPrivateAnalyticsNumber(report.totalGerminated), detail: "canonical Community total" },
-    { label: "Overall Germination %", value: formatPrivateAnalyticsPercent(report.averageRate), detail: "seed-weighted" },
-    { label: "Evidence Count", value: formatPrivateAnalyticsNumber(report.evidenceCount), detail: "approved published snapshots" },
-    { label: "Contributors", value: formatPrivateAnalyticsNumber(report.contributorCount), detail: "public evidence contributors" },
-    { label: "Varieties", value: formatPrivateAnalyticsNumber(report.varietyCount), detail: "represented genetics" },
-    { label: "Community Confidence", value: String(report.confidence?.label || "Limited"), detail: `${Number(report.confidence?.percent || 0)}%` },
+  const communityContract = appState.gieCommunityAnalytics || normalizeGieCommunityAnalyticsPayload({});
+  const communityAnalytics = getCanonicalCommunityAnalytics();
+  const reportHref = getSourceReportRouteHref(sourceProfile || { id: requestedId });
+  const sourceTypeLabel = String(sourceProfile?.sourceTypeLabel || sourceProfile?.type || "Seed Source").trim() || "Seed Source";
+  const countryCode = getSourceCountryCode(sourceProfile || {});
+  const countryName = countryCode ? getCountryName(countryCode) : "Country not published";
+  const description = String(sourceProfile?.description || "No public source description has been published.").trim();
+  const websiteUrl = String(sourceProfile?.websiteUrl || "").trim();
+  const evidenceIsVerified = report.sourceQuality?.recognized_evidence_only === true || report.sourceQuality?.recognizedEvidenceOnly === true;
+  const confidenceLabel = String(report.confidence?.label || "Limited").trim() || "Limited";
+  const snapshotCards = [
+    { icon: "summary", label: "Community Sessions", value: formatPrivateAnalyticsNumber(report.sessionCount), detail: "approved public evidence" },
+    { icon: "seed", label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds), detail: "canonical GIE total" },
+    { icon: "analytics", label: "Average Germination", value: formatPrivateAnalyticsPercent(report.averageRate), detail: "seed-weighted" },
+    { icon: "seed", label: "Varieties Tested", value: formatPrivateAnalyticsNumber(report.varietyCount), detail: "unique genetics" },
+    { icon: "summary", label: "Contributors", value: formatPrivateAnalyticsNumber(report.contributorCount), detail: "public evidence growers" },
   ];
   app.innerHTML = `
-    <section class="source-profile-page source-report-page" data-gie-community-consumer="source-report">
-      <a class="source-profile-back-link source-report-back-link" href="#sources">&larr; Back to Source Explorer</a>
-      <div class="source-profile-title-block source-report-title-block"><h1>Source Report</h1></div>
-      <article class="card source-report-hero-card">
+    <section class="source-profile-page source-report-page source-report-dashboard" data-gie-community-consumer="source-report">
+      <header class="source-report-page-header">
+        <div>
+          <a class="source-profile-back-link source-report-back-link" href="#sources">&larr; Back to Source Explorer</a>
+          <h1>Source Report</h1>
+        </div>
+        <a class="button button-secondary source-report-how-button" href="#source-report-confidence">${renderMySessionsInlineIconMarkup("analytics", "source-report-button-icon")}<span>How this Works</span></a>
+      </header>
+
+      <article class="card source-report-hero-card source-report-dashboard-hero">
+        <div class="source-report-hero-bg" aria-hidden="true"><img src="/assets/images/source-report-hero-bg.png" alt=""></div>
         <div class="source-report-hero-main">
           ${sourceProfile ? renderSourceLogoMarkup(sourceProfile, {
             className: "source-profile-logo source-report-hero-logo",
@@ -57381,31 +57472,91 @@ function renderSourceProfilePage(sourceId = "") {
             alt: `${report.label} logo`,
           }) : ""}
           <div class="source-report-hero-copy">
-            <p class="eyebrow">Community Analytics Contract</p>
             <h2>${escapeHtml(report.label)}</h2>
-            <p>Approved, published Community evidence only.</p>
+            <p class="source-report-hero-meta">
+              <span>${escapeHtml(sourceTypeLabel)}</span>
+              <span>${countryCode ? renderCountryFlagMarkup(countryCode, "source-report-inline-flag country-flag") : ""}${escapeHtml(countryName)}</span>
+            </p>
+            ${evidenceIsVerified ? `<span class="source-report-verified-badge">Verified Evidence</span>` : ""}
+            <p class="source-report-hero-evidence-date">Latest approved evidence: ${escapeHtml(report.latestAt ? formatSourceDirectoryLastLoggedDate(report.latestAt) : "Not available")}</p>
           </div>
+          <div class="source-report-hero-description">
+            <p>${escapeHtml(description)}</p>
+            ${websiteUrl ? `<a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(websiteUrl.replace(/^https?:\/\//i, ""))} ↗</a>` : `<span>Website not published</span>`}
+          </div>
+          <aside class="source-report-hero-confidence" aria-label="Canonical community confidence">
+            <span>Community Confidence</span>
+            <strong>${escapeHtml(confidenceLabel)}</strong>
+            <p>${report.performanceRank ? `Ranked #${escapeHtml(String(report.performanceRank))} among eligible sources` : "Not currently ranked"}</p>
+            <progress max="100" value="${escapeHtml(String(Number(report.confidence?.percent || 0)))}" aria-label="Canonical confidence ${escapeHtml(String(Number(report.confidence?.percent || 0)))} percent"></progress>
+            <small>GIE Confidence</small>
+          </aside>
         </div>
-        ${renderCommunityInsightsKpiGrid(cards)}
       </article>
-      <div class="source-report-two-column-grid">
-        <article class="card source-report-section-card">
-          ${renderSourceReportSectionTitle(1, "Top Performing Varieties")}
-          ${renderCommunityInsightsBarChart("Canonical variety evidence", relationshipRows, { ranked: true, emptyMessage: "No approved variety evidence yet." })}
+
+      <section class="source-report-snapshot-grid" aria-label="Source report metric snapshot">
+        ${snapshotCards.map((card) => `
+          <article class="card source-report-snapshot-card">
+            <span class="source-report-snapshot-icon" aria-hidden="true">${renderMySessionsInlineIconMarkup(card.icon, "source-report-icon-svg")}</span>
+            <div><strong>${escapeHtml(card.value)}</strong><span>${escapeHtml(card.label)}</span><small>${escapeHtml(card.detail)}</small></div>
+          </article>`).join("")}
+      </section>
+
+      <div class="source-report-dashboard-grid source-report-dashboard-grid--primary">
+        <article class="card source-report-dashboard-card">
+          ${renderSourceReportDashboardCardHeader("Top Performing Varieties", `<a class="button button-secondary button-compact" href="${escapeHtml(reportHref)}/varieties">View All Varieties</a>`)}
+          ${renderSourceReportTopVarietiesTable(report, reportHref)}
         </article>
-        <article class="card source-report-section-card">
-          ${renderSourceReportSectionTitle(2, "Community Trends")}
-          ${renderCommunityInsightsTrendChart("Monthly germination", report.monthlyTrends, { metricKey: "averageRate", percent: true, caption: "approved public evidence" })}
+        <article class="card source-report-dashboard-card source-report-distribution-card">
+          ${renderSourceReportDashboardCardHeader("Germination Distribution")}
+          ${renderSourceReportUnavailableState("Not enough canonical distribution data.")}
         </article>
       </div>
-      <article class="card source-report-section-card">
-        ${renderSourceReportSectionTitle(3, "Source Quality")}
-        ${renderCommunityInsightsKpiGrid([
-          { label: "Evidence Status", value: String(report.sourceQuality?.status || "Building Evidence"), detail: "canonical GIE assessment" },
-          { label: "Latest Evidence", value: report.latestAt ? formatSourceDirectoryLastLoggedDate(report.latestAt) : "Not available", detail: "latest approved publication" },
-          { label: "Rank", value: report.performanceRank ? `#${report.performanceRank}` : "Not ranked", detail: "canonical performance ranking" },
-        ])}
+
+      <div class="source-report-dashboard-grid">
+        <article class="card source-report-dashboard-card source-report-performance-card">
+          ${renderSourceReportDashboardCardHeader("Community Performance", `<div class="source-report-current-metric"><span>Current Average</span><strong>${escapeHtml(formatPrivateAnalyticsPercent(report.averageRate))}</strong></div>`)}
+          ${renderCommunityInsightsTrendChart("Monthly germination", report.monthlyTrends, {
+            metricKey: "averageRate",
+            percent: true,
+            caption: "Approved public evidence",
+            className: "source-report-canonical-trend",
+            emptyMessage: "Not enough approved evidence to display performance trends.",
+          })}
+        </article>
+        <article class="card source-report-dashboard-card">
+          ${renderSourceReportDashboardCardHeader("Recent Community Activity")}
+          ${renderSourceReportUnavailableState("Canonical recent community activity is not available for this source.")}
+        </article>
+      </div>
+
+      <div class="source-report-dashboard-grid">
+        <article id="source-report-confidence" class="card source-report-dashboard-card source-report-confidence-card">
+          ${renderSourceReportDashboardCardHeader("Community Confidence Breakdown")}
+          <div class="source-report-confidence-summary">
+            <div><span>Overall Confidence</span><strong>${escapeHtml(confidenceLabel)}</strong></div>
+            <p>GIE currently exposes the canonical confidence level and source-quality status for this report. Factor percentages are not part of the versioned public contract.</p>
+            <span class="source-report-confidence-shield" aria-hidden="true">${renderMySessionsInlineIconMarkup("check", "source-report-icon-svg")}</span>
+          </div>
+          <div class="source-report-quality-row"><span>Source quality</span><strong>${escapeHtml(String(report.sourceQuality?.status || "Building Evidence"))}</strong></div>
+        </article>
+        <article class="card source-report-dashboard-card">
+          ${renderSourceReportDashboardCardHeader("Community Growth by Region")}
+          ${renderSourceReportUnavailableState("Canonical regional data is not available for this source.")}
+        </article>
+      </div>
+
+      <article class="card source-report-dashboard-card source-report-rankings-card">
+        ${renderSourceReportDashboardCardHeader("Source Rankings", `<a class="button button-secondary button-compact" href="#community-insights/sources">View Full Rankings</a>`)}
+        ${renderSourceReportRankingsTable(report, communityAnalytics.sourceReports)}
       </article>
+
+      <footer class="source-report-gie-footer">
+        <p>Powered by <strong>GIE</strong><span>Grow Intelligence Engine</span></p>
+        <p>Data from approved public community evidence only</p>
+        <p>Last updated: ${escapeHtml(formatSourceReportGeneratedAt(communityContract.generatedAt))}<i aria-hidden="true"></i></p>
+        <small>${escapeHtml(communityContract.contractVersion || "gie-community.v1")} · Engine ${escapeHtml(communityContract.engineVersion || "version unavailable")} · Schema ${escapeHtml(communityContract.schemaVersion || "version unavailable")}</small>
+      </footer>
     </section>`;
   hydrateAppIconSlots(app);
 }
@@ -75809,7 +75960,7 @@ function renderCommunityIntelligenceDashboardMarkup() {
           <div>
             <p class="eyebrow">Community Rankings</p>
             <h3>Canonical Leaderboards</h3>
-            <p class="muted">Ranks and confidence are supplied by the Community Analytics Contract.</p>
+            <p class="muted">Ranks and confidence are supplied by the Grow Intelligence Engine.</p>
           </div>
         </div>
       </div>
