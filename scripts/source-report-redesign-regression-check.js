@@ -38,6 +38,7 @@ for (const label of [
   "Community Performance",
   "Recent Community Activity",
   "Community Confidence Breakdown",
+  "Community Growth by Region",
   "Source Rankings",
   "Powered by <strong>GIE</strong>",
 ]) {
@@ -59,7 +60,7 @@ for (const canonicalEvidence of [
   "renderSourceReportPerformanceLineChart(periods)",
   "Growing Evidence",
   "Based on ${formatPrivateAnalyticsNumber(safeCount)} approved Community",
-  "Trend unavailable until additional evidence is collected.",
+  "Additional approved reporting periods are required to establish a trend.",
   "Latest approved session",
   "Germinated",
 ]) {
@@ -69,7 +70,9 @@ for (const canonicalEvidence of [
 assert(adapter.includes("canonicalPresence") && adapter.includes("hasCanonicalValue"), "The Community adapter must preserve canonical field presence for truthful unavailable states.");
 assert(!sourceReport.includes("Not enough canonical distribution data.") && !sourceReportHelpers.includes("Not enough canonical distribution data.") && !sourceReport.includes("Not enough approved evidence to display performance trends.") && !sourceReportHelpers.includes("Not enough approved evidence to display performance trends."), "Evidence volume must not trigger Source Report unavailable states.");
 assert(!sourceReport.includes("<progress") && !sourceReportHelpers.includes("source-report-result-rate"), "Source Report must not use stretched progress bars as primary visualizations.");
-assert(!sourceReport.includes("Community Growth by Region") && !sourceReport.includes("Canonical regional data is not available for this source."), "Unsupported regional data must not occupy an oversized placeholder card.");
+assert(sourceReport.includes("Community Growth by Region") && sourceReport.includes("renderSourceReportRegionMap()"), "The regional world map must remain visible without canonical location evidence.");
+assert(sourceReportHelpers.includes("No regional Community evidence has been published yet.") && sourceReportHelpers.includes("/assets/app/source-report/world-map.svg"), "The empty regional state must use the neutral world map and exact limitation copy.");
+assert(sourceReportHelpers.includes("Distribution detail is not published yet") && sourceReportHelpers.includes("not canonical distribution buckets"), "Distribution must distinguish available canonical totals from unavailable canonical buckets.");
 assert(sourceReport.includes('/assets/images/seed-report-hero-bg.png'), "Source Report hero must use the target seed-report background asset.");
 assert(sourceReport.includes("source-report-hero-verification") && sourceReport.includes("Latest evidence"), "Source verification and freshness metadata must sit beneath the hero description.");
 assert(sourceReport.includes("source-report-confidence-metrics") && sourceReport.includes("Approved Sessions") && sourceReport.includes("Seeds Tested") && sourceReport.includes("Contributors"), "Community Confidence must present compact canonical evidence metrics.");
@@ -110,7 +113,7 @@ const sourceReportRenderers = new Function(
   "formatPrivateAnalyticsPercent",
   "renderCommunityInsightsTrendChart",
   "parseCompletedAtValue",
-  `${sourceReportHelpers}; return { renderSourceReportGerminationDistribution, renderSourceReportPerformance, renderSourceReportPerformanceLineChart, renderSourceReportRecentActivity, renderSourceReportTopVarietiesTable };`,
+  `${sourceReportHelpers}; return { renderSourceReportGerminationDistribution, renderSourceReportPerformance, renderSourceReportPerformanceLineChart, renderSourceReportRecentActivity, renderSourceReportRegionMap, renderSourceReportTopVarietiesTable, renderSourceReportRankingsTable };`,
 )(
   (value) => String(value),
   () => "<svg></svg>",
@@ -122,10 +125,13 @@ const sourceReportRenderers = new Function(
 const chadDistributionMarkup = sourceReportRenderers.renderSourceReportGerminationDistribution(chadWestportReport);
 const chadPerformanceMarkup = sourceReportRenderers.renderSourceReportPerformance(chadWestportReport);
 const chadActivityMarkup = sourceReportRenderers.renderSourceReportRecentActivity(chadWestportReport);
+const emptyRegionMarkup = sourceReportRenderers.renderSourceReportRegionMap();
 const chadVarietiesMarkup = sourceReportRenderers.renderSourceReportTopVarietiesTable(chadWestportReport, "#sources/chad-westport");
 assert(chadDistributionMarkup.includes("10") && chadDistributionMarkup.includes("Germinated") && chadDistributionMarkup.includes("100%") && chadDistributionMarkup.includes("Growing Evidence"), "One-session canonical result evidence must render in Germination Distribution.");
-assert(chadPerformanceMarkup.includes("source-report-growing-evidence-card") && chadPerformanceMarkup.includes("Jul 2026") && chadPerformanceMarkup.includes("Trend unavailable until additional evidence is collected."), "A single canonical performance period must render as a compact Growing Evidence summary without fabricating a trend.");
+assert(chadPerformanceMarkup.includes("source-report-line-chart is-sparse") && chadPerformanceMarkup.includes("<circle") && !chadPerformanceMarkup.includes("<polyline") && chadPerformanceMarkup.includes("Jul 2026") && chadPerformanceMarkup.includes("Additional approved reporting periods are required to establish a trend."), "A single canonical performance period must render as one real plotted point without fabricating a line.");
+assert(chadPerformanceMarkup.includes("Approved Sessions") && chadPerformanceMarkup.includes("Seeds Tested") && chadPerformanceMarkup.includes("Germinated"), "Sparse performance must retain its canonical evidence summary beneath the plotted point.");
 assert(chadActivityMarkup.includes("Latest approved session") && chadActivityMarkup.includes("10 germinated") && chadActivityMarkup.includes("Based on 1 approved Community session."), "Latest one-session canonical activity must render with limited-evidence guidance.");
+assert(emptyRegionMarkup.includes("world-map.svg") && emptyRegionMarkup.includes("No regional Community evidence has been published yet.") && !emptyRegionMarkup.includes("unavailable"), "The empty regional state must keep the neutral world map visible.");
 assert(chadVarietiesMarkup.includes("Canonical Variety") && chadVarietiesMarkup.includes("100%"), "Canonical varieties must render even when only one session exists.");
 assert(!chadDistributionMarkup.includes("not available") && !chadPerformanceMarkup.includes("not available") && !chadActivityMarkup.includes("not available") && !chadVarietiesMarkup.includes("not available"), "Present one-session canonical evidence must never render as unavailable.");
 
@@ -133,8 +139,15 @@ const multiPeriodMarkup = sourceReportRenderers.renderSourceReportPerformanceLin
   { key: "2026-06", label: "Jun 2026", averageRate: 80 },
   { key: "2026-07", label: "Jul 2026", averageRate: 100 },
 ]);
-assert(multiPeriodMarkup.includes("<polyline") && multiPeriodMarkup.includes("Jun 2026") && multiPeriodMarkup.includes("Jul 2026"), "Multiple canonical periods must render as an actual line chart.");
+assert(multiPeriodMarkup.includes("<polyline") && (multiPeriodMarkup.match(/<circle/g) || []).length === 2 && multiPeriodMarkup.includes("Jun 2026") && multiPeriodMarkup.includes("Jul 2026"), "Multiple canonical periods must render as an actual multi-point line chart.");
 assert(!multiPeriodMarkup.includes("community-insights-trend-bar"), "Source Report performance must not fall back to oversized bar capsules.");
+
+const emptyReport = { canonicalPresence: {}, relationships: [], monthlyTrends: [] };
+assert(sourceReportRenderers.renderSourceReportGerminationDistribution(emptyReport).includes("Canonical germination result data is not available"), "Empty distribution must render unavailable only when canonical result fields are absent.");
+assert(sourceReportRenderers.renderSourceReportPerformance(emptyReport).includes("Canonical performance periods are not available"), "Empty performance must render unavailable only when canonical periods are absent.");
+assert(sourceReportRenderers.renderSourceReportRecentActivity(emptyReport).includes("Canonical recent Community activity is not available"), "Empty activity must render unavailable only when the canonical latest record is absent.");
+assert(sourceReportRenderers.renderSourceReportTopVarietiesTable(emptyReport).includes("No approved canonical variety evidence"), "Empty Top Performing Varieties must render its honest empty state.");
+assert(sourceReportRenderers.renderSourceReportRankingsTable(emptyReport, []).includes("Not enough approved evidence to display source rankings"), "Empty Source Rankings must render its honest empty state.");
 
 for (const forbidden of [
   "getSessions(",
@@ -152,8 +165,9 @@ for (const forbidden of [
 assert(!app.includes("Community Analytics Contract"), "User-facing Analytics Contract copy must be retired.");
 assert(styles.includes(".source-report-dashboard") && styles.includes("max-width: 1200px;"), "Source Report must retain the compact 1200px dashboard layout.");
 assert(styles.includes("@media (max-width: 560px)") && styles.includes(".source-report-snapshot-grid { grid-template-columns: 1fr; }"), "Source Report must retain its single-column mobile layout.");
-assert(styles.includes(".source-report-growing-evidence-card") && styles.includes(".source-report-line-chart"), "Source Report must style compact one-period evidence and multi-period line-chart states.");
+assert(styles.includes(".source-report-line-chart.is-sparse") || (styles.includes(".source-report-line-chart") && styles.includes(".source-report-sparse-chart-metrics")), "Source Report must style real one-point and multi-period chart states.");
 assert(styles.includes(".source-report-hero-verification") && styles.includes(".source-report-confidence-metrics"), "Source Report must retain its premium hero and confidence presentation system.");
+assert(styles.includes(".source-report-region-map") && styles.includes(".source-report-region-map-message"), "Source Report must style the always-visible regional map state.");
 assert(!styles.includes(".source-report-result-rate"), "Source Report styles must not retain the stretched result-rate visualization.");
 
 for (const eligibilityRule of [

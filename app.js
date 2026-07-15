@@ -57401,27 +57401,35 @@ function renderSourceReportGerminationDistribution(report = {}) {
           <strong>${escapeHtml(metric.value)}</strong>
         </div>`).join("")}
     </div>
-    <p class="source-report-canonical-note">Canonical GIE result totals. No client-side distribution or outcome is inferred.</p>
+    <div class="source-report-contract-limitation" role="note">
+      <span aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-icon-svg")}</span>
+      <p><strong>Distribution detail is not published yet</strong><small>The current GIE contract provides the canonical totals above, but not canonical distribution buckets.</small></p>
+    </div>
     ${renderSourceReportLimitedEvidenceNote(report)}`;
 }
 
 function renderSourceReportPerformanceLineChart(periods = []) {
   const safePeriods = Array.isArray(periods) ? periods : [];
-  if (safePeriods.length < 2) {
+  if (!safePeriods.length) {
     return "";
   }
   const points = safePeriods.map((period, index) => {
-    const x = safePeriods.length === 1 ? 0 : (index / (safePeriods.length - 1)) * 100;
-    const y = 100 - Math.max(0, Math.min(100, Number(period.averageRate) || 0));
-    return `${x.toFixed(2)},${y.toFixed(2)}`;
-  }).join(" ");
+    const x = safePeriods.length === 1 ? 150 : 4 + ((index / (safePeriods.length - 1)) * 292);
+    const canonicalRate = Math.max(0, Math.min(100, Number(period.averageRate) || 0));
+    const y = 4 + ((100 - canonicalRate) * 0.92);
+    return { x: x.toFixed(2), y: y.toFixed(2), period };
+  });
+  const hasTrend = safePeriods.length > 1;
+  const sparsePeriod = safePeriods[0];
   return `
-    <div class="source-report-line-chart" aria-label="Canonical Community performance across ${escapeHtml(String(safePeriods.length))} approved periods">
-      <svg viewBox="0 0 100 100" role="img" aria-label="Canonical germination performance line chart" preserveAspectRatio="none">
-        <line x1="0" y1="25" x2="100" y2="25"></line>
-        <line x1="0" y1="50" x2="100" y2="50"></line>
-        <line x1="0" y1="75" x2="100" y2="75"></line>
-        <polyline points="${escapeHtml(points)}"></polyline>
+    <div class="source-report-line-chart${hasTrend ? " is-mature" : " is-sparse"}" aria-label="Canonical Community performance across ${escapeHtml(String(safePeriods.length))} approved ${safePeriods.length === 1 ? "period" : "periods"}">
+      <div class="source-report-chart-state"><strong>${hasTrend ? "Performance by Period" : "Growing Evidence"}</strong><span>${hasTrend ? `${formatPrivateAnalyticsNumber(safePeriods.length)} approved reporting periods` : "One approved reporting period"}</span></div>
+      <svg viewBox="0 0 300 100" role="img" aria-label="${hasTrend ? "Canonical germination performance line chart" : "One canonical germination performance point"}" preserveAspectRatio="xMidYMid meet">
+        <line x1="4" y1="25" x2="296" y2="25"></line>
+        <line x1="4" y1="50" x2="296" y2="50"></line>
+        <line x1="4" y1="75" x2="296" y2="75"></line>
+        ${hasTrend ? `<polyline points="${escapeHtml(points.map((point) => `${point.x},${point.y}`).join(" "))}"></polyline>` : ""}
+        ${points.map((point) => `<circle cx="${escapeHtml(point.x)}" cy="${escapeHtml(point.y)}" r="${hasTrend ? "2.2" : "3.6"}"><title>${escapeHtml(`${point.period.label || point.period.key || "Approved period"}: ${formatPrivateAnalyticsPercent(point.period.averageRate)}`)}</title></circle>`).join("")}
       </svg>
       <div class="source-report-line-chart-periods" style="--source-report-period-count:${escapeHtml(String(safePeriods.length))};">
         ${safePeriods.map((period) => `
@@ -57430,6 +57438,13 @@ function renderSourceReportPerformanceLineChart(periods = []) {
             <span>${escapeHtml(period.label || period.key || "Approved period")}</span>
           </div>`).join("")}
       </div>
+      ${hasTrend ? "" : `
+        <div class="source-report-sparse-chart-metrics">
+          <div><span>Approved Sessions</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(sparsePeriod.sessionCount))}</strong></div>
+          <div><span>Seeds Tested</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(sparsePeriod.totalSeeds))}</strong></div>
+          <div><span>Germinated</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(sparsePeriod.totalGerminated))}</strong></div>
+        </div>
+        <p class="source-report-sparse-chart-note">Additional approved reporting periods are required to establish a trend.</p>`}
     </div>`;
 }
 
@@ -57438,22 +57453,17 @@ function renderSourceReportPerformance(report = {}) {
   if (!periods.length) {
     return renderSourceReportUnavailableState("Canonical performance periods are not available for this source.");
   }
-  if (periods.length > 1) {
-    return renderSourceReportPerformanceLineChart(periods);
-  }
-  const period = periods[0];
+  return renderSourceReportPerformanceLineChart(periods);
+}
+
+function renderSourceReportRegionMap() {
   return `
-    <div class="source-report-growing-evidence-card" role="note">
-      <div class="source-report-growing-evidence-heading">
-        <div><span>Growing Evidence</span><strong>${escapeHtml(period.label || period.key || "Latest approved period")}</strong></div>
-        <strong>${escapeHtml(formatPrivateAnalyticsPercent(period.averageRate))}</strong>
+    <div class="source-report-region-map is-empty" role="img" aria-label="World map with no published regional Community evidence">
+      <img src="/assets/app/source-report/world-map.svg" alt="World map with no highlighted regions">
+      <div class="source-report-region-map-message">
+        <strong>Regional evidence</strong>
+        <span>No regional Community evidence has been published yet.</span>
       </div>
-      <div class="source-report-growing-evidence-metrics">
-        <div><span>Sessions</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(period.sessionCount))}</strong></div>
-        <div><span>Seeds Tested</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(period.totalSeeds))}</strong></div>
-        <div><span>Germinated</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(period.totalGerminated))}</strong></div>
-      </div>
-      <p>Trend unavailable until additional evidence is collected. This canonical approved period remains visible.</p>
     </div>`;
 }
 
@@ -57652,7 +57662,7 @@ function renderSourceProfilePage(sourceId = "") {
         </article>
       </div>
 
-      <div class="source-report-dashboard-grid source-report-dashboard-grid--single">
+      <div class="source-report-dashboard-grid source-report-dashboard-grid--confidence">
         <article id="source-report-confidence" class="card source-report-dashboard-card source-report-confidence-card">
           ${renderSourceReportDashboardCardHeader("Community Confidence Breakdown")}
           <div class="source-report-confidence-summary">
@@ -57669,6 +57679,10 @@ function renderSourceProfilePage(sourceId = "") {
             <p>Canonical GIE confidence from approved public evidence. Additional approved sessions strengthen the evidence base.</p>
             <span class="source-report-confidence-shield" aria-hidden="true">${renderMySessionsInlineIconMarkup("check", "source-report-icon-svg")}</span>
           </div>
+        </article>
+        <article class="card source-report-dashboard-card source-report-region-card">
+          ${renderSourceReportDashboardCardHeader("Community Growth by Region")}
+          ${renderSourceReportRegionMap()}
         </article>
       </div>
 
