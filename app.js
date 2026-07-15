@@ -57590,7 +57590,7 @@ function renderSourceProfilePage(sourceId = "") {
       </header>
 
       <article class="card source-report-hero-card source-report-dashboard-hero">
-        <div class="source-report-hero-bg" aria-hidden="true"><img src="/assets/images/source-report-hero-bg.png" alt=""></div>
+        <div class="source-report-hero-bg" aria-hidden="true"><img src="/assets/images/seed-report-hero-bg.png" alt=""></div>
         <div class="source-report-hero-main">
           ${sourceProfile ? renderSourceLogoMarkup(sourceProfile, {
             className: "source-profile-logo source-report-hero-logo",
@@ -57604,12 +57604,14 @@ function renderSourceProfilePage(sourceId = "") {
               <span>${escapeHtml(sourceTypeLabel)}</span>
               <span>${countryCode ? renderCountryFlagMarkup(countryCode, "source-report-inline-flag country-flag") : ""}${escapeHtml(countryName)}</span>
             </p>
-            ${evidenceIsVerified ? `<span class="source-report-verified-badge">Verified Evidence</span>` : ""}
-            <p class="source-report-hero-evidence-date">Latest approved evidence: ${escapeHtml(report.latestAt ? formatSourceDirectoryLastLoggedDate(report.latestAt) : "Not available")}</p>
           </div>
           <div class="source-report-hero-description">
             <p>${escapeHtml(description)}</p>
             ${websiteUrl ? `<a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(websiteUrl.replace(/^https?:\/\//i, ""))} ↗</a>` : `<span>Website not published</span>`}
+            <div class="source-report-hero-verification">
+              ${evidenceIsVerified ? `<span class="source-report-verified-badge">Verified Evidence</span>` : ""}
+              <span class="source-report-hero-evidence-date">Latest evidence ${escapeHtml(report.latestAt ? formatSourceDirectoryLastLoggedDate(report.latestAt) : "not available")}</span>
+            </div>
           </div>
           <aside class="source-report-hero-confidence" aria-label="Canonical community confidence">
             <span>Community Confidence</span>
@@ -57654,11 +57656,19 @@ function renderSourceProfilePage(sourceId = "") {
         <article id="source-report-confidence" class="card source-report-dashboard-card source-report-confidence-card">
           ${renderSourceReportDashboardCardHeader("Community Confidence Breakdown")}
           <div class="source-report-confidence-summary">
-            <div><span>Overall Confidence</span><strong>${escapeHtml(confidenceLabel)}</strong></div>
-            <p>GIE currently exposes the canonical confidence level and source-quality status for this report. Factor percentages are not part of the versioned public contract.</p>
+            <div class="source-report-confidence-lead">
+              <span>Overall Confidence</span>
+              <strong>${escapeHtml(confidenceLabel)}</strong>
+              <small>${escapeHtml(String(report.sourceQuality?.status || "Building Evidence"))}</small>
+            </div>
+            <div class="source-report-confidence-metrics" aria-label="Canonical confidence evidence">
+              <div><span>Approved Sessions</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(report.sessionCount))}</strong></div>
+              <div><span>Seeds Tested</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(report.totalSeeds))}</strong></div>
+              <div><span>Contributors</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(report.contributorCount))}</strong></div>
+            </div>
+            <p>Canonical GIE confidence from approved public evidence. Additional approved sessions strengthen the evidence base.</p>
             <span class="source-report-confidence-shield" aria-hidden="true">${renderMySessionsInlineIconMarkup("check", "source-report-icon-svg")}</span>
           </div>
-          <div class="source-report-quality-row"><span>Source quality</span><strong>${escapeHtml(String(report.sourceQuality?.status || "Building Evidence"))}</strong></div>
         </article>
       </div>
 
