@@ -20909,6 +20909,11 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
   const overview = analytics?.overview && typeof analytics.overview === "object" ? analytics.overview : {};
   const rankings = analytics?.rankings && typeof analytics.rankings === "object" ? analytics.rankings : {};
   const leaderboards = analytics?.leaderboards && typeof analytics.leaderboards === "object" ? analytics.leaderboards : {};
+  const hasCanonicalValue = (row, keys = []) => keys.some((key) => (
+    Object.prototype.hasOwnProperty.call(row || {}, key)
+    && row?.[key] !== null
+    && row?.[key] !== undefined
+  ));
   const mapRows = (rows) => (Array.isArray(rows) ? rows : []).map((row) => ({
     key: String(row?.key || "").trim(),
     label: String(row?.label || row?.name || "Not shared").trim(),
@@ -20927,6 +20932,16 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     performanceRank: Number(row?.performance_rank ?? row?.rank ?? 0),
     testedRank: Number(row?.tested_rank || 0),
     activityRank: Number(row?.activity_rank || 0),
+    canonicalPresence: {
+      sessionCount: hasCanonicalValue(row, ["session_count", "sessions"]),
+      contributorCount: hasCanonicalValue(row, ["contributor_count", "contributors"]),
+      totalSeeds: hasCanonicalValue(row, ["total_seeds", "seeds_tested"]),
+      totalGerminated: hasCanonicalValue(row, ["total_germinated", "seeds_germinated"]),
+      averageRate: hasCanonicalValue(row, ["average_rate", "germination_rate"]),
+      latestAt: hasCanonicalValue(row, ["latest_at"]),
+      varietyCount: hasCanonicalValue(row, ["variety_count"]),
+      performanceRank: hasCanonicalValue(row, ["performance_rank", "rank"]),
+    },
   }));
   const mapMonths = (rows) => (Array.isArray(rows) ? rows : []).map((row) => ({
     key: String(row?.key || "").trim(),
@@ -57352,6 +57367,118 @@ function renderSourceReportUnavailableState(message = "Canonical data is not ava
     </div>`;
 }
 
+function formatSourceReportSessionBasis(sessionCount = 0) {
+  const safeCount = Math.max(0, Number(sessionCount) || 0);
+  return `Based on ${formatPrivateAnalyticsNumber(safeCount)} approved Community ${safeCount === 1 ? "session" : "sessions"}.`;
+}
+
+function renderSourceReportLimitedEvidenceNote(report = {}) {
+  if (Number(report.sessionCount) > 1) {
+    return "";
+  }
+  return `
+    <div class="source-report-limited-evidence-note" role="note">
+      <strong>Growing Evidence</strong>
+      <span>${escapeHtml(formatSourceReportSessionBasis(report.sessionCount))} Additional approved sessions will improve statistical confidence.</span>
+    </div>`;
+}
+
+function renderSourceReportGerminationDistribution(report = {}) {
+  const presence = report.canonicalPresence || {};
+  if (!presence.totalSeeds && !presence.totalGerminated && !presence.averageRate) {
+    return renderSourceReportUnavailableState("Canonical germination result data is not available for this source.");
+  }
+  const metrics = [
+    presence.totalSeeds ? { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds) } : null,
+    presence.totalGerminated ? { label: "Germinated", value: formatPrivateAnalyticsNumber(report.totalGerminated) } : null,
+    presence.averageRate ? { label: "Germination", value: formatPrivateAnalyticsPercent(report.averageRate), accent: true } : null,
+  ].filter(Boolean);
+  return `
+    <div class="source-report-evidence-metrics" aria-label="Canonical germination results">
+      ${metrics.map((metric) => `
+        <div${metric.accent ? ' class="is-accent"' : ""}>
+          <span>${escapeHtml(metric.label)}</span>
+          <strong>${escapeHtml(metric.value)}</strong>
+        </div>`).join("")}
+    </div>
+    <p class="source-report-canonical-note">Canonical GIE result totals. No client-side distribution or outcome is inferred.</p>
+    ${renderSourceReportLimitedEvidenceNote(report)}`;
+}
+
+function renderSourceReportPerformanceLineChart(periods = []) {
+  const safePeriods = Array.isArray(periods) ? periods : [];
+  if (safePeriods.length < 2) {
+    return "";
+  }
+  const points = safePeriods.map((period, index) => {
+    const x = safePeriods.length === 1 ? 0 : (index / (safePeriods.length - 1)) * 100;
+    const y = 100 - Math.max(0, Math.min(100, Number(period.averageRate) || 0));
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+  return `
+    <div class="source-report-line-chart" aria-label="Canonical Community performance across ${escapeHtml(String(safePeriods.length))} approved periods">
+      <svg viewBox="0 0 100 100" role="img" aria-label="Canonical germination performance line chart" preserveAspectRatio="none">
+        <line x1="0" y1="25" x2="100" y2="25"></line>
+        <line x1="0" y1="50" x2="100" y2="50"></line>
+        <line x1="0" y1="75" x2="100" y2="75"></line>
+        <polyline points="${escapeHtml(points)}"></polyline>
+      </svg>
+      <div class="source-report-line-chart-periods" style="--source-report-period-count:${escapeHtml(String(safePeriods.length))};">
+        ${safePeriods.map((period) => `
+          <div>
+            <strong>${escapeHtml(formatPrivateAnalyticsPercent(period.averageRate))}</strong>
+            <span>${escapeHtml(period.label || period.key || "Approved period")}</span>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
+function renderSourceReportPerformance(report = {}) {
+  const periods = Array.isArray(report.monthlyTrends) ? report.monthlyTrends : [];
+  if (!periods.length) {
+    return renderSourceReportUnavailableState("Canonical performance periods are not available for this source.");
+  }
+  if (periods.length > 1) {
+    return renderSourceReportPerformanceLineChart(periods);
+  }
+  const period = periods[0];
+  return `
+    <div class="source-report-growing-evidence-card" role="note">
+      <div class="source-report-growing-evidence-heading">
+        <div><span>Growing Evidence</span><strong>${escapeHtml(period.label || period.key || "Latest approved period")}</strong></div>
+        <strong>${escapeHtml(formatPrivateAnalyticsPercent(period.averageRate))}</strong>
+      </div>
+      <div class="source-report-growing-evidence-metrics">
+        <div><span>Sessions</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(period.sessionCount))}</strong></div>
+        <div><span>Seeds Tested</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(period.totalSeeds))}</strong></div>
+        <div><span>Germinated</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(period.totalGerminated))}</strong></div>
+      </div>
+      <p>Trend unavailable until additional evidence is collected. This canonical approved period remains visible.</p>
+    </div>`;
+}
+
+function renderSourceReportRecentActivity(report = {}) {
+  const presence = report.canonicalPresence || {};
+  if (!presence.latestAt || !report.latestAt) {
+    return renderSourceReportUnavailableState("Canonical recent Community activity is not available for this source.");
+  }
+  const summaryItems = [
+    presence.totalSeeds ? `${formatPrivateAnalyticsNumber(report.totalSeeds)} seeds tested` : "",
+    presence.totalGerminated ? `${formatPrivateAnalyticsNumber(report.totalGerminated)} germinated` : "",
+    presence.averageRate ? `${formatPrivateAnalyticsPercent(report.averageRate)} germination` : "",
+  ].filter(Boolean);
+  return `
+    <div class="source-report-latest-evidence">
+      <span class="source-report-latest-evidence-icon" aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-icon-svg")}</span>
+      <div>
+        <span>Latest approved session</span>
+        <strong>${escapeHtml(formatSourceReportGeneratedAt(report.latestAt))}</strong>
+        ${summaryItems.length ? `<p>${escapeHtml(summaryItems.join(" · "))}</p>` : ""}
+      </div>
+    </div>
+    ${renderSourceReportLimitedEvidenceNote(report)}`;
+}
+
 function renderSourceReportTopVarietiesTable(report = {}, reportHref = "#sources") {
   const rows = Array.isArray(report.relationships) ? report.relationships.slice(0, 5) : [];
   if (!rows.length) {
@@ -57447,7 +57574,7 @@ function renderSourceProfilePage(sourceId = "") {
   const confidenceLabel = String(report.confidence?.label || "Limited").trim() || "Limited";
   const snapshotCards = [
     { icon: "summary", label: "Community Sessions", value: formatPrivateAnalyticsNumber(report.sessionCount), detail: "approved public evidence" },
-    { icon: "seed", label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds), detail: "canonical GIE total" },
+    { icon: "seed", label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds), detail: `${formatPrivateAnalyticsNumber(report.totalGerminated)} germinated` },
     { icon: "analytics", label: "Average Germination", value: formatPrivateAnalyticsPercent(report.averageRate), detail: "seed-weighted" },
     { icon: "seed", label: "Varieties Tested", value: formatPrivateAnalyticsNumber(report.varietyCount), detail: "unique genetics" },
     { icon: "summary", label: "Contributors", value: formatPrivateAnalyticsNumber(report.contributorCount), detail: "public evidence growers" },
@@ -57488,8 +57615,7 @@ function renderSourceProfilePage(sourceId = "") {
             <span>Community Confidence</span>
             <strong>${escapeHtml(confidenceLabel)}</strong>
             <p>${report.performanceRank ? `Ranked #${escapeHtml(String(report.performanceRank))} among eligible sources` : "Not currently ranked"}</p>
-            <progress max="100" value="${escapeHtml(String(Number(report.confidence?.percent || 0)))}" aria-label="Canonical confidence ${escapeHtml(String(Number(report.confidence?.percent || 0)))} percent"></progress>
-            <small>GIE Confidence</small>
+            <div class="source-report-hero-confidence-value"><span>GIE Confidence</span><strong>${escapeHtml(formatPrivateAnalyticsPercent(report.confidence?.percent || 0))}</strong></div>
           </aside>
         </div>
       </article>
@@ -57509,28 +57635,22 @@ function renderSourceProfilePage(sourceId = "") {
         </article>
         <article class="card source-report-dashboard-card source-report-distribution-card">
           ${renderSourceReportDashboardCardHeader("Germination Distribution")}
-          ${renderSourceReportUnavailableState("Not enough canonical distribution data.")}
+          ${renderSourceReportGerminationDistribution(report)}
         </article>
       </div>
 
       <div class="source-report-dashboard-grid">
         <article class="card source-report-dashboard-card source-report-performance-card">
           ${renderSourceReportDashboardCardHeader("Community Performance", `<div class="source-report-current-metric"><span>Current Average</span><strong>${escapeHtml(formatPrivateAnalyticsPercent(report.averageRate))}</strong></div>`)}
-          ${renderCommunityInsightsTrendChart("Monthly germination", report.monthlyTrends, {
-            metricKey: "averageRate",
-            percent: true,
-            caption: "Approved public evidence",
-            className: "source-report-canonical-trend",
-            emptyMessage: "Not enough approved evidence to display performance trends.",
-          })}
+          ${renderSourceReportPerformance(report)}
         </article>
         <article class="card source-report-dashboard-card">
           ${renderSourceReportDashboardCardHeader("Recent Community Activity")}
-          ${renderSourceReportUnavailableState("Canonical recent community activity is not available for this source.")}
+          ${renderSourceReportRecentActivity(report)}
         </article>
       </div>
 
-      <div class="source-report-dashboard-grid">
+      <div class="source-report-dashboard-grid source-report-dashboard-grid--single">
         <article id="source-report-confidence" class="card source-report-dashboard-card source-report-confidence-card">
           ${renderSourceReportDashboardCardHeader("Community Confidence Breakdown")}
           <div class="source-report-confidence-summary">
@@ -57539,10 +57659,6 @@ function renderSourceProfilePage(sourceId = "") {
             <span class="source-report-confidence-shield" aria-hidden="true">${renderMySessionsInlineIconMarkup("check", "source-report-icon-svg")}</span>
           </div>
           <div class="source-report-quality-row"><span>Source quality</span><strong>${escapeHtml(String(report.sourceQuality?.status || "Building Evidence"))}</strong></div>
-        </article>
-        <article class="card source-report-dashboard-card">
-          ${renderSourceReportDashboardCardHeader("Community Growth by Region")}
-          ${renderSourceReportUnavailableState("Canonical regional data is not available for this source.")}
         </article>
       </div>
 
