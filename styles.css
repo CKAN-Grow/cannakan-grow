@@ -71007,6 +71007,19 @@ body.theme-dark option[selected] {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+.seed-vault-visual-media {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.seed-vault-visual-preview[data-seed-vault-visual-preview="thumbnail"]:not(.has-image) {
+  border: 1px dashed color-mix(in srgb, var(--seed-vault-theme-accent, var(--accent, #94d159)) 58%, transparent);
+  background:
+    radial-gradient(circle at 50% 38%, var(--seed-vault-theme-accent-softer, rgba(148, 209, 89, 0.075)), transparent 62%),
+    rgba(12, 17, 14, 0.82);
+}
+
 .seed-vault-visual-preview--logo {
   width: 88px;
   height: 88px;
@@ -71038,6 +71051,28 @@ body.theme-dark option[selected] {
 .seed-vault-visual-placeholder--4 { background: linear-gradient(135deg, #3b3020, #f5be60); }
 .seed-vault-visual-placeholder--5 { background: linear-gradient(135deg, #332b42, #a58cff); }
 .seed-vault-visual-placeholder--6 { background: linear-gradient(135deg, #3c2730, #ff7c8d); }
+
+.seed-vault-visual-placeholder--photo {
+  color: color-mix(in srgb, var(--seed-vault-theme-accent, var(--accent, #94d159)) 78%, white 22%);
+  background: transparent;
+}
+
+.seed-vault-visual-placeholder-icon {
+  width: clamp(42px, 34%, 58px);
+  height: auto;
+  opacity: 0.82;
+  filter: drop-shadow(0 0 14px var(--seed-vault-theme-glow, rgba(148, 209, 89, 0.2)));
+}
+
+.seed-vault-visual-empty-helper {
+  color: color-mix(in srgb, var(--seed-vault-theme-text, #f3ffe8) 68%, transparent);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.seed-vault-visual-empty-helper[hidden] {
+  display: none;
+}
 
 .seed-vault-visual-copy {
   display: grid;

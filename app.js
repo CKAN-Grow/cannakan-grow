@@ -81787,6 +81787,17 @@ function renderSeedVaultVisualPreviewContent(kind = "thumbnail", url = "", optio
   if (normalizedUrl) {
     return `<img src="${escapeHtml(normalizedUrl)}" alt="${escapeHtml(label)} preview">`;
   }
+  if (kind === "thumbnail") {
+    return `
+      <span class="seed-vault-visual-placeholder seed-vault-visual-placeholder--photo" aria-hidden="true">
+        <svg class="seed-vault-visual-placeholder-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="9" y="11" width="46" height="42" rx="7" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="44.5" cy="22.5" r="4.5" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M15 46L26 34L34 42L39 37L50 46" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M32 34V25M32 27C28.5 27 26 24.5 26 21C29.5 21 32 23.5 32 27ZM32 25C35.5 25 38 22.5 38 19C34.5 19 32 21.5 32 25Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>`;
+  }
   const fallbackText = kind === "source-logo"
     ? getSeedVaultInitials(options.source || label, "--")
     : getSeedVaultInitials(options.variety || label, "SV");
@@ -81877,6 +81888,12 @@ function updateSeedVaultVisualPreview(form, kind = "thumbnail") {
   if (status) {
     status.textContent = state.label;
     status.className = `seed-vault-visual-status is-${state.tone}`;
+    status.hidden = kind === "thumbnail" && state.tone === "placeholder";
+  }
+
+  const emptyHelper = form.querySelector(`[data-seed-vault-visual-empty-helper="${kind}"]`);
+  if (emptyHelper) {
+    emptyHelper.hidden = Boolean(url);
   }
 
   const removeButton = form.querySelector(`[data-seed-vault-visual-remove="${kind}"]`);
@@ -82129,9 +82146,12 @@ function openSeedVaultEntryModal(entry = null) {
   const initialSourceLogoFieldUrl = initialSourceLogoStoredUrl && initialSourceLogoStoredUrl !== initialSourceGlobalLogoUrl ? initialSourceLogoStoredUrl : "";
   const initialSourceLogoPreviewUrl = getSeedVaultSourceLogoUrl({ ...(normalizedEntry || {}), sourceLogoUrl: initialSourceLogoFieldUrl });
   const currentPlanningStatus = normalizeSeedVaultPlanningStatus(normalizedEntry?.planningStatus);
+  const selectedVaultTheme = normalizeSeedVaultTheme(getCurrentProfilePageSettings().vaultTheme);
   const overlay = document.createElement("div");
   overlay.id = "seed-vault-entry-modal-overlay";
   overlay.className = "seed-vault-entry-modal-overlay";
+  overlay.dataset.seedVaultTheme = selectedVaultTheme;
+  overlay.setAttribute("style", renderSeedVaultThemeStyleAttribute(selectedVaultTheme));
   overlay.innerHTML = `
     <div class="seed-vault-entry-modal" role="dialog" aria-modal="true" aria-labelledby="seed-vault-entry-modal-title">
       <button type="button" class="modal-close seed-vault-modal-close" data-seed-vault-modal-close="true" aria-label="Close">×</button>
@@ -82293,12 +82313,15 @@ function openSeedVaultEntryModal(entry = null) {
           </summary>
           <div class="seed-vault-visuals-grid">
             <section class="seed-vault-visual-control seed-vault-visual-control--primary" aria-label="Variety Photo">
-              <div class="seed-vault-visual-preview" data-seed-vault-visual-preview="thumbnail">
-                ${renderSeedVaultVisualPreviewContent("thumbnail", initialThumbnailPreviewUrl, { variety: normalizedEntry?.seedName || "", source: normalizedEntry?.source || "", label: "Variety photo" })}
+              <div class="seed-vault-visual-media">
+                <div class="seed-vault-visual-preview${initialThumbnailPreviewUrl ? " has-image" : ""}" data-seed-vault-visual-preview="thumbnail">
+                  ${renderSeedVaultVisualPreviewContent("thumbnail", initialThumbnailPreviewUrl, { variety: normalizedEntry?.seedName || "", source: normalizedEntry?.source || "", label: "Variety photo" })}
+                </div>
+                <small class="seed-vault-visual-empty-helper" data-seed-vault-visual-empty-helper="thumbnail"${initialThumbnailPreviewUrl ? " hidden" : ""}>Upload a photo of the seed package, plant, or variety.</small>
               </div>
               <div class="seed-vault-visual-copy">
                 <strong>Variety Photo</strong>
-                <span>Used throughout your Vault, Sessions, and Community reports.</span>
+                <span>This image will be used throughout your Seed Vault, Sessions, and Community reports.</span>
                 <small class="seed-vault-visual-status" data-seed-vault-visual-status="thumbnail"></small>
                 <div class="seed-vault-visual-actions">
                   <label class="button button-secondary button-compact seed-vault-visual-upload-button">
