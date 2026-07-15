@@ -34,7 +34,9 @@ try {
         if ($null -eq $line) { break }
       }
 
-      $path = ($requestLine -split " ")[1]
+      $requestTarget = ($requestLine -split " ")[1]
+      $requestUri = [System.Uri]::new([System.Uri]"http://127.0.0.1", $requestTarget)
+      $path = $requestUri.AbsolutePath
       if ([string]::IsNullOrWhiteSpace($path) -or $path -eq "/") {
         $path = "/index.html"
       }

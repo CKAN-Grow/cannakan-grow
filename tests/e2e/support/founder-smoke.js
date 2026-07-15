@@ -25,7 +25,7 @@ const FOUNDER_ROUTES = Object.freeze([
     name: "Seed Vault",
     hash: "#seed-vault",
     expectedText: /My Seed Vault|Seed Vault|Add Seeds|Sign In|Profile Setup/i,
-    ctas: [/Add Seeds|Sign In/i],
+    ctas: [/Add Seed|Sign In/i],
   },
   {
     name: "Analytics",
@@ -49,7 +49,7 @@ const FOUNDER_ROUTES = Object.freeze([
     name: "Source Directory",
     hash: "#source-directory",
     expectedText: /Source Directory|Community results|Search|Sort|Testing & Certification/i,
-    ctas: [/Community Insights|Community Grow/i],
+    ctas: [/Explore Top Sources|How Rankings Work/i],
   },
   {
     name: "Profile",
