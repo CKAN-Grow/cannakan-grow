@@ -42,6 +42,41 @@ test.describe("local Developer Scenarios", () => {
     await enableFounderLocalQa(page);
   });
 
+  test("authorizes local environments and only resolved hosted Founders", async ({ page }) => {
+    await page.goto("/#home");
+    const access = await page.evaluate(() => {
+      const source = isApprovedDeveloperScenariosEnvironment.toString() + "\n" + canUseDeveloperScenarios.toString();
+      const evaluate = ({ hostname, authReady = false, user = null, founderMembership = false, accessLevel = "none", explicitFlag = false }) => Function(
+        "window",
+        "appState",
+        "getAdminAccessLevel",
+        source + "; return canUseDeveloperScenarios();",
+      )(
+        { location: { hostname }, CANNAKAN_SUPABASE_CONFIG: { devPreviewDataEnabled: explicitFlag } },
+        { authReady, authSession: user ? { user } : null, currentUserFounderMembership: founderMembership },
+        () => ({ level: accessLevel }),
+      );
+      return {
+        localhost: evaluate({ hostname: "localhost" }),
+        founder: evaluate({ hostname: "grow.cannakan.com", authReady: true, user: { id: "founder" }, founderMembership: true, accessLevel: "founder" }),
+        admin: evaluate({ hostname: "grow.cannakan.com", authReady: true, user: { id: "admin" }, accessLevel: "admin" }),
+        normal: evaluate({ hostname: "grow.cannakan.com", authReady: true, user: { id: "normal" } }),
+        anonymous: evaluate({ hostname: "grow.cannakan.com" }),
+        loading: evaluate({ hostname: "grow.cannakan.com", user: { id: "founder" }, founderMembership: true, accessLevel: "founder" }),
+        explicitFlag: evaluate({ hostname: "grow.cannakan.com", explicitFlag: true }),
+      };
+    });
+    expect(access).toEqual({
+      localhost: true,
+      founder: true,
+      admin: false,
+      normal: false,
+      anonymous: false,
+      loading: false,
+      explicitFlag: false,
+    });
+  });
+
   test("clears obsolete Dev Mode state while preserving Full Grow Demo", async ({ page }) => {
     await page.addInitScript(({ scenarioKey, legacyKeys }) => {
       legacyKeys.forEach((key) => localStorage.setItem(key, key.includes("Likes") ? "{}" : "true"));
@@ -200,6 +235,18 @@ test.describe("local Developer Scenarios", () => {
         kanRecognitions: graph.recognition.recognitions.filter((recognition) => recognition.method === "KAN").length,
         networkGrowers: graph.network.growers.length,
         methods: [...graph.activeSessions, ...graph.completedSessions, ...graph.draftSessions, ...graph.archivedSessions].map((session) => session.systemType),
+        rockwoolPersonalSessions: [...graph.activeSessions, ...graph.completedSessions, ...graph.draftSessions, ...graph.archivedSessions].filter((session) => session.systemType === "ROCKWOOL").length,
+        rockwoolEvidenceSessions: graph.exploreEvidenceSessions.filter((session) => session.method === "ROCKWOOL").length,
+        rockwoolCommunityReports: graph.communitySnapshots.filter((snapshot) => snapshot.systemType === "ROCKWOOL").length,
+        traPresentationRecords: [
+          ...graph.activeSessions.map((session) => session.systemType),
+          ...graph.completedSessions.map((session) => session.systemType),
+          ...graph.draftSessions.map((session) => session.systemType),
+          ...graph.archivedSessions.map((session) => session.systemType),
+          ...graph.exploreEvidenceSessions.map((session) => session.method),
+          ...graph.communitySnapshots.map((snapshot) => snapshot.systemType),
+          ...graph.communityPendingSnapshots.map((snapshot) => snapshot.systemType),
+        ].filter((method) => method === "TRA").length,
         evidenceMethods: graph.exploreEvidenceSessions.reduce((counts, session) => {
           counts[session.method] = (counts[session.method] || 0) + 1;
           return counts;
@@ -244,11 +291,15 @@ test.describe("local Developer Scenarios", () => {
       recognitions: 12,
       kanRecognitions: 3,
       networkGrowers: 7,
-      evidenceMethods: { KAN: 144, TRA: 8, PAPER_TOWEL: 7, ROCKWOOL: 5, RAPID_ROOTER: 4, WATER_SOAK: 4, DIRECT_SOW: 4, OTHER: 4 },
+      rockwoolPersonalSessions: 3,
+      rockwoolEvidenceSessions: 13,
+      rockwoolCommunityReports: 2,
+      traPresentationRecords: 0,
+      evidenceMethods: { KAN: 144, ROCKWOOL: 13, PAPER_TOWEL: 7, RAPID_ROOTER: 4, WATER_SOAK: 4, DIRECT_SOW: 4, OTHER: 4 },
     });
     expect(graphSummary.communityImages).toBeGreaterThan(15);
     expect(graphSummary.communityImages).toBeLessThan(30);
-    expect(new Set(graphSummary.methods)).toEqual(new Set(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]));
+    expect(new Set(graphSummary.methods)).toEqual(new Set(["KAN", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]));
     await expect(page.locator("[data-session-history-row^='scenario-full-grow-session-']")).toHaveCount(6);
     const historyToggle = page.locator("[data-session-history-toggle='true']");
     if (await historyToggle.getAttribute("aria-expanded") !== "true") await historyToggle.click();
@@ -264,8 +315,8 @@ test.describe("local Developer Scenarios", () => {
     const methodBadges = historyRows.locator("[data-session-history-method]");
     await expect(methodBadges).toHaveCount(23);
     await expect(methodBadges.filter({ hasText: /^KAN • Unit / }).first()).toBeVisible();
-    await expect(methodBadges.filter({ hasText: /^TRā • Unit / }).first()).toBeVisible();
-    for (const methodType of ["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]) {
+    await expect(historyRows.locator("[data-session-history-method='TRA']")).toHaveCount(0);
+    for (const methodType of ["KAN", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]) {
       await expect(historyRows.locator(`[data-session-history-method='${methodType}']`).first()).toBeVisible();
     }
     await expect(methodBadges.filter({ hasText: "Paper Towel" }).first()).toBeVisible();
@@ -285,7 +336,7 @@ test.describe("local Developer Scenarios", () => {
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(page.locator("main")).toContainText("PAPER_TOWEL");
-    await expect(page.locator("main")).toContainText("TRā");
+    await expect(page.locator("main")).toContainText("Rockwool");
     await page.goto("/#sessions/scenario-full-grow-session-18");
     await expect(page.locator("#detail-session-result-breakdown")).toBeVisible();
     await expect(page.locator("#detail-session-result-breakdown")).not.toContainText("Pending");

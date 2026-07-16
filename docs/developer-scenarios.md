@@ -1,11 +1,11 @@
 # Developer Scenarios
 
-Developer Scenarios is an in-app, local-development presentation tool. It is separate from the scripts in `scripts/local-demo/`, which seed or clear the local Supabase database for integration testing.
+Developer Scenarios is an in-app presentation tool for approved local-development environments and authenticated Founder accounts. It is separate from the scripts in `scripts/local-demo/`, which seed or clear the local Supabase database for integration testing.
 
 ## Safety model
 
-- `isDeveloperScenariosAllowed()` is the authoritative runtime gate and is evaluated before scenario preferences are read or written.
-- Known production hostnames always deny access. Production builds also fail if scenarios are not disabled by default, and Vercel builds reject the explicit preview-data environment flag.
+- `canUseDeveloperScenarios()` is the authoritative runtime gate and is evaluated before scenario preferences are read or written. It allows approved local-development environments or an authenticated user whose active Founder membership has been resolved through the existing protected authorization path.
+- Known production hostnames ignore the explicit preview-data environment flag and require resolved Founder authorization. Anonymous users, normal members, and non-Founder administrators remain denied. Production builds still fail if scenarios are not disabled by default, and Vercel builds reject the explicit preview-data environment flag.
 - Scenario choices are stored under `grow_developer_scenarios_v1`. Only enabled state, mode, and selector choices are persisted; fixture records are never stored.
 - Each supported module resolves data through a provider boundary: Seed Vault, Sessions, Profile, Community, and Explore.
 - In **Unified Demo** mode, every provider selects from one memoized relational graph. Cards, totals, charts, rankings, profile trends, and detail views therefore resolve from shared records instead of mixing unrelated fixtures or cached live GIE analytics.
@@ -16,7 +16,7 @@ Developer Scenarios is an in-app, local-development presentation tool. It is sep
 
 ## Using the panel
 
-On an allowed local host, open **Developer Scenarios** at the lower-right of the application and enable scenarios. **Unified Demo** is the local default and selects **Full Grow Demo**, one synchronized sample ecosystem across the entire app. Use **Reload Scenario** to rebuild the deterministic graph, **Reset Scenario** to restore that default, or **Return to Live Data** to exit.
+On an allowed local host or after authenticated Founder authorization resolves, open **Developer Scenarios** at the lower-right of the application and enable scenarios. **Unified Demo** selects **Full Grow Demo**, one synchronized sample ecosystem across the entire app. If hosted Founder authorization is lost, the active scenario is cleared, the app returns to Live Data, and the controller is hidden. Use **Reload Scenario** to rebuild the deterministic graph, **Reset Scenario** to restore that default, or **Return to Live Data** to exit.
 
 **Mix & Match** retains the independent module selectors for edge-case and empty-state testing:
 
@@ -32,7 +32,7 @@ The panel supports:
 
 The master graph contains a current user and seven related contributors, identity and twelve Recognition records, 38 sources, 91 varieties, 23 personal session records, 50 Vault entries in 11 collections, follows/network relationships, activity/reminders, supply tracking, and complete Explore report projections. Its derived contracts produce 4 active sessions, 1 ready-to-complete session, 15 completed sessions (12 KAN), 2 drafts, 2 archived sessions, 265 Vault seeds across 22 sources, 30 approved Community reports (23 KAN), and 6 pending-review reports.
 
-Explore is projected from 180 eligible completed evidence sessions and 4,230 tested seeds. KAN contributes 144 sessions (80%) and carries the richest documentation, image coverage, Community participation, evidence history, and KAN-specific Recognition; the remaining evidence covers TRā, Paper Towel, Rockwool, Starter Plug, Water Soak, Direct Sow, and Custom workflows. Alternative methods retain personal lifecycle records and canonical Explore evidence. Trends, distribution buckets, regional coverage, recent activity, rankings, confidence, relationships, and image galleries all derive from those records rather than typed summary totals; the fixture applies no method penalty or source-ranking bonus.
+Explore is projected from 180 eligible completed evidence sessions and 4,230 tested seeds. KAN contributes 144 sessions (80%) and carries the richest documentation, image coverage, Community participation, evidence history, and KAN-specific Recognition; the remaining evidence covers 13 Rockwool sessions plus Paper Towel, Starter Plug, Water Soak, Direct Sow, and Custom workflows. TRā remains supported by the live application and focused Mix & Match fixtures but is not part of Full Grow Demo. Alternative methods retain personal lifecycle records and canonical Explore evidence. Trends, distribution buckets, regional coverage, recent activity, rankings, confidence, relationships, and image galleries all derive from those records rather than typed summary totals; the fixture applies no method penalty or source-ranking bonus.
 
 `validateFullGrowDemoGraph()` rejects inconsistent session states/results, Vault rollups, missing relational references, invalid Recognition ownership, invalid collection membership, undefined summary contracts, and cross-module count disagreements with `DEVELOPER_SCENARIO_FIXTURE_INVALID`.
 
