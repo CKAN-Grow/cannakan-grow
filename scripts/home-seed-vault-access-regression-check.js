@@ -18,7 +18,7 @@ function between(source, startNeedle, endNeedle) {
 }
 
 const card = between(app, "function renderHomeSeedVaultAccessMarkup", "function renderHome");
-const home = between(app, "function renderHome()", "function syncMockDataBanner");
+const home = between(app, "function renderHome()", "function renderFounderSessionCleanupAdminSection");
 const vaultPage = between(app, "function renderSeedVaultPage", "function closeSeedVaultEntryModal");
 const navigation = between(app, "function shouldScrollToTopForNavigation", "function requestNavigationScrollSync");
 

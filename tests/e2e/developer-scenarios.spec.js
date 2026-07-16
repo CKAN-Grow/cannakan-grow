@@ -2,6 +2,7 @@ const { test, expect } = require("@playwright/test");
 const { enableFounderLocalQa } = require("./support/founder-smoke");
 
 const STORAGE_KEY = "grow_developer_scenarios_v1";
+const LEGACY_STORAGE_KEYS = ["cannakan-grow-sample-seed-version", "cannakanGrowMockDataEnabled", "cannakanMockGalleryLikes", "cannakanMockGalleryLikes:legacy-user", "cannakanSeedAgeAnalyticsMockData"];
 
 async function openScenarioPanel(page) {
   const launcher = page.locator("#developer-scenarios-launcher");
@@ -41,6 +42,51 @@ test.describe("local Developer Scenarios", () => {
     await enableFounderLocalQa(page);
   });
 
+  test("clears obsolete Dev Mode state while preserving Full Grow Demo", async ({ page }) => {
+    await page.addInitScript(({ scenarioKey, legacyKeys }) => {
+      legacyKeys.forEach((key) => localStorage.setItem(key, key.includes("Likes") ? "{}" : "true"));
+      localStorage.setItem("cannakan-grow-sessions", JSON.stringify([
+        { id: "live-local-session", sessionName: "Keep me" },
+        { id: "mock-local-session", sessionName: "Remove me", devModeOnly: true, isMock: true },
+      ]));
+      localStorage.setItem(scenarioKey, JSON.stringify({
+        enabled: true,
+        mode: "unified",
+        unifiedScenario: "full-grow-demo",
+        selections: { seedVault: "live", sessions: "live", profile: "live", community: "live", explore: "live" },
+      }));
+    }, { scenarioKey: STORAGE_KEY, legacyKeys: LEGACY_STORAGE_KEYS });
+
+    await page.goto("/#home");
+    const state = await page.evaluate(({ scenarioKey, legacyKeys }) => ({
+      legacyValues: legacyKeys.map((key) => localStorage.getItem(key)),
+      scenarios: JSON.parse(localStorage.getItem(scenarioKey)),
+      sessions: JSON.parse(localStorage.getItem("cannakan-grow-sessions") || "[]"),
+    }), { scenarioKey: STORAGE_KEY, legacyKeys: LEGACY_STORAGE_KEYS });
+
+    expect(state.legacyValues).toEqual(LEGACY_STORAGE_KEYS.map(() => null));
+    expect(state.scenarios.mode).toBe("unified");
+    expect(state.sessions.map((session) => session.id)).toEqual(["live-local-session"]);
+    await expect(page.locator("#developer-scenarios-launcher")).toHaveCount(1);
+    await expect(page.getByText("Mock Community Grow data", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Reset & Reseed Demo", { exact: true })).toHaveCount(0);
+    await openScenarioPanel(page);
+    await expect(page.getByRole("button", { name: "Full Grow Demo", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(0);
+  });
+
+  test("Shift+D only opens and closes the new controller", async ({ page }) => {
+    await page.goto("/#home");
+    await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
+    await page.keyboard.press("Shift+D");
+    await expect(page.locator("#developer-scenarios-panel")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Live Data", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#developer-scenarios-banner")).toHaveCount(0);
+    await page.keyboard.press("Shift+D");
+    await expect(page.locator("#developer-scenarios-panel")).toHaveCount(0);
+    await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
+    await expect(page.locator("#developer-scenarios-banner")).toHaveCount(0);
+  });
   test("defaults to Live Data and restores it without a refresh", async ({ page }) => {
     await page.goto("/#sessions");
     await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
@@ -465,6 +511,19 @@ test.describe("local Developer Scenarios", () => {
       const panelBox = await page.locator("#developer-scenarios-panel").boundingBox();
       expect(panelBox.x).toBeGreaterThanOrEqual(0);
       expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(width);
+      expect(panelBox.y).toBeGreaterThanOrEqual(0);
+      expect(panelBox.y + panelBox.height).toBeLessThanOrEqual(width < 700 ? 844 : 900);
+      const launcherGeometry = await page.locator("#developer-scenarios-launcher").evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, position: style.position, zIndex: Number(style.zIndex) };
+      });
+      expect(launcherGeometry.position).toBe("fixed");
+      expect(launcherGeometry.zIndex).toBeGreaterThanOrEqual(10000);
+      expect(launcherGeometry.left).toBeGreaterThanOrEqual(0);
+      expect(launcherGeometry.right).toBeLessThanOrEqual(width);
+      expect(launcherGeometry.top).toBeGreaterThanOrEqual(0);
+      expect(launcherGeometry.bottom).toBeLessThanOrEqual(width < 700 ? 844 : 900);
       const horizontalOverflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
       expect(horizontalOverflow).toBeLessThanOrEqual(1);
     }

@@ -26,8 +26,8 @@ function rejectNeedle(source, needle, label = needle) {
   'function getLocalDevToolsContentElement()',
   "const content = getLocalDevToolsContentElement();",
   "content.prepend(banner);",
-  "content.append(banner);",
-  "isDownloadRouteActive() || !isLocalDevQaBypassActive() || !isMockDataEnabled()",
+
+
 ].forEach((needle) => requireNeedle(appSource, needle));
 
 [
@@ -36,13 +36,17 @@ function rejectNeedle(source, needle, label = needle) {
   ".local-dev-tools-summary",
   ".local-dev-tools-content",
   ".local-dev-tools-content .local-dev-qa-bypass-banner",
-  ".local-dev-tools-content .mock-data-banner",
+
   'content: "Collapse";',
 ].forEach((needle) => requireNeedle(stylesSource, needle));
 
 [
   "(installBanner || topbar).insertAdjacentElement(\"afterend\", banner);",
   "app.prepend(banner);",
+  "syncMockDataBanner",
+  "renderMockDataAdminSection",
+  "data-home-mock-data-toggle",
+  "data-dev-demo-reseed",
 ].forEach((needle) => rejectNeedle(appSource, needle));
 
 console.log("Local developer tools footer regression check passed.");

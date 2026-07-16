@@ -7,6 +7,8 @@ const app = read("app.js");
 const fixture = read("fixtures/seed-vault-preview.js");
 const build = read("scripts/build-config.mjs");
 const styles = read("styles.css");
+const indexHtml = read("index.html");
+const serviceWorker = read("service-worker.js");
 
 const gateStart = app.indexOf("function isDeveloperScenariosAllowed()");
 const gateEnd = app.indexOf("\nfunction isDeveloperPreviewAllowed()", gateStart);
@@ -71,6 +73,11 @@ const checks = [
   ["live data reset", app.includes("function returnToLiveData()")],
   ["production build safeguard", build.includes("Developer Scenarios must remain disabled by default in production builds.")],
   ["responsive control styles", styles.includes(".developer-scenarios-panel") && styles.includes(".developer-scenarios-mode") && styles.includes("@media (max-width: 640px)") && styles.includes(".session-progress-companion-roadmap")],
+  ["legacy Dev Mode UI and handlers removed", !app.includes("Mock Community Grow data") && !app.includes("Reset & Reseed Demo") && !app.includes("renderMockDataAdminSection") && !app.includes("setMockDataEnabledAndRefresh")],
+  ["legacy Dev Mode CSS removed", !styles.includes(".mock-data-admin-section") && !styles.includes(".mock-data-toggle") && !styles.includes(".mock-data-banner")],
+  ["legacy local state cleanup", app.includes("function clearLegacyDevModeState()") && app.includes("LEGACY_DEV_MODE_STORAGE_KEYS") && app.indexOf("clearLegacyDevModeState();") < app.indexOf('[Cannakan App Init] start')],
+  ["Shift+D is panel-only", app.includes("appState.developerScenariosPanelOpen = !appState.developerScenariosPanelOpen;") && app.includes("&& isDeveloperScenariosAllowed()") && !app.includes("setMockDataEnabledAndRefresh")],
+  ["authoritative app-shell generation", serviceWorker.includes("cannakan-grow-shell-v25-developer-scenarios-authoritative") && indexHtml.includes("20260716-developer-scenarios-authoritative")],
   ["Inventory 2.0 lazy profile rendering", app.includes("function renderSeedVaultExpandedProfileMarkup(") && app.includes("seed-vault-entry-details--lazy") && app.includes("function openSeedVaultQuickPeek(")],
   ["Inventory 2.0 collection context", app.includes("function getSeedVaultBrowseContext(") && app.includes("function renderSeedVaultBrowseContextMarkup(") && app.includes("data-seed-vault-clear-collection-context")],
   ["Inventory 2.0 responsive presentation", styles.includes("Seed Vault Inventory 2.0: premium library browsing") && styles.includes(".seed-vault-expanded-profile") && styles.includes(".seed-vault-quick-peek-overlay") && styles.includes("@media (max-width: 560px)")],
