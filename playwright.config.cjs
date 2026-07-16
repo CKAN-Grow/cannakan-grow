@@ -25,7 +25,9 @@ module.exports = defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\local-server.ps1",
+        command: process.platform === "win32"
+          ? "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\\local-server.ps1"
+          : "pwsh -NoProfile -File ./local-server.ps1",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 15000,
