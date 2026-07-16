@@ -187,6 +187,110 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault Inventory 2.0 supports premium browsing without eager profile DOM", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await openScenarioPanel(page);
+    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+
+    const inventoryCards = page.locator("#my-seed-vault .seed-vault-entry-card");
+    await expect(inventoryCards).toHaveCount(50);
+    await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(0);
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(50);
+
+    const firstCard = inventoryCards.first();
+    const firstVisualBox = await firstCard.locator("[data-seed-vault-quick-peek]").boundingBox();
+    expect(firstVisualBox.width).toBeGreaterThanOrEqual(92);
+    expect(firstVisualBox.height).toBeGreaterThanOrEqual(92);
+    await expect(firstCard.locator(".seed-vault-entry-insight-strip")).toContainText("Seeds");
+    await expect(firstCard.getByRole("button", { name: /Favorite Vault Entry|Remove Vault Entry from favorites/ })).toBeVisible();
+
+    await firstCard.locator("[data-seed-vault-quick-peek]").click();
+    await expect(page.getByRole("dialog", { name: /.+/ })).toBeVisible();
+    await expect(page.locator(".seed-vault-quick-peek-content")).toContainText("Available");
+    await expect(page.locator(".seed-vault-quick-peek-content")).toContainText("Seed Age");
+    await page.getByRole("button", { name: "Close Quick Peek", exact: true }).click();
+
+    await firstCard.locator("summary[data-seed-vault-more]").click();
+    await firstCard.getByRole("menuitem", { name: "Open Entry Profile", exact: true }).click();
+    await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(1);
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(49);
+    const profile = firstCard.locator(".seed-vault-expanded-profile");
+    await expect(profile).toContainText("Overview");
+    await expect(profile).toContainText("Planning & Collections");
+    await expect(profile).toContainText("Sessions & Analytics");
+    await expect(profile).toContainText("Notes");
+    await expect(profile).toContainText("Images");
+    await firstCard.getByRole("button", { name: "Close Entry Profile", exact: true }).click();
+    await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(0);
+
+    await page.locator('[data-seed-vault-quick-view="favorites"]').click();
+    await expect(page.locator(".seed-vault-browse-context")).toContainText("Favorites");
+    await expect(page.locator(".seed-vault-browse-context")).toContainText("10 matching Vault Entries");
+    await expect(inventoryCards).toHaveCount(10);
+    await page.getByRole("button", { name: "View All Inventory", exact: true }).click();
+    await expect(page.locator(".seed-vault-browse-context")).toHaveCount(0);
+    await expect(inventoryCards).toHaveCount(50);
+
+    const inventoryControls = page.locator(".seed-vault-controls");
+    const inventorySearch = inventoryControls.locator('[data-seed-vault-search="true"]');
+    await inventorySearch.fill("Do-Si-Dos");
+    await expect(inventoryCards).toHaveCount(1);
+    await inventoryControls.locator('[data-seed-vault-sort="true"]').selectOption("quantity");
+    await expect(inventoryControls.locator('[data-seed-vault-sort="true"]')).toHaveValue("quantity");
+    await inventorySearch.fill("");
+    await inventoryControls.locator('[data-seed-vault-favorite-filter="true"]').selectOption("favorites");
+    await expect(inventoryCards).toHaveCount(10);
+    await inventoryControls.locator('[data-seed-vault-clear-filters="true"]').click();
+    await expect(inventoryCards).toHaveCount(50);
+    await page.locator('[data-seed-vault-layout="gallery"]').click();
+    await expect(page.locator(".seed-vault-entry-grid")).toHaveClass(/seed-vault-entry-grid--gallery/);
+    await page.locator('[data-seed-vault-layout="list"]').click();
+    await expect(page.locator(".seed-vault-entry-grid")).toHaveClass(/seed-vault-entry-grid--list/);
+
+    const livingDashboard = page.locator(".seed-vault-living-dashboard");
+    for (const label of ["Ready to Grow", "Testing", "Grow Alongs", "Low Inventory", "Newest Variety", "Oldest Seeds", "Average Seed Age", "Most Used Source"]) {
+      await expect(livingDashboard).toContainText(label);
+    }
+    const averageAge = await livingDashboard.locator(".seed-vault-dashboard-signals article", { hasText: "Average Seed Age" }).locator("strong").innerText();
+    expect(averageAge.trim()).not.toBe("");
+
+    await useMixAndMatch(page);
+    const seedVaultScenario = page.locator("select[data-developer-scenario-module='seedVault']");
+    await seedVaultScenario.selectOption("empty");
+    await expect(inventoryCards).toHaveCount(0);
+    await openScenarioPanel(page);
+    await seedVaultScenario.selectOption("small");
+    await expect(inventoryCards).toHaveCount(3);
+    await openScenarioPanel(page);
+    await seedVaultScenario.selectOption("collector");
+    await expect(page.locator(".developer-scenario-page-badge")).toContainText("Collector Vault");
+    await expect(inventoryCards).toHaveCount(9);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("Seed Vault Inventory 2.0 has no horizontal overflow at target widths", async ({ page }) => {
+    for (const [index, width] of [320, 375, 390, 430, 768, 1280].entries()) {
+      await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+      await page.goto("/#seed-vault");
+      if (index === 0) {
+        await openScenarioPanel(page);
+        await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+      }
+      await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(50);
+      const horizontalOverflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
+      expect(horizontalOverflow).toBeLessThanOrEqual(1);
+      const firstCardBox = await page.locator("#my-seed-vault .seed-vault-entry-card").first().boundingBox();
+      expect(firstCardBox.x).toBeGreaterThanOrEqual(0);
+      expect(firstCardBox.x + firstCardBox.width).toBeLessThanOrEqual(width);
+    }
+  });
+
   test("Full Grow Demo exposes the complete Explore graph without backend writes", async ({ page }) => {
     const forbiddenRequests = [];
     page.on("request", (request) => {

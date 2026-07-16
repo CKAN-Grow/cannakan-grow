@@ -67,6 +67,9 @@ const checks = [
   ["live data reset", app.includes("function returnToLiveData()")],
   ["production build safeguard", build.includes("Developer Scenarios must remain disabled by default in production builds.")],
   ["responsive control styles", styles.includes(".developer-scenarios-panel") && styles.includes(".developer-scenarios-mode") && styles.includes("@media (max-width: 640px)") && styles.includes(".session-progress-companion-roadmap")],
+  ["Inventory 2.0 lazy profile rendering", app.includes("function renderSeedVaultExpandedProfileMarkup(") && app.includes("seed-vault-entry-details--lazy") && app.includes("function openSeedVaultQuickPeek(")],
+  ["Inventory 2.0 collection context", app.includes("function getSeedVaultBrowseContext(") && app.includes("function renderSeedVaultBrowseContextMarkup(") && app.includes("data-seed-vault-clear-collection-context")],
+  ["Inventory 2.0 responsive presentation", styles.includes("Seed Vault Inventory 2.0: premium library browsing") && styles.includes(".seed-vault-expanded-profile") && styles.includes(".seed-vault-quick-peek-overlay") && styles.includes("@media (max-width: 560px)")],
 ];
 
 const failures = checks.filter(([, passed]) => !passed);
