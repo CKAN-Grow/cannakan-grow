@@ -45,13 +45,13 @@ APIs, not separate engines.
 | --- | --- | --- | --- | --- |
 | Global Analytics | `public.get_gie_global_analytics()` | `gie-global.v1` | Anonymous platform-wide aggregates and global data quality | `anon`, `authenticated` |
 | Owner Analytics | `public.get_gie_my_analytics()` | `gie-owner.v1` | Private analytics for the authenticated owner | `authenticated`; identity comes only from `auth.uid()` |
-| Community Analytics | `public.get_gie_community_analytics()` | `gie-community.v1` | Approved and visible public social evidence | `anon`, `authenticated` |
+| Community Analytics | `public.get_gie_community_analytics()` | `gie-community.v1.2` | Approved and visible public social evidence | `anon`, `authenticated` |
 
 All contracts expose `contract_name`, `contract_version`, `engine_version`,
 `schema_version`, `data_quality_version`, and `generated_at`. The frozen engine
 remains `gie.v1` with data quality `gie-dq.v1`. The Phase 2 Owner payload uses
-schema `2026-07-13.5`; the Phase 2B Community payload uses schema
-`2026-07-13.6`; Global remains unchanged.
+schema `2026-07-13.5`; the additive Community Source Report payload uses schema
+`2026-07-15.2`; Global remains unchanged.
 
 ### Shared canonical pipeline
 
@@ -503,9 +503,25 @@ normal/admin wrappers; and Home/public-profile Community facets remain Group B.
 **Group B — migrated in Phase 2B.** Community, Community Reports,
 Variety Reports, Source Reports, Rankings, Leaderboards, and Community
 Confidence consume `get_gie_community_analytics()`. The Community payload adds
-presentation-ready rollups while retaining `gie-community.v1` and advancing
-its additive schema to `2026-07-13.6`. Snapshot moderation and gallery display
-remain operational evidence flows; they do not calculate analytics.
+presentation-ready rollups. The additive `gie-community.v1.1` extension adds
+`rank_display` to canonically ranked source/variety rows and reports, plus
+`rank_populations`. Podium labels and rank-4+ percentiles are therefore based
+on the full eligible GIE population, never a client-visible slice.
+
+The additive `gie-community.v1.2` extension adds Source Report
+`regional_coverage` and `recent_activity`. Both derive exclusively from the
+same eligible rows returned by `get_gie_community_evidence_v1()`: approved,
+published, non-mock, non-excluded canonical historical evidence. Coverage
+joins each evidence contributor to `safe_public_member_profiles`, normalizes a
+small allowlist of public country aliases and US state names/codes, and emits
+only aggregate counts plus coarse map coordinates. Arbitrary location text,
+city, coordinates, and private profile data never enter the contract. Unknown
+locations are omitted from coverage rather than inferred. Recent activity is
+an ordered list of canonical evidence events, not a browser reconstruction or
+a lifetime-total approximation. Empty, sparse, and mature presentation states
+are selected from these server-provided aggregates. This advances the schema
+to `2026-07-15.2`. Snapshot moderation and gallery display remain operational
+evidence flows; they do not calculate analytics.
 
 Compatibility wrapper retained: the Home Community teaser remains outside
 Group B by phase directive and continues using its legacy public-snapshot

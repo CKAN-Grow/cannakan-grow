@@ -38,7 +38,7 @@ for (const label of [
   "Community Performance",
   "Recent Community Activity",
   "Community Confidence Breakdown",
-  "Community Growth by Region",
+  "Community Coverage",
   "Source Rankings",
   "Powered by <strong>GIE</strong>",
 ]) {
@@ -70,12 +70,12 @@ for (const canonicalEvidence of [
 assert(adapter.includes("canonicalPresence") && adapter.includes("hasCanonicalValue"), "The Community adapter must preserve canonical field presence for truthful unavailable states.");
 assert(!sourceReport.includes("Not enough canonical distribution data.") && !sourceReportHelpers.includes("Not enough canonical distribution data.") && !sourceReport.includes("Not enough approved evidence to display performance trends.") && !sourceReportHelpers.includes("Not enough approved evidence to display performance trends."), "Evidence volume must not trigger Source Report unavailable states.");
 assert(!sourceReport.includes("<progress") && !sourceReportHelpers.includes("source-report-result-rate"), "Source Report must not use stretched progress bars as primary visualizations.");
-assert(sourceReport.includes("Community Growth by Region") && sourceReport.includes("renderSourceReportRegionMap()"), "The regional world map must remain visible without canonical location evidence.");
+assert(sourceReport.includes("Community Coverage") && sourceReport.includes("renderSourceReportRegionMap(report)"), "The regional world map must consume canonical Source Report coverage.");
 assert(sourceReportHelpers.includes("No regional Community evidence has been published yet.") && sourceReportHelpers.includes("/assets/app/source-report/world-map.svg"), "The empty regional state must use the neutral world map and exact limitation copy.");
-assert(sourceReportHelpers.includes("Distribution detail is not published yet") && sourceReportHelpers.includes("not canonical distribution buckets"), "Distribution must distinguish available canonical totals from unavailable canonical buckets.");
+assert(sourceReportHelpers.includes("Distribution detail is not published yet") && sourceReportHelpers.includes("Canonical distribution buckets are not currently available"), "Distribution must distinguish available canonical totals from unavailable canonical buckets.");
 assert(sourceReport.includes('/assets/images/seed-report-hero-bg.png'), "Source Report hero must use the target seed-report background asset.");
 assert(sourceReport.includes("source-report-hero-verification") && sourceReport.includes("Latest evidence"), "Source verification and freshness metadata must sit beneath the hero description.");
-assert(sourceReport.includes("source-report-confidence-metrics") && sourceReport.includes("Approved Sessions") && sourceReport.includes("Seeds Tested") && sourceReport.includes("Contributors"), "Community Confidence must present compact canonical evidence metrics.");
+assert(sourceReport.includes("Evidence Strength") && !sourceReport.includes("GIE Confidence</span>") && !sourceReport.includes("report.confidence?.percent"), "Public Source Report confidence must use canonical plain-language labels without exposing the internal numeric score.");
 
 const normalizeCommunityPayload = new Function(`${adapter}; return normalizeGieCommunityAnalyticsPayload;`)();
 const chadWestportContract = normalizeCommunityPayload({
@@ -96,6 +96,8 @@ const chadWestportContract = normalizeCommunityPayload({
       source_quality: { status: "Building Evidence", recognized_evidence_only: true },
       top_varieties: [{ key: "canonical-variety", label: "Canonical Variety", sessions: 1, seeds_tested: 10, seeds_germinated: 10, germination_rate: 100, rank: 1 }],
       monthly_trends: [{ key: "2026-07", label: "Jul 2026", session_count: 1, total_seeds: 10, total_germinated: 10, average_rate: 100 }],
+      recent_activity: [{ evidence_id: "chad-session", published_at: "2026-07-14T12:00:00.000Z", seeds_tested: 10, seeds_germinated: 10, germination_rate: 100, variety_label: "Canonical Variety" }],
+      regional_coverage: { state: "sparse", session_count: 1, seeds_tested: 10, country_count: 1, regions: [{ country_code: "US", country_label: "United States", region_code: "MA", region_label: "Massachusetts", session_count: 1, seeds_tested: 10, contributor_count: 1, map_x: 29, map_y: 33 }] },
     }],
   },
 });
@@ -126,12 +128,14 @@ const chadDistributionMarkup = sourceReportRenderers.renderSourceReportGerminati
 const chadPerformanceMarkup = sourceReportRenderers.renderSourceReportPerformance(chadWestportReport);
 const chadActivityMarkup = sourceReportRenderers.renderSourceReportRecentActivity(chadWestportReport);
 const emptyRegionMarkup = sourceReportRenderers.renderSourceReportRegionMap();
+const chadRegionMarkup = sourceReportRenderers.renderSourceReportRegionMap(chadWestportReport);
 const chadVarietiesMarkup = sourceReportRenderers.renderSourceReportTopVarietiesTable(chadWestportReport, "#sources/chad-westport");
-assert(chadDistributionMarkup.includes("10") && chadDistributionMarkup.includes("Germinated") && chadDistributionMarkup.includes("100%") && chadDistributionMarkup.includes("Growing Evidence"), "One-session canonical result evidence must render in Germination Distribution.");
+assert(chadDistributionMarkup.includes("10 of 10 tested seeds germinated") && chadDistributionMarkup.includes("100%") && !chadDistributionMarkup.includes("source-report-evidence-metrics"), "Distribution limitation must present the canonical comparison once without duplicate metric cards.");
 assert(chadPerformanceMarkup.includes("source-report-line-chart is-sparse") && chadPerformanceMarkup.includes("<circle") && !chadPerformanceMarkup.includes("<polyline") && chadPerformanceMarkup.includes("Jul 2026") && chadPerformanceMarkup.includes("Additional approved reporting periods are required to establish a trend."), "A single canonical performance period must render as one real plotted point without fabricating a line.");
-assert(chadPerformanceMarkup.includes("Approved Sessions") && chadPerformanceMarkup.includes("Seeds Tested") && chadPerformanceMarkup.includes("Germinated"), "Sparse performance must retain its canonical evidence summary beneath the plotted point.");
-assert(chadActivityMarkup.includes("Latest approved session") && chadActivityMarkup.includes("10 germinated") && chadActivityMarkup.includes("Based on 1 approved Community session."), "Latest one-session canonical activity must render with limited-evidence guidance.");
+assert(!chadPerformanceMarkup.includes("Approved Sessions") && !chadPerformanceMarkup.includes("Seeds Tested") && !chadPerformanceMarkup.includes("source-report-sparse-chart-metrics"), "Sparse performance must not repeat the top-row metrics.");
+assert(chadActivityMarkup.includes("Approved Community session") && chadActivityMarkup.includes("100% germination") && chadActivityMarkup.includes("Canonical Variety") && chadActivityMarkup.includes("Based on 1 approved Community session."), "Canonical one-session activity must render its event result, variety, and limited-evidence guidance.");
 assert(emptyRegionMarkup.includes("world-map.svg") && emptyRegionMarkup.includes("No regional Community evidence has been published yet.") && !emptyRegionMarkup.includes("unavailable"), "The empty regional state must keep the neutral world map visible.");
+assert(chadRegionMarkup.includes("Massachusetts") && chadRegionMarkup.includes("United States") && chadRegionMarkup.includes("1 approved session") && !chadRegionMarkup.includes("No regional Community evidence"), "Sparse Massachusetts coverage must render from canonical regional data.");
 assert(chadVarietiesMarkup.includes("Canonical Variety") && chadVarietiesMarkup.includes("100%"), "Canonical varieties must render even when only one session exists.");
 assert(!chadDistributionMarkup.includes("not available") && !chadPerformanceMarkup.includes("not available") && !chadActivityMarkup.includes("not available") && !chadVarietiesMarkup.includes("not available"), "Present one-session canonical evidence must never render as unavailable.");
 
@@ -165,8 +169,8 @@ for (const forbidden of [
 assert(!app.includes("Community Analytics Contract"), "User-facing Analytics Contract copy must be retired.");
 assert(styles.includes(".source-report-dashboard") && styles.includes("max-width: 1200px;"), "Source Report must retain the compact 1200px dashboard layout.");
 assert(styles.includes("@media (max-width: 560px)") && styles.includes(".source-report-snapshot-grid { grid-template-columns: 1fr; }"), "Source Report must retain its single-column mobile layout.");
-assert(styles.includes(".source-report-line-chart.is-sparse") || (styles.includes(".source-report-line-chart") && styles.includes(".source-report-sparse-chart-metrics")), "Source Report must style real one-point and multi-period chart states.");
-assert(styles.includes(".source-report-hero-verification") && styles.includes(".source-report-confidence-metrics"), "Source Report must retain its premium hero and confidence presentation system.");
+assert(styles.includes(".source-report-line-chart.is-sparse") && !styles.includes(".source-report-sparse-chart-metrics"), "Source Report must style the real one-point state without retaining duplicate sparse metric cards.");
+assert(styles.includes(".source-report-hero-verification") && styles.includes(".source-report-hero-evidence-strength"), "Source Report must retain its premium hero and plain-language confidence presentation system.");
 assert(styles.includes(".source-report-region-map") && styles.includes(".source-report-region-map-message"), "Source Report must style the always-visible regional map state.");
 assert(!styles.includes(".source-report-result-rate"), "Source Report styles must not retain the stretched result-rate visualization.");
 

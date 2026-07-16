@@ -20971,6 +20971,31 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     totalGerminated: Number(row?.total_germinated || 0),
     averageRate: row?.average_rate === null ? null : Number(row?.average_rate || 0),
   }));
+  const mapRegionalCoverage = (coverage = {}) => ({
+    state: String(coverage?.state || "empty").trim(),
+    sessionCount: Number(coverage?.session_count || 0),
+    seedsTested: Number(coverage?.seeds_tested || 0),
+    countryCount: Number(coverage?.country_count || 0),
+    regions: (Array.isArray(coverage?.regions) ? coverage.regions : []).map((row) => ({
+      countryCode: String(row?.country_code || "").trim(),
+      countryLabel: String(row?.country_label || "").trim(),
+      regionCode: String(row?.region_code || "").trim(),
+      regionLabel: String(row?.region_label || "").trim(),
+      sessionCount: Number(row?.session_count || 0),
+      seedsTested: Number(row?.seeds_tested || 0),
+      contributorCount: Number(row?.contributor_count || 0),
+      mapX: Number(row?.map_x || 0),
+      mapY: Number(row?.map_y || 0),
+    })),
+  });
+  const mapRecentActivity = (rows) => (Array.isArray(rows) ? rows : []).map((row) => ({
+    evidenceId: String(row?.evidence_id || "").trim(),
+    publishedAt: String(row?.published_at || "").trim(),
+    seedsTested: Number(row?.seeds_tested || 0),
+    seedsGerminated: Number(row?.seeds_germinated || 0),
+    germinationRate: row?.germination_rate === null || row?.germination_rate === undefined ? null : Number(row.germination_rate),
+    varietyLabel: String(row?.variety_label || "").trim(),
+  }));
   const mapReports = (rows, relationshipKey) => (Array.isArray(rows) ? rows : []).map((row) => ({
     ...mapRows([row])[0],
     evidenceCount: Number(row?.evidence_count || 0),
@@ -20978,6 +21003,8 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     sourceQuality: row?.source_quality || {},
     relationships: mapRows(row?.[relationshipKey]),
     monthlyTrends: mapMonths(row?.monthly_trends),
+    regionalCoverage: mapRegionalCoverage(row?.regional_coverage),
+    recentActivity: mapRecentActivity(row?.recent_activity),
   }));
   const sourceRows = mapRows(analytics?.source_rows);
   const varietyRows = mapRows(analytics?.variety_rows);
@@ -57441,24 +57468,15 @@ function renderSourceReportGerminationDistribution(report = {}) {
   if (!presence.totalSeeds && !presence.totalGerminated && !presence.averageRate) {
     return renderSourceReportUnavailableState("Canonical germination result data is not available for this source.");
   }
-  const metrics = [
-    presence.totalSeeds ? { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds) } : null,
-    presence.totalGerminated ? { label: "Germinated", value: formatPrivateAnalyticsNumber(report.totalGerminated) } : null,
-    presence.averageRate ? { label: "Germination", value: formatPrivateAnalyticsPercent(report.averageRate), accent: true } : null,
-  ].filter(Boolean);
+  const hasComparison = presence.totalSeeds && presence.totalGerminated;
   return `
-    <div class="source-report-evidence-metrics" aria-label="Canonical germination results">
-      ${metrics.map((metric) => `
-        <div${metric.accent ? ' class="is-accent"' : ""}>
-          <span>${escapeHtml(metric.label)}</span>
-          <strong>${escapeHtml(metric.value)}</strong>
-        </div>`).join("")}
-    </div>
     <div class="source-report-contract-limitation" role="note">
       <span aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-icon-svg")}</span>
-      <p><strong>Distribution detail is not published yet</strong><small>The current GIE contract provides the canonical totals above, but not canonical distribution buckets.</small></p>
+      <p><strong>Distribution detail is not published yet</strong><small>${hasComparison
+        ? `${formatPrivateAnalyticsNumber(report.totalGerminated)} of ${formatPrivateAnalyticsNumber(report.totalSeeds)} tested seeds germinated (${formatPrivateAnalyticsPercent(report.averageRate)}). Canonical distribution buckets are not currently available.`
+        : "Canonical distribution buckets are not currently available for this source."}</small></p>
     </div>
-    ${renderSourceReportLimitedEvidenceNote(report)}`;
+    `;
 }
 
 function renderSourceReportPerformanceLineChart(periods = []) {
@@ -57473,7 +57491,6 @@ function renderSourceReportPerformanceLineChart(periods = []) {
     return { x: x.toFixed(2), y: y.toFixed(2), period };
   });
   const hasTrend = safePeriods.length > 1;
-  const sparsePeriod = safePeriods[0];
   return `
     <div class="source-report-line-chart${hasTrend ? " is-mature" : " is-sparse"}" aria-label="Canonical Community performance across ${escapeHtml(String(safePeriods.length))} approved ${safePeriods.length === 1 ? "period" : "periods"}">
       <div class="source-report-chart-state"><strong>${hasTrend ? "Performance by Period" : "Growing Evidence"}</strong><span>${hasTrend ? `${formatPrivateAnalyticsNumber(safePeriods.length)} approved reporting periods` : "One approved reporting period"}</span></div>
@@ -57492,11 +57509,6 @@ function renderSourceReportPerformanceLineChart(periods = []) {
           </div>`).join("")}
       </div>
       ${hasTrend ? "" : `
-        <div class="source-report-sparse-chart-metrics">
-          <div><span>Approved Sessions</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(sparsePeriod.sessionCount))}</strong></div>
-          <div><span>Seeds Tested</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(sparsePeriod.totalSeeds))}</strong></div>
-          <div><span>Germinated</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(sparsePeriod.totalGerminated))}</strong></div>
-        </div>
         <p class="source-report-sparse-chart-note">Additional approved reporting periods are required to establish a trend.</p>`}
     </div>`;
 }
@@ -57509,34 +57521,61 @@ function renderSourceReportPerformance(report = {}) {
   return renderSourceReportPerformanceLineChart(periods);
 }
 
-function renderSourceReportRegionMap() {
+function renderSourceReportRegionMap(report = {}) {
+  const coverage = report?.regionalCoverage || {};
+  const regions = Array.isArray(coverage.regions) ? coverage.regions : [];
+  if (!regions.length) {
+    return `
+      <div class="source-report-region-map is-empty" role="img" aria-label="World map with no published regional Community evidence">
+        <div class="source-report-region-map-canvas"><img src="/assets/app/source-report/world-map.svg" alt="World map with no highlighted regions"></div>
+        <div class="source-report-region-map-message">
+          <strong>Regional evidence</strong>
+          <span>No regional Community evidence has been published yet.</span>
+        </div>
+      </div>`;
+  }
   return `
-    <div class="source-report-region-map is-empty" role="img" aria-label="World map with no published regional Community evidence">
-      <img src="/assets/app/source-report/world-map.svg" alt="World map with no highlighted regions">
-      <div class="source-report-region-map-message">
-        <strong>Regional evidence</strong>
-        <span>No regional Community evidence has been published yet.</span>
+    <div class="source-report-region-map is-${escapeHtml(coverage.state || (regions.length === 1 ? "sparse" : "mature"))}" aria-label="Canonical Community coverage map">
+      <div class="source-report-region-map-canvas" role="img" aria-label="World map showing ${escapeHtml(String(regions.length))} canonical Community ${regions.length === 1 ? "region" : "regions"}">
+        <img src="/assets/app/source-report/world-map.svg" alt="World map with canonical Community regions">
+        ${regions.map((region) => `
+          <span class="source-report-region-marker" style="--region-x:${escapeHtml(String(region.mapX))}%;--region-y:${escapeHtml(String(region.mapY))}%;--region-weight:${escapeHtml(String(Math.min(4, Math.max(1, region.sessionCount))))}" title="${escapeHtml(`${region.regionLabel ? `${region.regionLabel}, ` : ""}${region.countryLabel}: ${formatPrivateAnalyticsNumber(region.sessionCount)} approved ${region.sessionCount === 1 ? "session" : "sessions"}`)}"><i></i></span>`).join("")}
+      </div>
+      <div class="source-report-region-summary" aria-label="Canonical regional evidence summary">
+        ${regions.map((region) => `
+          <div><span>${escapeHtml(region.countryCode || "")}</span><p><strong>${escapeHtml(region.regionLabel || region.countryLabel)}</strong><small>${region.regionLabel ? `${escapeHtml(region.countryLabel)} · ` : ""}${escapeHtml(formatPrivateAnalyticsNumber(region.sessionCount))} approved ${region.sessionCount === 1 ? "session" : "sessions"}</small></p></div>`).join("")}
       </div>
     </div>`;
 }
 
 function renderSourceReportRecentActivity(report = {}) {
+  const events = Array.isArray(report.recentActivity) ? report.recentActivity.slice(0, 5) : [];
+  if (events.length) {
+    return `
+      <div class="source-report-activity-list">
+        ${events.map((event) => {
+          const resultLabel = event.germinationRate === null
+            ? `${formatPrivateAnalyticsNumber(event.seedsGerminated)} germinated`
+            : `${formatPrivateAnalyticsPercent(event.germinationRate)} germination`;
+          return `<article class="source-report-activity-item">
+            <span class="source-report-latest-evidence-icon" aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-icon-svg")}</span>
+            <div><span>Approved Community session</span><strong>${escapeHtml(formatSourceReportGeneratedAt(event.publishedAt))}</strong><p>${escapeHtml(resultLabel)}${event.varietyLabel ? ` · ${escapeHtml(event.varietyLabel)}` : ""}</p></div>
+          </article>`;
+        }).join("")}
+      </div>
+      ${renderSourceReportLimitedEvidenceNote(report)}`;
+  }
   const presence = report.canonicalPresence || {};
   if (!presence.latestAt || !report.latestAt) {
     return renderSourceReportUnavailableState("Canonical recent Community activity is not available for this source.");
   }
-  const summaryItems = [
-    presence.totalSeeds ? `${formatPrivateAnalyticsNumber(report.totalSeeds)} seeds tested` : "",
-    presence.totalGerminated ? `${formatPrivateAnalyticsNumber(report.totalGerminated)} germinated` : "",
-    presence.averageRate ? `${formatPrivateAnalyticsPercent(report.averageRate)} germination` : "",
-  ].filter(Boolean);
   return `
     <div class="source-report-latest-evidence">
       <span class="source-report-latest-evidence-icon" aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-icon-svg")}</span>
       <div>
         <span>Latest approved session</span>
         <strong>${escapeHtml(formatSourceReportGeneratedAt(report.latestAt))}</strong>
-        ${summaryItems.length ? `<p>${escapeHtml(summaryItems.join(" · "))}</p>` : ""}
+        <p>Latest canonical approved evidence</p>
       </div>
     </div>
     ${renderSourceReportLimitedEvidenceNote(report)}`;
@@ -57635,6 +57674,7 @@ function renderSourceProfilePage(sourceId = "") {
   const websiteUrl = String(sourceProfile?.websiteUrl || "").trim();
   const evidenceIsVerified = report.sourceQuality?.recognized_evidence_only === true || report.sourceQuality?.recognizedEvidenceOnly === true;
   const confidenceLabel = String(report.confidence?.label || "Limited").trim() || "Limited";
+  const evidenceStrength = String(report.sourceQuality?.status || "Building Evidence").replace(/\s+Evidence$/i, "").trim() || "Building";
   const snapshotCards = [
     { icon: "summary", label: "Community Sessions", value: formatPrivateAnalyticsNumber(report.sessionCount), detail: "approved public evidence" },
     { icon: "seed", label: "Seeds Tested", value: formatPrivateAnalyticsNumber(report.totalSeeds), detail: `${formatPrivateAnalyticsNumber(report.totalGerminated)} germinated` },
@@ -57679,8 +57719,8 @@ function renderSourceProfilePage(sourceId = "") {
           <aside class="source-report-hero-confidence" aria-label="Canonical community confidence">
             <span>Community Confidence</span>
             <strong>${escapeHtml(confidenceLabel)}</strong>
-            ${renderCanonicalRankDisplayMarkup(report, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" }) || "<p>Placement not yet available</p>"}
-            <div class="source-report-hero-confidence-value"><span>GIE Confidence</span><strong>${escapeHtml(formatPrivateAnalyticsPercent(report.confidence?.percent || 0))}</strong></div>
+            <div class="source-report-hero-evidence-strength"><span>Evidence Strength</span><strong>${escapeHtml(evidenceStrength)}</strong><small>Based on approved Community evidence</small></div>
+            <div class="source-report-hero-rank">${renderCanonicalRankDisplayMarkup(report, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" }) || "<p>Placement not yet available</p>"}</div>
           </aside>
         </div>
       </article>
@@ -57722,20 +57762,16 @@ function renderSourceProfilePage(sourceId = "") {
             <div class="source-report-confidence-lead">
               <span>Overall Confidence</span>
               <strong>${escapeHtml(confidenceLabel)}</strong>
-              <small>${escapeHtml(String(report.sourceQuality?.status || "Building Evidence"))}</small>
+              <span>Evidence Strength</span>
+              <small>${escapeHtml(evidenceStrength)}</small>
             </div>
-            <div class="source-report-confidence-metrics" aria-label="Canonical confidence evidence">
-              <div><span>Approved Sessions</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(report.sessionCount))}</strong></div>
-              <div><span>Seeds Tested</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(report.totalSeeds))}</strong></div>
-              <div><span>Contributors</span><strong>${escapeHtml(formatPrivateAnalyticsNumber(report.contributorCount))}</strong></div>
-            </div>
-            <p>Canonical GIE confidence from approved public evidence. Additional approved sessions strengthen the evidence base.</p>
+            <p>Calculated from approved Community evidence. Additional independent approved sessions will strengthen the evidence base.</p>
             <span class="source-report-confidence-shield" aria-hidden="true">${renderMySessionsInlineIconMarkup("check", "source-report-icon-svg")}</span>
           </div>
         </article>
         <article class="card source-report-dashboard-card source-report-region-card">
-          ${renderSourceReportDashboardCardHeader("Community Growth by Region")}
-          ${renderSourceReportRegionMap()}
+          ${renderSourceReportDashboardCardHeader("Community Coverage")}
+          ${renderSourceReportRegionMap(report)}
         </article>
       </div>
 
