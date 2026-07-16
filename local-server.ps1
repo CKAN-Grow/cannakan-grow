@@ -22,6 +22,7 @@ function Get-ContentType($path) {
 try {
   while ($true) {
     $client = $listener.AcceptTcpClient()
+    $stream = $null
     try {
       $stream = $client.GetStream()
       $reader = New-Object System.IO.StreamReader($stream, [System.Text.Encoding]::ASCII, $false, 1024, $true)
@@ -75,6 +76,11 @@ try {
         $stream.Write($headerBytes, 0, $headerBytes.Length)
         $stream.Write($body, 0, $body.Length)
       }
+    } catch [System.IO.IOException] {
+      # Browsers may cancel speculative or superseded asset requests. A client
+      # disconnect must not terminate the shared Playwright test server.
+    } catch [System.Net.Sockets.SocketException] {
+      # Treat a per-connection socket reset as isolated from the listener.
     } finally {
       if ($stream) { $stream.Dispose() }
       $client.Dispose()
