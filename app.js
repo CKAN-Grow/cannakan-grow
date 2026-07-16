@@ -20914,6 +20914,23 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     && row?.[key] !== null
     && row?.[key] !== undefined
   ));
+  const mapRankDisplay = (row = {}) => {
+    const display = row?.rank_display;
+    if (!display || typeof display !== "object" || Array.isArray(display)) {
+      return null;
+    }
+    return {
+      kind: String(display.kind || "").trim(),
+      label: String(display.label || "").trim(),
+      entityLabel: String(display.entity_label || "").trim(),
+      populationLabel: String(display.population_label || "").trim(),
+      rank: Number(display.rank || 0),
+      eligiblePopulation: Number(display.eligible_population || 0),
+      percentile: display.percentile === null || display.percentile === undefined
+        ? null
+        : Number(display.percentile),
+    };
+  };
   const mapRows = (rows) => (Array.isArray(rows) ? rows : []).map((row) => ({
     key: String(row?.key || "").trim(),
     label: String(row?.label || row?.name || "Not shared").trim(),
@@ -20932,6 +20949,7 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     performanceRank: Number(row?.performance_rank ?? row?.rank ?? 0),
     testedRank: Number(row?.tested_rank || 0),
     activityRank: Number(row?.activity_rank || 0),
+    rankDisplay: mapRankDisplay(row),
     canonicalPresence: {
       sessionCount: hasCanonicalValue(row, ["session_count", "sessions"]),
       contributorCount: hasCanonicalValue(row, ["contributor_count", "contributors"]),
@@ -54302,26 +54320,58 @@ function getSourceDirectoryCardTypeLabel(source = {}) {
   return rawLabel;
 }
 
-function getSourceDirectoryPerformanceContextLabel(source = {}, totalSources = 0) {
-  const rank = Number(source?.community?.rank || source?.directoryStats?.rank || 0);
-  const total = Math.max(0, Number(totalSources) || 0);
-  if (!Number.isFinite(rank) || rank <= 0 || !Number.isFinite(total) || total <= 0) {
+function getCanonicalRankDisplayMeta(record = {}, options = {}) {
+  const canonicalRank = Number(record?.performanceRank || record?.rankDisplay?.rank || 0);
+  const supplied = record?.rankDisplay && typeof record.rankDisplay === "object" ? record.rankDisplay : null;
+  const entityLabel = String(options.entityLabel || supplied?.entityLabel || "Rank").trim() || "Rank";
+  const populationLabel = String(options.populationLabel || supplied?.populationLabel || "of eligible Community records").trim();
+
+  if (Number.isInteger(canonicalRank) && canonicalRank >= 1 && canonicalRank <= 3) {
+    return {
+      kind: "podium",
+      rank: canonicalRank,
+      label: `#${canonicalRank}`,
+      entityLabel,
+      populationLabel,
+    };
+  }
+  if (canonicalRank >= 4 && supplied?.kind === "percentile" && /^Top [1-9][0-9]?%$|^Top 100%$/.test(String(supplied.label || ""))) {
+    return {
+      kind: "percentile",
+      rank: canonicalRank,
+      label: String(supplied.label),
+      entityLabel,
+      populationLabel,
+    };
+  }
+  return null;
+}
+
+function renderCanonicalRankDisplayMarkup(record = {}, options = {}) {
+  const meta = getCanonicalRankDisplayMeta(record, options);
+  if (!meta) {
     return "";
   }
-  const percentile = Math.max(1, Math.ceil((rank / total) * 100));
-  if (percentile <= 10) {
-    return "Top 10%";
-  }
-  if (percentile <= 25) {
-    return "Top Quartile";
-  }
-  if (percentile <= 50) {
-    return "Top 50%";
-  }
-  if (percentile >= 80) {
-    return "Bottom 20%";
-  }
-  return "Top 75%";
+  const rankClass = meta.kind === "podium" ? ` is-rank-${meta.rank}` : "";
+  const icon = meta.kind === "podium" ? "award" : "analytics";
+  const contextLabel = meta.kind === "percentile" ? meta.populationLabel : meta.entityLabel;
+  return `
+    <div class="canonical-rank-display is-${escapeHtml(meta.kind)}${rankClass}" aria-label="${escapeHtml(`${meta.label} ${contextLabel}`)}">
+      <span class="canonical-rank-display-icon" aria-hidden="true">${renderMySessionsInlineIconMarkup(icon, "canonical-rank-display-icon-svg")}</span>
+      <span class="canonical-rank-display-copy"><strong>${escapeHtml(meta.label)}</strong><small>${escapeHtml(contextLabel)}</small></span>
+    </div>
+  `;
+}
+
+function getSourceDirectoryCanonicalRankRecord(source = {}) {
+  return source?.rankDisplay
+    ? source
+    : getCanonicalCommunitySourceReport(source?.id || source?.key || "", source);
+}
+
+function getSourceDirectoryPerformanceContextLabel(source = {}) {
+  const canonicalRecord = getSourceDirectoryCanonicalRankRecord(source);
+  return getCanonicalRankDisplayMeta(canonicalRecord || {}, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" })?.label || "";
 }
 function renderSourceDirectoryTopVarietiesMarkup(varieties = []) {
   const normalizedVarieties = (Array.isArray(varieties) ? varieties : [])
@@ -54355,7 +54405,7 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
   const sessionsLabel = source.directoryStats?.sessionsLogged || source.community?.sessions || "0";
   const seedsTrackedLabel = source.community?.seedsTracked || "0";
   const confidencePercent = Math.max(0, Math.min(100, confidenceMeta.percent));
-  const performanceContextLabel = getSourceDirectoryPerformanceContextLabel(source, options.totalSources || 0);
+  const canonicalRankRecord = getSourceDirectoryCanonicalRankRecord(source);
   const sourceTypeLabel = getSourceDirectoryCardTypeLabel(source);
   return `
     <article class="card source-directory-card source-directory-report-card is-${escapeHtml(confidenceMeta.tone)}">
@@ -54377,7 +54427,7 @@ function renderSourceDirectoryCardMarkup(source = {}, options = {}) {
         <div class="source-directory-average-germination-block">
           <strong class="source-directory-average-germination-value">${escapeHtml(reportedRateLabel)}</strong>
           <span>Average Germination</span>
-          ${performanceContextLabel ? `<small class="source-directory-performance-context">${escapeHtml(performanceContextLabel)}</small>` : ""}
+          ${renderCanonicalRankDisplayMarkup(canonicalRankRecord || {}, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" })}
         </div>
         <div class="source-directory-confidence-meter" aria-label="${escapeHtml(confidenceMeta.label)}">
           <span>Confidence Level</span>
@@ -55009,6 +55059,7 @@ function renderSourceDirectoryPublicCard(record = {}) {
         </div>
         <strong>${escapeHtml(formatPrivateAnalyticsPercent(record.averageRate))}</strong>
       </div>
+      ${renderCanonicalRankDisplayMarkup(record, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" })}
       ${renderSourceDirectoryPublicMetricGrid([
         { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(record.totalSeeds), detail: `${formatPrivateAnalyticsNumber(record.totalGerminated)} germinated` },
         { label: "Public Entries", value: formatPrivateAnalyticsNumber(record.snapshotCount), detail: `${formatPrivateAnalyticsNumber(record.sessionCount)} sessions represented` },
@@ -56151,6 +56202,7 @@ function renderSeedExplorerThumbnailMarkup(seed = {}, className = "seed-explorer
 
 function renderSeedExplorerCardMarkup(seed = {}) {
   const confidenceTone = getSeedExplorerConfidenceTone(seed);
+  const canonicalReport = getCanonicalCommunityVarietyReport(seed, seed?.id || "");
   return `
     <article class="card source-directory-card source-directory-report-card seed-explorer-card is-${escapeHtml(confidenceTone)}">
       <div class="source-directory-report-top seed-explorer-card-top">
@@ -56166,6 +56218,7 @@ function renderSeedExplorerCardMarkup(seed = {}) {
           </div>
         </div>
       </div>
+      ${renderCanonicalRankDisplayMarkup(canonicalReport || {}, { entityLabel: "Variety Rank", populationLabel: "of eligible Community varieties" })}
       <div class="source-directory-performance-zone seed-explorer-performance-zone">
         <div class="source-directory-average-germination-block">
           <strong class="source-directory-average-germination-value">${escapeHtml(`${seed.germinationSuccess}%`)}</strong>
@@ -56573,6 +56626,7 @@ function renderSeedProfilePage(seedId = "") {
             <p>Approved, published Community evidence only.</p>
           </div>
         </div>
+        ${renderCanonicalRankDisplayMarkup(report, { entityLabel: "Variety Rank", populationLabel: "of eligible Community varieties" })}
         ${renderCommunityInsightsKpiGrid(cards)}
       </article>
       <div class="source-report-two-column-grid">
@@ -56590,7 +56644,6 @@ function renderSeedProfilePage(seedId = "") {
         ${renderCommunityInsightsKpiGrid([
           { label: "Community Confidence", value: String(report.confidence?.label || "Limited"), detail: `${Number(report.confidence?.percent || 0)}%` },
           { label: "Latest Evidence", value: report.latestAt ? formatSourceDirectoryLastLoggedDate(report.latestAt) : "Not available", detail: "latest approved publication" },
-          { label: "Rank", value: report.performanceRank ? `#${report.performanceRank}` : "Not ranked", detail: "canonical performance ranking" },
         ])}
       </article>
       ${sourceProfile ? renderPublicCstpTestingCertificationPanel(sourceProfile, { sourceKey: report.key }) : ""}
@@ -57626,7 +57679,7 @@ function renderSourceProfilePage(sourceId = "") {
           <aside class="source-report-hero-confidence" aria-label="Canonical community confidence">
             <span>Community Confidence</span>
             <strong>${escapeHtml(confidenceLabel)}</strong>
-            <p>${report.performanceRank ? `Ranked #${escapeHtml(String(report.performanceRank))} among eligible sources` : "Not currently ranked"}</p>
+            ${renderCanonicalRankDisplayMarkup(report, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" }) || "<p>Placement not yet available</p>"}
             <div class="source-report-hero-confidence-value"><span>GIE Confidence</span><strong>${escapeHtml(formatPrivateAnalyticsPercent(report.confidence?.percent || 0))}</strong></div>
           </aside>
         </div>
@@ -76797,6 +76850,15 @@ function renderMySessionsInlineIconMarkup(iconName, className = "") {
   const classes = [className].filter(Boolean).join(" ");
 
   switch (iconName) {
+    case "award":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8.2 4.8h7.6v3.7a3.8 3.8 0 0 1-7.6 0Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+            <path d="M8.2 6.2H5.6v1.5c0 2 1.4 3.4 3.4 3.4M15.8 6.2h2.6v1.5c0 2-1.4 3.4-3.4 3.4M12 12.3v3.2M8.8 19.2h6.4M10 15.5h4v3.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
     case "plus":
       return `
         <span class="${classes}" aria-hidden="true">
