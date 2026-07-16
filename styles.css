@@ -1799,7 +1799,7 @@ body.theme-dark .mobile-nav-toggle:focus-visible {
     0 0 0 2px rgba(148, 209, 89, 0.14);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .topbar {
     align-items: center;
     gap: 12px;
@@ -5185,6 +5185,9 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-progress-companion-roadmap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: clamp(16px, 2vw, 22px);
   overflow-x: auto;
   scroll-padding-inline: 50%;
@@ -5436,7 +5439,7 @@ body.theme-dark .spotlight-stat strong {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .session-progress-companion-card {
     padding: 14px;
     border-radius: 14px;
@@ -29916,6 +29919,42 @@ body.developer-scenarios-active {
   gap: 10px;
 }
 
+.developer-scenarios-mode {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.developer-scenarios-mode > span {
+  color: #cbbbd4;
+  font-size: 0.78rem;
+}
+
+.developer-scenarios-mode > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.developer-scenarios-mode .button {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+}
+
+.developer-scenarios-mode .button.is-active {
+  border-color: #f3b63e;
+  background: rgba(243, 182, 62, 0.18);
+  color: #fff0bb;
+}
+
+.developer-scenarios-unified-field small {
+  margin-top: 4px;
+  color: #a897b3;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
 .developer-scenarios-field select {
   width: 100%;
   min-height: 38px;
@@ -29987,6 +30026,12 @@ body.developer-scenarios-active {
   }
 
   .developer-scenarios-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .developer-scenarios-mode > div,
+  .developer-scenarios-actions {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
 }

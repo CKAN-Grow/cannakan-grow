@@ -26,6 +26,15 @@ const fixturesAreFrozen = Object.isFrozen(seedRegistry)
 
 const checks = [
   ["scenarios default off", app.includes("const DEVELOPER_SCENARIOS_DEFAULT_ENABLED = false;")],
+  ["Unified Demo is the local mode default", app.includes('UNIFIED: "unified"') && app.includes('DEVELOPER_UNIFIED_SCENARIO_ID = "full-grow-demo"')],
+  ["Full Grow Demo shared graph", app.includes("function buildFullGrowDemoGraph()") && app.includes("function getFullGrowDemoGraph()")],
+  ["cross-module graph validation", app.includes("function validateFullGrowDemoGraph(") && app.includes("graph.communitySnapshots.forEach") && app.includes("graph.reportProjections.sources.forEach") && app.includes("graph.collectionMemberships.some")],
+  ["Full Grow Demo fixture scale", app.includes("graph.sessions.length + drafts.length !== 23") && app.includes("graph.vaultEntries.length !== 50") && app.includes("Array.from({ length: 180 }") && app.includes("graph.activeSessions.length !== 4")],
+  ["Full Grow Demo content breadth", app.includes('"Northern Lights Collective"') && app.includes('"Sunset Auto Test 3"') && app.includes("communityEvidenceIndexes") && app.includes("seedTypeRows")],
+  ["Full Grow Demo report density", app.includes("mergeMonthlyTrends") && app.includes("mergeRegionalCoverage") && app.includes("mergeRecentActivity") && app.includes("germinationDistribution: makeDistribution")],
+  ["Full Grow Demo Explore projection memoized", app.includes('getCachedDeveloperScenarioFixtures("fullGrowDemoExploreProvider", buildProvider)')],
+  ["Full Grow Demo supply projection", app.includes("supplyTracking: { count: 84") && app.includes("getFullGrowDemoGraph().supplyTracking")],
+  ["Unified and Mix & Match controls", app.includes(">Unified Demo</button>") && app.includes(">Mix &amp; Match</button>") && app.includes("One synchronized sample ecosystem across the entire app.")],
   ["single versioned preference key", app.includes('const DEVELOPER_SCENARIOS_STORAGE_KEY = "grow_developer_scenarios_v1";')],
   ["authoritative eligibility helper", app.includes("function isDeveloperScenariosAllowed()")],
   ["localhost accepted at runtime", evaluateGate("localhost") === true && evaluateGate("127.0.0.1") === true],
@@ -55,7 +64,7 @@ const checks = [
   ["persistent sample-data warning", app.includes("DEVELOPER SCENARIOS — SAMPLE DATA — NOTHING WILL BE SAVED")],
   ["live data reset", app.includes("function returnToLiveData()")],
   ["production build safeguard", build.includes("Developer Scenarios must remain disabled by default in production builds.")],
-  ["responsive control styles", styles.includes(".developer-scenarios-panel") && styles.includes("@media (max-width: 640px)")],
+  ["responsive control styles", styles.includes(".developer-scenarios-panel") && styles.includes(".developer-scenarios-mode") && styles.includes("@media (max-width: 640px)") && styles.includes(".session-progress-companion-roadmap")],
 ];
 
 const failures = checks.filter(([, passed]) => !passed);
