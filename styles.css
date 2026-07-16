@@ -63304,6 +63304,27 @@ body.theme-dark #session-analytics-section {
   min-width: 0;
 }
 
+.session-history-session-title {
+  overflow-wrap: anywhere;
+}
+
+.session-history-method-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--session-history-method-accent) 42%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--session-history-method-accent) 12%, transparent);
+  color: var(--session-history-method-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.025em;
+  overflow-wrap: anywhere;
+}
+
 .session-history-session-sequence {
   color: rgba(199, 208, 201, 0.62);
   font-size: 0.78rem;

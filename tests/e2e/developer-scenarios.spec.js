@@ -260,10 +260,30 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#session-history")).toContainText("15 completed");
     await expect(page.locator("#session-history")).toContainText("2 drafts");
     await expect(page.locator("#session-history")).toContainText("2 archived");
-    await expect(page.locator("#session-history")).toContainText("Water Glass");
-    await expect(page.locator("#session-history")).toContainText("Direct Soil");
-    await expect(page.locator("#session-history")).toContainText("Starter Plug");
-    await expect(page.locator("#session-history")).toContainText("Other");
+    const historyRows = page.locator("[data-session-history-row^='scenario-full-grow-session-']");
+    const methodBadges = historyRows.locator("[data-session-history-method]");
+    await expect(methodBadges).toHaveCount(23);
+    await expect(methodBadges.filter({ hasText: /^KAN • Unit / }).first()).toBeVisible();
+    await expect(methodBadges.filter({ hasText: /^TRā • Unit / }).first()).toBeVisible();
+    for (const methodType of ["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]) {
+      await expect(historyRows.locator(`[data-session-history-method='${methodType}']`).first()).toBeVisible();
+    }
+    await expect(methodBadges.filter({ hasText: "Paper Towel" }).first()).toBeVisible();
+    await expect(methodBadges.filter({ hasText: "Rockwool" }).first()).toBeVisible();
+    await expect(methodBadges.filter({ hasText: "Starter Plug" }).first()).toBeVisible();
+    await expect(methodBadges.filter({ hasText: "Water Soak" }).first()).toBeVisible();
+    await expect(methodBadges.filter({ hasText: "Direct Sow" }).first()).toBeVisible();
+    await expect(methodBadges.filter({ hasText: "Custom" }).first()).toBeVisible();
+    await expect(historyRows.locator(".session-history-session-title").filter({ hasText: / Demo$/ })).toHaveCount(0);
+    for (const width of [1280, 768, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(methodBadges.first()).toBeVisible();
+      const overflowingRows = await historyRows.evaluateAll((rows) => rows
+        .filter((row) => row.scrollWidth > row.clientWidth + 1)
+        .map((row) => row.getAttribute("data-session-history-row")));
+      expect(overflowingRows).toEqual([]);
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
     await expect(page.locator("main")).toContainText("PAPER_TOWEL");
     await expect(page.locator("main")).toContainText("TRā");
     await page.goto("/#sessions/scenario-full-grow-session-18");
