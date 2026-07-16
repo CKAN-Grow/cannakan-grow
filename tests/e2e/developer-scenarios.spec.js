@@ -112,9 +112,12 @@ test.describe("local Developer Scenarios", () => {
 
   test("Shift+D only opens and closes the new controller", async ({ page }) => {
     await page.goto("/#home");
+    await expect(page.locator("#developer-scenarios-launcher")).toContainText("Preview Studio");
     await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
     await page.keyboard.press("Shift+D");
     await expect(page.locator("#developer-scenarios-panel")).toBeVisible();
+    await expect(page.locator("#developer-scenarios-panel")).toHaveAttribute("aria-label", "Preview Studio");
+    await expect(page.getByRole("group", { name: "Preview Mode", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Live Data", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("#developer-scenarios-banner")).toHaveCount(0);
     await page.keyboard.press("Shift+D");
@@ -122,6 +125,43 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
     await expect(page.locator("#developer-scenarios-banner")).toHaveCount(0);
   });
+  test("Preview Studio stays within the viewport across responsive sizes", async ({ page }) => {
+    test.slow();
+    for (const viewport of [
+      { width: 320, height: 760 },
+      { width: 390, height: 844 },
+      { width: 768, height: 1024 },
+      { width: 1280, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/#home");
+      await useFullGrowDemo(page);
+      await openScenarioPanel(page);
+
+      const panel = page.locator("#developer-scenarios-panel");
+      const layout = await panel.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          left: rect.left,
+          right: rect.right,
+          top: rect.top,
+          bottom: rect.bottom,
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+          hasHorizontalOverflow: element.scrollWidth > element.clientWidth + 1,
+        };
+      });
+      expect(layout.left).toBeGreaterThanOrEqual(0);
+      expect(layout.right).toBeLessThanOrEqual(layout.innerWidth);
+      expect(layout.top).toBeGreaterThanOrEqual(0);
+      expect(layout.bottom).toBeLessThanOrEqual(layout.innerHeight);
+      expect(layout.hasHorizontalOverflow).toBe(false);
+      await expect(panel.getByText("Preview Studio", { exact: true })).toBeVisible();
+      await expect(panel.getByText("Preview Mode", { exact: true })).toBeVisible();
+      await expect(panel.locator(".developer-scenarios-full-demo-summary span")).toHaveCount(4);
+    }
+  });
+
   test("defaults to Live Data and restores it without a refresh", async ({ page }) => {
     await page.goto("/#sessions");
     await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
@@ -130,8 +170,16 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.getByRole("button", { name: "Live Data", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(0);
     await useFullGrowDemo(page);
-    await expect(page.locator("#developer-scenarios-banner")).toHaveText("DEVELOPER SCENARIOS — FULL GROW DEMO — SAMPLE DATA — NOTHING WILL BE SAVED");
+    await expect(page.locator("#developer-scenarios-banner")).toHaveText("PREVIEW STUDIO — FULL GROW DEMO — SAMPLE DATA — NOTHING WILL BE SAVED");
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Full Grow Demo");
+    await openScenarioPanel(page);
+    const summary = page.locator(".developer-scenarios-full-demo-summary");
+    await expect(summary.locator("span")).toHaveCount(4);
+    await expect(summary).toContainText("38 Sources");
+    await expect(summary).toContainText("91 Varieties");
+    await expect(summary).toContainText("50 Vault Entries");
+    await expect(summary).toContainText("30 Community Reports");
+    await expect(page.getByRole("button", { name: "Full Grow Demo", exact: true })).toContainText("(Recommended)");
 
     await openScenarioPanel(page);
     await page.getByRole("button", { name: "Return to Live Data", exact: true }).click();
@@ -154,7 +202,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.getByRole("button", { name: "Mix & Match", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(5);
     await expect(page.locator("select[data-developer-scenario-module='explore']")).toHaveValue("strong-attribution");
-    await expect(page.getByText("Module scenarios are focused testing states and may intentionally contain limited, sparse, or empty data.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Choose a presentation state for each module. Some states intentionally contain sparse or empty data.", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Full Grow Demo", exact: true }).click();
     await openScenarioPanel(page);
@@ -567,6 +615,7 @@ test.describe("local Developer Scenarios", () => {
   });
 
   test("Full Grow Demo controls remain usable at target responsive widths", async ({ page }) => {
+    test.slow();
     for (const [index, width] of [320, 375, 390, 430, 768, 1280].entries()) {
       await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
       await page.goto("/#home");
@@ -648,14 +697,14 @@ test.describe("local Developer Scenarios", () => {
     });
     await page.goto("/#seed-vault");
     await useFullGrowDemo(page);
-    await page.getByRole("button", { name: "Close Developer Scenarios", exact: true }).click();
+    await page.getByRole("button", { name: "Close Preview Studio", exact: true }).click();
     let dialogMessage = "";
     page.once("dialog", async (dialog) => {
       dialogMessage = dialog.message();
       await dialog.dismiss();
     });
     await page.locator("[data-seed-vault-add='true']").click();
-    expect(dialogMessage).toBe("Developer Scenario data is preview-only and cannot be saved or published.");
+    expect(dialogMessage).toBe("Preview Studio data is preview-only and cannot be saved or published.");
     expect(backendMutations).toEqual([]);
   });
 

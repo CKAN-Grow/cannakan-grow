@@ -29565,6 +29565,7 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   position: fixed;
   inset: 0 0 auto;
   z-index: 10020;
+  pointer-events: none;
   padding: 7px 16px;
   border-bottom: 1px solid rgba(255, 190, 61, 0.72);
   background: #43235f;
@@ -29640,6 +29641,11 @@ body.developer-scenarios-active {
   gap: 3px;
 }
 
+.developer-scenarios-panel-heading > div > strong {
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+}
+
 .developer-scenarios-panel-heading span,
 .developer-scenarios-panel-note,
 .developer-scenarios-field span {
@@ -29675,6 +29681,9 @@ body.developer-scenarios-active {
 .developer-scenarios-mode > span {
   color: #cbbbd4;
   font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .developer-scenarios-mode > div {
@@ -29763,7 +29772,7 @@ body.developer-scenarios-active {
 
 .developer-scenarios-full-demo-summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   margin-top: 11px;
 }
@@ -29889,7 +29898,7 @@ body.developer-scenarios-active {
   }
 
   .developer-scenarios-full-demo-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
