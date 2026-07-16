@@ -31,6 +31,8 @@ const checks = [
   ["cross-module graph validation", app.includes("function validateFullGrowDemoGraph(") && app.includes("graph.communitySnapshots.forEach") && app.includes("graph.reportProjections.sources.forEach") && app.includes("graph.collectionMemberships.some")],
   ["Full Grow Demo fixture scale", app.includes("graph.sessions.length + drafts.length !== 23") && app.includes("graph.vaultEntries.length !== 50") && app.includes("Array.from({ length: 180 }") && app.includes("graph.activeSessions.length !== 4")],
   ["Full Grow Demo content breadth", app.includes('"Northern Lights Collective"') && app.includes('"Sunset Auto Test 3"') && app.includes("communityEvidenceIndexes") && app.includes("seedTypeRows")],
+  ["KAN flagship data composition", app.includes('index < 144 ? "KAN"') && app.includes('Array.from({ length: 23 }') && app.includes('completedKanShare < 0.75') && app.includes('"KAN Evidence Leader"')],
+  ["rankings remain data-derived", !app.includes("showcaseSourceBonus") && !app.includes("methodPenalty")],
   ["Full Grow Demo report density", app.includes("mergeMonthlyTrends") && app.includes("mergeRegionalCoverage") && app.includes("mergeRecentActivity") && app.includes("germinationDistribution: makeDistribution")],
   ["Full Grow Demo Explore projection memoized", app.includes('getCachedDeveloperScenarioFixtures("fullGrowDemoExploreProvider", buildProvider)')],
   ["Full Grow Demo supply projection", app.includes("supplyTracking: { count: 84") && app.includes("getFullGrowDemoGraph().supplyTracking")],

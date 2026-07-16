@@ -91,6 +91,14 @@ test.describe("local Developer Scenarios", () => {
         evidenceSessions: graph.exploreEvidenceSessions.length,
         evidenceSeeds: graph.exploreEvidenceSessions.reduce((sum, session) => sum + session.totalSeeds, 0),
         kanEvidence: graph.exploreEvidenceSessions.filter((session) => session.method === "KAN").length,
+        completedKan: graph.completedSessions.filter((session) => session.systemType === "KAN").length,
+        approvedKan: graph.communitySnapshots.filter((snapshot) => snapshot.systemType === "KAN").length,
+        completeKanReports: graph.communitySnapshots.filter((snapshot) => snapshot.systemType === "KAN" && snapshot.documentationLevel === "complete" && snapshot.notes).length,
+        kanCommunityImages: graph.communitySnapshots.filter((snapshot) => snapshot.systemType === "KAN" && snapshot.imageUrl).length,
+        alternativeCommunityImages: graph.communitySnapshots.filter((snapshot) => snapshot.systemType !== "KAN" && snapshot.imageUrl).length,
+        completeKanDocumentation: graph.exploreEvidenceSessions.filter((session) => session.method === "KAN" && session.documentationLevel === "complete").length,
+        kanEvidenceImages: graph.exploreEvidenceSessions.filter((session) => session.method === "KAN" && session.imageUrl).length,
+        alternativeEvidenceImages: graph.exploreEvidenceSessions.filter((session) => session.method !== "KAN" && session.imageUrl).length,
         sessionImages: [...graph.sessions, ...graph.draftSessions].filter((session) => session.sessionImages.length).length,
         vaultImages: graph.vaultEntries.filter((entry) => entry.varietyImageUrl || entry.thumbnailUrl).length,
         evidenceImages: graph.exploreEvidenceSessions.filter((session) => session.imageUrl).length,
@@ -100,8 +108,9 @@ test.describe("local Developer Scenarios", () => {
         profileVaultEntries: graph.profileAnalytics.seedVault.overview.totalVarieties,
         profileVaultSeeds: graph.profileAnalytics.seedVault.overview.totalSeedsOwned,
         recognitions: graph.recognition.recognitions.length,
+        kanRecognitions: graph.recognition.recognitions.filter((recognition) => recognition.method === "KAN").length,
         networkGrowers: graph.network.growers.length,
-        methods: [...graph.activeSessions, ...graph.completedSessions, ...graph.draftSessions].map((session) => session.systemType),
+        methods: [...graph.activeSessions, ...graph.completedSessions, ...graph.draftSessions, ...graph.archivedSessions].map((session) => session.systemType),
         evidenceMethods: graph.exploreEvidenceSessions.reduce((counts, session) => {
           counts[session.method] = (counts[session.method] || 0) + 1;
           return counts;
@@ -125,17 +134,26 @@ test.describe("local Developer Scenarios", () => {
       collections: 11,
       evidenceSessions: 180,
       evidenceSeeds: 4230,
-      kanEvidence: 115,
-      sessionImages: 15,
+      kanEvidence: 144,
+      completedKan: 12,
+      approvedKan: 23,
+      completeKanReports: 23,
+      kanCommunityImages: 19,
+      alternativeCommunityImages: 2,
+      completeKanDocumentation: 144,
+      kanEvidenceImages: 101,
+      alternativeEvidenceImages: 3,
+      sessionImages: 17,
       vaultImages: 38,
-      evidenceImages: 87,
+      evidenceImages: 104,
       profileCompleted: 15,
       profileActive: 4,
       profileVaultEntries: 50,
       profileVaultSeeds: 265,
-      recognitions: 9,
+      recognitions: 12,
+      kanRecognitions: 3,
       networkGrowers: 7,
-      evidenceMethods: { KAN: 115, TRA: 23, PAPER_TOWEL: 16, ROCKWOOL: 5, RAPID_ROOTER: 6, WATER_SOAK: 7, DIRECT_SOW: 4, OTHER: 4 },
+      evidenceMethods: { KAN: 144, TRA: 8, PAPER_TOWEL: 7, ROCKWOOL: 5, RAPID_ROOTER: 4, WATER_SOAK: 4, DIRECT_SOW: 4, OTHER: 4 },
     });
     expect(graphSummary.communityImages).toBeGreaterThan(15);
     expect(graphSummary.communityImages).toBeLessThan(30);
@@ -185,8 +203,10 @@ test.describe("local Developer Scenarios", () => {
     await page.goto("/#sources");
     await expect(page.locator("main")).toContainText("38 sources");
     await expect(page.locator("#source-directory-card-results .source-directory-card")).toHaveCount(12);
-    const topSources = await page.evaluate(() => getExploreProvider().rankings.sources.slice(0, 4).map((row) => row.name));
-    expect(topSources).toEqual(["Seedsman", "Poppin’ Fire", "Good Genetix", "Chad Westport"]);
+    const sourceRanking = await page.evaluate(() => getExploreProvider().rankings.sources.map((row) => ({ name: row.name, rank: row.performanceRank })));
+    expect(sourceRanking.map((row) => row.rank)).toEqual(sourceRanking.map((_, index) => index + 1));
+    expect(new Set(sourceRanking.map((row) => row.name)).size).toBe(sourceRanking.length);
+    expect(sourceRanking.slice(0, 4).map((row) => row.name)).toEqual(["Poppin’ Fire", "Good Genetix", "Chad Westport", "Seedsman"]);
     const sourceHref = await page.locator("#source-directory-card-results a[href^='#sources/']").first().getAttribute("href");
     await page.goto(`/${sourceHref}`);
     await expect(page.locator("main")).toContainText("Source Report");
