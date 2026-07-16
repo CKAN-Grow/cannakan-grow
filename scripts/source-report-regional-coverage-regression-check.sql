@@ -48,6 +48,7 @@ do $$
 declare
   coverage jsonb := public.get_gie_community_source_coverage_v1();
   activity jsonb := public.get_gie_community_source_activity_v1();
+  distribution jsonb := public.get_gie_community_source_distribution_v1();
   contract jsonb := public.get_gie_community_analytics();
   source_coverage jsonb;
   unknown_report jsonb;
@@ -67,10 +68,15 @@ begin
   if jsonb_array_length((select item -> 'events' from jsonb_array_elements(activity) item where item ->> 'source_key' = '30000000-0000-0000-0000-000000000001')) <> 5 then raise exception 'Activity must include all eligible canonical events, including historical evidence'; end if;
   if activity::text ilike '%Excluded Variety%' then raise exception 'Analytics-excluded evidence entered canonical activity'; end if;
 
+  if (select (item ->> 'total_seeds')::integer from jsonb_array_elements(distribution) item where item ->> 'source_key' = '30000000-0000-0000-0000-000000000001') <> 150 then raise exception 'Distribution must include all 150 eligible source seeds'; end if;
+  if (select (bucket ->> 'share_percent')::numeric from jsonb_array_elements(distribution) item cross join lateral jsonb_array_elements(item -> 'buckets') bucket where item ->> 'source_key' = '30000000-0000-0000-0000-000000000001' and bucket ->> 'key' = '86_90') <> 100 then raise exception 'Mature 90%% fixture must populate only the 86–90%% bucket'; end if;
+  if (select (bucket ->> 'share_percent')::numeric from jsonb_array_elements(distribution) item cross join lateral jsonb_array_elements(item -> 'buckets') bucket where item ->> 'source_key' = '30000000-0000-0000-0000-000000000002' and bucket ->> 'key' = '91_95') <> 100 then raise exception 'Sparse 92%% fixture must populate only the 91–95%% bucket'; end if;
+
   if contract ->> 'contract_version' <> 'gie-community.v1.2' or contract ->> 'schema_version' <> '2026-07-15.2' then raise exception 'Unexpected Community contract version: %', contract; end if;
   select report into unknown_report from jsonb_array_elements(contract #> '{analytics,source_reports}') report
     where report ->> 'key' = '30000000-0000-0000-0000-000000000002';
   if unknown_report #>> '{regional_coverage,state}' <> 'empty' then raise exception 'Unknown-location source report must receive the explicit empty state: %', unknown_report; end if;
+  if unknown_report #>> '{germination_distribution,buckets,1,share_percent}' <> '100.0' then raise exception 'Contract must attach canonical sparse distribution to the report: %', unknown_report; end if;
 end;
 $$;
 

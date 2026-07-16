@@ -1,5 +1,5 @@
--- Additive Community GIE contract extension for public Source Report coverage
--- and canonical recent activity. Eligibility, ranking, confidence, evidence
+-- Additive Community GIE contract extension for public Source Report coverage,
+-- canonical recent activity, and chart-ready germination distribution. Eligibility, ranking, confidence, evidence
 -- exclusions, and public/private boundaries are inherited unchanged.
 
 create or replace function public.get_gie_normalize_public_country_v1(
@@ -205,11 +205,77 @@ as $$
   ) order by sources.source_key), '[]'::jsonb) from sources;
 $$;
 
+create or replace function public.get_gie_community_source_distribution_v1()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with events as (
+    select source_key, evidence_id,
+      sum(seed_count)::integer as seeds_tested,
+      sum(germinated_count)::integer as seeds_germinated
+    from public.get_gie_community_source_evidence_rows_v1()
+    group by source_key, evidence_id
+  ), classified as (
+    select events.*,
+      case
+        when round(seeds_germinated::numeric * 100 / nullif(seeds_tested, 0)) >= 96 then '96_100'
+        when round(seeds_germinated::numeric * 100 / nullif(seeds_tested, 0)) >= 91 then '91_95'
+        when round(seeds_germinated::numeric * 100 / nullif(seeds_tested, 0)) >= 86 then '86_90'
+        else 'below_85'
+      end as bucket_key
+    from events where seeds_tested > 0
+  ), definitions(ordinality, bucket_key, label) as (values
+    (1, '96_100', '96–100%'),
+    (2, '91_95', '91–95%'),
+    (3, '86_90', '86–90%'),
+    (4, 'below_85', 'Below 85%')
+  ), sources as (
+    select distinct source_key from classified
+  ), bucket_totals as (
+    select sources.source_key, definitions.ordinality, definitions.bucket_key, definitions.label,
+      count(distinct classified.evidence_id)::integer as session_count,
+      coalesce(sum(classified.seeds_tested), 0)::integer as seeds_tested
+    from sources cross join definitions
+    left join classified on classified.source_key = sources.source_key
+      and classified.bucket_key = definitions.bucket_key
+    group by sources.source_key, definitions.ordinality, definitions.bucket_key, definitions.label
+  ), chart_rows as (
+    select bucket_totals.*,
+      sum(seeds_tested) over (partition by source_key)::integer as total_seeds,
+      case when sum(seeds_tested) over (partition by source_key) > 0
+        then round(seeds_tested::numeric * 100 / sum(seeds_tested) over (partition by source_key), 1)
+        else 0 end as share_percent,
+      case when sum(seeds_tested) over (partition by source_key) > 0
+        then round(coalesce(sum(seeds_tested) over (partition by source_key order by ordinality rows between unbounded preceding and 1 preceding), 0)::numeric * 100 / sum(seeds_tested) over (partition by source_key), 4)
+        else 0 end as start_percent,
+      case when sum(seeds_tested) over (partition by source_key) > 0
+        then round(sum(seeds_tested) over (partition by source_key order by ordinality rows between unbounded preceding and current row)::numeric * 100 / sum(seeds_tested) over (partition by source_key), 4)
+        else 0 end as end_percent
+    from bucket_totals
+  ), source_distributions as (
+    select source_key, max(total_seeds)::integer as total_seeds,
+      jsonb_agg(jsonb_build_object(
+      'key', bucket_key, 'label', label, 'session_count', session_count,
+      'seeds_tested', seeds_tested, 'share_percent', share_percent,
+      'start_percent', start_percent, 'end_percent', end_percent
+      ) order by ordinality) as buckets
+    from chart_rows group by source_key
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'source_key', source_key, 'total_seeds', total_seeds, 'buckets', buckets
+  ) order by source_key), '[]'::jsonb)
+  from source_distributions;
+$$;
+
 revoke all on function public.get_gie_normalize_public_country_v1(text, text) from public, anon, authenticated;
 revoke all on function public.get_gie_normalize_public_us_region_v1(text) from public, anon, authenticated;
 revoke all on function public.get_gie_community_source_evidence_rows_v1() from public, anon, authenticated;
 revoke all on function public.get_gie_community_source_coverage_v1() from public, anon, authenticated;
 revoke all on function public.get_gie_community_source_activity_v1() from public, anon, authenticated;
+revoke all on function public.get_gie_community_source_distribution_v1() from public, anon, authenticated;
 
 create or replace function public.get_gie_community_analytics()
 returns jsonb
@@ -223,12 +289,15 @@ declare
   analytics jsonb := base -> 'analytics';
   coverage jsonb := public.get_gie_community_source_coverage_v1();
   activity jsonb := public.get_gie_community_source_activity_v1();
+  distribution jsonb := public.get_gie_community_source_distribution_v1();
   reports jsonb;
 begin
   select coalesce(jsonb_agg(report.value || jsonb_build_object(
     'regional_coverage', coalesce((select item from jsonb_array_elements(coverage) item where item ->> 'source_key' = report.value ->> 'key' limit 1),
       jsonb_build_object('source_key', report.value ->> 'key', 'state', 'empty', 'session_count', 0, 'seeds_tested', 0, 'country_count', 0, 'regions', '[]'::jsonb)),
-    'recent_activity', coalesce((select item -> 'events' from jsonb_array_elements(activity) item where item ->> 'source_key' = report.value ->> 'key' limit 1), '[]'::jsonb)
+    'recent_activity', coalesce((select item -> 'events' from jsonb_array_elements(activity) item where item ->> 'source_key' = report.value ->> 'key' limit 1), '[]'::jsonb),
+    'germination_distribution', coalesce((select item from jsonb_array_elements(distribution) item where item ->> 'source_key' = report.value ->> 'key' limit 1),
+      jsonb_build_object('source_key', report.value ->> 'key', 'total_seeds', 0, 'buckets', '[]'::jsonb))
   ) order by report.ordinality), '[]'::jsonb)
   into reports
   from jsonb_array_elements(coalesce(analytics -> 'source_reports', '[]'::jsonb)) with ordinality report(value, ordinality);
@@ -258,6 +327,9 @@ $$;
 
 comment on function public.get_gie_community_source_coverage_v1() is
   'Privacy-safe regional aggregates from canonical approved Community evidence joined to visible safe public profile country/region fields.';
+
+comment on function public.get_gie_community_source_distribution_v1() is
+  'Canonical source-level seed distribution across germination-rate buckets, derived from eligible approved Community evidence events.';
 comment on function public.get_gie_community_analytics() is
   'Canonical gie-community.v1.2 contract; adds Source Report regional coverage and canonical recent activity without changing eligibility, ranking, or confidence.';
 

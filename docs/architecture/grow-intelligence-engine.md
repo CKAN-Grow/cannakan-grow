@@ -509,7 +509,8 @@ presentation-ready rollups. The additive `gie-community.v1.1` extension adds
 on the full eligible GIE population, never a client-visible slice.
 
 The additive `gie-community.v1.2` extension adds Source Report
-`regional_coverage` and `recent_activity`. Both derive exclusively from the
+`regional_coverage`, `recent_activity`, and chart-ready
+`germination_distribution`. All derive exclusively from the
 same eligible rows returned by `get_gie_community_evidence_v1()`: approved,
 published, non-mock, non-excluded canonical historical evidence. Coverage
 joins each evidence contributor to `safe_public_member_profiles`, normalizes a
@@ -518,7 +519,10 @@ only aggregate counts plus coarse map coordinates. Arbitrary location text,
 city, coordinates, and private profile data never enter the contract. Unknown
 locations are omitted from coverage rather than inferred. Recent activity is
 an ordered list of canonical evidence events, not a browser reconstruction or
-a lifetime-total approximation. Empty, sparse, and mature presentation states
+a lifetime-total approximation. Germination distribution buckets are
+seed-weighted from canonical evidence events and include their canonical chart
+boundaries, so the browser only renders the supplied visualization. Empty,
+sparse, and mature presentation states
 are selected from these server-provided aggregates. This advances the schema
 to `2026-07-15.2`. Snapshot moderation and gallery display remain operational
 evidence flows; they do not calculate analytics.

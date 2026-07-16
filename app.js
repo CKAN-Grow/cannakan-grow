@@ -20996,6 +20996,18 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     germinationRate: row?.germination_rate === null || row?.germination_rate === undefined ? null : Number(row.germination_rate),
     varietyLabel: String(row?.variety_label || "").trim(),
   }));
+  const mapGerminationDistribution = (distribution = {}) => ({
+    totalSeeds: Number(distribution?.total_seeds || 0),
+    buckets: (Array.isArray(distribution?.buckets) ? distribution.buckets : []).map((row) => ({
+      key: String(row?.key || "").trim(),
+      label: String(row?.label || "").trim(),
+      sessionCount: Number(row?.session_count || 0),
+      seedsTested: Number(row?.seeds_tested || 0),
+      sharePercent: Number(row?.share_percent || 0),
+      startPercent: Number(row?.start_percent || 0),
+      endPercent: Number(row?.end_percent || 0),
+    })),
+  });
   const mapReports = (rows, relationshipKey) => (Array.isArray(rows) ? rows : []).map((row) => ({
     ...mapRows([row])[0],
     evidenceCount: Number(row?.evidence_count || 0),
@@ -21005,6 +21017,7 @@ function normalizeGieCommunityAnalyticsPayload(payload = {}) {
     monthlyTrends: mapMonths(row?.monthly_trends),
     regionalCoverage: mapRegionalCoverage(row?.regional_coverage),
     recentActivity: mapRecentActivity(row?.recent_activity),
+    germinationDistribution: mapGerminationDistribution(row?.germination_distribution),
   }));
   const sourceRows = mapRows(analytics?.source_rows);
   const varietyRows = mapRows(analytics?.variety_rows);
@@ -57464,17 +57477,34 @@ function renderSourceReportLimitedEvidenceNote(report = {}) {
 }
 
 function renderSourceReportGerminationDistribution(report = {}) {
-  const presence = report.canonicalPresence || {};
-  if (!presence.totalSeeds && !presence.totalGerminated && !presence.averageRate) {
-    return renderSourceReportUnavailableState("Canonical germination result data is not available for this source.");
+  const distribution = report?.germinationDistribution || {};
+  const buckets = Array.isArray(distribution.buckets) ? distribution.buckets : [];
+  const totalSeeds = Math.max(0, Number(distribution.totalSeeds) || 0);
+  if (!totalSeeds || buckets.length !== 4) {
+    return renderSourceReportUnavailableState("Canonical germination distribution data is not available for this source.");
   }
-  const hasComparison = presence.totalSeeds && presence.totalGerminated;
+  const presentation = {
+    "96_100": { color: "#7ed957", className: "" },
+    "91_95": { color: "#ffbf2f", className: "is-lime" },
+    "86_90": { color: "#ff9d1c", className: "is-amber" },
+    "below_85": { color: "#ff563f", className: "is-orange" },
+  };
+  const gradientSegments = buckets
+    .filter((bucket) => bucket.seedsTested > 0 && bucket.endPercent > bucket.startPercent)
+    .map((bucket) => `${presentation[bucket.key]?.color || "#7ed957"} ${bucket.startPercent}% ${bucket.endPercent}%`);
   return `
-    <div class="source-report-contract-limitation" role="note">
-      <span aria-hidden="true">${renderMySessionsInlineIconMarkup("analytics", "source-report-icon-svg")}</span>
-      <p><strong>Distribution detail is not published yet</strong><small>${hasComparison
-        ? `${formatPrivateAnalyticsNumber(report.totalGerminated)} of ${formatPrivateAnalyticsNumber(report.totalSeeds)} tested seeds germinated (${formatPrivateAnalyticsPercent(report.averageRate)}). Canonical distribution buckets are not currently available.`
-        : "Canonical distribution buckets are not currently available for this source."}</small></p>
+    <div class="source-report-distribution-layout">
+      <div class="source-report-distribution-donut" style="background:conic-gradient(${escapeHtml(gradientSegments.join(", "))});" role="img" aria-label="Canonical germination distribution for ${escapeHtml(formatPrivateAnalyticsNumber(totalSeeds))} tested seeds">
+        <span><strong>${escapeHtml(formatPrivateAnalyticsNumber(totalSeeds))}</strong><small>Total Seeds<br>Tested</small></span>
+      </div>
+      <div class="source-report-distribution-legend">
+        ${buckets.map((bucket) => `
+          <span class="${escapeHtml(presentation[bucket.key]?.className || "")}">
+            <i aria-hidden="true"></i>
+            <strong>${escapeHtml(bucket.label)}</strong>
+            <em>${escapeHtml(formatPrivateAnalyticsPercent(bucket.sharePercent))}</em>
+          </span>`).join("")}
+      </div>
     </div>
     `;
 }

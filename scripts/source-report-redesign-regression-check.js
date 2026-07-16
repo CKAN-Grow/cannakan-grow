@@ -46,7 +46,7 @@ for (const label of [
 }
 
 for (const unavailable of [
-  "Canonical germination result data is not available for this source.",
+  "Canonical germination distribution data is not available for this source.",
   "Canonical recent Community activity is not available for this source.",
   "Canonical performance periods are not available for this source.",
 ]) {
@@ -72,7 +72,7 @@ assert(!sourceReport.includes("Not enough canonical distribution data.") && !sou
 assert(!sourceReport.includes("<progress") && !sourceReportHelpers.includes("source-report-result-rate"), "Source Report must not use stretched progress bars as primary visualizations.");
 assert(sourceReport.includes("Community Coverage") && sourceReport.includes("renderSourceReportRegionMap(report)"), "The regional world map must consume canonical Source Report coverage.");
 assert(sourceReportHelpers.includes("No regional Community evidence has been published yet.") && sourceReportHelpers.includes("/assets/app/source-report/world-map.svg"), "The empty regional state must use the neutral world map and exact limitation copy.");
-assert(sourceReportHelpers.includes("Distribution detail is not published yet") && sourceReportHelpers.includes("Canonical distribution buckets are not currently available"), "Distribution must distinguish available canonical totals from unavailable canonical buckets.");
+assert(sourceReportHelpers.includes("source-report-distribution-donut") && sourceReportHelpers.includes("report?.germinationDistribution"), "Distribution must render only chart-ready canonical GIE buckets.");
 assert(sourceReport.includes('/assets/images/seed-report-hero-bg.png'), "Source Report hero must use the target seed-report background asset.");
 assert(sourceReport.includes("source-report-hero-verification") && sourceReport.includes("Latest evidence"), "Source verification and freshness metadata must sit beneath the hero description.");
 assert(sourceReport.includes("Evidence Strength") && !sourceReport.includes("GIE Confidence</span>") && !sourceReport.includes("report.confidence?.percent"), "Public Source Report confidence must use canonical plain-language labels without exposing the internal numeric score.");
@@ -97,6 +97,12 @@ const chadWestportContract = normalizeCommunityPayload({
       top_varieties: [{ key: "canonical-variety", label: "Canonical Variety", sessions: 1, seeds_tested: 10, seeds_germinated: 10, germination_rate: 100, rank: 1 }],
       monthly_trends: [{ key: "2026-07", label: "Jul 2026", session_count: 1, total_seeds: 10, total_germinated: 10, average_rate: 100 }],
       recent_activity: [{ evidence_id: "chad-session", published_at: "2026-07-14T12:00:00.000Z", seeds_tested: 10, seeds_germinated: 10, germination_rate: 100, variety_label: "Canonical Variety" }],
+      germination_distribution: { total_seeds: 10, buckets: [
+        { key: "96_100", label: "96–100%", session_count: 1, seeds_tested: 10, share_percent: 100, start_percent: 0, end_percent: 100 },
+        { key: "91_95", label: "91–95%", session_count: 0, seeds_tested: 0, share_percent: 0, start_percent: 100, end_percent: 100 },
+        { key: "86_90", label: "86–90%", session_count: 0, seeds_tested: 0, share_percent: 0, start_percent: 100, end_percent: 100 },
+        { key: "below_85", label: "Below 85%", session_count: 0, seeds_tested: 0, share_percent: 0, start_percent: 100, end_percent: 100 },
+      ] },
       regional_coverage: { state: "sparse", session_count: 1, seeds_tested: 10, country_count: 1, regions: [{ country_code: "US", country_label: "United States", region_code: "MA", region_label: "Massachusetts", session_count: 1, seeds_tested: 10, contributor_count: 1, map_x: 29, map_y: 33 }] },
     }],
   },
@@ -106,6 +112,7 @@ assert(chadWestportReport.sessionCount === 1, "A single canonical Chad Westport 
 assert(chadWestportReport.totalSeeds === 10 && chadWestportReport.totalGerminated === 10 && chadWestportReport.averageRate === 100, "Canonical Chad Westport result totals must survive adapter normalization.");
 assert(chadWestportReport.varietyCount === 1 && chadWestportReport.relationships.length === 1 && chadWestportReport.monthlyTrends.length === 1, "Canonical Chad Westport variety and period evidence must survive adapter normalization.");
 assert(chadWestportReport.confidence.label === "Growing" && chadWestportReport.performanceRank === 1 && chadWestportReport.latestAt, "Canonical Chad Westport confidence, rank, and latest evidence must survive adapter normalization.");
+assert(chadWestportReport.germinationDistribution.totalSeeds === 10 && chadWestportReport.germinationDistribution.buckets.length === 4, "Canonical Chad Westport distribution must survive adapter normalization.");
 assert(Object.values(chadWestportReport.canonicalPresence).every(Boolean), "The Chad Westport fixture must retain canonical presence metadata for every supplied field.");
 
 const sourceReportRenderers = new Function(
@@ -130,7 +137,10 @@ const chadActivityMarkup = sourceReportRenderers.renderSourceReportRecentActivit
 const emptyRegionMarkup = sourceReportRenderers.renderSourceReportRegionMap();
 const chadRegionMarkup = sourceReportRenderers.renderSourceReportRegionMap(chadWestportReport);
 const chadVarietiesMarkup = sourceReportRenderers.renderSourceReportTopVarietiesTable(chadWestportReport, "#sources/chad-westport");
-assert(chadDistributionMarkup.includes("10 of 10 tested seeds germinated") && chadDistributionMarkup.includes("100%") && !chadDistributionMarkup.includes("source-report-evidence-metrics"), "Distribution limitation must present the canonical comparison once without duplicate metric cards.");
+assert(chadDistributionMarkup.includes("source-report-distribution-donut") && chadDistributionMarkup.includes("#7ed957 0% 100%"), "One-session Chad Westport evidence must render a fully populated canonical donut segment.");
+assert(chadDistributionMarkup.includes("96–100%") && chadDistributionMarkup.includes("91–95%") && chadDistributionMarkup.includes("86–90%") && chadDistributionMarkup.includes("Below 85%"), "The canonical donut must render all four legend buckets.");
+assert((chadDistributionMarkup.match(/100%/g) || []).length >= 2 && (chadDistributionMarkup.match(/0%/g) || []).length >= 3, "Chad Westport must show one 100% bucket and three empty buckets.");
+assert(!chadDistributionMarkup.includes("not available") && !chadDistributionMarkup.includes("source-report-contract-limitation"), "Sparse canonical distribution evidence must never render the placeholder.");
 assert(chadPerformanceMarkup.includes("source-report-line-chart is-sparse") && chadPerformanceMarkup.includes("<circle") && !chadPerformanceMarkup.includes("<polyline") && chadPerformanceMarkup.includes("Jul 2026") && chadPerformanceMarkup.includes("Additional approved reporting periods are required to establish a trend."), "A single canonical performance period must render as one real plotted point without fabricating a line.");
 assert(!chadPerformanceMarkup.includes("Approved Sessions") && !chadPerformanceMarkup.includes("Seeds Tested") && !chadPerformanceMarkup.includes("source-report-sparse-chart-metrics"), "Sparse performance must not repeat the top-row metrics.");
 assert(chadActivityMarkup.includes("Approved Community session") && chadActivityMarkup.includes("100% germination") && chadActivityMarkup.includes("Canonical Variety") && chadActivityMarkup.includes("Based on 1 approved Community session."), "Canonical one-session activity must render its event result, variety, and limited-evidence guidance.");
@@ -146,8 +156,18 @@ const multiPeriodMarkup = sourceReportRenderers.renderSourceReportPerformanceLin
 assert(multiPeriodMarkup.includes("<polyline") && (multiPeriodMarkup.match(/<circle/g) || []).length === 2 && multiPeriodMarkup.includes("Jun 2026") && multiPeriodMarkup.includes("Jul 2026"), "Multiple canonical periods must render as an actual multi-point line chart.");
 assert(!multiPeriodMarkup.includes("community-insights-trend-bar"), "Source Report performance must not fall back to oversized bar capsules.");
 
+const matureDistributionMarkup = sourceReportRenderers.renderSourceReportGerminationDistribution({
+  germinationDistribution: { totalSeeds: 100, buckets: [
+    { key: "96_100", label: "96–100%", seedsTested: 40, sharePercent: 40, startPercent: 0, endPercent: 40 },
+    { key: "91_95", label: "91–95%", seedsTested: 30, sharePercent: 30, startPercent: 40, endPercent: 70 },
+    { key: "86_90", label: "86–90%", seedsTested: 20, sharePercent: 20, startPercent: 70, endPercent: 90 },
+    { key: "below_85", label: "Below 85%", seedsTested: 10, sharePercent: 10, startPercent: 90, endPercent: 100 },
+  ] },
+});
+assert(matureDistributionMarkup.includes("#7ed957 0% 40%") && matureDistributionMarkup.includes("#ffbf2f 40% 70%") && matureDistributionMarkup.includes("#ff9d1c 70% 90%") && matureDistributionMarkup.includes("#ff563f 90% 100%"), "Mature canonical evidence must retain the full four-segment donut.");
+
 const emptyReport = { canonicalPresence: {}, relationships: [], monthlyTrends: [] };
-assert(sourceReportRenderers.renderSourceReportGerminationDistribution(emptyReport).includes("Canonical germination result data is not available"), "Empty distribution must render unavailable only when canonical result fields are absent.");
+assert(sourceReportRenderers.renderSourceReportGerminationDistribution(emptyReport).includes("Canonical germination distribution data is not available"), "Empty distribution must render unavailable only when canonical buckets are absent.");
 assert(sourceReportRenderers.renderSourceReportPerformance(emptyReport).includes("Canonical performance periods are not available"), "Empty performance must render unavailable only when canonical periods are absent.");
 assert(sourceReportRenderers.renderSourceReportRecentActivity(emptyReport).includes("Canonical recent Community activity is not available"), "Empty activity must render unavailable only when the canonical latest record is absent.");
 assert(sourceReportRenderers.renderSourceReportTopVarietiesTable(emptyReport).includes("No approved canonical variety evidence"), "Empty Top Performing Varieties must render its honest empty state.");
