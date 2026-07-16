@@ -18,6 +18,12 @@ async function useMixAndMatch(page) {
   await openScenarioPanel(page);
 }
 
+async function useFullGrowDemo(page) {
+  await openScenarioPanel(page);
+  await page.getByRole("button", { name: "Full Grow Demo", exact: true }).click();
+  await expect(page.locator("#developer-scenarios-banner")).toContainText("FULL GROW DEMO");
+}
+
 async function expectNoFullGrowPlaceholders(page) {
   const placeholders = await page.locator("main").evaluate((root) => {
     const exactPlaceholders = new Set(["—", "--", "…", "Loading", "Loading...", "Loading…"]);
@@ -35,20 +41,56 @@ test.describe("local Developer Scenarios", () => {
     await enableFounderLocalQa(page);
   });
 
-  test("defaults off and restores live data without a refresh", async ({ page }) => {
+  test("defaults to Live Data and restores it without a refresh", async ({ page }) => {
     await page.goto("/#sessions");
-    await expect(page.locator("#developer-scenarios-launcher")).toContainText("OFF");
+    await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
     await expect(page.locator("#developer-scenarios-banner")).toHaveCount(0);
     await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
-    await expect(page.locator("#developer-scenarios-banner")).toContainText("NOTHING WILL BE SAVED");
+    await expect(page.getByRole("button", { name: "Live Data", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(0);
+    await useFullGrowDemo(page);
+    await expect(page.locator("#developer-scenarios-banner")).toHaveText("DEVELOPER SCENARIOS — FULL GROW DEMO — SAMPLE DATA — NOTHING WILL BE SAVED");
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Full Grow Demo");
 
     await openScenarioPanel(page);
     await page.getByRole("button", { name: "Return to Live Data", exact: true }).click();
     await expect(page.locator("#developer-scenarios-banner")).toHaveCount(0);
     await expect(page.locator(".developer-scenario-page-badge")).toHaveCount(0);
-    await expect(page.locator("#developer-scenarios-launcher")).toContainText("OFF");
+    await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
+    await openScenarioPanel(page);
+    await expect(page.getByRole("button", { name: "Live Data", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(0);
+  });
+
+  test("migrates legacy module choices to Mix & Match and masks them in Full Grow Demo", async ({ page }) => {
+    const legacySelections = { seedVault: "collector", sessions: "mixed", profile: "founding-grower", community: "featured", explore: "strong-attribution" };
+    await page.addInitScript(({ key, selections }) => {
+      localStorage.setItem(key, JSON.stringify({ enabled: true, selections }));
+    }, { key: STORAGE_KEY, selections: legacySelections });
+
+    await page.goto("/#home");
+    await openScenarioPanel(page);
+    await expect(page.getByRole("button", { name: "Mix & Match", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(5);
+    await expect(page.locator("select[data-developer-scenario-module='explore']")).toHaveValue("strong-attribution");
+    await expect(page.getByText("Module scenarios are focused testing states and may intentionally contain limited, sparse, or empty data.", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Full Grow Demo", exact: true }).click();
+    await openScenarioPanel(page);
+    await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(0);
+    const unifiedState = await page.evaluate((key) => ({
+      effectiveSelections: DEVELOPER_SCENARIO_MODULES.map((moduleName) => getDeveloperScenarioSelection(moduleName)),
+      stored: JSON.parse(localStorage.getItem(key)),
+    }), STORAGE_KEY);
+    expect(unifiedState.effectiveSelections).toEqual(["live", "live", "live", "live", "live"]);
+    expect(unifiedState.stored.mode).toBe("unified");
+    expect(unifiedState.stored.selections).toMatchObject(legacySelections);
+
+    await page.getByRole("button", { name: "Mix & Match", exact: true }).click();
+    await openScenarioPanel(page);
+    await expect(page.locator("select[data-developer-scenario-module='seedVault']")).toHaveValue("collector");
+    await expect(page.locator("select[data-developer-scenario-module='sessions']")).toHaveValue("mixed");
+    await expect(page.locator("select[data-developer-scenario-module='explore']")).toHaveValue("strong-attribution");
   });
 
   test("Full Grow Demo synchronizes sessions, Vault, Profile, and Community", async ({ page }) => {
@@ -58,8 +100,7 @@ test.describe("local Developer Scenarios", () => {
     });
     page.on("pageerror", (error) => consoleErrors.push(error.message));
     await page.goto("/#home");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Full Grow Demo");
     await expect(page.getByRole("heading", { name: "Other Active Sessions" })).toBeVisible();
     await expect(page.locator("main")).toContainText("3 sessions");
@@ -76,6 +117,7 @@ test.describe("local Developer Scenarios", () => {
       return {
         sessions: graph.sessions.length,
         active: graph.activeSessions.length,
+        ready: graph.activeSessions.filter((session) => session.isReadyToComplete).length,
         completed: graph.completedSessions.length,
         drafts: graph.draftSessions.length,
         archived: graph.archivedSessions.length,
@@ -90,6 +132,7 @@ test.describe("local Developer Scenarios", () => {
         collections: graph.collections.length,
         evidenceSessions: graph.exploreEvidenceSessions.length,
         evidenceSeeds: graph.exploreEvidenceSessions.reduce((sum, session) => sum + session.totalSeeds, 0),
+        evidenceGerminated: graph.exploreEvidenceSessions.reduce((sum, session) => sum + session.totalGerminated, 0),
         kanEvidence: graph.exploreEvidenceSessions.filter((session) => session.method === "KAN").length,
         completedKan: graph.completedSessions.filter((session) => session.systemType === "KAN").length,
         approvedKan: graph.communitySnapshots.filter((snapshot) => snapshot.systemType === "KAN").length,
@@ -120,6 +163,7 @@ test.describe("local Developer Scenarios", () => {
     expect(graphSummary).toMatchObject({
       sessions: 21,
       active: 4,
+      ready: 1,
       completed: 15,
       drafts: 2,
       archived: 2,
@@ -134,6 +178,7 @@ test.describe("local Developer Scenarios", () => {
       collections: 11,
       evidenceSessions: 180,
       evidenceSeeds: 4230,
+      evidenceGerminated: 3773,
       kanEvidence: 144,
       completedKan: 12,
       approvedKan: 23,
@@ -159,6 +204,20 @@ test.describe("local Developer Scenarios", () => {
     expect(graphSummary.communityImages).toBeLessThan(30);
     expect(new Set(graphSummary.methods)).toEqual(new Set(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]));
     await expect(page.locator("[data-session-history-row^='scenario-full-grow-session-']")).toHaveCount(6);
+    const historyToggle = page.locator("[data-session-history-toggle='true']");
+    if (await historyToggle.getAttribute("aria-expanded") !== "true") await historyToggle.click();
+    while (await page.locator("[data-session-history-see-more='true']").count()) {
+      await page.locator("[data-session-history-see-more='true']").click();
+    }
+    await expect(page.locator("[data-session-history-row^='scenario-full-grow-session-']")).toHaveCount(23);
+    await expect(page.locator("#session-history")).toContainText("4 active");
+    await expect(page.locator("#session-history")).toContainText("15 completed");
+    await expect(page.locator("#session-history")).toContainText("2 drafts");
+    await expect(page.locator("#session-history")).toContainText("2 archived");
+    await expect(page.locator("#session-history")).toContainText("Water Glass");
+    await expect(page.locator("#session-history")).toContainText("Direct Soil");
+    await expect(page.locator("#session-history")).toContainText("Starter Plug");
+    await expect(page.locator("#session-history")).toContainText("Other");
     await expect(page.locator("main")).toContainText("PAPER_TOWEL");
     await expect(page.locator("main")).toContainText("TRā");
     await page.goto("/#sessions/scenario-full-grow-session-18");
@@ -187,6 +246,44 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Full Grow Demo enforces one provider identity across every scenario module", async ({ page }) => {
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    const providerChecks = [
+      ["sessions", "sessions"],
+      ["profile", "profile"],
+      ["gallery", "community"],
+      ["seeds", "explore"],
+      ["seed-vault", "seedVault"],
+    ];
+    for (const [route, moduleName] of providerChecks) {
+      await page.goto(`/#${route}`);
+      const provider = await page.evaluate((name) => {
+        const providers = {
+          sessions: () => getSessionProvider(),
+          profile: () => getProfileProvider(),
+          community: () => getCommunityProvider(),
+          explore: () => getExploreProvider(),
+          seedVault: () => getActiveSeedVaultProvider(),
+        };
+        const resolved = providers[name]();
+        return { id: resolved.id, label: resolved.label, isPreview: resolved.isPreview };
+      }, moduleName);
+      expect(provider).toEqual({ id: "full-grow-demo", label: "Full Grow Demo", isPreview: true });
+      await expect(page.locator(".developer-scenario-page-badge")).toHaveText("Full Grow Demo");
+    }
+
+    const mismatchCode = await page.evaluate(() => {
+      try {
+        assertUnifiedDeveloperScenarioProvider("test", { id: "partial-module-fixture", label: "Wrong", isPreview: true });
+        return "";
+      } catch (error) {
+        return error.code;
+      }
+    });
+    expect(mismatchCode).toBe("DEVELOPER_SCENARIO_UNIFIED_PROVIDER_MISMATCH");
+  });
+
   test("Seed Vault Inventory 2.0 supports premium browsing without eager profile DOM", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
@@ -195,8 +292,7 @@ test.describe("local Developer Scenarios", () => {
     page.on("pageerror", (error) => consoleErrors.push(error.message));
 
     await page.goto("/#seed-vault");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
 
     const inventoryCards = page.locator("#my-seed-vault .seed-vault-entry-card");
     await expect(inventoryCards).toHaveCount(50);
@@ -279,8 +375,7 @@ test.describe("local Developer Scenarios", () => {
       await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
       await page.goto("/#seed-vault");
       if (index === 0) {
-        await openScenarioPanel(page);
-        await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+        await useFullGrowDemo(page);
       }
       await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(50);
       const horizontalOverflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
@@ -300,13 +395,34 @@ test.describe("local Developer Scenarios", () => {
       }
     });
     await page.goto("/#seeds");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await expect(page.locator("#seed-explorer-results .seed-explorer-card, #seed-explorer-results .seed-explorer-list-row")).toHaveCount(91);
-    await expect(page.locator(".developer-scenario-page-badge")).toContainText("Developer Scenario — Sample Explore Analytics · Full Grow Demo");
+    await expect(page.locator(".developer-scenario-page-badge")).toHaveText("Full Grow Demo");
+    await expect(page.locator('[data-seed-explorer-filter="all"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-seed-explorer-advanced-filter]:checked")).toHaveCount(0);
+    await page.locator("#seed-explorer-search").fill("Sunset Auto Test 3");
+    await expect(page.locator("#seed-explorer-results .seed-explorer-card, #seed-explorer-results .seed-explorer-list-row")).toHaveCount(1);
+    await page.locator("#seed-explorer-search").fill("");
+    await expect(page.locator("#seed-explorer-results .seed-explorer-card, #seed-explorer-results .seed-explorer-list-row")).toHaveCount(91);
+    const seedReportHref = await page.locator("#seed-explorer-results a[href^='#seeds/']").first().getAttribute("href");
+    await page.goto(`/${seedReportHref}`);
+    await expect(page.locator("main")).toContainText("Variety Report");
+    expect(await page.evaluate(() => getExploreProvider().varietyReports.length)).toBe(91);
     await page.goto("/#sources");
     await expect(page.locator("main")).toContainText("38 sources");
+    await expect(page.locator('[data-source-directory-filter="all"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#source-directory-results-summary")).toHaveText("Showing 12 of 38 matching sources");
     await expect(page.locator("#source-directory-card-results .source-directory-card")).toHaveCount(12);
+    await page.locator("#source-directory-search").fill("Northern Lights Collective");
+    await expect(page.locator("#source-directory-card-results .source-directory-card")).toHaveCount(1);
+    await expect(page.locator("#source-directory-card-results")).toContainText("Northern Lights Collective");
+    await page.locator("#source-directory-search").fill("");
+    await expect(page.locator("#source-directory-card-results .source-directory-card")).toHaveCount(12);
+    for (const expectedCount of [24, 36, 38]) {
+      await page.getByRole("button", { name: /Show More Sources/ }).click();
+      await expect(page.locator("#source-directory-card-results .source-directory-card")).toHaveCount(expectedCount);
+    }
+    await expect(page.locator("#source-directory-results-summary")).toHaveText("Showing 38 of 38 matching sources");
     const sourceRanking = await page.evaluate(() => getExploreProvider().rankings.sources.map((row) => ({ name: row.name, rank: row.performanceRank })));
     expect(sourceRanking.map((row) => row.rank)).toEqual(sourceRanking.map((_, index) => index + 1));
     expect(new Set(sourceRanking.map((row) => row.name)).size).toBe(sourceRanking.length);
@@ -339,11 +455,12 @@ test.describe("local Developer Scenarios", () => {
       await page.goto("/#home");
       await openScenarioPanel(page);
       if (index === 0) {
-        await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+        await page.getByRole("button", { name: "Full Grow Demo", exact: true }).click();
         await openScenarioPanel(page);
       }
-      await expect(page.getByRole("button", { name: "Unified Demo", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await expect(page.locator("select[data-developer-unified-scenario]")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Full Grow Demo", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("[data-developer-scenario-module]")).toHaveCount(0);
+      await expect(page.locator(".developer-scenarios-full-demo-card")).toBeVisible();
       await expect(page.locator(".developer-scenario-page-badge")).toContainText("Full Grow Demo");
       const panelBox = await page.locator("#developer-scenarios-panel").boundingBox();
       expect(panelBox.x).toBeGreaterThanOrEqual(0);
@@ -360,8 +477,7 @@ test.describe("local Developer Scenarios", () => {
     });
     page.on("pageerror", (error) => consoleErrors.push(error.message));
     await page.goto("/#home");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='seedVault']").selectOption("first");
     await openScenarioPanel(page);
@@ -401,8 +517,7 @@ test.describe("local Developer Scenarios", () => {
       }
     });
     await page.goto("/#seed-vault");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await page.getByRole("button", { name: "Close Developer Scenarios", exact: true }).click();
     let dialogMessage = "";
     page.once("dialog", async (dialog) => {
@@ -417,19 +532,21 @@ test.describe("local Developer Scenarios", () => {
   test("handles malformed saved state and reset safely", async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, "{not-json"), STORAGE_KEY);
     await page.goto("/#home");
-    await expect(page.locator("#developer-scenarios-launcher")).toContainText("OFF");
+    await expect(page.locator("#developer-scenarios-launcher")).toContainText("LIVE");
     await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Reset Scenario", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Live Data", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Full Grow Demo", exact: true }).click();
+    await openScenarioPanel(page);
+    await page.getByRole("button", { name: "Reset Demo", exact: true }).click();
     await expect(page.locator("#developer-scenarios-banner")).toBeVisible();
     await openScenarioPanel(page);
-    await expect(page.locator("select[data-developer-unified-scenario]")).toHaveValue("full-grow-demo");
-    await expect(page.getByText("One synchronized sample ecosystem across the entire app.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Full Grow Demo", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("One synchronized, fully populated sample ecosystem across Grow.", { exact: true })).toBeVisible();
   });
 
   test("keeps session cards, analytics, and ready-result details on one fixture", async ({ page }) => {
     await page.goto("/#sessions");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='sessions']").selectOption("multiple-active");
     await expect(page.locator("[data-session-history-row^='scenario-']")).toHaveCount(3);
@@ -445,8 +562,7 @@ test.describe("local Developer Scenarios", () => {
 
   test("renders Community scenario analytics and cards from the same records", async ({ page }) => {
     await page.goto("/#gallery");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='community']").selectOption("growing");
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Sample Community Data");
@@ -461,8 +577,7 @@ test.describe("local Developer Scenarios", () => {
 
   test("keeps profile summary, trend, identity, and recognition on one profile fixture", async ({ page }) => {
     await page.goto("/#profile");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='profile']").selectOption("community-leader");
     await page.goto("/#network");
@@ -476,8 +591,7 @@ test.describe("local Developer Scenarios", () => {
 
   test("keeps Seed Vault overview, planning, collections, and insights on one fixture", async ({ page }) => {
     await page.goto("/#seed-vault");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='seedVault']").selectOption("first");
     await expect(page.locator("#my-seed-vault")).toContainText("1 Vault Entry");
@@ -490,8 +604,7 @@ test.describe("local Developer Scenarios", () => {
   test("renders Explore scenarios without canonical GIE requests or fixture leakage", async ({ page }) => {
     const scenarioGieRequests = [];
     await page.goto("/#seeds");
-    await openScenarioPanel(page);
-    await page.getByRole("button", { name: "Enable Scenarios", exact: true }).click();
+    await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='explore']").selectOption("healthy");
     page.on("request", (request) => {
