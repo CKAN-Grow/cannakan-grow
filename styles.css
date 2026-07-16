@@ -29810,6 +29810,187 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   color: #f0c56a;
 }
 
+/* Local-only Developer Scenarios control surface. */
+.developer-scenarios-banner {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10020;
+  padding: 7px 16px;
+  border-bottom: 1px solid rgba(255, 190, 61, 0.72);
+  background: #43235f;
+  color: #fff3c4;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.085em;
+  text-align: center;
+}
+
+body.developer-scenarios-active {
+  padding-top: 30px;
+}
+
+.developer-scenarios-launcher {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10010;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid rgba(188, 129, 236, 0.6);
+  border-radius: 10px;
+  background: #251333;
+  color: #f7eaff;
+  box-shadow: 0 12px 30px rgba(11, 4, 18, 0.38);
+  cursor: pointer;
+}
+
+.developer-scenarios-launcher strong {
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #d7b0f2;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+
+.developer-scenarios-launcher.is-active strong {
+  background: #f3b63e;
+  color: #281500;
+}
+
+.developer-scenarios-panel {
+  position: fixed;
+  right: 18px;
+  bottom: 70px;
+  z-index: 10011;
+  width: min(390px, calc(100vw - 36px));
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid rgba(188, 129, 236, 0.55);
+  border-radius: 14px;
+  background: #18101f;
+  color: #f7effc;
+  box-shadow: 0 20px 55px rgba(8, 2, 12, 0.52);
+}
+
+.developer-scenarios-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.developer-scenarios-panel-heading div,
+.developer-scenarios-field {
+  display: grid;
+  gap: 3px;
+}
+
+.developer-scenarios-panel-heading span,
+.developer-scenarios-panel-note,
+.developer-scenarios-field span {
+  color: #cbbbd4;
+  font-size: 0.78rem;
+}
+
+.developer-scenarios-panel-heading button {
+  border: 0;
+  background: transparent;
+  color: #e8d7f1;
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+
+.developer-scenarios-panel-note {
+  margin: 12px 0;
+  line-height: 1.45;
+}
+
+.developer-scenarios-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.developer-scenarios-field select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(188, 129, 236, 0.38);
+  border-radius: 8px;
+  background: #0f0b13;
+  color: #fff;
+}
+
+.developer-scenarios-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.developer-scenarios-actions .button {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+}
+
+.developer-scenario-page-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin: 7px 0 3px;
+  padding: 4px 8px;
+  border: 1px solid rgba(243, 182, 62, 0.52);
+  border-radius: 6px;
+  background: rgba(67, 35, 95, 0.86);
+  color: #fff0bb;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.025em;
+}
+
+.developer-scenario-analytics-label {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.45rem;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent, #8fd43c) 42%, transparent);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--accent, #8fd43c) 10%, transparent);
+  color: var(--accent, #9bdd47);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .developer-scenarios-banner {
+    font-size: 0.62rem;
+    letter-spacing: 0.045em;
+  }
+
+  .developer-scenarios-launcher {
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .developer-scenarios-panel {
+    left: 10px;
+    right: 10px;
+    bottom: 62px;
+    width: auto;
+    max-height: calc(100vh - 104px);
+  }
+
+  .developer-scenarios-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .sr-only {
   position: absolute !important;
   width: 1px !important;

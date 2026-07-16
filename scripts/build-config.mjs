@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { extname, resolve } from "node:path";
 
 const url = process.env.CANNAKAN_SUPABASE_URL || "";
@@ -30,6 +30,12 @@ if ((!url || !anonKey) && isVercelBuild) {
 
 if (devPreviewDataEnabled && isVercelBuild) {
   console.error("CANNAKAN_DEV_PREVIEW_DATA must not be enabled for production/Vercel builds.");
+  process.exit(1);
+}
+
+const applicationSource = readFileSync(resolve(process.cwd(), "app.js"), "utf8");
+if (!applicationSource.includes("const DEVELOPER_SCENARIOS_DEFAULT_ENABLED = false;")) {
+  console.error("Developer Scenarios must remain disabled by default in production builds.");
   process.exit(1);
 }
 

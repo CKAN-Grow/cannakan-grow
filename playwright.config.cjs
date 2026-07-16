@@ -35,7 +35,7 @@ module.exports = defineConfig({
   projects: [
     {
       name: "founder-desktop",
-      testMatch: /founder-smoke\.spec\.js/,
+      testMatch: /(founder-smoke|developer-scenarios)\.spec\.js/,
       use: {
         viewport: { width: 1366, height: 900 },
       },

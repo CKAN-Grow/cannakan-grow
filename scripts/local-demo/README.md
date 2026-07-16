@@ -2,6 +2,8 @@
 
 This subsystem creates a small, connected proof dataset for local CannaKAN development. It inserts legitimate source records, sessions, approved Community evidence, profiles, and Seed Vault records; report data is then derived by the existing canonical GIE RPCs. It does not seed report payloads or implement a demo analytics path.
 
+This database-seeding subsystem is separate from the browser's [Developer Scenarios](../../docs/developer-scenarios.md). Developer Scenarios supplies read-only presentation fixtures through in-app providers and never inserts local Supabase data; these scripts create deterministic local database records for integration and canonical GIE testing.
+
 > **Local only:** never use these commands against a hosted, staging, or production Supabase project. Every command fails closed unless it can positively identify this repository's running local Supabase database and Docker project.
 
 ## Prerequisites

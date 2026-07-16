@@ -4,6 +4,11 @@
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
   const isoDaysAgo = (daysAgo) => new Date(now - (daysAgo * day)).toISOString();
+  const deepFreeze = (value) => {
+    if (!value || typeof value !== "object") return value;
+    Object.values(value).forEach(deepFreeze);
+    return Object.freeze(value);
+  };
 
   function entry(seedName, index, overrides) {
     const base = {
@@ -75,14 +80,16 @@
 
   const fixtureSets = Object.freeze({
     empty: Object.freeze({ label: "Empty Vault", entries: Object.freeze([]), collections: Object.freeze([]) }),
+    first: Object.freeze({ label: "First Seed", entries: Object.freeze(largeEntries.slice(0, 1)), collections: Object.freeze(["Next Grow"]) }),
     small: Object.freeze({ label: "Small Vault", entries: Object.freeze(largeEntries.slice(0, 3)), collections: Object.freeze(["Next Grow", "Purple Hunt"]) }),
     large: Object.freeze({ label: "Large Vault", entries: largeEntries, collections: Object.freeze(["Next Grow", "Outdoor 2027", "Purple Hunt", "Archive Shelf", "Testing Bench"]) }),
     collector: Object.freeze({ label: "Collector Vault", entries: Object.freeze(largeEntries.filter((item) => item.collections.includes("Archive Shelf") || item.isFavorite).slice(0, 10)), collections: Object.freeze(["Archive Shelf", "Purple Hunt", "Preservation"]) }),
+    planning: Object.freeze({ label: "Planning Focus", entries: Object.freeze(largeEntries.filter((item) => item.planningStatus === "planned")), collections: Object.freeze(["Next Grow"]) }),
     testing: Object.freeze({ label: "Testing Program Vault", entries: Object.freeze(largeEntries.filter((item) => item.testingProgramEnabled || item.growAlongEnabled)), collections: Object.freeze(["Testing Bench", "Next Grow"]) }),
     stress: Object.freeze({ label: "Mobile Stress Test", entries: largeEntries, collections: Object.freeze(["Collection With A Very Long Preview Name", "Outdoor 2027", "Purple Hunt", "Archive Shelf", "Testing Bench"]) }),
   });
 
-  globalObject.CANNAKAN_SEED_VAULT_PREVIEW_FIXTURES = Object.freeze({
+  globalObject.CANNAKAN_SEED_VAULT_PREVIEW_FIXTURES = deepFreeze({
     defaultSetId: "large",
     sets: fixtureSets,
   });
