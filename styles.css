@@ -81069,3 +81069,578 @@ a.source-directory-variety-chip:focus-visible {
     transition: none;
   }
 }
+
+/* Seed Vault premium personal-library refinement */
+.seed-vault-page[data-seed-vault-theme] {
+  background:
+    radial-gradient(circle at 14% 4%, color-mix(in srgb, var(--seed-vault-theme-accent) 2%, transparent), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.008), transparent 20%);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] {
+  --vault-library-ink: #070a09;
+  --vault-library-line: rgba(255, 255, 255, 0.075);
+  --vault-library-line-soft: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.085);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 18%),
+    linear-gradient(180deg, #101411 0%, var(--vault-library-ink) 48%, #050706 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 2px 0 color-mix(in srgb, var(--vault-theme-primary) 22%, transparent),
+    0 28px 60px rgba(0, 0, 0, 0.34);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"]::before {
+  background: linear-gradient(180deg, rgba(5, 7, 6, 0.02), rgba(5, 7, 6, 0.72) 42%, #050706 76%);
+  opacity: 1;
+  filter: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"]::after {
+  background:
+    radial-gradient(circle at 12% 3%, color-mix(in srgb, var(--vault-theme-glow) 34%, transparent), transparent 25%),
+    linear-gradient(180deg, color-mix(in srgb, var(--vault-theme-surface) 16%, transparent), transparent 28%);
+  opacity: 0.55;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview {
+  gap: clamp(18px, 2vw, 24px);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero {
+  align-content: space-between;
+  min-height: 212px;
+  padding: 26px 28px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background:
+    linear-gradient(90deg, rgba(6, 9, 8, 0.97) 0%, rgba(6, 9, 8, 0.88) 44%, rgba(6, 9, 8, 0.42) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 36%),
+    url("/assets/images/methods/kan-grow-companion-hero.png");
+  background-position: center 44%;
+  background-size: cover;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 22px 44px rgba(0, 0, 0, 0.28);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero::after {
+  background:
+    radial-gradient(circle at 10% 12%, color-mix(in srgb, var(--vault-theme-glow) 30%, transparent), transparent 28%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.06), transparent 72%);
+  opacity: 0.72;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-title-icon {
+  width: 42px;
+  height: 42px;
+  padding: 9px;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(7, 11, 9, 0.72);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero-copy {
+  gap: 10px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero-copy h3 {
+  font-size: clamp(2.05rem, 3.4vw, 2.8rem);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  text-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero-copy p:not(.eyebrow) {
+  color: rgba(229, 234, 230, 0.72);
+  font-size: 0.98rem;
+  font-weight: 430;
+  line-height: 1.48;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero-actions {
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-search input {
+  min-height: 46px;
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(3, 6, 5, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-filter-button.button,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-share-button.button {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(7, 10, 9, 0.82);
+  color: rgba(244, 247, 243, 0.86);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero-actions .seed-vault-add-button.button {
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24), 0 0 22px color-mix(in srgb, var(--vault-theme-glow) 34%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section {
+  border-color: var(--vault-library-line-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 44%),
+    rgba(9, 12, 11, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot {
+  padding: 14px 10px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat {
+  padding-block: 11px;
+  border-right-color: rgba(255, 255, 255, 0.06);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat-icon,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card-icon,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-insight-icon {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat strong {
+  color: color-mix(in srgb, var(--vault-theme-primary) 54%, white 46%);
+  font-weight: 760;
+  text-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat span,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card span {
+  color: rgba(201, 209, 202, 0.56);
+  font-weight: 650;
+  letter-spacing: 0.07em;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section {
+  gap: 14px;
+  padding: 18px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section.is-empty-collapsible {
+  padding: 15px 18px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning {
+  border-color: var(--vault-library-line-soft);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 44%),
+    rgba(9, 12, 11, 0.92);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-empty-collapse-row {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section-header h4,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-empty-collapse-main h4 {
+  color: rgba(248, 250, 247, 0.94);
+  font-size: 1.02rem;
+  font-weight: 740;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-empty-collapse-main p {
+  color: rgba(205, 213, 206, 0.56);
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-empty-action {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card-grid {
+  gap: 12px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card {
+  min-height: 82px;
+  padding: 14px;
+  border-color: rgba(255, 255, 255, 0.055);
+  background: rgba(255, 255, 255, 0.026);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card strong {
+  color: rgba(247, 249, 246, 0.92);
+  font-weight: 720;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card--insight {
+  min-height: 96px;
+  padding: 16px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card--insight strong {
+  margin-top: 3px;
+  font-size: 0.96rem;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card small {
+  color: rgba(194, 203, 196, 0.48);
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-list {
+  gap: 0;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row {
+  min-height: 62px;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row:last-child {
+  border-bottom: 0;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row strong,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card strong {
+  font-weight: 700;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row span,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row time,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card small {
+  color: rgba(196, 204, 197, 0.5);
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card {
+  border-color: rgba(255, 255, 255, 0.065);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 56%),
+    rgba(8, 11, 10, 0.9);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:focus-visible {
+  border-color: color-mix(in srgb, var(--vault-theme-border) 58%, rgba(255, 255, 255, 0.08));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--vault-theme-surface) 20%, rgba(255, 255, 255, 0.025)), transparent),
+    rgba(9, 13, 11, 0.94);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.24);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collection-layout {
+  margin-top: clamp(34px, 4vw, 52px);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-inventory-heading {
+  align-items: end;
+  padding: 0 4px 8px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-inventory-heading .eyebrow {
+  color: rgba(188, 198, 190, 0.48);
+  font-weight: 650;
+  letter-spacing: 0.11em;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-inventory-heading h4 {
+  color: #f7f9f6;
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  font-weight: 760;
+  letter-spacing: -0.02em;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-inventory-heading h4 span,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-inventory-heading > span {
+  color: rgba(196, 205, 198, 0.5);
+  font-weight: 520;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-controls {
+  padding: 20px;
+  border-color: var(--vault-library-line);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), transparent 36%),
+    rgba(9, 12, 11, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 16px 32px rgba(0, 0, 0, 0.2);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-controls .seed-vault-search-field > span,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-controls .seed-vault-filter-row label > span {
+  color: rgba(194, 203, 196, 0.58);
+  font-weight: 620;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-search-field input,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-filter-row select {
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(4, 7, 6, 0.88);
+  color: rgba(244, 247, 243, 0.88);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-controls .seed-vault-results-count {
+  color: rgba(196, 205, 198, 0.48);
+  font-weight: 520;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collections {
+  gap: 12px;
+  padding: 12px 2px 2px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collections-header span {
+  color: rgba(191, 201, 193, 0.5);
+  font-weight: 650;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collections-header h4 {
+  color: rgba(245, 248, 244, 0.9);
+  font-size: 0.94rem;
+  font-weight: 720;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collections-header small {
+  color: rgba(190, 200, 192, 0.46);
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collections .seed-vault-quick-view {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.026);
+  color: rgba(224, 230, 224, 0.7);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-collections .seed-vault-quick-view.is-active {
+  border-color: color-mix(in srgb, var(--vault-theme-border) 70%, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--vault-theme-surface) 62%, rgba(255, 255, 255, 0.025));
+  color: color-mix(in srgb, var(--vault-theme-primary) 70%, white 30%);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--vault-theme-primary) 72%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-quick-view-label {
+  font-weight: 620;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-insights {
+  border-color: rgba(255, 255, 255, 0.065);
+  background: rgba(8, 11, 10, 0.7);
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-insights summary {
+  border-bottom-color: rgba(255, 255, 255, 0.055);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-insights[open] summary {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-grid {
+  gap: 12px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-card {
+  border-color: rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent 34%),
+    rgba(8, 11, 10, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 12px 26px rgba(0, 0, 0, 0.2);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
+  min-height: 126px;
+  padding: 15px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-identity-copy {
+  gap: 5px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-identity h4 {
+  font-size: clamp(1.12rem, 1.35vw, 1.28rem);
+  font-weight: 760;
+  letter-spacing: -0.015em;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-provenance,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-traits {
+  color: rgba(199, 208, 201, 0.52);
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-provenance strong {
+  color: rgba(229, 235, 228, 0.72);
+  font-weight: 620;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-insight-strip strong {
+  color: rgba(237, 242, 236, 0.82);
+  font-weight: 650;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-insight-strip small {
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-status-pill {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.045);
+  font-weight: 680;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-status-pill.is-in-vault,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-status-pill.is-success,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-status-pill.is-planned,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-status-pill.is-active {
+  border-color: color-mix(in srgb, var(--vault-theme-border) 50%, transparent);
+  background: color-mix(in srgb, var(--vault-theme-surface) 64%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-card:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-entry-card:focus-within {
+  border-color: color-mix(in srgb, var(--vault-theme-border) 55%, rgba(255, 255, 255, 0.08));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--vault-theme-surface) 18%, rgba(255, 255, 255, 0.025)), transparent 40%),
+    rgba(9, 13, 11, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 20px 40px rgba(0, 0, 0, 0.3),
+    0 0 22px color-mix(in srgb, var(--vault-theme-glow) 16%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-summary-panel.seed-vault-living-dashboard {
+  gap: 0;
+  padding: 6px;
+  border: 1px solid var(--vault-library-line);
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent 34%),
+    rgba(8, 11, 10, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-side-card--dashboard,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-side-card--signals {
+  padding: 16px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-side-card--signals {
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 0 0 14px 14px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-living-dashboard .seed-vault-side-card-heading span {
+  font-weight: 760;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-living-dashboard .seed-vault-side-card-heading small,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-dashboard-metrics span,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-dashboard-signals span {
+  font-weight: 480;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-dashboard-metrics article {
+  border: 0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-dashboard-signals strong {
+  font-weight: 620;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-secondary-settings {
+  gap: 14px;
+  margin-top: clamp(30px, 4vw, 48px);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-control {
+  padding: 18px;
+  border-color: rgba(255, 255, 255, 0.075);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 44%),
+    rgba(8, 11, 10, 0.94);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-current > span {
+  color: rgba(195, 204, 197, 0.52);
+  font-weight: 620;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-current strong {
+  font-size: 1.08rem;
+  font-weight: 720;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-current small {
+  color: rgba(195, 204, 197, 0.5);
+  font-weight: 430;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-option,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-more-summary {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.028);
+  color: rgba(220, 227, 221, 0.68);
+  font-weight: 620;
+  box-shadow: none;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-option.is-active {
+  border-color: var(--vault-theme-primary);
+  background: color-mix(in srgb, var(--vault-theme-surface) 78%, rgba(255, 255, 255, 0.025));
+  color: color-mix(in srgb, var(--vault-theme-primary) 68%, white 32%);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--vault-theme-glow) 24%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-share-status {
+  border-top-color: rgba(255, 255, 255, 0.06);
+  color: rgba(195, 204, 197, 0.5);
+}
+
+@media (min-width: 701px) and (max-width: 1180px) {
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-side-card--signals {
+    border-top: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.065);
+    border-radius: 0 14px 14px 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero {
+    min-height: 230px;
+    padding: 22px 20px;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-hero-copy h3 {
+    font-size: clamp(1.8rem, 8vw, 2.3rem);
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-controls,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-theme-control {
+    padding: 16px;
+  }
+}
