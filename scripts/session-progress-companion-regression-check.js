@@ -111,6 +111,17 @@ if (!detailLifecycleSection.includes("session-lifecycle-section--companion")) {
   }
 });
 
+const rightColumnStart = rendererSource.indexOf('<div class="session-progress-companion-right">');
+const rightColumnEnd = rendererSource.indexOf("</div>\n      </div>", rightColumnStart);
+const roadmapStart = rendererSource.indexOf('<section class="session-progress-companion-roadmap"', rightColumnStart);
+const actionPanelStart = rendererSource.indexOf('<section class="session-progress-companion-action-panel"', rightColumnStart);
+if (rightColumnStart === -1 || rightColumnEnd === -1 || roadmapStart === -1 || actionPanelStart === -1) {
+  throw new Error("Session Progress should render the roadmap and current action inside the right column.");
+}
+if (!(roadmapStart < actionPanelStart && actionPanelStart < rightColumnEnd)) {
+  throw new Error("Current action CTA should render directly after the roadmap inside the Session Progress right column.");
+}
+
 [
   'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/images/methods";',
   "const KAN_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/kan-grow-companion-bg.png`;",
