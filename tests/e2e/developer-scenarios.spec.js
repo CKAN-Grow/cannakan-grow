@@ -785,17 +785,29 @@ test.describe("local Developer Scenarios", () => {
     expect(longestNameTreatment.length).toBeGreaterThanOrEqual(15);
     expect(longestNameTreatment).toMatchObject({ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" });
 
-    for (const width of [1280, 768, 390]) {
+    for (const width of [1280, 1024, 768, 390]) {
       await page.setViewportSize({ width, height: width === 390 ? 900 : 980 });
       const responsive = await page.evaluate(() => {
+        const card = document.querySelector(".seed-vault-entry-grid--list .seed-vault-entry-card:first-child");
+        const row = card.querySelector(".seed-vault-entry-collapsed-row").getBoundingClientRect();
+        const visual = card.querySelector(".seed-vault-entry-visual-button").getBoundingClientRect();
+        const identity = card.querySelector(".seed-vault-entry-identity").getBoundingClientRect();
+        const statuses = card.querySelector(".seed-vault-entry-status-pills").getBoundingClientRect();
+        const actions = card.querySelector(".seed-vault-entry-actions").getBoundingClientRect();
+        const actionControls = [...card.querySelectorAll(".seed-vault-favorite-button, .seed-vault-more-button")];
         const favorite = document.querySelector(".seed-vault-favorite-button.is-active");
         const favoriteBox = favorite.getBoundingClientRect();
-        const pills = [...document.querySelectorAll(".seed-vault-entry-card:first-child .seed-vault-entry-status-pill")]
+        const pills = [...card.querySelectorAll(".seed-vault-entry-status-pill")]
           .filter((pill) => getComputedStyle(pill).display !== "none")
           .map((pill) => pill.getBoundingClientRect());
         const overlap = pills.some((left, index) => pills.slice(index + 1).some((right) => !(left.right <= right.left || right.right <= left.left || left.bottom <= right.top || right.bottom <= left.top)));
         return {
           overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          identityGap: identity.left - visual.right,
+          actionsRightInset: row.right - actions.right,
+          actionsAreFinalDesktopColumn: window.innerWidth < 560 || actions.left >= statuses.right - 1,
+          actionOrder: actionControls.map((control) => control.matches(".seed-vault-favorite-button") ? "favorite" : "overflow"),
+          actionSizes: actionControls.map((control) => { const box = control.getBoundingClientRect(); return [box.width, box.height]; }),
           favoriteVisible: getComputedStyle(favorite).display !== "none" && favoriteBox.width > 0 && favoriteBox.height > 0,
           favoriteWidth: favoriteBox.width,
           favoriteHeight: favoriteBox.height,
@@ -803,6 +815,16 @@ test.describe("local Developer Scenarios", () => {
         };
       });
       expect(responsive.overflow).toBeLessThanOrEqual(1);
+      expect(responsive.identityGap).toBeGreaterThanOrEqual(0);
+      expect(responsive.identityGap).toBeLessThanOrEqual(14);
+      expect(responsive.actionsRightInset).toBeGreaterThanOrEqual(0);
+      expect(responsive.actionsRightInset).toBeLessThanOrEqual(15);
+      expect(responsive.actionsAreFinalDesktopColumn).toBe(true);
+      expect(responsive.actionOrder).toEqual(["favorite", "overflow"]);
+      expect(responsive.actionSizes).toHaveLength(2);
+      if (width === 390) {
+        expect(Math.min(...responsive.actionSizes.flat())).toBeGreaterThanOrEqual(44);
+      }
       expect(responsive.favoriteVisible).toBe(true);
       expect(responsive.favoriteWidth).toBeGreaterThanOrEqual(width === 390 ? 44 : 40);
       expect(responsive.favoriteHeight).toBeGreaterThanOrEqual(width === 390 ? 44 : 38);
