@@ -82932,11 +82932,34 @@ a.source-directory-variety-chip:focus-visible {
 .seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
   display: grid;
   grid-template-columns: 86px minmax(300px, 1fr) minmax(150px, auto) auto;
-  gap: 15px;
+  gap: 12px;
   align-items: center;
   min-width: 0;
   min-height: 96px;
   padding: 10px 12px;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-visual-button {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-library-copy {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-status-pills {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-actions {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  flex-direction: row;
 }
 
 .seed-vault-entry-visual-button {
@@ -83932,10 +83955,29 @@ a.source-directory-variety-chip:focus-visible {
     grid-template-columns: 80px minmax(0, 1fr) auto;
   }
 
+  .seed-vault-entry-grid--list .seed-vault-entry-visual-button {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-library-copy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
   .seed-vault-entry-grid--list .seed-vault-entry-status-pills,
   .seed-vault-entry-grid--gallery .seed-vault-entry-card.is-expanded .seed-vault-entry-status-pills {
     grid-column: 2 / 3;
+    grid-row: 2;
     justify-content: flex-start;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-actions {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    justify-self: end;
+    align-self: center;
+    flex-direction: column;
   }
 
   .seed-vault-entry-grid--gallery {
@@ -84688,6 +84730,50 @@ a.source-directory-variety-chip:focus-visible {
     transition-duration: 0.01ms;
     animation-duration: 0.01ms;
     animation-iteration-count: 1;
+  }
+}
+
+
+@media (max-width: 560px) {
+  .seed-vault-entry-grid--list .seed-vault-entry-collapsed-row {
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    gap: 10px 12px;
+    padding: 10px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-visual-button {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    width: 92px;
+    height: 104px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-library-copy {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 8px;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-status-pills {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-entry-actions {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    align-self: end;
+    justify-content: flex-end;
+    flex-direction: row;
+  }
+
+  .seed-vault-entry-grid--list .seed-vault-favorite-button,
+  .seed-vault-entry-grid--list .seed-vault-more-button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 
