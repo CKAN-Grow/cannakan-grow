@@ -808,4 +808,128 @@ test.describe("local Developer Scenarios", () => {
     await page.getByRole("button", { name: "Return to Live Data", exact: true }).click();
     await expect(page.locator("[href*='scenario-explore'], [data-seed-id^='scenario-explore']")).toHaveCount(0);
   });
+  test("enforces one physical seed per affected method row", async ({ page }) => {
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    const audit = await page.evaluate(() => {
+      const methodUi = ["ROCKWOOL", "RAPID_ROOTER", "DIRECT_SOW"].map((methodType) => {
+        const method = getMethodConfig(methodType);
+        const partition = createPartitionsForSystem(methodType, 1)[0];
+        const host = document.createElement("div");
+        host.dataset.methodType = methodType;
+        const row = buildPartitionFormCard(partition, 0, {
+          methodType,
+          rowLabel: method.rowLabel,
+        });
+        host.appendChild(row);
+        document.body.appendChild(host);
+        hydratePartitionRow(row, partition);
+        bindWholeSeedCountInputGuards(host);
+        const seedInput = row.querySelector('input[name^="seedCount-"]');
+        const resultInput = row.querySelector('input[name="plantedCount"]');
+        seedInput.value = "9";
+        seedInput.dispatchEvent(new Event("input", { bubbles: true }));
+        const seedAfterProgrammaticInput = seedInput.value;
+        resultInput.value = "2";
+        resultInput.dispatchEvent(new Event("input", { bubbles: true }));
+        const invalidResultAfterInput = resultInput.value;
+        resultInput.value = "1";
+        resultInput.dispatchEvent(new Event("input", { bubbles: true }));
+        const validResultAfterInput = resultInput.value;
+        const details = {
+          methodType,
+          rowLabel: method.rowLabel,
+          addLabel: `+ Add ${method.rowLabel}`,
+          seedValue: seedInput.value,
+          seedReadOnly: seedInput.readOnly,
+          seedAriaReadOnly: seedInput.getAttribute("aria-readonly"),
+          resultPattern: resultInput.getAttribute("pattern"),
+          resultMaxLength: resultInput.maxLength,
+          seedAfterProgrammaticInput,
+          invalidResultAfterInput,
+          validResultAfterInput,
+        };
+        host.remove();
+        return details;
+      });
+
+      const graph = getFullGrowDemoGraph();
+      const affectedFixtureSessions = [...graph.sessions, ...graph.draftSessions]
+        .filter((session) => isSingleSeedPositionMethod(session.systemType));
+      const affectedFixtureRowsValid = affectedFixtureSessions.every((session) => (
+        session.partitions.every((partition) => Number(partition.seedCount) === 1 && ["0", "1"].includes(String(partition.plantedCount)))
+        && validateSessionSingleSeedPositionRules(session).isValid
+        && getSessionResultSummary(session, { includePendingCustomResults: true }).overall.totalSeeds === session.partitions.length
+      ));
+
+      const legacy = normalizeStoredSession({
+        id: "legacy-rockwool",
+        systemType: "ROCKWOOL",
+        sessionStatus: "completed",
+        partitions: [{ id: 1, seedCount: 4, plantedCount: "3" }],
+      });
+      const legacyOriginalValid = validateSessionSingleSeedPositionRules(legacy).isValid;
+      legacy.partitions[0].seedCount = 5;
+      const legacyIncreaseRejected = !validateSessionSingleSeedPositionRules(legacy).isValid;
+      legacy.partitions[0].seedCount = 4;
+
+      return {
+        methodUi,
+        aliases: {
+          rockWool: normalizeMethodType("Rock Wool"),
+          rapidRooter: normalizeMethodType("Rapid Rooter"),
+          starterPlug: normalizeMethodType("Starter Plug"),
+          plantingPosition: normalizeMethodType("Planting Position"),
+        },
+        successDisplays: [formatSuccessPercent(1, 0), formatSuccessPercent(1, 1)],
+        affectedFixtureSessionCount: affectedFixtureSessions.length,
+        affectedFixtureRowsValid,
+        legacyOriginalValid,
+        legacyIncreaseRejected,
+        legacyBaselineNotPersisted: !JSON.stringify(legacy).includes(SINGLE_SEED_POSITION_LEGACY_BASELINE_PROPERTY),
+        newMultiSeedRejected: !validateSessionSingleSeedPositionRules({
+          systemType: "DIRECT_SOW",
+          sessionStatus: "completed",
+          partitions: [{ id: 1, seedCount: 2, plantedCount: "1" }],
+        }).isValid,
+        validBinaryRowAccepted: validateSessionSingleSeedPositionRules({
+          systemType: "RAPID_ROOTER",
+          sessionStatus: "completed",
+          partitions: [{ id: 1, seedCount: 1, plantedCount: "0" }],
+        }).isValid,
+      };
+    });
+
+    expect(audit.methodUi).toEqual([
+      expect.objectContaining({ methodType: "ROCKWOOL", rowLabel: "Cube", addLabel: "+ Add Cube" }),
+      expect.objectContaining({ methodType: "RAPID_ROOTER", rowLabel: "Plug", addLabel: "+ Add Plug" }),
+      expect.objectContaining({ methodType: "DIRECT_SOW", rowLabel: "Planting Position", addLabel: "+ Add Planting Position" }),
+    ]);
+    for (const method of audit.methodUi) {
+      expect(method).toMatchObject({
+        seedValue: "1",
+        seedReadOnly: true,
+        seedAriaReadOnly: "true",
+        resultPattern: "[01]",
+        resultMaxLength: 1,
+        seedAfterProgrammaticInput: "1",
+        invalidResultAfterInput: "",
+        validResultAfterInput: "1",
+      });
+    }
+    expect(audit.aliases).toEqual({
+      rockWool: "ROCKWOOL",
+      rapidRooter: "RAPID_ROOTER",
+      starterPlug: "RAPID_ROOTER",
+      plantingPosition: "DIRECT_SOW",
+    });
+    expect(audit.successDisplays).toEqual(["0%", "100%"]);
+    expect(audit.affectedFixtureSessionCount).toBeGreaterThan(0);
+    expect(audit.affectedFixtureRowsValid).toBe(true);
+    expect(audit.legacyOriginalValid).toBe(true);
+    expect(audit.legacyIncreaseRejected).toBe(true);
+    expect(audit.legacyBaselineNotPersisted).toBe(true);
+    expect(audit.newMultiSeedRejected).toBe(true);
+    expect(audit.validBinaryRowAccepted).toBe(true);
+  });
 });

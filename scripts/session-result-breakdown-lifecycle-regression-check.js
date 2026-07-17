@@ -6,7 +6,8 @@ const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
 const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
 
 for (const needle of [
-  "const isCompletedSession = normalizedResultStatus === \"completed\";",
+  "const isCompletedScenarioResult = isDeveloperScenarioRecord(sessionOrSummary)",
+  "const isCompletedSession = normalizedResultStatus === \"completed\" || isCompletedScenarioResult;",
   "const isSetupSession = !isCompletedSession",
   "const isInProgressSession = !isCompletedSession && !isSetupSession;",
   "Setup Required",
