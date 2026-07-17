@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
 
@@ -9,6 +9,7 @@ const build = read("scripts/build-config.mjs");
 const styles = read("styles.css");
 const indexHtml = read("index.html");
 const serviceWorker = read("service-worker.js");
+const localServer = read("local-server.ps1");
 
 const gateStart = app.indexOf("function isApprovedDeveloperScenariosEnvironment()");
 const gateEnd = app.indexOf("\nfunction isDeveloperPreviewAllowed()", gateStart);
@@ -26,6 +27,23 @@ const evaluateGate = ({ hostname, explicitFlag = false, authReady = false, user 
 const fullGrowStart = app.indexOf("function buildFullGrowDemoGraph()");
 const fullGrowEnd = app.indexOf("\nfunction validateFullGrowDemoGraph(", fullGrowStart);
 const fullGrowSource = app.slice(fullGrowStart, fullGrowEnd);
+const snapshotCatalogStart = app.indexOf("const DEMO_SNAPSHOT_IMAGE_URLS");
+const snapshotCatalogEnd = app.indexOf("\n]);", snapshotCatalogStart);
+const snapshotCatalogSource = app.slice(snapshotCatalogStart, snapshotCatalogEnd);
+const localImageAssetPattern = /\/(?:assets|src\/assets)\/[^\s"'`)]+?\.(?:png|jpe?g|webp|gif|svg|avif)(?:\?[^\s"'`)]*)?/gi;
+const localImageAssetUrls = [...new Set([app, fixture, styles, indexHtml]
+  .flatMap((source) => [...source.matchAll(localImageAssetPattern)].map((match) => match[0])))]
+  .sort();
+const localImageAssetExists = (url) => {
+  const pathname = decodeURIComponent(String(url || "").split(/[?#]/, 1)[0]).replace(/^\/+/, "");
+  return existsSync(resolve(process.cwd(), pathname)) || existsSync(resolve(process.cwd(), "public", pathname));
+};
+const missingLocalImageAssets = localImageAssetUrls.filter((url) => !localImageAssetExists(url));
+const snapshotCatalogFileNames = new Set([...snapshotCatalogSource.matchAll(/\/assets\/demo\/snapshots\/([^"']+?\.(?:jpe?g|png|webp))/gi)]
+  .map((match) => decodeURIComponent(match[1])));
+const dynamicFullGrowSnapshotFileNames = [...new Set([...fullGrowSource.matchAll(/["']([^"'/]+?\.(?:jpe?g|png|webp))["']/gi)]
+  .map((match) => match[1]))];
+const uncataloguedFullGrowSnapshotFileNames = dynamicFullGrowSnapshotFileNames.filter((fileName) => !snapshotCatalogFileNames.has(fileName));
 const authStart = app.indexOf("async function handleAuthSession(");
 const authEnd = app.indexOf("\nasync function loadUserSessions(", authStart);
 const authSource = app.slice(authStart, authEnd);
@@ -45,6 +63,9 @@ const checks = [
   ["cross-module graph validation", app.includes("function validateFullGrowDemoGraph(") && app.includes("graph.communitySnapshots.forEach") && app.includes("graph.reportProjections.sources.forEach") && app.includes("graph.collectionMemberships.some")],
   ["Full Grow Demo fixture scale", app.includes("graph.sessions.length + drafts.length !== 23") && app.includes("graph.vaultEntries.length !== 50") && app.includes("Array.from({ length: 180 }") && app.includes("graph.activeSessions.length !== 4")],
   ["Full Grow Demo content breadth", app.includes('"Northern Lights Collective"') && app.includes('"Sunset Auto Test 3"') && app.includes("communityEvidenceIndexes") && app.includes("seedTypeRows")],
+  ["Preview Studio local image assets resolve", localImageAssetUrls.length > 0 && missingLocalImageAssets.length === 0],
+  ["Full Grow Demo dynamic snapshots use the tracked catalog", snapshotCatalogFileNames.size > 0 && uncataloguedFullGrowSnapshotFileNames.length === 0],
+  ["cache-busted local image requests resolve by pathname", localServer.includes("$requestUri.AbsolutePath") && !localServer.includes('$path = ($requestLine -split " ")[1]')],
   ["KAN flagship data composition", app.includes('index < 144 ? "KAN"') && app.includes('Array.from({ length: 23 }') && app.includes('completedKanShare < 0.75') && app.includes('"KAN Evidence Leader"')],
   ["Full Grow Demo Rockwool composition", fullGrowSource.includes('["ROCKWOOL", 6') && fullGrowSource.includes('method: "ROCKWOOL", status: "soaking"') && fullGrowSource.includes('index < 152 ? "ROCKWOOL"') && !fullGrowSource.includes('"TRA"') && !fullGrowSource.includes("TRā")],
   ["Full Grow Demo rejects TRā presentation records", app.includes('presentationMethods.includes("TRA")') && app.includes("Full Grow Demo must not contain TRā presentation records.")],
