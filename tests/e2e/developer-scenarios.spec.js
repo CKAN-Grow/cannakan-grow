@@ -682,6 +682,73 @@ test.describe("local Developer Scenarios", () => {
     }
   });
 
+  test("Seed Vault final visual alignment meets the computed design contract", async ({ page }) => {
+    test.setTimeout(90_000);
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    for (const [index, width] of [390, 768, 1280].entries()) {
+      await page.setViewportSize({ width, height: width === 390 ? 900 : 980 });
+      await page.goto("/#seed-vault");
+      if (index === 0) await useFullGrowDemo(page);
+      await closeScenarioPanel(page);
+      await expect(page.locator(".seed-vault-planning-destination")).toHaveCount(3);
+
+      const computed = await page.evaluate(() => {
+        const size = (selector) => {
+          const box = document.querySelector(selector)?.getBoundingClientRect();
+          return box ? { width: box.width, height: box.height } : null;
+        };
+        const planningCard = document.querySelector(".seed-vault-planning-destination");
+        const planningIcon = planningCard.querySelector(".seed-vault-overview-card-icon").getBoundingClientRect();
+        const planningTitle = planningCard.querySelector(":scope > span:not(.seed-vault-overview-card-icon)").getBoundingClientRect();
+        return {
+          hero: size(".seed-vault-approved-hero"),
+          overviewTile: size(".seed-vault-overview-stat-icon"),
+          overviewSvg: size(".seed-vault-overview-stat-icon svg"),
+          planningTile: size(".seed-vault-overview-card-icon"),
+          planningSvg: size(".seed-vault-overview-card-icon svg"),
+          sectionSvg: size(".seed-vault-overview-section-icon svg"),
+          barHeight: parseFloat(getComputedStyle(planningCard, "::after").height),
+          titleGap: planningTitle.left - planningIcon.right,
+          titleOverlapsIconRow: planningTitle.top < planningIcon.bottom && planningTitle.bottom > planningIcon.top,
+          allIconsUseViewBox: [...document.querySelectorAll(".seed-vault-overview svg, .seed-vault-library-title-icon svg")]
+            .every((svg) => svg.hasAttribute("viewBox")),
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        };
+      });
+
+      expect(computed.overflow).toBeLessThanOrEqual(1);
+      expect(computed.planningTile.width).toBeGreaterThanOrEqual(46);
+      expect(computed.planningSvg.width).toBeGreaterThanOrEqual(24);
+      expect(computed.sectionSvg.width).toBeGreaterThanOrEqual(20);
+      expect(computed.barHeight).toBeGreaterThanOrEqual(6);
+      expect(computed.titleGap).toBeGreaterThanOrEqual(width === 390 ? 10 : 12);
+      expect(computed.titleOverlapsIconRow).toBe(true);
+      expect(computed.allIconsUseViewBox).toBe(true);
+
+      if (width === 1280) {
+        expect(computed.hero.height).toBeGreaterThanOrEqual(420);
+        expect(computed.hero.height).toBeLessThanOrEqual(500);
+        expect(computed.overviewTile.width).toBeGreaterThanOrEqual(48);
+        expect(computed.overviewSvg.width).toBeGreaterThanOrEqual(26);
+      }
+    }
+
+    await useMixAndMatch(page);
+    const seedVaultScenario = page.locator("select[data-developer-scenario-module='seedVault']");
+    await seedVaultScenario.selectOption("empty");
+    await expect(page.locator(".seed-vault-overview-stat-icon")).toHaveCount(4);
+    await expect(page.locator(".seed-vault-planning-destination")).toHaveCount(3);
+    await openScenarioPanel(page);
+    await seedVaultScenario.selectOption("small");
+    await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(3);
+    await expect(page.locator(".seed-vault-overview-stat-icon")).toHaveCount(4);
+    expect(consoleErrors).toEqual([]);
+  });
   test("Full Grow Demo exposes the complete Explore graph without backend writes", async ({ page }) => {
     const forbiddenRequests = [];
     page.on("request", (request) => {
