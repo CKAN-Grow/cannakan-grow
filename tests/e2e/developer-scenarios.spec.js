@@ -417,6 +417,68 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Full Grow Demo always features the preferred active KAN session", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const currentSession = page.locator("[data-home-current-session-companion='true']");
+    await expect(currentSession).toContainText("KAN");
+    await expect(currentSession).not.toContainText("ROCKWOOL");
+    await expect(currentSession).not.toContainText("Keep Cubes Moist");
+
+    const continueSession = currentSession.getByRole("link", { name: "Continue Session", exact: true });
+    await expect(continueSession).toHaveAttribute("href", "#sessions/scenario-full-grow-session-18");
+
+    const otherActiveCards = page.locator("[data-home-current-session-select]");
+    await expect(otherActiveCards).toHaveCount(3);
+    const rockwoolCard = otherActiveCards.filter({ hasText: "ROCKWOOL" });
+    await expect(rockwoolCard).toHaveCount(1);
+    await expect(rockwoolCard).toContainText("Blue Ridge Berry Rockwool Demo");
+    await expect(rockwoolCard).toContainText("Keep Cubes Moist");
+    await expect(otherActiveCards.filter({ hasText: "Jack Herer KAN Demo" })).toHaveCount(0);
+
+    const orderingAudit = await page.evaluate(() => {
+      const featuredHref = document.querySelector("[data-home-current-session-companion='true'] a[href^='#sessions/']")?.getAttribute("href") || "";
+      const featuredId = featuredHref.replace(/^#sessions\//, "");
+      const otherIds = [...document.querySelectorAll("[data-home-current-session-select]")]
+        .map((card) => card.getAttribute("data-home-current-session-select"));
+      const activeSessions = getFullGrowDemoGraph().activeSessions;
+      const featuredSession = activeSessions.find((session) => session.id === featuredId) || null;
+      return {
+        activeCount: activeSessions.length,
+        renderedIds: [featuredId, ...otherIds],
+        uniqueRenderedCount: new Set([featuredId, ...otherIds]).size,
+        featuredName: featuredSession?.sessionName || "",
+        featuredMethod: featuredSession?.systemType || "",
+        featuredLifecycle: featuredSession ? normalizeGrowSessionLifecycleState(featuredSession) : "",
+      };
+    });
+    expect(orderingAudit).toEqual({
+      activeCount: 4,
+      renderedIds: [
+        "scenario-full-grow-session-18",
+        "scenario-full-grow-session-19",
+        "scenario-full-grow-session-17",
+        "scenario-full-grow-session-16",
+      ],
+      uniqueRenderedCount: 4,
+      featuredName: "Jack Herer KAN Demo",
+      featuredMethod: "KAN",
+      featuredLifecycle: "active",
+    });
+
+    await continueSession.click();
+    await expect(page).toHaveURL(/#sessions\/scenario-full-grow-session-18$/);
+    await expect(page.locator("main")).toContainText("Jack Herer");
+    expect(consoleErrors).toEqual([]);
+  });
   test("Full Grow Demo enforces one provider identity across every scenario module", async ({ page }) => {
     await page.goto("/#home");
     await useFullGrowDemo(page);

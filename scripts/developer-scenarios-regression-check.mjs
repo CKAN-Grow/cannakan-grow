@@ -56,10 +56,40 @@ const fixturesAreFrozen = Object.isFrozen(seedRegistry)
   && Object.isFrozen(seedRegistry.sets.small.entries)
   && Object.isFrozen(seedRegistry.sets.small.entries[0]);
 
+const featuredSessionSelectorStart = app.indexOf("function getFullGrowDemoFeaturedCurrentSessionId(");
+const featuredSessionSelectorEnd = app.indexOf("\nfunction getHomeCurrentSessionCompanionState(", featuredSessionSelectorStart);
+const featuredSessionSelectorSource = app.slice(featuredSessionSelectorStart, featuredSessionSelectorEnd);
+const createFeaturedSessionSelector = (unifiedActive) => Function(
+  "isUnifiedDeveloperScenarioActive",
+  "getVisibleUserSessions",
+  "normalizeGrowSessionLifecycleState",
+  "normalizeMethodType",
+  `${featuredSessionSelectorSource}; return getFullGrowDemoFeaturedCurrentSessionId;`,
+)(
+  () => unifiedActive,
+  (sessions) => sessions,
+  (session) => session.lifecycle,
+  (method) => String(method || "").trim().toUpperCase(),
+);
+const fullGrowFeaturedSelector = createFeaturedSessionSelector(true);
+const fullGrowPreferredSessionId = fullGrowFeaturedSelector([
+  { id: "rockwool", sessionName: "Blue Ridge Berry Rockwool Demo", systemType: "ROCKWOOL", lifecycle: "active" },
+  { id: "kan-fallback", sessionName: "Thai Stick KAN Demo", systemType: "KAN", lifecycle: "active" },
+  { id: "kan-inactive", sessionName: "Jack Herer KAN Demo", systemType: "KAN", lifecycle: "completed" },
+  { id: "kan-preferred", sessionName: "Jack Herer KAN Demo", systemType: "KAN", lifecycle: "active" },
+]);
+const fullGrowFallbackSessionId = fullGrowFeaturedSelector([
+  { id: "rockwool", sessionName: "Blue Ridge Berry Rockwool Demo", systemType: "ROCKWOOL", lifecycle: "active" },
+  { id: "kan-fallback", sessionName: "Thai Stick KAN Demo", systemType: "KAN", lifecycle: "active" },
+]);
+const liveFeaturedSessionId = createFeaturedSessionSelector(false)([
+  { id: "kan-live", sessionName: "Jack Herer KAN Demo", systemType: "KAN", lifecycle: "active" },
+]);
 const checks = [
   ["scenarios default off", app.includes("const DEVELOPER_SCENARIOS_DEFAULT_ENABLED = false;")],
   ["Live Data is the local control default", app.includes('LIVE: "live"') && app.includes("developerScenarioMode: DEVELOPER_SCENARIO_MODES.LIVE") && app.includes('DEVELOPER_UNIFIED_SCENARIO_ID = "full-grow-demo"')],
   ["Full Grow Demo shared graph", app.includes("function buildFullGrowDemoGraph()") && app.includes("function getFullGrowDemoGraph()")],
+  ["Full Grow Demo featured Current Session prefers active KAN", featuredSessionSelectorStart >= 0 && featuredSessionSelectorEnd > featuredSessionSelectorStart && fullGrowPreferredSessionId === "kan-preferred" && fullGrowFallbackSessionId === "kan-fallback" && liveFeaturedSessionId === "" && app.includes("selectedSessionId: getFullGrowDemoFeaturedCurrentSessionId(activeSessions)")],
   ["cross-module graph validation", app.includes("function validateFullGrowDemoGraph(") && app.includes("graph.communitySnapshots.forEach") && app.includes("graph.reportProjections.sources.forEach") && app.includes("graph.collectionMemberships.some")],
   ["Full Grow Demo fixture scale", app.includes("graph.sessions.length + drafts.length !== 23") && app.includes("graph.vaultEntries.length !== 50") && app.includes("Array.from({ length: 180 }") && app.includes("graph.activeSessions.length !== 4")],
   ["Full Grow Demo content breadth", app.includes('"Northern Lights Collective"') && app.includes('"Sunset Auto Test 3"') && app.includes("communityEvidenceIndexes") && app.includes("seedTypeRows")],
