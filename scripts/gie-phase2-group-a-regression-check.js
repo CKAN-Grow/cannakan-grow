@@ -27,7 +27,9 @@ const sessionsMetrics = between(app, "function renderMySessionsCommandCenterMetr
 const sessionsAnalytics = between(app, "function renderMySessionsAnalyticsPanelMarkup", "function buildAdminSeedAgeAnalyticsState");
 const profile = between(app, "function renderProfilePage()", "function renderProfileSetupScreen()");
 const dashboardState = between(app, "function buildPrivateAnalyticsDashboardState()", "function renderPrivateAnalyticsMetricGrid");
-const vaultSummaries = between(app, "function renderSeedVaultSummaryPanelMarkup", "function renderSeedVaultIndicatorMarkup");
+const vaultPanel = between(app, "function renderMySeedVaultPanelMarkup", "function renderMySessionsSeedVaultShortcutMarkup");
+const vaultOverview = between(app, "function renderSeedVaultOwnerOverviewMarkup", "function renderMySeedVaultPanelMarkup");
+const vaultSnapshotCards = between(vaultOverview, "  const snapshotCards = [", "  const planningCards = [");
 
 for (const [name, source] of [
   ["Sessions summaries", sessionsMetrics],
@@ -41,8 +43,13 @@ for (const [name, source] of [
   }
 }
 assert(app.includes('data-gie-owner-consumer="home"'), "Home must expose its Owner Analytics summary.");
-assert(vaultSummaries.includes("getCanonicalOwnerAnalytics().seedVault"), "Seed Vault summary cards must consume canonical Owner Vault metrics.");
-assert(!vaultSummaries.includes("getSeedVaultCollectionSummary(entries, analytics)"), "Seed Vault summaries must not aggregate entries locally.");
+assert(vaultPanel.includes("getCanonicalOwnerAnalytics().seedVault"), "Live Seed Vault Overview cards must receive canonical Owner Vault metrics.");
+assert(vaultPanel.includes("options.provider?.isPreview === true") && vaultPanel.includes("options.provider?.analytics || analytics"), "Preview Studio must retain its isolated provider analytics.");
+assert(vaultOverview.includes("const overview = ownerVaultAnalytics?.overview || {};"), "Seed Vault 3.0 Overview must render its snapshot cards from the injected Owner Vault metrics contract.");
+assert(!vaultOverview.includes("const overview = analytics?.overview"), "Seed Vault 3.0 Overview must not use locally rebuilt inventory totals for canonical snapshot cards.");
+for (const field of ["totalSeedsOwned", "totalVarieties", "totalSources"]) {
+  assert(vaultSnapshotCards.includes(`overview.${field}`), `Seed Vault Overview is missing canonical ${field}.`);
+}
 
 const ownerWrapper = between(migration, "create or replace function public.get_gie_my_analytics()", "create or replace function public.get_gie_admin_owner_analytics");
 assert(ownerWrapper.includes("auth.uid()") && ownerWrapper.includes("if requester_id is null"), "Owner Analytics must be authenticated and derive identity from auth.uid().");

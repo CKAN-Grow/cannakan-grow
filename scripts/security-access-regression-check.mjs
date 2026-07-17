@@ -291,7 +291,11 @@ const anonymousAdminRpc = await request("/rest/v1/rpc/admin_delete_grow_gallery_
 assert.ok([401, 403, 404].includes(anonymousAdminRpc.status), "Anonymous caller reached an admin RPC.");
 
 const source = await import("node:fs").then(({ readFileSync }) => readFileSync(new URL("../app.js", import.meta.url), "utf8"));
-assert.match(source, /Developer Preview is read-only/, "Developer Preview must retain its read-only guard.");
+assert.match(
+  source,
+  /const DEVELOPER_SCENARIO_WRITE_MESSAGE = "Preview Studio data is preview-only and cannot be saved or published\.";/,
+  "Preview Studio must retain its canonical preview-only write and publication guard.",
+);
 assert.ok(!/supabase[^\n]{0,120}(?:DEV_SEED_VAULT|developer preview fixture)/i.test(source), "Developer Preview fixtures must not be written to Supabase.");
 
 console.log("Security access regression passed: REST, RPC, RLS, Storage, service-role, and cross-user boundaries verified.");
