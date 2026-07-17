@@ -83238,6 +83238,468 @@ a.source-directory-variety-chip:focus-visible {
   outline-offset: 2px;
 }
 
+/* Seed Vault 3.0 visual convergence */
+.seed-vault-page .seed-vault-panel {
+  gap: clamp(16px, 1.7vw, 22px);
+  background:
+    radial-gradient(ellipse at 50% -8%, rgba(205, 164, 83, 0.025), transparent 34%),
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 2.5%, transparent), transparent 27%),
+    linear-gradient(180deg, rgba(10, 14, 11, 0.988), rgba(5, 8, 7, 0.994));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview {
+  gap: clamp(15px, 1.6vw, 20px);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero {
+  min-height: 340px;
+  border-color: rgba(224, 215, 188, 0.15);
+  background:
+    radial-gradient(ellipse at 56% 36%, rgba(229, 170, 79, 0.22), transparent 25%),
+    radial-gradient(ellipse at 52% 45%, transparent 40%, rgba(2, 4, 3, 0.32) 100%),
+    linear-gradient(90deg, rgba(3, 6, 5, 0.95) 0%, rgba(3, 6, 5, 0.78) 31%, rgba(3, 6, 5, 0.12) 58%, rgba(3, 6, 5, 0.54) 82%, rgba(3, 6, 5, 0.84) 100%),
+    linear-gradient(180deg, rgba(3, 5, 4, 0.04) 0%, rgba(3, 5, 4, 0.08) 50%, rgba(3, 5, 4, 0.94) 100%),
+    url("/assets/images/seed-vault-hero-bg.png") 54% 68% / cover no-repeat,
+    #090b09;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 72px rgba(0, 0, 0, 0.24),
+    0 22px 46px rgba(0, 0, 0, 0.25);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero::before {
+  background:
+    radial-gradient(ellipse at 57% 35%, rgba(255, 197, 99, 0.16), transparent 25%),
+    radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 7%, transparent), transparent 27%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 42%, rgba(0, 0, 0, 0.1));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero-main {
+  grid-template-columns: minmax(0, 0.88fr) minmax(480px, 1.12fr);
+  gap: clamp(28px, 3.6vw, 54px);
+  align-items: start;
+  padding: clamp(30px, 3vw, 40px) clamp(28px, 3.4vw, 46px) 116px;
+}
+
+.seed-vault-approved-hero-identity {
+  padding-top: 2px;
+}
+
+.seed-vault-approved-hero-eyebrow {
+  margin-bottom: 7px;
+  color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 72%, white 28%);
+  font-size: 0.66rem;
+  letter-spacing: 0.135em;
+}
+
+.seed-vault-approved-hero-identity h3 {
+  gap: 8px;
+  font-size: clamp(2.35rem, 3.85vw, 3.5rem);
+  font-weight: 710;
+  line-height: 1;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.58);
+}
+
+.seed-vault-approved-hero-identity p {
+  margin: 16px 0 4px;
+  color: rgba(246, 249, 246, 0.88);
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+}
+
+.seed-vault-approved-hero-identity > strong {
+  font-size: clamp(1.02rem, 1.35vw, 1.2rem);
+  font-weight: 570;
+}
+
+.seed-vault-overview-lock,
+.seed-vault-overview-preview-badge {
+  min-height: 22px;
+  padding: 3px 7px;
+  background: rgba(4, 7, 5, 0.48);
+  color: rgba(237, 246, 236, 0.68);
+  font-size: 0.56rem;
+}
+
+.seed-vault-overview-lock {
+  width: 24px;
+  padding: 3px;
+}
+
+.seed-vault-approved-hero-identity > .developer-scenario-page-badge {
+  margin: 7px 0 0;
+  padding: 3px 7px;
+  border-color: rgba(230, 178, 68, 0.34);
+  background: rgba(61, 28, 77, 0.58);
+  color: rgba(255, 238, 185, 0.78);
+  font-size: 0.6rem;
+  opacity: 0.82;
+}
+
+.seed-vault-approved-hero-utility {
+  justify-self: end;
+  width: 100%;
+  max-width: 650px;
+  gap: 13px;
+  padding-top: 1px;
+}
+
+.seed-vault-approved-hero-controls {
+  grid-template-columns: minmax(260px, 1fr) 44px auto;
+  gap: 9px;
+}
+
+.seed-vault-approved-hero-controls input,
+.seed-vault-approved-hero-controls .button {
+  min-height: 44px;
+  border-radius: 10px;
+}
+
+.seed-vault-approved-hero-controls input {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(5, 8, 7, 0.79);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 8px 20px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.seed-vault-approved-hero-controls .seed-vault-overview-filter-button {
+  width: 44px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(8, 12, 9, 0.77);
+}
+
+.seed-vault-approved-hero-controls .seed-vault-add-button {
+  padding-inline: 18px;
+}
+
+.seed-vault-newest-addition {
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 14px;
+  width: min(100%, 440px);
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background: linear-gradient(90deg, rgba(5, 8, 6, 0.72), rgba(5, 8, 6, 0.38));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(8px);
+}
+
+.seed-vault-newest-addition:hover,
+.seed-vault-newest-addition:focus-visible {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 30%, rgba(255, 255, 255, 0.1));
+  background: linear-gradient(90deg, rgba(11, 17, 13, 0.9), rgba(7, 12, 9, 0.66));
+}
+
+.seed-vault-newest-addition .seed-vault-seed-thumb {
+  width: 64px;
+  height: 64px;
+  border: 1px solid color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 28%, rgba(255, 255, 255, 0.1));
+  border-radius: 11px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+
+.seed-vault-newest-addition small {
+  font-size: 0.61rem;
+  letter-spacing: 0.09em;
+}
+
+.seed-vault-newest-addition strong {
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.seed-vault-newest-addition em {
+  color: rgba(225, 234, 226, 0.65);
+  font-size: 0.74rem;
+}
+
+.seed-vault-newest-addition .seed-vault-entry-status-pill {
+  justify-self: end;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot {
+  min-height: 86px;
+  border-color: rgba(225, 235, 227, 0.14);
+  background:
+    radial-gradient(circle at 18% 50%, color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 5%, transparent), transparent 24%),
+    linear-gradient(100deg, rgba(13, 19, 15, 0.975), rgba(13, 21, 18, 0.95) 56%, rgba(11, 18, 17, 0.97));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 16px 34px rgba(0, 0, 0, 0.31);
+}
+
+.seed-vault-overview-stat {
+  gap: 14px;
+  padding: 18px clamp(16px, 1.8vw, 22px);
+  border-right-color: rgba(255, 255, 255, 0.07);
+}
+
+.seed-vault-overview-stat .seed-vault-overview-stat-icon {
+  flex-basis: 40px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  background: color-mix(in srgb, currentColor 7%, rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.seed-vault-overview-stat.is-seeds .seed-vault-overview-stat-icon {
+  color: #d9bb64;
+}
+
+.seed-vault-overview-stat.is-sources .seed-vault-overview-stat-icon {
+  color: #42d5ee;
+}
+
+.seed-vault-overview-stat.is-collections .seed-vault-overview-stat-icon {
+  color: #c27af0;
+}
+
+.seed-vault-overview-stat strong {
+  font-size: clamp(1.48rem, 2.15vw, 1.88rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.seed-vault-overview-stat span {
+  color: rgba(228, 236, 229, 0.7);
+  font-size: 0.7rem;
+  letter-spacing: 0.015em;
+}
+
+.seed-vault-overview-all-link {
+  margin-inline: clamp(16px, 2vw, 24px);
+}
+
+.seed-vault-overview-primary-grid,
+.seed-vault-overview-engagement-grid {
+  gap: clamp(15px, 1.55vw, 19px);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section {
+  padding: clamp(19px, 2vw, 25px);
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(255, 255, 255, 0.028), transparent 38%),
+    linear-gradient(145deg, rgba(16, 22, 18, 0.965), rgba(8, 12, 10, 0.975));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 16px 32px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning {
+  border-color: rgba(231, 176, 71, 0.28);
+  background:
+    radial-gradient(ellipse at 5% 4%, rgba(231, 176, 71, 0.085), transparent 35%),
+    linear-gradient(145deg, rgba(20, 21, 15, 0.975), rgba(8, 13, 10, 0.98));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collections {
+  border-color: rgba(190, 102, 222, 0.23);
+  background:
+    radial-gradient(ellipse at 95% 2%, rgba(173, 85, 207, 0.08), transparent 36%),
+    linear-gradient(145deg, rgba(17, 20, 20, 0.97), rgba(8, 12, 11, 0.98));
+}
+
+.seed-vault-overview-section-header {
+  margin-bottom: 1px;
+}
+
+.seed-vault-overview-section-title h4 {
+  font-size: clamp(1.05rem, 1.35vw, 1.18rem);
+  font-weight: 680;
+}
+
+.seed-vault-overview-section-intro {
+  margin: 6px 0 16px;
+  color: rgba(220, 230, 222, 0.63);
+}
+
+.seed-vault-planning-destinations {
+  gap: 11px;
+}
+
+.seed-vault-planning-destination {
+  min-height: 154px;
+  padding: 16px;
+  border-color: rgba(255, 255, 255, 0.085);
+  background: linear-gradient(155deg, rgba(13, 18, 14, 0.91), rgba(6, 10, 8, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), 0 10px 22px rgba(0, 0, 0, 0.12);
+  transition: transform 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
+}
+
+.seed-vault-planning-destination:hover,
+.seed-vault-planning-destination:focus-within {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 26px rgba(0, 0, 0, 0.2);
+}
+
+.seed-vault-planning-destination::after {
+  right: 15px;
+  bottom: 13px;
+  left: 15px;
+  height: 3px;
+  opacity: 0.86;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.seed-vault-planning-destination.is-next-grow {
+  border-color: rgba(238, 174, 49, 0.28);
+  background: radial-gradient(circle at 10% 8%, rgba(238, 174, 49, 0.1), transparent 36%), linear-gradient(155deg, rgba(18, 17, 10, 0.94), rgba(7, 11, 8, 0.91));
+}
+
+.seed-vault-planning-destination.is-testing {
+  border-color: rgba(148, 209, 89, 0.26);
+  background: radial-gradient(circle at 10% 8%, rgba(148, 209, 89, 0.09), transparent 36%), linear-gradient(155deg, rgba(13, 19, 11, 0.94), rgba(7, 11, 8, 0.91));
+}
+
+.seed-vault-planning-destination.is-grow-along {
+  border-color: rgba(61, 201, 239, 0.27);
+  background: radial-gradient(circle at 10% 8%, rgba(61, 201, 239, 0.09), transparent 36%), linear-gradient(155deg, rgba(10, 17, 18, 0.94), rgba(7, 11, 9, 0.91));
+}
+
+.seed-vault-planning-destination .seed-vault-overview-card-icon {
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 11px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 7%, rgba(255, 255, 255, 0.015));
+}
+
+.seed-vault-planning-destination > span {
+  min-height: 30px;
+  font-size: 0.73rem;
+  font-weight: 640;
+}
+
+.seed-vault-planning-destination strong {
+  font-size: 1.78rem;
+  font-weight: 680;
+}
+
+.seed-vault-planning-destination small {
+  color: rgba(220, 230, 222, 0.64);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-grid {
+  gap: 11px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card {
+  min-height: 166px;
+  aspect-ratio: 0.86;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: linear-gradient(160deg, rgba(13, 18, 15, 0.96), rgba(6, 10, 8, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 1) {
+  border-color: rgba(141, 208, 76, 0.31);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 2) {
+  border-color: rgba(188, 91, 224, 0.3);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 3) {
+  border-color: rgba(226, 154, 43, 0.31);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n) {
+  border-color: rgba(49, 195, 211, 0.31);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-main {
+  min-height: 166px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-main::after {
+  inset: 28% 0 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(3, 6, 5, 0.56) 42%, rgba(2, 5, 4, 0.97) 100%);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card img {
+  object-position: center;
+  filter: saturate(0.92) contrast(1.07) brightness(0.82);
+  transition: filter 220ms ease, transform 220ms ease;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:focus-within {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 30px rgba(0, 0, 0, 0.25);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:hover img,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:focus-within img {
+  filter: saturate(1) contrast(1.08) brightness(0.9);
+  transform: scale(1.045);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-main > span:last-child {
+  right: 13px;
+  bottom: 13px;
+  left: 13px;
+  gap: 3px;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card strong {
+  font-size: 0.86rem;
+  font-weight: 680;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.72);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card small {
+  color: rgba(231, 238, 232, 0.72);
+}
+
+.seed-vault-collection-card-menu {
+  top: 9px;
+  right: 9px;
+}
+
+.seed-vault-collection-card-menu > summary {
+  background: rgba(3, 6, 5, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card--new {
+  border-color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 20%, rgba(255, 255, 255, 0.09));
+  background:
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 7%, transparent), transparent 34%),
+    linear-gradient(155deg, rgba(12, 18, 14, 0.88), rgba(6, 10, 8, 0.96));
+}
+
+.seed-vault-overview-new-collection-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 16%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 8%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-activity {
+  background: radial-gradient(ellipse at 0% 0%, rgba(255, 255, 255, 0.025), transparent 34%), linear-gradient(145deg, rgba(15, 21, 18, 0.97), rgba(8, 12, 10, 0.98));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-hub {
+  background: radial-gradient(ellipse at 92% 0%, color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 6%, transparent), transparent 35%), linear-gradient(145deg, rgba(14, 21, 17, 0.97), rgba(8, 12, 10, 0.98));
+}
+
+@media (max-width: 760px) {
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero {
+    background:
+      radial-gradient(ellipse at 66% 28%, rgba(229, 170, 79, 0.17), transparent 26%),
+      radial-gradient(ellipse at 50% 44%, transparent 31%, rgba(2, 4, 3, 0.36) 100%),
+      linear-gradient(90deg, rgba(3, 6, 5, 0.92), rgba(3, 6, 5, 0.48) 68%, rgba(3, 6, 5, 0.72)),
+      linear-gradient(180deg, rgba(3, 5, 4, 0.08), rgba(3, 5, 4, 0.88)),
+      url("/assets/images/seed-vault-hero-bg.png") 64% 64% / cover no-repeat,
+      #090b09;
+  }
+
+  .seed-vault-approved-hero-utility {
+    gap: 11px;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-main {
+    min-height: 154px;
+  }
+}
 @media (max-width: 1120px) {
   .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero-main {
     grid-template-columns: minmax(0, 0.78fr) minmax(420px, 1.22fr);
