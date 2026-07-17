@@ -821,6 +821,102 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+
+  test("Seed Vault Gallery renders premium image-led collectible cards", async ({ page }) => {
+    test.setTimeout(90_000);
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.setViewportSize({ width: 1280, height: 980 });
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const grid = page.locator("#my-seed-vault .seed-vault-entry-grid");
+    await expect(grid).toHaveClass(/seed-vault-entry-grid--list/);
+    const listVisualBox = await grid.locator(".seed-vault-entry-card").first().locator("[data-seed-vault-quick-peek]").boundingBox();
+    expect(listVisualBox.height).toBeLessThan(110);
+
+    await page.locator('[data-seed-vault-layout="gallery"]').click();
+    await expect(grid).toHaveClass(/seed-vault-entry-grid--gallery/);
+    const cards = grid.locator(".seed-vault-entry-card");
+    await expect(cards).toHaveCount(50);
+
+    const firstCard = cards.first();
+    const galleryContract = await firstCard.evaluate((card) => {
+      const visual = card.querySelector("[data-seed-vault-quick-peek]").getBoundingClientRect();
+      const actionBoxes = [...card.querySelectorAll(".seed-vault-favorite-button, .seed-vault-more-button")].map((control) => control.getBoundingClientRect());
+      const name = card.querySelector(".seed-vault-entry-identity-copy h4");
+      const nameStyle = getComputedStyle(name);
+      const cardBox = card.getBoundingClientRect();
+      const visibleStatuses = [...card.querySelectorAll(".seed-vault-entry-status-pill")]
+        .filter((pill) => getComputedStyle(pill).display !== "none")
+        .map((pill) => pill.dataset.seedVaultStatusRole);
+      return {
+        mediaRatio: visual.height / cardBox.height,
+        actionsInsideMedia: actionBoxes.length === 2 && actionBoxes.every((box) => box.top >= visual.top - 1 && box.right <= visual.right + 1 && box.bottom <= visual.bottom + 1),
+        lineClamp: nameStyle.webkitLineClamp,
+        nameOverflow: nameStyle.overflow,
+        visibleStatuses,
+      };
+    });
+    expect(galleryContract.mediaRatio).toBeGreaterThanOrEqual(0.38);
+    expect(galleryContract.mediaRatio).toBeLessThanOrEqual(0.43);
+    expect(galleryContract.actionsInsideMedia).toBe(true);
+    expect(galleryContract.lineClamp).toBe("2");
+    expect(galleryContract.nameOverflow).toBe("hidden");
+    expect(galleryContract.visibleStatuses.length).toBeGreaterThanOrEqual(1);
+    expect(galleryContract.visibleStatuses.length).toBeLessThanOrEqual(2);
+    expect(galleryContract.visibleStatuses.every((role) => role === "health" || role === "planning")).toBe(true);
+
+    const favorite = cards.locator(".seed-vault-favorite-button.is-active").first();
+    await expect(favorite).toHaveCSS("color", "rgb(232, 76, 91)");
+    await expect(favorite.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
+    await expect(cards.locator('.seed-vault-entry-status-pill[data-seed-vault-status-role="context"]').first()).toBeHidden();
+    const collection = cards.locator('.seed-vault-entry-insight-strip .is-collection[data-collection-count]:not([data-collection-count="0"])').first();
+    await expect(collection).toBeVisible();
+    await expect(collection).toContainText(/.+/);
+    expect(await cards.locator(".seed-vault-seed-thumb:not(.has-image)").count()).toBeGreaterThan(0);
+    await expect(cards.locator(".seed-vault-seed-thumb:not(.has-image)").first()).toBeVisible();
+
+    const expectedColumns = new Map([[320, 1], [375, 1], [390, 1], [430, 1], [768, 2], [1024, 3], [1280, 3], [1600, 4]]);
+    for (const [width, columnCount] of expectedColumns) {
+      await page.setViewportSize({ width, height: width < 700 ? 844 : 980 });
+      const responsive = await grid.evaluate((element) => {
+        const first = element.querySelector(".seed-vault-entry-card");
+        const visual = first.querySelector("[data-seed-vault-quick-peek]").getBoundingClientRect();
+        const card = first.getBoundingClientRect();
+        const actionBoxes = [...first.querySelectorAll(".seed-vault-favorite-button, .seed-vault-more-button")].map((control) => control.getBoundingClientRect());
+        return {
+          columns: getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          canvasWidth: document.querySelector(".seed-vault-page").getBoundingClientRect().width,
+          cardInsideViewport: card.left >= -0.5 && card.right <= document.documentElement.clientWidth + 0.5,
+          mediaRatio: visual.height / card.height,
+          smallestAction: Math.min(...actionBoxes.flatMap((box) => [box.width, box.height])),
+        };
+      });
+      expect(responsive.columns).toBe(columnCount);
+      expect(responsive.overflow).toBeLessThanOrEqual(1);
+      expect(responsive.canvasWidth).toBeLessThanOrEqual(1280.5);
+      expect(responsive.cardInsideViewport).toBe(true);
+      expect(responsive.mediaRatio).toBeGreaterThanOrEqual(0.38);
+      expect(responsive.mediaRatio).toBeLessThanOrEqual(0.43);
+      expect(responsive.smallestAction).toBeGreaterThanOrEqual(width <= 700 ? 44 : 40);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 980 });
+    await page.locator('[data-seed-vault-layout="list"]').click();
+    await expect(grid).toHaveClass(/seed-vault-entry-grid--list/);
+    const restoredListVisualBox = await grid.locator(".seed-vault-entry-card").first().locator("[data-seed-vault-quick-peek]").boundingBox();
+    expect(Math.abs(restoredListVisualBox.width - listVisualBox.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(restoredListVisualBox.height - listVisualBox.height)).toBeLessThanOrEqual(1);
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault 3.0 stays centered, capped, stacked, and overflow-free", async ({ page }) => {
     for (const [index, width] of [320, 375, 390, 430, 768, 1024, 1280, 1600].entries()) {
       await page.setViewportSize({ width, height: width < 700 ? 844 : 980 });
