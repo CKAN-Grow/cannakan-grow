@@ -702,13 +702,33 @@ test.describe("local Developer Scenarios", () => {
           const box = document.querySelector(selector)?.getBoundingClientRect();
           return box ? { width: box.width, height: box.height } : null;
         };
+        const overviewIcons = [...document.querySelectorAll(".seed-vault-overview-stat")].map((stat) => {
+          const tile = stat.querySelector(".seed-vault-overview-stat-icon");
+          const svg = tile.querySelector("svg");
+          const tileBox = tile.getBoundingClientRect();
+          const svgBox = svg.getBoundingClientRect();
+          const tileStyle = getComputedStyle(tile);
+          const beforeStyle = getComputedStyle(tile, "::before");
+          const afterStyle = getComputedStyle(tile, "::after");
+          return {
+            tone: [...stat.classList].find((className) => className.startsWith("is-")),
+            color: tileStyle.color,
+            borderColor: tileStyle.borderColor,
+            glow: tileStyle.boxShadow !== "none" ? tileStyle.boxShadow : tileStyle.filter,
+            tileWidth: tileBox.width,
+            tileHeight: tileBox.height,
+            svgWidth: svgBox.width,
+            svgHeight: svgBox.height,
+            beforeContent: beforeStyle.content,
+            afterContent: afterStyle.content,
+          };
+        });
         const planningCard = document.querySelector(".seed-vault-planning-destination");
         const planningIcon = planningCard.querySelector(".seed-vault-overview-card-icon").getBoundingClientRect();
         const planningTitle = planningCard.querySelector(":scope > span:not(.seed-vault-overview-card-icon)").getBoundingClientRect();
         return {
           hero: size(".seed-vault-approved-hero"),
-          overviewTile: size(".seed-vault-overview-stat-icon"),
-          overviewSvg: size(".seed-vault-overview-stat-icon svg"),
+          overviewIcons,
           planningTile: size(".seed-vault-overview-card-icon"),
           planningSvg: size(".seed-vault-overview-card-icon svg"),
           sectionSvg: size(".seed-vault-overview-section-icon svg"),
@@ -722,6 +742,18 @@ test.describe("local Developer Scenarios", () => {
       });
 
       expect(computed.overflow).toBeLessThanOrEqual(1);
+      expect(computed.overviewIcons).toHaveLength(4);
+      expect(computed.overviewIcons.map(({ tone, color }) => ({ tone, color }))).toEqual([
+        { tone: "is-varieties", color: "rgb(157, 232, 79)" },
+        { tone: "is-seeds", color: "rgb(181, 233, 101)" },
+        { tone: "is-sources", color: "rgb(67, 217, 245)" },
+        { tone: "is-collections", color: "rgb(200, 124, 242)" },
+      ]);
+      expect(new Set(computed.overviewIcons.map(({ color }) => color)).size).toBe(4);
+      expect(new Set(computed.overviewIcons.map(({ borderColor }) => borderColor)).size).toBe(4);
+      expect(new Set(computed.overviewIcons.map(({ glow }) => glow)).size).toBe(4);
+      expect(computed.overviewIcons.every(({ glow }) => glow && glow !== "none")).toBe(true);
+      expect(computed.overviewIcons.every(({ beforeContent, afterContent }) => beforeContent === "none" && afterContent === "none")).toBe(true);
       expect(computed.planningTile.width).toBeGreaterThanOrEqual(46);
       expect(computed.planningSvg.width).toBeGreaterThanOrEqual(24);
       expect(computed.sectionSvg.width).toBeGreaterThanOrEqual(20);
@@ -733,8 +765,11 @@ test.describe("local Developer Scenarios", () => {
       if (width === 1280) {
         expect(computed.hero.height).toBeGreaterThanOrEqual(420);
         expect(computed.hero.height).toBeLessThanOrEqual(500);
-        expect(computed.overviewTile.width).toBeGreaterThanOrEqual(48);
-        expect(computed.overviewSvg.width).toBeGreaterThanOrEqual(26);
+        expect(computed.overviewIcons.every(({ tileWidth, tileHeight }) => tileWidth >= 54 && tileHeight >= 54)).toBe(true);
+        expect(computed.overviewIcons.every(({ svgWidth, svgHeight }) => svgWidth >= 32 && svgHeight >= 32)).toBe(true);
+      } else if (width === 390) {
+        expect(computed.overviewIcons.every(({ tileWidth, tileHeight }) => tileWidth >= 44 && tileHeight >= 44)).toBe(true);
+        expect(computed.overviewIcons.every(({ svgWidth, svgHeight }) => svgWidth >= 28 && svgHeight >= 28)).toBe(true);
       }
     }
 
@@ -747,6 +782,21 @@ test.describe("local Developer Scenarios", () => {
     await seedVaultScenario.selectOption("small");
     await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(3);
     await expect(page.locator(".seed-vault-overview-stat-icon")).toHaveCount(4);
+    const smallVaultOverview = await page.locator(".seed-vault-overview-stat-icon").evaluateAll((icons) => ({
+      colors: icons.map((icon) => getComputedStyle(icon).color),
+      overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    }));
+    expect(smallVaultOverview.colors).toEqual([
+      "rgb(157, 232, 79)",
+      "rgb(181, 233, 101)",
+      "rgb(67, 217, 245)",
+      "rgb(200, 124, 242)",
+    ]);
+    expect(smallVaultOverview.overflow).toBeLessThanOrEqual(1);
+
+    await page.getByRole("button", { name: "Shared With Me", exact: true }).click();
+    await expect(page.locator(".seed-vault-shared-with-me-panel")).toBeVisible();
+    expect(await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth))).toBeLessThanOrEqual(1);
     expect(consoleErrors).toEqual([]);
   });
   test("Full Grow Demo exposes the complete Explore graph without backend writes", async ({ page }) => {

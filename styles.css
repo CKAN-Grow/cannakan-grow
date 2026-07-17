@@ -79198,7 +79198,7 @@ a.source-directory-variety-chip:focus-visible {
   text-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-stat span,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-stat > div > span,
 .seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-card span,
 .seed-vault-panel[data-seed-vault-theme] .seed-vault-overview-section-header .eyebrow {
   color: color-mix(in srgb, var(--vault-theme-primary) 88%, white 12%);
@@ -81212,7 +81212,7 @@ a.source-directory-variety-chip:focus-visible {
   text-shadow: none;
 }
 
-.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat span,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat > div > span,
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-card span {
   color: rgba(201, 209, 202, 0.56);
   font-weight: 650;
