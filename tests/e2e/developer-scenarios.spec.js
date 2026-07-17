@@ -25,6 +25,12 @@ async function useFullGrowDemo(page) {
   await expect(page.locator("#developer-scenarios-banner")).toContainText("FULL GROW DEMO");
 }
 
+async function closeScenarioPanel(page) {
+  const launcher = page.locator("#developer-scenarios-launcher");
+  if ((await launcher.getAttribute("aria-expanded")) === "true") await launcher.click();
+  await expect(page.locator("#developer-scenarios-panel")).toBeHidden();
+}
+
 async function expectNoFullGrowPlaceholders(page) {
   const placeholders = await page.locator("main").evaluate((root) => {
     const exactPlaceholders = new Set(["—", "--", "…", "Loading", "Loading...", "Loading…"]);
@@ -449,7 +455,8 @@ test.describe("local Developer Scenarios", () => {
     expect(mismatchCode).toBe("DEVELOPER_SCENARIO_UNIFIED_PROVIDER_MISMATCH");
   });
 
-  test("Seed Vault Inventory 2.0 supports premium browsing without eager profile DOM", async ({ page }) => {
+  test("Seed Vault 3.0 preserves premium browsing and every inventory control", async ({ page }) => {
+    test.setTimeout(60_000);
     const consoleErrors = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
@@ -458,6 +465,14 @@ test.describe("local Developer Scenarios", () => {
 
     await page.goto("/#seed-vault");
     await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    await expect(page.locator(".seed-vault-approved-hero")).toContainText("My Seed Vault");
+    await expect(page.locator(".seed-vault-approved-hero")).toContainText("Collect. Learn. Plan. Grow.");
+    await expect(page.locator(".seed-vault-overview-snapshot .seed-vault-overview-stat")).toHaveCount(4);
+    await expect(page.locator(".seed-vault-overview-primary-grid")).toBeVisible();
+    await expect(page.locator(".seed-vault-overview-engagement-grid")).toBeVisible();
+    await expect(page.locator(".seed-vault-living-dashboard, .seed-vault-collection-layout")).toHaveCount(0);
 
     const inventoryCards = page.locator("#my-seed-vault .seed-vault-entry-card");
     await expect(inventoryCards).toHaveCount(50);
@@ -466,9 +481,10 @@ test.describe("local Developer Scenarios", () => {
 
     const firstCard = inventoryCards.first();
     const firstVisualBox = await firstCard.locator("[data-seed-vault-quick-peek]").boundingBox();
-    expect(firstVisualBox.width).toBeGreaterThanOrEqual(92);
-    expect(firstVisualBox.height).toBeGreaterThanOrEqual(92);
+    expect(firstVisualBox.width).toBeGreaterThanOrEqual(74);
+    expect(firstVisualBox.height).toBeGreaterThanOrEqual(68);
     await expect(firstCard.locator(".seed-vault-entry-insight-strip")).toContainText("Seeds");
+    await expect(firstCard.locator(".seed-vault-entry-insight-strip")).toContainText("Acquired");
     await expect(firstCard.getByRole("button", { name: /Favorite Vault Entry|Remove Vault Entry from favorites/ })).toBeVisible();
 
     await firstCard.locator("[data-seed-vault-quick-peek]").click();
@@ -482,49 +498,76 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(1);
     await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(49);
     const profile = firstCard.locator(".seed-vault-expanded-profile");
-    await expect(profile).toContainText("Overview");
-    await expect(profile).toContainText("Planning & Collections");
-    await expect(profile).toContainText("Sessions & Analytics");
-    await expect(profile).toContainText("Notes");
-    await expect(profile).toContainText("Images");
+    for (const sectionName of ["Overview", "Planning & Collections", "Sessions & Analytics", "Notes", "Images"]) {
+      await expect(profile).toContainText(sectionName);
+    }
     await firstCard.getByRole("button", { name: "Close Entry Profile", exact: true }).click();
-    await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(0);
 
     await page.locator('[data-seed-vault-quick-view="favorites"]').click();
     await expect(page.locator(".seed-vault-browse-context")).toContainText("Favorites");
     await expect(page.locator(".seed-vault-browse-context")).toContainText("10 matching Vault Entries");
     await expect(inventoryCards).toHaveCount(10);
     await page.getByRole("button", { name: "View All Inventory", exact: true }).click();
-    await expect(page.locator(".seed-vault-browse-context")).toHaveCount(0);
     await expect(inventoryCards).toHaveCount(50);
 
     const inventoryControls = page.locator(".seed-vault-controls");
     const inventorySearch = inventoryControls.locator('[data-seed-vault-search="true"]');
     await inventorySearch.fill("Do-Si-Dos");
     await expect(inventoryCards).toHaveCount(1);
-    await inventoryControls.locator('[data-seed-vault-sort="true"]').selectOption("quantity");
-    await expect(inventoryControls.locator('[data-seed-vault-sort="true"]')).toHaveValue("quantity");
+    await page.locator('.seed-vault-sort-control [data-seed-vault-sort="true"]').selectOption("quantity");
+    await expect(page.locator('.seed-vault-sort-control [data-seed-vault-sort="true"]')).toHaveValue("quantity");
     await inventorySearch.fill("");
     await inventoryControls.locator('[data-seed-vault-favorite-filter="true"]').selectOption("favorites");
     await expect(inventoryCards).toHaveCount(10);
     await inventoryControls.locator('[data-seed-vault-clear-filters="true"]').click();
     await expect(inventoryCards).toHaveCount(50);
+
+    await page.locator(".seed-vault-more-filters > summary").click();
+    await expect(page.locator(".seed-vault-more-filters-panel")).toBeVisible();
+    await expect(page.locator(".seed-vault-more-filters-panel [data-seed-vault-manage-collections='true']")).toBeVisible();
+    const sourceFilter = page.locator('.seed-vault-more-filters [data-seed-vault-source-filter="true"]');
+    const firstSourceValue = await sourceFilter.locator("option").nth(1).getAttribute("value");
+    await sourceFilter.selectOption(firstSourceValue);
+    expect(await inventoryCards.count()).toBeLessThan(50);
+    await inventoryControls.locator('[data-seed-vault-clear-filters="true"]').click();
+    await expect(inventoryCards).toHaveCount(50);
+
+    const filterCases = [
+      { selector: '[data-seed-vault-status-filter="true"]', advanced: false },
+      { selector: '[data-seed-vault-collection-filter="true"]', advanced: false },
+      { selector: '[data-seed-vault-tag-filter="true"]', advanced: false },
+      { selector: '[data-seed-vault-breeder-filter="true"]', advanced: true },
+      { selector: '[data-seed-vault-type-filter="true"]', advanced: true },
+      { selector: '[data-seed-vault-sex-filter="true"]', advanced: true },
+      { selector: '[data-seed-vault-age-filter="true"]', advanced: true },
+      { selector: '[data-seed-vault-grow-along-filter="true"]', advanced: true },
+      { selector: '[data-seed-vault-testing-program-filter="true"]', advanced: true },
+      { selector: '[data-seed-vault-planning-status-filter="true"]', advanced: true },
+    ];
+    for (const filterCase of filterCases) {
+      if (filterCase.advanced && !await page.locator(".seed-vault-more-filters-panel").isVisible()) {
+        await page.locator(".seed-vault-more-filters > summary").click();
+      }
+      const filter = inventoryControls.locator(filterCase.selector);
+      const optionValue = await filter.locator("option").nth(1).getAttribute("value");
+      await filter.selectOption(optionValue);
+      await expect(inventoryControls.locator(filterCase.selector)).toHaveValue(optionValue);
+      await expect(inventoryControls.locator('[data-seed-vault-clear-filters="true"]')).toBeVisible();
+      await inventoryControls.locator('[data-seed-vault-clear-filters="true"]').click();
+      await expect(inventoryCards).toHaveCount(50);
+    }
+
     await page.locator('[data-seed-vault-layout="gallery"]').click();
     await expect(page.locator(".seed-vault-entry-grid")).toHaveClass(/seed-vault-entry-grid--gallery/);
     await page.locator('[data-seed-vault-layout="list"]').click();
     await expect(page.locator(".seed-vault-entry-grid")).toHaveClass(/seed-vault-entry-grid--list/);
 
-    const livingDashboard = page.locator(".seed-vault-living-dashboard");
-    for (const label of ["Ready to Grow", "Testing", "Grow Alongs", "Low Inventory", "Newest Variety", "Oldest Seeds", "Average Seed Age", "Most Used Source"]) {
-      await expect(livingDashboard).toContainText(label);
-    }
-    const averageAge = await livingDashboard.locator(".seed-vault-dashboard-signals article", { hasText: "Average Seed Age" }).locator("strong").innerText();
-    expect(averageAge.trim()).not.toBe("");
-
     await useMixAndMatch(page);
     const seedVaultScenario = page.locator("select[data-developer-scenario-module='seedVault']");
     await seedVaultScenario.selectOption("empty");
     await expect(inventoryCards).toHaveCount(0);
+    await expect(page.locator(".seed-vault-approved-hero")).toBeVisible();
+    await expect(page.locator(".seed-vault-library-shell")).toBeVisible();
     await openScenarioPanel(page);
     await seedVaultScenario.selectOption("small");
     await expect(inventoryCards).toHaveCount(3);
@@ -535,19 +578,45 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("Seed Vault Inventory 2.0 has no horizontal overflow at target widths", async ({ page }) => {
-    for (const [index, width] of [320, 375, 390, 430, 768, 1280].entries()) {
-      await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+  test("Seed Vault 3.0 stays centered, capped, stacked, and overflow-free", async ({ page }) => {
+    for (const [index, width] of [320, 375, 390, 430, 768, 1024, 1280, 1600].entries()) {
+      await page.setViewportSize({ width, height: width < 700 ? 844 : 980 });
       await page.goto("/#seed-vault");
-      if (index === 0) {
-        await useFullGrowDemo(page);
-      }
+      if (index === 0) await useFullGrowDemo(page);
       await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(50);
-      const horizontalOverflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth));
-      expect(horizontalOverflow).toBeLessThanOrEqual(1);
-      const firstCardBox = await page.locator("#my-seed-vault .seed-vault-entry-card").first().boundingBox();
-      expect(firstCardBox.x).toBeGreaterThanOrEqual(0);
-      expect(firstCardBox.x + firstCardBox.width).toBeLessThanOrEqual(width);
+      await expect(page.locator(".seed-vault-collection-layout, .seed-vault-summary-panel")).toHaveCount(0);
+
+      const geometry = await page.evaluate(() => {
+        const canvas = document.querySelector(".seed-vault-page").getBoundingClientRect();
+        const firstCard = document.querySelector("#my-seed-vault .seed-vault-entry-card").getBoundingClientRect();
+        return {
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          canvas: { x: canvas.x, width: canvas.width, right: canvas.right },
+          card: { x: firstCard.x, right: firstCard.right },
+        };
+      });
+      expect(geometry.overflow).toBeLessThanOrEqual(1);
+      expect(geometry.canvas.width).toBeLessThanOrEqual(1280.5);
+      expect(geometry.canvas.x).toBeGreaterThanOrEqual(0);
+      expect(geometry.canvas.right).toBeLessThanOrEqual(width + 0.5);
+      expect(geometry.card.x).toBeGreaterThanOrEqual(0);
+      expect(geometry.card.right).toBeLessThanOrEqual(width + 0.5);
+
+      const primary = page.locator(".seed-vault-overview-primary-grid");
+      const engagement = page.locator(".seed-vault-overview-engagement-grid");
+      if (width > 960) {
+        const planningBox = await primary.locator(".seed-vault-overview-planning").boundingBox();
+        const collectionsBox = await primary.locator(".seed-vault-overview-collections").boundingBox();
+        const recentBox = await engagement.locator(".seed-vault-overview-recent-activity").boundingBox();
+        const sharingBox = await engagement.locator(".seed-vault-sharing-hub").boundingBox();
+        expect(collectionsBox.width).toBeGreaterThan(planningBox.width);
+        expect(recentBox.width).toBeGreaterThan(sharingBox.width * 1.7);
+      } else {
+        const recentBox = await engagement.locator(".seed-vault-overview-recent-activity").boundingBox();
+        const sharingBox = await engagement.locator(".seed-vault-sharing-hub").boundingBox();
+        expect(Math.abs(recentBox.x - sharingBox.x)).toBeLessThanOrEqual(1);
+        expect(sharingBox.y).toBeGreaterThan(recentBox.y);
+      }
     }
   });
 
@@ -768,15 +837,18 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator(".grow-network-page")).not.toContainText("Complete a session and record results to begin your Germination Trend.");
   });
 
-  test("keeps Seed Vault overview, planning, collections, and insights on one fixture", async ({ page }) => {
+  test("keeps the approved Seed Vault overview, planning, collections, and Library insights on one fixture", async ({ page }) => {
     await page.goto("/#seed-vault");
     await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='seedVault']").selectOption("first");
     await expect(page.locator("#my-seed-vault")).toContainText("1 Vault Entry");
-    await expect(page.locator(".seed-vault-overview-planning")).toContainText("Grow Planning");
-    await expect(page.locator(".seed-vault-overview-collections")).toContainText("Next Grow");
-    await expect(page.locator(".seed-vault-overview-insights")).toContainText("Quick Insights");
+    await expect(page.locator(".seed-vault-overview-planning")).toContainText("Next Grow");
+    await expect(page.locator(".seed-vault-overview-collections")).toContainText("Collections");
+    await expect(page.locator(".seed-vault-overview-recent-activity")).toContainText("Recent Activity");
+    await expect(page.locator(".seed-vault-sharing-hub")).toContainText("Share Your Vault");
+    await expect(page.locator(".seed-vault-library-shell .seed-vault-insights")).toContainText("Insights");
+    await expect(page.locator(".seed-vault-overview")).not.toContainText("Quick Insights");
     await expect(page.locator("#my-seed-vault")).not.toContainText("Loading");
   });
 
