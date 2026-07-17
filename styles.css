@@ -80213,10 +80213,10 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-favorite-button.is-active {
-  border-color: rgba(255, 207, 91, 0.34);
-  background: rgba(255, 207, 91, 0.1);
-  color: #ffd66b;
-  box-shadow: none;
+  border-color: rgba(232, 76, 91, 0.44);
+  background: rgba(232, 76, 91, 0.11);
+  color: #e84c5b;
+  box-shadow: 0 0 0 2px rgba(232, 76, 91, 0.08), 0 0 18px rgba(232, 76, 91, 0.18);
 }
 
 .seed-vault-action-menu {
@@ -82891,6 +82891,8 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card {
+  position: relative;
+  isolation: isolate;
   min-width: 0;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.075);
@@ -82898,6 +82900,25 @@ a.source-directory-variety-chip:focus-visible {
   background: linear-gradient(100deg, rgba(16, 23, 19, 0.92), rgba(10, 16, 13, 0.94));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card.is-favorite::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 10px auto 10px -1px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: #e84c5b;
+  box-shadow: 0 0 14px rgba(232, 76, 91, 0.28);
+  pointer-events: none;
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card.is-favorite {
+  border-color: rgba(232, 76, 91, 0.16);
+  background:
+    radial-gradient(circle at 96% 50%, rgba(232, 76, 91, 0.045), transparent 25%),
+    linear-gradient(100deg, rgba(16, 23, 19, 0.94), rgba(11, 16, 14, 0.95));
 }
 
 .seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card:hover,
@@ -82928,6 +82949,10 @@ a.source-directory-variety-chip:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   background: #0a100c;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 8px 20px rgba(0, 0, 0, 0.24),
+    0 0 18px color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 7%, transparent);
 }
 
 .seed-vault-entry-visual-button .seed-vault-seed-thumb {
@@ -82941,6 +82966,7 @@ a.source-directory-variety-chip:focus-visible {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: contrast(1.06) saturate(1.04);
 }
 
 .seed-vault-quick-peek-cue {
@@ -83067,6 +83093,22 @@ a.source-directory-variety-chip:focus-visible {
   color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 74%, white 26%);
 }
 
+.seed-vault-entry-insight-strip .is-collection strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.seed-vault-entry-insight-strip .is-collection strong::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #b889e8;
+  box-shadow: 0 0 10px rgba(184, 137, 232, 0.22);
+}
+
 .seed-vault-entry-status-pills {
   display: flex;
   flex-wrap: wrap;
@@ -83102,8 +83144,76 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-entry-status-pill.is-testing {
-  border-color: rgba(60, 199, 232, 0.24);
+  border-color: rgba(60, 199, 232, 0.28);
+  background: rgba(60, 199, 232, 0.08);
   color: #55cae7;
+}
+
+.seed-vault-entry-status-pill.is-healthy,
+.seed-vault-entry-status-pill.is-active,
+.seed-vault-entry-status-pill.is-success,
+.seed-vault-entry-status-pill.is-in-vault {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.075);
+  color: #a6dc70;
+}
+
+.seed-vault-entry-status-pill.is-low-stock,
+.seed-vault-entry-status-pill.is-attention {
+  border-color: rgba(237, 154, 72, 0.34);
+  background: rgba(237, 154, 72, 0.1);
+  color: #eda05a;
+  box-shadow: 0 0 12px rgba(237, 154, 72, 0.08);
+}
+
+.seed-vault-entry-status-pill.is-out-of-stock {
+  border-color: rgba(232, 76, 91, 0.38);
+  background: rgba(232, 76, 91, 0.1);
+  color: #ec6572;
+  box-shadow: 0 0 12px rgba(232, 76, 91, 0.1);
+}
+
+.seed-vault-entry-status-pill.is-older-seed,
+.seed-vault-entry-status-pill.is-warm,
+.seed-vault-entry-status-pill.is-mature {
+  border-color: rgba(217, 173, 86, 0.3);
+  background: rgba(217, 173, 86, 0.09);
+  color: #dbb768;
+}
+
+.seed-vault-entry-status-pill.is-recently-added {
+  border-color: rgba(67, 217, 245, 0.28);
+  background: rgba(67, 217, 245, 0.08);
+  color: #62d9ef;
+}
+
+.seed-vault-entry-status-pill.is-planned {
+  border-color: rgba(233, 173, 54, 0.3);
+  background: rgba(233, 173, 54, 0.09);
+  color: #e9b34d;
+}
+
+.seed-vault-entry-status-pill.is-grow-along {
+  border-color: rgba(181, 140, 255, 0.28);
+  background: rgba(181, 140, 255, 0.09);
+  color: #c9a8f5;
+}
+
+.seed-vault-entry-status-pill.is-completed {
+  border-color: rgba(119, 174, 102, 0.24);
+  background: rgba(119, 174, 102, 0.07);
+  color: #91bd84;
+}
+
+.seed-vault-entry-status-pill.is-archived,
+.seed-vault-entry-status-pill.is-neutral {
+  border-color: rgba(188, 198, 190, 0.14);
+  background: rgba(188, 198, 190, 0.045);
+  color: rgba(205, 214, 207, 0.62);
+}
+
+.seed-vault-entry-collapsed-row .seed-vault-entry-status-pill.is-favorite {
+  display: none;
 }
 
 .seed-vault-entry-actions {
@@ -83120,6 +83230,40 @@ a.source-directory-variety-chip:focus-visible {
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.02);
   color: rgba(232, 239, 233, 0.7);
+}
+
+.seed-vault-favorite-button {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  color: rgba(215, 224, 217, 0.64);
+  box-shadow: none;
+}
+
+.seed-vault-favorite-button:not(.is-active):hover,
+.seed-vault-favorite-button:not(.is-active):focus-visible {
+  border-color: rgba(232, 76, 91, 0.26);
+  background: rgba(232, 76, 91, 0.055);
+  color: rgba(236, 214, 217, 0.9);
+}
+
+.seed-vault-favorite-button.is-active {
+  border-color: rgba(232, 76, 91, 0.44);
+  background: rgba(232, 76, 91, 0.11);
+  color: #e84c5b;
+  box-shadow: 0 0 0 2px rgba(232, 76, 91, 0.08), 0 0 18px rgba(232, 76, 91, 0.18);
+}
+
+.seed-vault-favorite-button.is-active .seed-vault-action-icon path {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+.seed-vault-more-button:hover,
+.seed-vault-more-button:focus-visible {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.065);
+  color: rgba(242, 247, 243, 0.88);
 }
 
 .seed-vault-row-action > span:last-child:not(:first-child) {
@@ -84090,7 +84234,18 @@ a.source-directory-variety-chip:focus-visible {
   }
 
   .seed-vault-favorite-button {
-    display: none;
+    display: inline-flex;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .seed-vault-more-button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
   }
 
   .seed-vault-secondary-settings {

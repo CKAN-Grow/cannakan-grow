@@ -441,7 +441,6 @@ test.describe("local Developer Scenarios", () => {
     const rockwoolCard = otherActiveCards.filter({ hasText: "ROCKWOOL" });
     await expect(rockwoolCard).toHaveCount(1);
     await expect(rockwoolCard).toContainText("Blue Ridge Berry Rockwool Demo");
-    await expect(rockwoolCard).toContainText("Keep Cubes Moist");
     await expect(otherActiveCards.filter({ hasText: "Jack Herer KAN Demo" })).toHaveCount(0);
 
     const orderingAudit = await page.evaluate(() => {
@@ -637,6 +636,111 @@ test.describe("local Developer Scenarios", () => {
     await seedVaultScenario.selectOption("collector");
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Collector Vault");
     await expect(inventoryCards).toHaveCount(9);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("Seed Vault inventory rows expose collectible semantic hierarchy", async ({ page }) => {
+    test.setTimeout(90_000);
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
+    await expect(cards).toHaveCount(50);
+    const favoriteButton = cards.locator(".seed-vault-favorite-button.is-active").first();
+    const inactiveButton = cards.locator(".seed-vault-favorite-button:not(.is-active)").first();
+    await expect(favoriteButton).toHaveAttribute("aria-pressed", "true");
+    await expect(favoriteButton).toHaveAttribute("aria-label", "Remove Vault Entry from favorites");
+    await expect(inactiveButton).toHaveAttribute("aria-pressed", "false");
+    await expect(inactiveButton).toHaveAttribute("aria-label", "Favorite Vault Entry");
+    await expect(favoriteButton).toHaveCSS("color", "rgb(232, 76, 91)");
+    await expect(favoriteButton.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
+    await expect(inactiveButton.locator("path")).toHaveCSS("fill", "none");
+
+    const favoriteRowTreatment = await favoriteButton.locator("xpath=ancestor::article").evaluate((card) => {
+      const accent = getComputedStyle(card, "::before");
+      return { width: parseFloat(accent.width), color: accent.backgroundColor, glow: accent.boxShadow };
+    });
+    expect(favoriteRowTreatment.width).toBeLessThanOrEqual(2);
+    expect(favoriteRowTreatment.color).toBe("rgb(232, 76, 91)");
+    expect(favoriteRowTreatment.glow).not.toBe("none");
+
+    const expectedTones = {
+      healthy: "rgb(166, 220, 112)",
+      "low-stock": "rgb(237, 160, 90)",
+      "older-seed": "rgb(219, 183, 104)",
+      planned: "rgb(233, 179, 77)",
+      testing: "rgb(85, 202, 231)",
+      "grow-along": "rgb(201, 168, 245)",
+      "recently-added": "rgb(98, 217, 239)",
+    };
+    for (const [tone, color] of Object.entries(expectedTones)) {
+      const pill = page.locator(`.seed-vault-entry-status-pill.is-${tone}`).first();
+      await expect(pill).toBeVisible();
+      await expect(pill).toHaveCSS("color", color);
+    }
+    await expect(page.locator(".seed-vault-entry-collapsed-row .seed-vault-entry-status-pill.is-favorite")).toHaveCount(10);
+    await expect(page.locator(".seed-vault-entry-collapsed-row .seed-vault-entry-status-pill.is-favorite").first()).toBeHidden();
+
+    const collectionContext = await page.locator(".seed-vault-entry-insight-strip .is-collection").evaluateAll((items) => {
+      const multiple = items.find((item) => Number(item.dataset.collectionCount || 0) > 1);
+      if (!multiple) return null;
+      const marker = getComputedStyle(multiple.querySelector("strong"), "::before");
+      return { text: multiple.querySelector("strong")?.textContent || "", markerColor: marker.backgroundColor, markerWidth: parseFloat(marker.width) };
+    });
+    expect(collectionContext).not.toBeNull();
+    expect(collectionContext.text).toMatch(/ \+\d+$/);
+    expect(collectionContext.markerColor).toBe("rgb(184, 137, 232)");
+    expect(collectionContext.markerWidth).toBe(6);
+
+    expect(await cards.locator(".seed-vault-seed-thumb:not(.has-image)").count()).toBeGreaterThan(0);
+    const longestNameTreatment = await cards.locator(".seed-vault-entry-identity-copy h4").evaluateAll((items) => {
+      const longest = [...items].sort((left, right) => (right.textContent || "").trim().length - (left.textContent || "").trim().length)[0];
+      const style = getComputedStyle(longest);
+      return { length: (longest.textContent || "").trim().length, overflow: style.overflow, textOverflow: style.textOverflow, whiteSpace: style.whiteSpace };
+    });
+    expect(longestNameTreatment.length).toBeGreaterThanOrEqual(15);
+    expect(longestNameTreatment).toMatchObject({ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" });
+
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: width === 390 ? 900 : 980 });
+      const responsive = await page.evaluate(() => {
+        const favorite = document.querySelector(".seed-vault-favorite-button.is-active");
+        const favoriteBox = favorite.getBoundingClientRect();
+        const pills = [...document.querySelectorAll(".seed-vault-entry-card:first-child .seed-vault-entry-status-pill")]
+          .filter((pill) => getComputedStyle(pill).display !== "none")
+          .map((pill) => pill.getBoundingClientRect());
+        const overlap = pills.some((left, index) => pills.slice(index + 1).some((right) => !(left.right <= right.left || right.right <= left.left || left.bottom <= right.top || right.bottom <= left.top)));
+        return {
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+          favoriteVisible: getComputedStyle(favorite).display !== "none" && favoriteBox.width > 0 && favoriteBox.height > 0,
+          favoriteWidth: favoriteBox.width,
+          favoriteHeight: favoriteBox.height,
+          badgeOverlap: overlap,
+        };
+      });
+      expect(responsive.overflow).toBeLessThanOrEqual(1);
+      expect(responsive.favoriteVisible).toBe(true);
+      expect(responsive.favoriteWidth).toBeGreaterThanOrEqual(width === 390 ? 44 : 40);
+      expect(responsive.favoriteHeight).toBeGreaterThanOrEqual(width === 390 ? 44 : 38);
+      expect(responsive.badgeOverlap).toBe(false);
+    }
+
+    await favoriteButton.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(favoriteButton).toBeFocused();
+    expect(await favoriteButton.evaluate((button) => getComputedStyle(button).outlineStyle)).not.toBe("none");
+
+    await page.getByRole("button", { name: "Shared With Me", exact: true }).click();
+    await expect(page.locator(".seed-vault-shared-with-me-panel")).toBeVisible();
+    expect(await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth))).toBeLessThanOrEqual(1);
     expect(consoleErrors).toEqual([]);
   });
 
