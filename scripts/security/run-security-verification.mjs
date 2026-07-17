@@ -31,7 +31,7 @@ const regressionNames = readdirSync(resolve(REPOSITORY_ROOT, "scripts"))
 for (const name of regressionNames) run(node, [resolve(REPOSITORY_ROOT, "scripts", name)]);
 
 run(npx, ["supabase", "db", "lint", "--local", "--level", "warning"]);
-run(npx, ["playwright", "test"]);
+run(npx, ["playwright", "test", "--workers=1"]);
 run(npm, ["run", "build"]);
 run("git", ["diff", "--check"]);
 
