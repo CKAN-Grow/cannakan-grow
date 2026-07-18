@@ -1854,6 +1854,118 @@ test.describe("local Developer Scenarios", () => {
     }
   });
 
+  test("Seed Vault footer settings remain balanced and accessible", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const settings = page.locator("#my-seed-vault .seed-vault-secondary-settings");
+    const theme = settings.locator(".seed-vault-theme-control");
+    const sharing = settings.locator(".seed-vault-share-status");
+    const shareButton = sharing.locator("[data-seed-vault-share='true']");
+    await expect(settings).toBeVisible();
+    await expect(theme).toContainText("Vault Theme");
+    await expect(sharing).toHaveAttribute("data-seed-vault-sharing-state", "private");
+    await expect(sharing.locator("#seed-vault-sharing-settings-title")).toHaveText("Private Vault");
+    await expect(sharing.locator(".seed-vault-sharing-settings-badge")).toHaveText("Private");
+    await expect(sharing).toContainText("Only you can view your Vault.");
+    await expect(sharing).toContainText("Invite others to view your Vault or collaborate on grows.");
+    await expect(shareButton).toHaveAccessibleName("Share Vault for your Seed Vault");
+
+    for (const width of [390, 768, 1024, 1280]) {
+      await page.setViewportSize({ width, height: width <= 768 ? 900 : 820 });
+      await expect(settings).toBeVisible();
+      await expect(theme).toBeVisible();
+      await expect(sharing).toBeVisible();
+      await expect(shareButton).toBeVisible();
+      const geometry = await settings.evaluate((node) => {
+        const themeCard = node.querySelector(".seed-vault-theme-control");
+        const sharingCard = node.querySelector(".seed-vault-share-status");
+        const action = node.querySelector("[data-seed-vault-share='true']");
+        const themeRect = themeCard.getBoundingClientRect();
+        const sharingRect = sharingCard.getBoundingClientRect();
+        const actionRect = action.getBoundingClientRect();
+        return {
+          theme: { x: themeRect.x, y: themeRect.y, right: themeRect.right, bottom: themeRect.bottom, width: themeRect.width },
+          sharing: { x: sharingRect.x, y: sharingRect.y, right: sharingRect.right, bottom: sharingRect.bottom, width: sharingRect.width },
+          actionHeight: actionRect.height,
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        };
+      });
+      expect(geometry.overflow).toBeLessThanOrEqual(1);
+      expect(geometry.actionHeight).toBeGreaterThanOrEqual(44);
+      expect(geometry.theme.x).toBeGreaterThanOrEqual(0);
+      expect(geometry.sharing.right).toBeLessThanOrEqual(width + 1);
+      if (width > 960) {
+        expect(Math.abs(geometry.theme.y - geometry.sharing.y)).toBeLessThanOrEqual(1);
+        expect(Math.abs(geometry.theme.bottom - geometry.sharing.bottom)).toBeLessThanOrEqual(1);
+        expect(geometry.theme.width).toBeGreaterThan(geometry.sharing.width * 1.6);
+      } else {
+        expect(Math.abs(geometry.theme.x - geometry.sharing.x)).toBeLessThanOrEqual(1);
+        expect(geometry.sharing.y).toBeGreaterThan(geometry.theme.bottom);
+      }
+    }
+
+    await shareButton.focus();
+    await expect(shareButton).toBeFocused();
+    const focusTreatment = await shareButton.evaluate((button) => {
+      const style = getComputedStyle(button);
+      return { outline: style.outlineStyle, shadow: style.boxShadow };
+    });
+    expect(focusTreatment.outline !== "none" || focusTreatment.shadow !== "none").toBe(true);
+
+    const sharedState = await page.evaluate(() => {
+      const host = document.createElement("div");
+      host.dataset.seedVaultSharingTestHost = "true";
+      host.innerHTML = renderSeedVaultShareStatusMarkup({ visibility: "link", publicSlug: "qa-vault" });
+      document.body.append(host);
+      const card = host.querySelector(".seed-vault-share-status");
+      const result = {
+        state: card?.getAttribute("data-seed-vault-sharing-state"),
+        title: card?.querySelector("#seed-vault-sharing-settings-title")?.textContent?.trim(),
+        badge: card?.querySelector(".seed-vault-sharing-settings-badge")?.textContent?.trim(),
+        action: card?.querySelector("[data-seed-vault-share='true'] > span:last-child")?.textContent?.trim(),
+      };
+      host.remove();
+      return result;
+    });
+    expect(sharedState).toEqual({ state: "shared", title: "Shared Vault", badge: "Share by Link", action: "Manage Sharing" });
+
+    const directShareState = await page.evaluate(() => {
+      const previousLoaded = appState.seedVaultUserSharesLoaded;
+      const previousShares = appState.seedVaultUserShares;
+      appState.seedVaultUserSharesLoaded = true;
+      appState.seedVaultUserShares = [{ userId: "qa-grower-one" }, { userId: "qa-grower-two" }];
+      const host = document.createElement("div");
+      host.innerHTML = renderSeedVaultShareStatusMarkup({ visibility: "private" });
+      const card = host.querySelector(".seed-vault-share-status");
+      const result = {
+        state: card?.getAttribute("data-seed-vault-sharing-state"),
+        title: card?.querySelector("#seed-vault-sharing-settings-title")?.textContent?.trim(),
+        badge: card?.querySelector(".seed-vault-sharing-settings-badge")?.textContent?.trim(),
+        description: card?.querySelector(".seed-vault-sharing-settings-description")?.textContent?.trim(),
+        support: card?.querySelector(".seed-vault-sharing-settings-support")?.textContent?.trim(),
+      };
+      appState.seedVaultUserSharesLoaded = previousLoaded;
+      appState.seedVaultUserShares = previousShares;
+      return result;
+    });
+    expect(directShareState).toEqual({
+      state: "shared",
+      title: "Shared Vault",
+      badge: "Direct Share",
+      description: "Shared privately with selected people.",
+      support: "2 people have direct access.",
+    });
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault final visual alignment meets the computed design contract", async ({ page }) => {
     test.setTimeout(90_000);
     const consoleErrors = [];
