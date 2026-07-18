@@ -2029,6 +2029,43 @@ test.describe("local Developer Scenarios", () => {
     await expect(myVaultTab.locator(".seed-vault-scope-tab-icon")).toBeVisible();
     await expect(sharedTab.locator(".seed-vault-scope-tab-icon")).toBeVisible();
 
+    const presentation = await scope.evaluate((node) => {
+      const active = node.querySelector(".seed-vault-page-tab.is-active");
+      const inactive = node.querySelector(".seed-vault-page-tab:not(.is-active)");
+      const containerStyle = getComputedStyle(node);
+      const activeStyle = getComputedStyle(active);
+      const inactiveStyle = getComputedStyle(inactive);
+      const indicatorStyle = getComputedStyle(active, "::after");
+      const iconBoxes = [...node.querySelectorAll(".seed-vault-scope-tab-icon")].map((icon) => icon.getBoundingClientRect());
+      return {
+        containerBorderWidth: Number.parseFloat(containerStyle.borderTopWidth),
+        containerShadow: containerStyle.boxShadow,
+        containerBackgroundImage: containerStyle.backgroundImage,
+        activeColor: activeStyle.color,
+        inactiveColor: inactiveStyle.color,
+        activeBackground: activeStyle.backgroundColor,
+        inactiveBackground: inactiveStyle.backgroundColor,
+        activeBorder: activeStyle.borderTopColor,
+        inactiveBorder: inactiveStyle.borderTopColor,
+        activeWeight: Number.parseFloat(activeStyle.fontWeight),
+        inactiveWeight: Number.parseFloat(inactiveStyle.fontWeight),
+        indicatorWidth: Number.parseFloat(indicatorStyle.width),
+        indicatorHeight: Number.parseFloat(indicatorStyle.height),
+        iconWidths: iconBoxes.map((box) => box.width),
+      };
+    });
+    expect(presentation.containerBorderWidth).toBeGreaterThanOrEqual(1);
+    expect(presentation.containerShadow).not.toBe("none");
+    expect(presentation.containerBackgroundImage).toContain("radial-gradient");
+    expect(normalizeComputedCssColor(presentation.activeColor)).toBe("rgb(255, 255, 255)");
+    expect(normalizeComputedCssColor(presentation.activeColor)).not.toBe(normalizeComputedCssColor(presentation.inactiveColor));
+    expect(normalizeComputedCssColor(presentation.activeBackground)).not.toBe(normalizeComputedCssColor(presentation.inactiveBackground));
+    expect(normalizeComputedCssColor(presentation.activeBorder)).not.toBe(normalizeComputedCssColor(presentation.inactiveBorder));
+    expect(presentation.activeWeight).toBeGreaterThan(presentation.inactiveWeight);
+    expect(presentation.indicatorWidth).toBeGreaterThanOrEqual(18);
+    expect(presentation.indicatorHeight).toBeGreaterThanOrEqual(2);
+    expect(presentation.iconWidths.every((width) => width >= 18)).toBe(true);
+
     const readingOrder = await hero.evaluate((node) => {
       const title = node.querySelector("#my-seed-vault-title");
       const tabs = node.querySelector(".seed-vault-hero-scope-control");
@@ -2060,6 +2097,7 @@ test.describe("local Developer Scenarios", () => {
           add: rect(addButton),
           newest: rect(newest),
           tabHeights: [...tabs.querySelectorAll(".seed-vault-page-tab")].map((tab) => tab.getBoundingClientRect().height),
+          tabWidths: [...tabs.querySelectorAll(".seed-vault-page-tab")].map((tab) => tab.getBoundingClientRect().width),
           overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
         };
       });
@@ -2068,9 +2106,10 @@ test.describe("local Developer Scenarios", () => {
       expect(geometry.tabs.right).toBeLessThanOrEqual(geometry.hero.right + 1);
       expect(geometry.tabs.bottom).toBeLessThanOrEqual(geometry.controls.y + 1);
       expect(geometry.newest.y).toBeGreaterThanOrEqual(geometry.controls.bottom);
-      expect(geometry.tabHeights.every((height) => height >= 44)).toBe(true);
+      expect(geometry.tabHeights.every((height) => height >= 48)).toBe(true);
       if (width <= 760) {
         expect(geometry.tabs.width).toBeGreaterThanOrEqual(geometry.utility.width - 1);
+        expect(Math.abs(geometry.tabWidths[0] - geometry.tabWidths[1])).toBeLessThanOrEqual(1);
         expect(geometry.add.y).toBeGreaterThanOrEqual(geometry.search.bottom);
       } else {
         expect(Math.abs(geometry.tabs.right - geometry.controls.right)).toBeLessThanOrEqual(1);
@@ -2082,6 +2121,27 @@ test.describe("local Developer Scenarios", () => {
     await expect(sharedTab).toBeFocused();
     const focusStyle = await sharedTab.evaluate((tab) => getComputedStyle(tab).outlineStyle);
     expect(focusStyle).not.toBe("none");
+
+    const inactiveBeforeHover = await sharedTab.evaluate((tab) => {
+      const style = getComputedStyle(tab);
+      return { background: style.backgroundColor, border: style.borderTopColor };
+    });
+    await sharedTab.hover();
+    const inactiveAfterHover = await sharedTab.evaluate((tab) => {
+      const style = getComputedStyle(tab);
+      return { background: style.backgroundColor, border: style.borderTopColor };
+    });
+    expect(inactiveAfterHover.background).not.toBe(inactiveBeforeHover.background);
+    expect(inactiveAfterHover.border).not.toBe(inactiveBeforeHover.border);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await sharedTab.hover();
+    const reducedMotionStyle = await sharedTab.evaluate((tab) => {
+      const style = getComputedStyle(tab);
+      return { transitionDuration: style.transitionDuration, transform: style.transform };
+    });
+    expect(reducedMotionStyle.transitionDuration.split(",").every((duration) => duration.trim() === "0s")).toBe(true);
+    expect(reducedMotionStyle.transform).toBe("none");
 
     await sharedTab.click();
     const sharedPanel = page.locator(".seed-vault-shared-with-me-panel");
