@@ -66,6 +66,7 @@ html {
   --app-page-max-width: 1280px;
   --app-page-inline-padding: clamp(16px, 2vw, 24px);
   --app-page-block-padding: clamp(18px, 2.4vw, 32px);
+  --app-page-top-gap: var(--space-5);
   --app-section-gap: clamp(18px, 2.4vw, 30px);
   --app-card-radius: 20px;
   --app-card-radius-sm: 16px;
@@ -778,6 +779,7 @@ textarea {
 
 .app-main {
   flex: 1 0 auto;
+  padding-block-start: var(--app-page-top-gap);
 }
 
 .app-footer {
@@ -2378,6 +2380,10 @@ body.download-route #install-grow-app-banner {
 body.download-route .app-shell {
   width: min(1180px, calc(100% - 24px));
   padding: 14px 0 24px;
+}
+
+body.download-route .app-main {
+  padding-block-start: 0;
 }
 
 body.download-route .app-shell::before {

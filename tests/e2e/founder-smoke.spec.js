@@ -88,6 +88,58 @@ test.describe("founder desktop smoke", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("primary page heroes preserve the canonical top rhythm beneath navigation", async ({ page }) => {
+    const primaryPages = [
+      { name: "Home", hash: "#home", pageSelector: ".home-page-content", heroSelector: ".app-hero--home" },
+      { name: "Sessions", hash: "#sessions", pageSelector: "#grow-sessions-header", heroSelector: "#grow-sessions-header" },
+      { name: "Seed Vault", hash: "#seed-vault", pageSelector: ".seed-vault-page", heroSelector: ".seed-vault-approved-hero", hasIntentionalHeroInset: true },
+      { name: "Community", hash: "#gallery", pageSelector: ".community-intelligence-header", heroSelector: ".community-intelligence-header" },
+      { name: "Explore", hash: "#sources", pageSelector: ".explore-page", heroSelector: ".source-directory-hero", hasIntentionalHeroInset: true },
+      { name: "Learn", hash: "#learn", pageSelector: ".learn-page", heroSelector: ".learn-hero" },
+      { name: "Profile", hash: "#profile", pageSelector: ".profile-page", heroSelector: ".profile-page" },
+      { name: "Reports", hash: "#analytics", pageSelector: ".private-analytics-page", heroSelector: ".private-analytics-hero", hasIntentionalHeroInset: true },
+    ];
+
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 768, height: 1024 },
+      { width: 1024, height: 900 },
+      { width: 1280, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+
+      for (const primaryPage of primaryPages) {
+        await gotoFounderRoute(page, primaryPage.hash);
+        const pageRoot = page.locator(primaryPage.pageSelector).first();
+        const hero = page.locator(primaryPage.heroSelector).first();
+        await expect(pageRoot, primaryPage.name + " page root should render").toBeVisible();
+        await expect(hero, primaryPage.name + " hero should render").toBeVisible();
+
+        const geometry = await pageRoot.evaluate((root, heroSelector) => {
+          const navigation = document.querySelector(".topbar");
+          const appMain = document.querySelector("#app");
+          const pageHero = document.querySelector(heroSelector);
+          const navigationRect = navigation.getBoundingClientRect();
+          const rootRect = root.getBoundingClientRect();
+          const heroRect = pageHero.getBoundingClientRect();
+          return {
+            mainPaddingTop: Number.parseFloat(getComputedStyle(appMain).paddingTop),
+            pageGap: Math.round(rootRect.top - navigationRect.bottom),
+            heroGap: Math.round(heroRect.top - navigationRect.bottom),
+          };
+        }, primaryPage.heroSelector);
+
+        expect(geometry.mainPaddingTop, primaryPage.name + " should use the shared page-top token").toBe(24);
+        expect(geometry.pageGap, primaryPage.name + " should begin 24px below navigation").toBe(24);
+        if (primaryPage.hasIntentionalHeroInset) {
+          expect(geometry.heroGap, primaryPage.name + " should preserve its intentional internal pre-hero content").toBeGreaterThan(24);
+        } else {
+          expect(geometry.heroGap, primaryPage.name + " hero should follow the canonical top rhythm").toBe(24);
+        }
+      }
+    }
+  });
+
   for (const route of FOUNDER_ROUTES) {
     test(`${route.name} route renders key smoke UI`, async ({ page }) => {
       await gotoFounderRoute(page, route);
