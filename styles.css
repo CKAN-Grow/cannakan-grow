@@ -341,7 +341,7 @@ textarea {
   align-items: center;
   justify-content: flex-start;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-1) var(--space-4);
+  padding: var(--space-2) var(--space-1);
 }
 
 .topbar-brand {
@@ -79097,7 +79097,7 @@ a.source-directory-variety-chip:focus-visible {
   background:
     linear-gradient(180deg, rgba(4, 8, 6, 0.02), rgba(4, 8, 6, 0.82) 46%, rgba(4, 8, 6, 0.96) 70%),
     linear-gradient(90deg, rgba(5, 9, 7, 0.92), rgba(5, 9, 7, 0.58) 38%, rgba(5, 9, 7, 0.28) 74%),
-    url("/assets/images/methods/kan-grow-companion-hero.png");
+    url("/assets/images/images/methods/kan-grow-companion-bg.png");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center top;
@@ -79314,7 +79314,7 @@ a.source-directory-variety-chip:focus-visible {
   background:
     linear-gradient(90deg, rgba(5, 11, 8, 0.92), rgba(5, 11, 8, 0.78) 48%, rgba(5, 11, 8, 0.34)),
     radial-gradient(circle at 17% 50%, color-mix(in srgb, var(--vault-theme-glow) 56%, transparent), transparent 28%),
-    url("/assets/images/methods/kan-grow-companion-hero.png");
+    url("/assets/images/images/methods/kan-grow-companion-bg.png");
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center right;
@@ -81152,7 +81152,7 @@ a.source-directory-variety-chip:focus-visible {
   background:
     linear-gradient(90deg, rgba(6, 9, 8, 0.97) 0%, rgba(6, 9, 8, 0.88) 44%, rgba(6, 9, 8, 0.42) 100%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 36%),
-    url("/assets/images/methods/kan-grow-companion-hero.png");
+    url("/assets/images/images/methods/kan-grow-companion-bg.png");
   background-position: center 44%;
   background-size: cover;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 22px 44px rgba(0, 0, 0, 0.28);

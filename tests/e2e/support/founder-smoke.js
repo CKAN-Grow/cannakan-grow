@@ -6,7 +6,7 @@ const FOUNDER_ROUTES = Object.freeze([
   {
     name: "Home",
     hash: "#home",
-    expectedText: /Cannakan|Grow Session Tracker|Start My First Session|My Sessions/i,
+    expectedText: /Cannakan|Start My First Session|My Sessions/i,
     ctas: [/Start/i, /My Sessions/i, /Community Grow/i],
   },
   {
