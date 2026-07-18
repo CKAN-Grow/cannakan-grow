@@ -1747,25 +1747,63 @@ test.describe("local Developer Scenarios", () => {
       const name = card.querySelector(".seed-vault-entry-identity-copy h4");
       const nameStyle = getComputedStyle(name);
       const cardBox = card.getBoundingClientRect();
+      const identityName = card.querySelector(".seed-vault-entry-identity-copy h4").getBoundingClientRect();
+      const identitySource = card.querySelector(".seed-vault-entry-provenance").getBoundingClientRect();
+      const identityTraits = card.querySelector(".seed-vault-entry-traits").getBoundingClientRect();
+      const insight = card.querySelector(".seed-vault-entry-insight-strip");
+      const quantity = insight.querySelector(".is-quantity").getBoundingClientRect();
+      const acquired = insight.querySelector(".is-acquired").getBoundingClientRect();
+      const collection = insight.querySelector(".is-collection").getBoundingClientRect();
+      const statusFooter = card.querySelector(".seed-vault-entry-status-pills").getBoundingClientRect();
+      const copyStyle = getComputedStyle(card.querySelector(".seed-vault-entry-library-copy"));
       const visibleStatuses = [...card.querySelectorAll(".seed-vault-entry-status-pill")]
         .filter((pill) => getComputedStyle(pill).display !== "none")
         .map((pill) => pill.dataset.seedVaultStatusRole);
       return {
+        cardHeight: cardBox.height,
+        mediaHeight: visual.height,
         mediaRatio: visual.height / cardBox.height,
         actionsInsideMedia: actionBoxes.length === 2 && actionBoxes.every((box) => box.top >= visual.top - 1 && box.right <= visual.right + 1 && box.bottom <= visual.bottom + 1),
         lineClamp: nameStyle.webkitLineClamp,
         nameOverflow: nameStyle.overflow,
+        identityOrder: identityName.top < identitySource.top && identitySource.top < identityTraits.top,
+        metadataAligned: Math.abs(quantity.top - acquired.top) <= 1,
+        collectionHeight: collection.height,
+        statusFooterFollowsCollection: statusFooter.top >= collection.bottom,
+        copyGap: Number.parseFloat(copyStyle.rowGap || copyStyle.gap),
+        copyPaddingTop: Number.parseFloat(copyStyle.paddingTop),
         visibleStatuses,
       };
     });
+    expect(galleryContract.cardHeight).toBeGreaterThanOrEqual(369);
+    expect(galleryContract.cardHeight).toBeLessThanOrEqual(371);
+    expect(galleryContract.mediaHeight).toBeGreaterThanOrEqual(147);
+    expect(galleryContract.mediaHeight).toBeLessThanOrEqual(149);
     expect(galleryContract.mediaRatio).toBeGreaterThanOrEqual(0.38);
     expect(galleryContract.mediaRatio).toBeLessThanOrEqual(0.43);
     expect(galleryContract.actionsInsideMedia).toBe(true);
+    expect(galleryContract.identityOrder).toBe(true);
+    expect(galleryContract.metadataAligned).toBe(true);
+    expect(galleryContract.collectionHeight).toBeLessThanOrEqual(28);
+    expect(galleryContract.statusFooterFollowsCollection).toBe(true);
+    expect(galleryContract.copyGap).toBeLessThanOrEqual(9);
+    expect(galleryContract.copyPaddingTop).toBeLessThanOrEqual(11);
     expect(galleryContract.lineClamp).toBe("2");
     expect(galleryContract.nameOverflow).toBe("hidden");
     expect(galleryContract.visibleStatuses.length).toBeGreaterThanOrEqual(1);
     expect(galleryContract.visibleStatuses.length).toBeLessThanOrEqual(2);
     expect(galleryContract.visibleStatuses.every((role) => role === "health" || role === "planning")).toBe(true);
+
+    const rowAlignment = await cards.evaluateAll((items) => {
+      const firstRow = items.slice(0, 3).map((card) => card.getBoundingClientRect().height);
+      const accents = items.map((card) => getComputedStyle(card).getPropertyValue("--seed-vault-gallery-accent").trim()).filter(Boolean);
+      return {
+        heightDelta: Math.max(...firstRow) - Math.min(...firstRow),
+        distinctAccents: new Set(accents).size,
+      };
+    });
+    expect(rowAlignment.heightDelta).toBeLessThanOrEqual(1);
+    expect(rowAlignment.distinctAccents).toBeGreaterThan(1);
 
     const favorite = cards.locator(".seed-vault-favorite-button.is-active").first();
     await expectExactComputedCssColor(favorite, "color", "rgb(232, 76, 91)");
@@ -1790,7 +1828,10 @@ test.describe("local Developer Scenarios", () => {
           overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
           canvasWidth: document.querySelector(".seed-vault-page").getBoundingClientRect().width,
           cardInsideViewport: card.left >= -0.5 && card.right <= document.documentElement.clientWidth + 0.5,
+          cardHeight: card.height,
+          mediaHeight: visual.height,
           mediaRatio: visual.height / card.height,
+          imageObjectFit: getComputedStyle(element.querySelector(".seed-vault-seed-thumb img")).objectFit,
           smallestAction: Math.min(...actionBoxes.flatMap((box) => [box.width, box.height])),
         };
       });
@@ -1798,8 +1839,13 @@ test.describe("local Developer Scenarios", () => {
       expect(responsive.overflow).toBeLessThanOrEqual(1);
       expect(responsive.canvasWidth).toBeLessThanOrEqual(1280.5);
       expect(responsive.cardInsideViewport).toBe(true);
+      expect(responsive.cardHeight).toBeGreaterThanOrEqual(width <= 700 ? 383 : 369);
+      expect(responsive.cardHeight).toBeLessThanOrEqual(width <= 700 ? 385 : 371);
+      expect(responsive.mediaHeight).toBeGreaterThanOrEqual(width <= 700 ? 153 : 147);
+      expect(responsive.mediaHeight).toBeLessThanOrEqual(width <= 700 ? 155 : 149);
       expect(responsive.mediaRatio).toBeGreaterThanOrEqual(0.38);
       expect(responsive.mediaRatio).toBeLessThanOrEqual(0.43);
+      expect(responsive.imageObjectFit).toBe("cover");
       expect(responsive.smallestAction).toBeGreaterThanOrEqual(width <= 700 ? 44 : 40);
     }
 

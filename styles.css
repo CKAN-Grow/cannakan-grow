@@ -85148,8 +85148,9 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) {
+  --seed-vault-gallery-accent: rgba(205, 216, 208, 0.24);
   min-width: 0;
-  min-height: 440px;
+  min-height: 368px;
   height: 100%;
   overflow: visible;
   isolation: isolate;
@@ -85162,18 +85163,92 @@ a.source-directory-variety-chip:focus-visible {
     inset 0 1px 0 rgba(255, 255, 255, 0.045),
     0 16px 34px rgba(0, 0, 0, 0.25);
 }
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.is-collection[data-seed-vault-collection-tone="violet"]) {
+  --seed-vault-gallery-accent: var(--grow-color-collection);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.is-collection[data-seed-vault-collection-tone="cyan"]) {
+  --seed-vault-gallery-accent: var(--grow-color-source);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.is-collection[data-seed-vault-collection-tone="amber"]) {
+  --seed-vault-gallery-accent: var(--grow-color-planned);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.is-collection[data-seed-vault-collection-tone="green"]) {
+  --seed-vault-gallery-accent: var(--grow-color-variety);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.is-collection[data-seed-vault-collection-tone="bronze"]) {
+  --seed-vault-gallery-accent: var(--grow-color-seed);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.is-collection[data-seed-vault-collection-tone="rose"]),
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded).is-favorite {
+  --seed-vault-gallery-accent: var(--grow-color-favorite);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-inventory-health="low-stock"] {
+  --seed-vault-gallery-accent: var(--grow-color-low-stock);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-inventory-health="out-of-stock"] {
+  --seed-vault-gallery-accent: var(--grow-color-out-of-stock);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-inventory-health="older-seed"] {
+  --seed-vault-gallery-accent: var(--grow-color-older-seed);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-planning-state="planned"] {
+  --seed-vault-gallery-accent: var(--grow-color-planned);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-planning-state="active"] {
+  --seed-vault-gallery-accent: var(--grow-color-healthy);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-planning-state="completed"] {
+  --seed-vault-gallery-accent: color-mix(in srgb, var(--grow-color-healthy) 62%, var(--grow-color-archived));
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)[data-seed-vault-planning-state="archived"] {
+  --seed-vault-gallery-accent: var(--grow-color-archived);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.seed-vault-entry-status-pill.is-grow-along) {
+  --seed-vault-gallery-accent: var(--grow-color-growalong);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):has(.seed-vault-entry-status-pill.is-testing) {
+  --seed-vault-gallery-accent: var(--grow-color-testing);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 20px;
+  left: 20px;
+  z-index: 3;
+  height: 2px;
+  border-radius: 0 0 999px 999px;
+  background: color-mix(in srgb, var(--seed-vault-gallery-accent) 72%, transparent);
+  box-shadow: 0 3px 16px color-mix(in srgb, var(--seed-vault-gallery-accent) 20%, transparent);
+  pointer-events: none;
+}
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-collapsed-row {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 184px minmax(0, 1fr) auto;
+  grid-template-rows: 148px minmax(0, 1fr) auto;
   gap: 0;
   align-items: stretch;
   min-width: 0;
-  min-height: 440px;
+  min-height: 368px;
   height: 100%;
-  padding: 0 16px 16px;
+  padding: 0 14px 12px;
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-media {
@@ -85181,9 +85256,9 @@ a.source-directory-variety-chip:focus-visible {
   grid-column: 1;
   grid-row: 1;
   display: block;
-  width: calc(100% + 32px);
-  height: 184px;
-  margin-inline: -16px;
+  width: calc(100% + 28px);
+  height: 148px;
+  margin-inline: -14px;
   overflow: visible;
   border-radius: 18px 18px 0 0;
 }
@@ -85260,27 +85335,27 @@ a.source-directory-variety-chip:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 14px;
+  gap: 9px;
   min-width: 0;
-  padding-top: 16px;
+  padding-top: 11px;
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-identity {
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 11px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 9px;
   align-items: start;
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-identity .seed-vault-source-avatar {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
   border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-identity-copy {
-  gap: 4px;
+  gap: 2px;
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-identity-copy h4 {
@@ -85320,8 +85395,8 @@ a.source-directory-variety-chip:focus-visible {
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-insight-strip {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px 14px;
-  padding-top: 12px;
+  gap: 6px 10px;
+  padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.065);
 }
 
@@ -85346,10 +85421,13 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-insight-strip .is-collection {
-  display: grid;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   grid-column: 1 / -1;
-  min-height: 32px;
-  padding: 7px 9px 7px 11px;
+  min-height: 26px;
+  padding: 4px 8px 4px 10px;
   border-left: 2px solid color-mix(in srgb, var(--grow-color-collection) 72%, transparent);
   border-radius: 0 8px 8px 0;
   background: linear-gradient(90deg, color-mix(in srgb, var(--grow-color-collection) 9%, transparent), transparent 72%);
@@ -85370,8 +85448,8 @@ a.source-directory-variety-chip:focus-visible {
   align-self: end;
   justify-content: flex-start;
   gap: 6px;
-  min-height: 27px;
-  padding-top: 12px;
+  min-height: 23px;
+  padding-top: 8px;
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-status-pill[data-seed-vault-status-role="context"] {
@@ -85430,11 +85508,11 @@ a.source-directory-variety-chip:focus-visible {
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):hover,
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):focus-within {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 26%, rgba(255, 255, 255, 0.1));
+  border-color: color-mix(in srgb, var(--seed-vault-gallery-accent) 34%, rgba(255, 255, 255, 0.1));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 22px 42px rgba(0, 0, 0, 0.34),
-    0 0 24px color-mix(in srgb, var(--seed-vault-theme-glow, rgba(148, 209, 89, 0.18)) 20%, transparent);
+    0 0 24px color-mix(in srgb, var(--seed-vault-gallery-accent) 14%, transparent);
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):hover .seed-vault-seed-thumb img,
@@ -85462,16 +85540,16 @@ a.source-directory-variety-chip:focus-visible {
 
   .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-collapsed-row {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 184px minmax(0, 1fr) auto;
-    min-height: 440px;
-    padding: 0 14px 14px;
+    grid-template-rows: 154px minmax(0, 1fr) auto;
+    min-height: 382px;
+    padding: 0 14px 12px;
   }
 
   .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-media {
     grid-column: 1;
     grid-row: 1;
     width: calc(100% + 28px);
-    height: 184px;
+    height: 154px;
     margin-inline: -14px;
   }
 
@@ -85880,8 +85958,9 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) {
+  border-color: color-mix(in srgb, var(--seed-vault-gallery-accent) 20%, rgba(255, 255, 255, 0.075));
   background:
-    radial-gradient(circle at 92% 5%, color-mix(in srgb, var(--seed-vault-theme-glow, rgba(148, 209, 89, 0.18)) 28%, transparent), transparent 35%),
+    radial-gradient(circle at 92% 5%, color-mix(in srgb, var(--seed-vault-gallery-accent) 9%, transparent), transparent 35%),
     linear-gradient(160deg, rgba(19, 26, 22, 0.98), rgba(6, 10, 8, 0.995) 58%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
