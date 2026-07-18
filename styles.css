@@ -85999,3 +85999,192 @@ a.source-directory-variety-chip:focus-visible {
 .seed-vault-collection-modal .seed-vault-collection-manager-row[data-seed-vault-collection-tone] strong {
   color: color-mix(in srgb, var(--seed-vault-collection-color) 82%, white);
 }
+
+
+/* Seed Vault List View favorite-row semantic hierarchy */
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite {
+  --seed-vault-row-favorite-color: var(--grow-color-favorite);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite[data-seed-vault-planning-state="planned"] {
+  --seed-vault-row-primary-color: var(--grow-color-planned);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite[data-seed-vault-planning-state="active"] {
+  --seed-vault-row-primary-color: var(--grow-color-healthy);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite[data-seed-vault-planning-state="completed"] {
+  --seed-vault-row-primary-color: color-mix(in srgb, var(--grow-color-healthy) 62%, var(--grow-color-archived));
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite[data-seed-vault-planning-state="archived"] {
+  --seed-vault-row-primary-color: var(--grow-color-archived);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:has(.seed-vault-entry-status-pill.is-grow-along) {
+  --seed-vault-row-primary-color: var(--grow-color-growalong);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:has(.seed-vault-entry-status-pill.is-testing) {
+  --seed-vault-row-primary-color: var(--grow-color-testing);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:not(:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+)) {
+  border-color: color-mix(in srgb, var(--seed-vault-row-favorite-color) 34%, rgba(255, 255, 255, 0.08));
+  background:
+    radial-gradient(ellipse at 94% 50%, color-mix(in srgb, var(--seed-vault-row-favorite-color) 11%, transparent), transparent 38%),
+    linear-gradient(100deg,
+      color-mix(in srgb, var(--seed-vault-row-favorite-color) 15%, rgba(17, 23, 19, 0.98)) 0%,
+      color-mix(in srgb, var(--seed-vault-row-favorite-color) 7%, rgba(10, 15, 12, 0.99)) 52%,
+      rgba(7, 11, 9, 0.995) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--seed-vault-row-favorite-color) 18%, rgba(255, 255, 255, 0.045)),
+    inset 0 0 32px color-mix(in srgb, var(--seed-vault-row-favorite-color) 7%, transparent),
+    0 12px 26px rgba(0, 0, 0, 0.22),
+    0 0 16px color-mix(in srgb, var(--seed-vault-row-favorite-color) 7%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:not(:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+))::before {
+  inset: 7px auto 7px -1px;
+  width: 4px;
+  border-radius: 0 3px 3px 0;
+  background: var(--seed-vault-row-favorite-color);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--seed-vault-row-favorite-color) 42%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+) {
+  border-color: color-mix(in srgb, var(--seed-vault-row-primary-color) 32%, rgba(255, 255, 255, 0.08));
+  background:
+    radial-gradient(ellipse at 96% 50%, color-mix(in srgb, var(--seed-vault-row-favorite-color) 9%, transparent), transparent 30%),
+    radial-gradient(ellipse at 2% 50%, color-mix(in srgb, var(--seed-vault-row-primary-color) 11%, transparent), transparent 30%),
+    linear-gradient(150deg, rgba(17, 23, 19, 0.985), rgba(7, 11, 9, 0.995));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--seed-vault-row-primary-color) 16%, rgba(255, 255, 255, 0.045)),
+    inset 0 0 26px color-mix(in srgb, var(--seed-vault-row-favorite-color) 5%, transparent),
+    0 12px 26px rgba(0, 0, 0, 0.22),
+    0 0 16px color-mix(in srgb, var(--seed-vault-row-primary-color) 7%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+)::before {
+  inset: 7px auto 7px -1px;
+  width: 4px;
+  border-radius: 0 3px 3px 0;
+  background: var(--seed-vault-row-primary-color);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--seed-vault-row-primary-color) 38%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+)::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: -1px;
+  width: 2px;
+  height: 28px;
+  border-radius: 2px 0 0 2px;
+  background: var(--seed-vault-row-favorite-color);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--seed-vault-row-favorite-color) 36%, transparent);
+  pointer-events: none;
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:not(:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+)):hover {
+  border-color: color-mix(in srgb, var(--seed-vault-row-favorite-color) 46%, rgba(255, 255, 255, 0.1));
+  background:
+    radial-gradient(ellipse at 94% 50%, color-mix(in srgb, var(--seed-vault-row-favorite-color) 15%, transparent), transparent 40%),
+    linear-gradient(100deg,
+      color-mix(in srgb, var(--seed-vault-row-favorite-color) 19%, rgba(19, 26, 21, 0.985)) 0%,
+      color-mix(in srgb, var(--seed-vault-row-favorite-color) 9%, rgba(10, 16, 13, 0.99)) 54%,
+      rgba(8, 13, 10, 0.995) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--seed-vault-row-favorite-color) 22%, rgba(255, 255, 255, 0.05)),
+    inset 0 0 36px color-mix(in srgb, var(--seed-vault-row-favorite-color) 9%, transparent),
+    var(--vault-surface-shadow-hover),
+    0 0 20px color-mix(in srgb, var(--seed-vault-row-favorite-color) 11%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:is(
+  [data-seed-vault-planning-state="planned"],
+  [data-seed-vault-planning-state="active"],
+  [data-seed-vault-planning-state="completed"],
+  [data-seed-vault-planning-state="archived"],
+  :has(.seed-vault-entry-status-pill.is-grow-along),
+  :has(.seed-vault-entry-status-pill.is-testing)
+):hover {
+  border-color: color-mix(in srgb, var(--seed-vault-row-primary-color) 44%, rgba(255, 255, 255, 0.1));
+  background:
+    radial-gradient(ellipse at 96% 50%, color-mix(in srgb, var(--seed-vault-row-favorite-color) 13%, transparent), transparent 32%),
+    radial-gradient(ellipse at 2% 50%, color-mix(in srgb, var(--seed-vault-row-primary-color) 15%, transparent), transparent 32%),
+    linear-gradient(150deg, rgba(19, 27, 22, 0.99), rgba(8, 13, 10, 0.995));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--seed-vault-row-primary-color) 20%, rgba(255, 255, 255, 0.05)),
+    inset 0 0 30px color-mix(in srgb, var(--seed-vault-row-favorite-color) 7%, transparent),
+    var(--vault-surface-shadow-hover),
+    0 0 20px color-mix(in srgb, var(--seed-vault-row-primary-color) 11%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite:focus-within {
+  outline: 2px solid color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 72%, white 12%);
+  outline-offset: 2px;
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card.is-favorite .seed-vault-favorite-button.is-active {
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 58%, transparent);
+  background: color-mix(in srgb, var(--grow-color-favorite) 16%, rgba(8, 12, 10, 0.9));
+  color: var(--grow-color-favorite);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grow-color-favorite) 22%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--grow-color-favorite) 10%, transparent),
+    0 0 20px color-mix(in srgb, var(--grow-color-favorite) 22%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-status-pill.is-favorite {
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 46%, transparent);
+  background: color-mix(in srgb, var(--grow-color-favorite) 14%, rgba(8, 12, 10, 0.84));
+  color: color-mix(in srgb, var(--grow-color-favorite) 84%, white 16%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--grow-color-favorite) 18%, transparent),
+    0 0 12px color-mix(in srgb, var(--grow-color-favorite) 12%, transparent);
+}

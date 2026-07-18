@@ -1368,13 +1368,107 @@ test.describe("local Developer Scenarios", () => {
     await expect(favoriteButton.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
     await expect(inactiveButton.locator("path")).toHaveCSS("fill", "none");
 
-    const favoriteRowTreatment = await favoriteButton.locator("xpath=ancestor::article").evaluate((card) => {
+    const favoriteOnlyCard = page.locator('#my-seed-vault .seed-vault-entry-card.is-favorite[data-seed-vault-planning-state="inventory"]:not(:has(.seed-vault-entry-status-pill.is-testing)):not(:has(.seed-vault-entry-status-pill.is-grow-along))').first();
+    const favoritePlanningCard = page.locator('#my-seed-vault .seed-vault-entry-card.is-favorite:is([data-seed-vault-planning-state="planned"], [data-seed-vault-planning-state="active"], :has(.seed-vault-entry-status-pill.is-testing), :has(.seed-vault-entry-status-pill.is-grow-along))').first();
+    const neutralCard = page.locator('#my-seed-vault .seed-vault-entry-card:not(.is-favorite)[data-seed-vault-planning-state="inventory"]:not(:has(.seed-vault-entry-status-pill.is-testing)):not(:has(.seed-vault-entry-status-pill.is-grow-along))').first();
+    await expect(favoriteOnlyCard).toBeVisible();
+    await expect(favoritePlanningCard).toBeVisible();
+    await expect(neutralCard).toBeVisible();
+
+    const favoriteOnlyTreatment = await favoriteOnlyCard.evaluate((card) => {
+      const style = getComputedStyle(card);
       const accent = getComputedStyle(card, "::before");
-      return { width: parseFloat(accent.width), color: accent.backgroundColor, glow: accent.boxShadow };
+      const neutral = document.querySelector('.seed-vault-entry-card:not(.is-favorite)[data-seed-vault-planning-state="inventory"]:not(:has(.seed-vault-entry-status-pill.is-testing)):not(:has(.seed-vault-entry-status-pill.is-grow-along))');
+      const probe = document.createElement("span");
+      probe.style.color = "var(--grow-color-favorite)";
+      document.body.append(probe);
+      const favoriteColor = getComputedStyle(probe).color;
+      probe.remove();
+      return {
+        background: style.backgroundImage,
+        borderColor: style.borderColor,
+        glow: style.boxShadow,
+        accentWidth: parseFloat(accent.width),
+        accentColor: accent.backgroundColor,
+        accentGlow: accent.boxShadow,
+        favoriteColor,
+        neutralBackground: getComputedStyle(neutral).backgroundImage,
+        neutralBorderColor: getComputedStyle(neutral).borderColor,
+        neutralAccentContent: getComputedStyle(neutral, "::before").content,
+        titleColor: getComputedStyle(card.querySelector(".seed-vault-entry-identity-copy h4")).color,
+      };
     });
-    expect(favoriteRowTreatment.width).toBeLessThanOrEqual(2);
-    expect(favoriteRowTreatment.color).toBe("rgb(232, 76, 91)");
-    expect(favoriteRowTreatment.glow).not.toBe("none");
+    expect(favoriteOnlyTreatment.background).not.toBe(favoriteOnlyTreatment.neutralBackground);
+    expect(favoriteOnlyTreatment.borderColor).not.toBe(favoriteOnlyTreatment.neutralBorderColor);
+    expect(favoriteOnlyTreatment.accentWidth).toBeGreaterThanOrEqual(3);
+    expect(favoriteOnlyTreatment.accentColor).toBe(favoriteOnlyTreatment.favoriteColor);
+    expect(favoriteOnlyTreatment.accentGlow).not.toBe("none");
+    expect(favoriteOnlyTreatment.glow).not.toBe("none");
+    expect(favoriteOnlyTreatment.neutralAccentContent).toBe("none");
+    expect(favoriteOnlyTreatment.titleColor).toMatch(/(?:rgb|color\()/);
+
+    const favoriteOnlyHeart = favoriteOnlyCard.locator(".seed-vault-favorite-button.is-active");
+    await expect(favoriteOnlyHeart).toHaveAttribute("aria-pressed", "true");
+    await expect(favoriteOnlyHeart.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
+
+    const favoritePlanningTreatment = await favoritePlanningCard.evaluate((card) => {
+      const accent = getComputedStyle(card, "::before");
+      const secondary = getComputedStyle(card, "::after");
+      const testingPill = card.querySelector(".seed-vault-entry-status-pill.is-testing");
+      const growAlongPill = card.querySelector(".seed-vault-entry-status-pill.is-grow-along");
+      const planningPill = card.querySelector('.seed-vault-entry-status-pill[data-seed-vault-status-role="planning"]');
+      const primaryPill = testingPill || growAlongPill || planningPill;
+      let token = testingPill ? "testing"
+        : growAlongPill ? "growalong"
+          : card.dataset.seedVaultPlanningState === "planned" ? "planned" : "healthy";
+      const probe = document.createElement("span");
+      probe.style.color = "var(--grow-color-" + token + ")";
+      document.body.append(probe);
+      const primaryColor = getComputedStyle(probe).color;
+      probe.style.color = "var(--grow-color-favorite)";
+      const favoriteColor = getComputedStyle(probe).color;
+      probe.remove();
+      return {
+        primaryColor,
+        favoriteColor,
+        accentColor: accent.backgroundColor,
+        accentWidth: parseFloat(accent.width),
+        secondaryColor: secondary.backgroundColor,
+        secondaryWidth: parseFloat(secondary.width),
+        planningPillColor: getComputedStyle(primaryPill).color,
+      };
+    });
+    expect(favoritePlanningTreatment.accentWidth).toBeGreaterThanOrEqual(3);
+    expect(favoritePlanningTreatment.accentColor).toBe(favoritePlanningTreatment.primaryColor);
+    expect(favoritePlanningTreatment.planningPillColor).toBe(favoritePlanningTreatment.primaryColor);
+    expect(favoritePlanningTreatment.secondaryWidth).toBeGreaterThanOrEqual(2);
+    expect(favoritePlanningTreatment.secondaryColor).toBe(favoritePlanningTreatment.favoriteColor);
+
+    const favoriteCollectionCard = page.locator('#my-seed-vault .seed-vault-entry-card.is-favorite:has(.is-collection[data-seed-vault-collection-key])').first();
+    const favoriteCollectionTreatment = await favoriteCollectionCard.locator(".is-collection").evaluate((collection) => {
+      const marker = getComputedStyle(collection.querySelector("strong"), "::before");
+      const probe = document.createElement("span");
+      probe.style.color = "var(--seed-vault-collection-color)";
+      collection.append(probe);
+      const collectionColor = getComputedStyle(probe).color;
+      probe.remove();
+      return { collectionColor, markerColor: marker.backgroundColor, key: collection.dataset.seedVaultCollectionKey };
+    });
+    expect(favoriteCollectionTreatment.key).toBeTruthy();
+    expect(favoriteCollectionTreatment.markerColor).toBe(favoriteCollectionTreatment.collectionColor);
+
+    const preHoverBackground = await favoriteOnlyCard.evaluate((card) => getComputedStyle(card).backgroundImage);
+    await favoriteOnlyCard.hover();
+    expect(await favoriteOnlyCard.evaluate((card) => getComputedStyle(card).backgroundImage)).not.toBe(preHoverBackground);
+    await page.mouse.move(1, 1);
+    await favoriteOnlyHeart.focus();
+    const focusTreatment = await favoriteOnlyCard.evaluate((card) => {
+      const style = getComputedStyle(card);
+      return { style: style.outlineStyle, width: parseFloat(style.outlineWidth), color: style.outlineColor };
+    });
+    expect(focusTreatment.style).toBe("solid");
+    expect(focusTreatment.width).toBeGreaterThanOrEqual(2);
+    expect(focusTreatment.color).not.toBe(favoriteOnlyTreatment.favoriteColor);
 
     const expectedTones = {
       healthy: "rgb(148, 209, 89)",
@@ -1425,6 +1519,7 @@ test.describe("local Developer Scenarios", () => {
         const actionControls = [...card.querySelectorAll(".seed-vault-favorite-button, .seed-vault-more-button")];
         const favorite = document.querySelector(".seed-vault-favorite-button.is-active");
         const favoriteBox = favorite.getBoundingClientRect();
+        const favoriteAccent = getComputedStyle(favorite.closest(".seed-vault-entry-card"), "::before");
         const pills = [...card.querySelectorAll(".seed-vault-entry-status-pill")]
           .filter((pill) => getComputedStyle(pill).display !== "none")
           .map((pill) => pill.getBoundingClientRect());
@@ -1439,6 +1534,7 @@ test.describe("local Developer Scenarios", () => {
           favoriteVisible: getComputedStyle(favorite).display !== "none" && favoriteBox.width > 0 && favoriteBox.height > 0,
           favoriteWidth: favoriteBox.width,
           favoriteHeight: favoriteBox.height,
+          favoriteAccentWidth: parseFloat(favoriteAccent.width),
           badgeOverlap: overlap,
         };
       });
@@ -1456,6 +1552,7 @@ test.describe("local Developer Scenarios", () => {
       expect(responsive.favoriteVisible).toBe(true);
       expect(responsive.favoriteWidth).toBeGreaterThanOrEqual(width === 390 ? 44 : 40);
       expect(responsive.favoriteHeight).toBeGreaterThanOrEqual(width === 390 ? 44 : 38);
+      expect(responsive.favoriteAccentWidth).toBeGreaterThanOrEqual(3);
       expect(responsive.badgeOverlap).toBe(false);
     }
 
