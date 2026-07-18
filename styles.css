@@ -85218,3 +85218,313 @@ a.source-directory-variety-chip:focus-visible {
     min-height: 44px;
   }
 }
+
+
+/* Seed Vault 3.0 premium surface rendering */
+.seed-vault-page .seed-vault-panel {
+  --vault-surface-edge: rgba(236, 244, 238, 0.09);
+  --vault-surface-highlight: rgba(255, 255, 255, 0.045);
+  --vault-surface-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  --vault-surface-shadow-hover: 0 24px 48px rgba(0, 0, 0, 0.3);
+  --vault-surface-texture: linear-gradient(118deg, transparent 0 42%, rgba(255, 255, 255, 0.012) 48%, transparent 56%);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -86px 120px rgba(0, 0, 0, 0.34),
+    inset 0 0 72px rgba(0, 0, 0, 0.2),
+    0 28px 54px rgba(0, 0, 0, 0.31);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 57% 34%, rgba(255, 191, 82, 0.12), transparent 23%),
+    radial-gradient(circle at 13% 16%, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 6%, transparent), transparent 29%),
+    linear-gradient(118deg, transparent 0 43%, rgba(255, 255, 255, 0.018) 49%, transparent 56%),
+    radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(0, 0, 0, 0.3) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -84px 100px rgba(0, 0, 0, 0.25);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero-main {
+  position: relative;
+  z-index: 1;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot {
+  background:
+    radial-gradient(circle at 9% 50%, color-mix(in srgb, var(--grow-color-variety) 7%, transparent), transparent 18%),
+    radial-gradient(circle at 34% 50%, color-mix(in srgb, var(--grow-color-seed) 6%, transparent), transparent 17%),
+    radial-gradient(circle at 59% 50%, color-mix(in srgb, var(--grow-color-source) 6%, transparent), transparent 17%),
+    radial-gradient(circle at 82% 50%, color-mix(in srgb, var(--grow-color-collection) 6%, transparent), transparent 18%),
+    var(--vault-surface-texture),
+    linear-gradient(105deg, rgba(15, 22, 18, 0.98), rgba(10, 17, 15, 0.985));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.018),
+    var(--vault-surface-shadow);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat .seed-vault-overview-stat-icon {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    inset 0 -1px 0 color-mix(in srgb, currentColor 18%, transparent),
+    0 10px 22px rgba(0, 0, 0, 0.3),
+    0 0 25px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section {
+  box-shadow:
+    inset 0 1px 0 var(--vault-surface-highlight),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.012),
+    var(--vault-surface-shadow);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning {
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--grow-color-planned) 9%, transparent), transparent 29%),
+    radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--grow-color-testing) 6%, transparent), transparent 27%),
+    radial-gradient(circle at 88% 9%, color-mix(in srgb, var(--grow-color-growalong) 6%, transparent), transparent 27%),
+    var(--vault-surface-texture),
+    linear-gradient(145deg, rgba(20, 20, 14, 0.98), rgba(7, 12, 9, 0.985));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collections {
+  background:
+    radial-gradient(ellipse at 91% 4%, color-mix(in srgb, var(--grow-color-collection) 10%, transparent), transparent 39%),
+    radial-gradient(circle at 17% 98%, color-mix(in srgb, var(--grow-color-collection) 4%, transparent), transparent 32%),
+    var(--vault-surface-texture),
+    linear-gradient(145deg, rgba(18, 18, 22, 0.98), rgba(7, 11, 10, 0.985));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-activity {
+  background:
+    radial-gradient(ellipse at 6% 4%, color-mix(in srgb, var(--grow-color-recent) 7%, transparent), transparent 35%),
+    radial-gradient(circle at 88% 92%, color-mix(in srgb, var(--grow-color-source) 3.5%, transparent), transparent 30%),
+    var(--vault-surface-texture),
+    linear-gradient(145deg, rgba(14, 21, 20, 0.98), rgba(7, 12, 10, 0.985));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-hub {
+  background:
+    radial-gradient(ellipse at 91% 5%, color-mix(in srgb, var(--grow-color-variety) 9%, transparent), transparent 37%),
+    radial-gradient(circle at 10% 98%, color-mix(in srgb, var(--grow-color-variety) 3.5%, transparent), transparent 29%),
+    var(--vault-surface-texture),
+    linear-gradient(145deg, rgba(14, 21, 17, 0.98), rgba(7, 12, 9, 0.985));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section-icon,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination .seed-vault-overview-card-icon,
+.seed-vault-panel .seed-vault-library-title-icon {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 9px 20px rgba(0, 0, 0, 0.24),
+    0 0 22px color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.012),
+    0 13px 28px rgba(0, 0, 0, 0.2);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination:focus-within {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 20px 34px rgba(0, 0, 0, 0.28),
+    0 0 24px color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card {
+  background:
+    radial-gradient(circle at 90% 4%, color-mix(in srgb, var(--grow-color-collection) 8%, transparent), transparent 34%),
+    linear-gradient(160deg, rgba(16, 20, 18, 0.98), rgba(5, 9, 7, 0.995));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 14px 28px rgba(0, 0, 0, 0.24);
+  transition: transform 190ms ease, border-color 190ms ease, box-shadow 190ms ease;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-main::after {
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 35%, transparent 28%, rgba(2, 5, 4, 0.2) 78%, rgba(2, 5, 4, 0.43) 100%),
+    linear-gradient(180deg, rgba(2, 5, 4, 0.05) 24%, rgba(3, 7, 5, 0.55) 67%, rgba(2, 5, 4, 0.97) 100%);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card img {
+  filter: saturate(0.94) contrast(1.08) brightness(0.82);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:focus-within {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    0 22px 38px rgba(0, 0, 0, 0.34),
+    0 0 24px color-mix(in srgb, var(--grow-color-collection) 10%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:hover img,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:focus-within img {
+  filter: saturate(1.02) contrast(1.09) brightness(0.91);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row {
+  transition: background-color 170ms ease, box-shadow 170ms ease;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row:hover,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row:focus-within {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--grow-color-recent) 5%, transparent), transparent 70%);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--grow-color-recent) 32%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-row :is(.seed-vault-seed-thumb, .seed-vault-overview-activity-icon) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 9px 20px rgba(0, 0, 0, 0.24);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-primary .seed-vault-share-button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 26px rgba(0, 0, 0, 0.22),
+    0 0 24px color-mix(in srgb, var(--grow-color-variety) 12%, transparent);
+}
+
+.seed-vault-page .seed-vault-library-shell {
+  background:
+    radial-gradient(ellipse at 94% 3%, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 6%, transparent), transparent 34%),
+    radial-gradient(circle at 8% 96%, rgba(255, 255, 255, 0.018), transparent 28%),
+    var(--vault-surface-texture),
+    linear-gradient(145deg, rgba(14, 20, 17, 0.985), rgba(6, 10, 8, 0.995));
+  box-shadow:
+    inset 0 1px 0 var(--vault-surface-highlight),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.012),
+    0 22px 48px rgba(0, 0, 0, 0.28);
+}
+
+.seed-vault-page .seed-vault-library-shell .seed-vault-controls {
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 3%, transparent), transparent 34%),
+    linear-gradient(155deg, rgba(15, 21, 18, 0.95), rgba(8, 13, 10, 0.975));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 24px rgba(0, 0, 0, 0.14);
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card {
+  background:
+    radial-gradient(ellipse at 2% 50%, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 5.5%, transparent), transparent 25%),
+    var(--vault-surface-texture),
+    linear-gradient(150deg, rgba(17, 23, 19, 0.98), rgba(7, 11, 9, 0.995));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 12px 25px rgba(0, 0, 0, 0.2);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-visual-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-visual-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 50% 42%, transparent 40%, rgba(2, 5, 4, 0.26) 100%),
+    linear-gradient(180deg, transparent 48%, rgba(2, 6, 4, 0.48) 100%);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-visual-button .seed-vault-quick-peek-cue {
+  z-index: 2;
+}
+
+.seed-vault-entry-grid--list .seed-vault-seed-thumb img {
+  filter: saturate(0.96) contrast(1.04) brightness(0.92);
+  transition: filter 180ms ease, transform 180ms ease;
+}
+
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card:hover,
+.seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card:focus-within {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 24%, rgba(255, 255, 255, 0.1));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    var(--vault-surface-shadow-hover),
+    0 0 22px color-mix(in srgb, var(--seed-vault-theme-glow, rgba(148, 209, 89, 0.18)) 14%, transparent);
+}
+
+.seed-vault-entry-grid--list .seed-vault-entry-card:hover .seed-vault-seed-thumb img,
+.seed-vault-entry-grid--list .seed-vault-entry-card:focus-within .seed-vault-seed-thumb img {
+  filter: saturate(1.02) contrast(1.05) brightness(0.98);
+  transform: scale(1.015);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) {
+  background:
+    radial-gradient(circle at 92% 5%, color-mix(in srgb, var(--seed-vault-theme-glow, rgba(148, 209, 89, 0.18)) 28%, transparent), transparent 35%),
+    var(--vault-surface-texture),
+    linear-gradient(160deg, rgba(19, 26, 22, 0.98), rgba(6, 10, 8, 0.995) 58%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.012),
+    0 18px 38px rgba(0, 0, 0, 0.29);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-visual-button::after {
+  background:
+    radial-gradient(circle at 75% 18%, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 8%, transparent), transparent 34%),
+    radial-gradient(ellipse at 50% 48%, transparent 38%, rgba(2, 5, 3, 0.28) 100%),
+    linear-gradient(180deg, rgba(2, 5, 3, 0.04) 34%, rgba(3, 7, 5, 0.86) 100%);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-seed-thumb img {
+  filter: saturate(0.97) contrast(1.06) brightness(0.9);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):hover,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):focus-within {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 25px 48px rgba(0, 0, 0, 0.38),
+    0 0 28px color-mix(in srgb, var(--seed-vault-theme-glow, rgba(148, 209, 89, 0.18)) 22%, transparent);
+}
+
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):hover .seed-vault-seed-thumb img,
+.seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):focus-within .seed-vault-seed-thumb img {
+  transform: scale(1.035);
+  filter: saturate(1.04) contrast(1.07) brightness(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card,
+  .seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card,
+  .seed-vault-entry-grid--list .seed-vault-seed-thumb img,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded),
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-seed-thumb img {
+    transition: none;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination:hover,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination:focus-within,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:hover,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:focus-within,
+  .seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card:hover,
+  .seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-grid--list .seed-vault-entry-card:focus-within,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):hover,
+  .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):focus-within {
+    transform: none;
+  }
+}

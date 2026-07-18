@@ -736,6 +736,130 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault premium surfaces retain atmospheric rendering without geometry regressions", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const panel = page.locator("#my-seed-vault").first();
+    const hero = panel.locator(".seed-vault-approved-hero");
+    const surfaceSelectors = [
+      ".seed-vault-overview-snapshot",
+      ".seed-vault-overview-planning",
+      ".seed-vault-overview-collections",
+      ".seed-vault-overview-recent-activity",
+      ".seed-vault-sharing-hub",
+      ".seed-vault-library-shell",
+    ];
+    const viewports = [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect(hero).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+
+      const surfaceToken = await panel.evaluate((node) => getComputedStyle(node).getPropertyValue("--vault-surface-shadow").trim());
+      expect(surfaceToken).not.toBe("");
+
+      const heroRendering = await hero.evaluate((node) => {
+        const style = getComputedStyle(node);
+        const overlay = getComputedStyle(node, "::after");
+        return {
+          background: style.backgroundImage,
+          shadow: style.boxShadow,
+          overlayBackground: overlay.backgroundImage,
+          overlayPointerEvents: overlay.pointerEvents,
+        };
+      });
+      expect(heroRendering.background).toContain("seed-vault-hero-bg.png");
+      expect(heroRendering.shadow).not.toBe("none");
+      expect(heroRendering.overlayBackground).toContain("radial-gradient");
+      expect(heroRendering.overlayPointerEvents).toBe("none");
+
+      for (const selector of surfaceSelectors) {
+        const surface = panel.locator(selector);
+        await expect(surface).toBeVisible();
+        const rendering = await surface.evaluate((node) => {
+          const style = getComputedStyle(node);
+          const rect = node.getBoundingClientRect();
+          return {
+            background: style.backgroundImage,
+            shadow: style.boxShadow,
+            left: rect.left,
+            right: rect.right,
+          };
+        });
+        expect((rendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+        expect(rendering.shadow).not.toBe("none");
+        expect(rendering.left).toBeGreaterThanOrEqual(-1);
+        expect(rendering.right).toBeLessThanOrEqual(viewport.width + 1);
+      }
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.locator('[data-seed-vault-layout="gallery"]').click();
+    const gallery = panel.locator(".seed-vault-entry-grid--gallery");
+    await expect(gallery).toBeVisible();
+    const galleryCard = gallery.locator(".seed-vault-entry-card:not(.is-expanded)").first();
+    await expect(galleryCard).toBeVisible();
+    const galleryRendering = await galleryCard.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const imageOverlay = getComputedStyle(node.querySelector(".seed-vault-entry-visual-button"), "::after");
+      return {
+        background: style.backgroundImage,
+        shadow: style.boxShadow,
+        imageOverlay: imageOverlay.backgroundImage,
+      };
+    });
+    expect((galleryRendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(galleryRendering.shadow).not.toBe("none");
+    expect(galleryRendering.imageOverlay).toContain("radial-gradient");
+
+    const galleryLayoutBeforeHover = await gallery.evaluate((node) => Array.from(node.children).slice(0, 2).map((card) => ({
+      offsetTop: card.offsetTop,
+      offsetLeft: card.offsetLeft,
+      offsetWidth: card.offsetWidth,
+      offsetHeight: card.offsetHeight,
+    })));
+    await galleryCard.hover();
+    await expect.poll(() => galleryCard.evaluate((node) => getComputedStyle(node).transform)).not.toBe("none");
+    const galleryLayoutAfterHover = await gallery.evaluate((node) => Array.from(node.children).slice(0, 2).map((card) => ({
+      offsetTop: card.offsetTop,
+      offsetLeft: card.offsetLeft,
+      offsetWidth: card.offsetWidth,
+      offsetHeight: card.offsetHeight,
+    })));
+    expect(galleryLayoutAfterHover).toEqual(galleryLayoutBeforeHover);
+
+    await page.locator('[data-seed-vault-layout="list"]').click();
+    const listCard = panel.locator(".seed-vault-entry-grid--list .seed-vault-entry-card").first();
+    await expect(listCard).toBeVisible();
+    const listRendering = await listCard.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const imageOverlay = getComputedStyle(node.querySelector(".seed-vault-entry-visual-button"), "::after");
+      return {
+        background: style.backgroundImage,
+        shadow: style.boxShadow,
+        imageOverlay: imageOverlay.backgroundImage,
+      };
+    });
+    expect((listRendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(listRendering.shadow).not.toBe("none");
+    expect(listRendering.imageOverlay).toContain("radial-gradient");
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault Status filter exposes one canonical option per status", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
