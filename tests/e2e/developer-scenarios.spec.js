@@ -1717,6 +1717,72 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault Entry Profile hero uses the dedicated cinematic seed background", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    const assetResponse = await page.request.get("/assets/images/seed-vault-entry-profile-bg.png");
+    expect(assetResponse.status()).toBe(200);
+    expect(assetResponse.headers()["content-type"]).toMatch(/^image\//);
+    expect((await assetResponse.body()).byteLength).toBeGreaterThan(1024);
+
+    await page.setViewportSize({ width: 1280, height: 980 });
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const firstCard = page.locator("#my-seed-vault .seed-vault-entry-card").first();
+    await firstCard.locator(".seed-vault-more-button").click();
+    await firstCard.getByRole("menuitem", { name: "Open Entry Profile", exact: true }).click();
+    const profile = firstCard.locator(".seed-vault-expanded-profile");
+    const hero = profile.locator(".seed-vault-expanded-profile-hero");
+    const tabs = profile.locator(".seed-vault-expanded-profile-nav");
+    await expect(hero).toBeVisible();
+    await expect(hero.locator(".seed-vault-expanded-profile-copy h3")).toBeVisible();
+    await expect(hero.locator(".seed-vault-expanded-profile-stats > div")).toHaveCount(3);
+
+    const focalPositions = new Map([[390, "68% 50%"], [768, "62% 50%"], [1024, "58% 52%"], [1280, "58% 52%"]]);
+    for (const [width, expectedPosition] of focalPositions) {
+      await page.setViewportSize({ width, height: width <= 390 ? 844 : 980 });
+      const contract = await hero.evaluate((node) => {
+        const style = getComputedStyle(node);
+        const heroBox = node.getBoundingClientRect();
+        const titleBox = node.querySelector(".seed-vault-expanded-profile-copy h3").getBoundingClientRect();
+        const thumbnailBox = node.querySelector(".seed-vault-expanded-profile-visual").getBoundingClientRect();
+        const metricBoxes = [...node.querySelectorAll(".seed-vault-expanded-profile-stats > div")].map((metric) => metric.getBoundingClientRect());
+        const tabsBox = node.nextElementSibling.getBoundingClientRect();
+        return {
+          backgroundImage: style.backgroundImage,
+          backgroundSize: style.backgroundSize,
+          backgroundPosition: style.backgroundPosition,
+          backgroundRepeat: style.backgroundRepeat,
+          titleInside: titleBox.left >= heroBox.left - 1 && titleBox.right <= heroBox.right + 1,
+          thumbnailInside: thumbnailBox.left >= heroBox.left - 1 && thumbnailBox.right <= heroBox.right + 1,
+          metricsInside: metricBoxes.every((box) => box.left >= heroBox.left - 1 && box.right <= heroBox.right + 1),
+          tabsFollowHero: tabsBox.top >= heroBox.bottom - 1,
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        };
+      });
+      expect(contract.backgroundImage).toContain("seed-vault-entry-profile-bg.png");
+      expect((contract.backgroundImage.match(/linear-gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+      expect(contract.backgroundSize.split(",").map((value) => value.trim()).every((value) => value === "cover")).toBe(true);
+      expect(contract.backgroundPosition.split(",").map((value) => value.trim()).every((value) => value === expectedPosition)).toBe(true);
+      expect(contract.backgroundRepeat.split(",").map((value) => value.trim()).every((value) => value === "no-repeat")).toBe(true);
+      expect(contract.titleInside).toBe(true);
+      expect(contract.thumbnailInside).toBe(true);
+      expect(contract.metricsInside).toBe(true);
+      expect(contract.tabsFollowHero).toBe(true);
+      expect(contract.overflow).toBeLessThanOrEqual(1);
+      await expect(tabs).toBeVisible();
+    }
+
+    await firstCard.getByRole("button", { name: "Close Entry Profile", exact: true }).click();
+    await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(0);
+    expect(consoleErrors).toEqual([]);
+  });
   test("Seed Vault Gallery renders premium image-led collectible cards", async ({ page }) => {
     test.setTimeout(90_000);
     const consoleErrors = [];
