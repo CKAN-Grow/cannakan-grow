@@ -993,7 +993,13 @@ test.describe("local Developer Scenarios", () => {
           };
         });
         expect((rendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(3);
-        expect(rendering.backgroundSize).toMatch(/(?:14|15|16|17|18)px (?:14|15|16|17|18)px/);
+        if (selector === ".seed-vault-library-shell") {
+          expect(rendering.backgroundSize).toContain("3px 5px");
+          expect(rendering.backgroundSize).toContain("5px 7px");
+          expect(rendering.backgroundSize).not.toContain("17px 17px");
+        } else {
+          expect(rendering.backgroundSize).toMatch(/(?:14|15|16|17|18)px (?:14|15|16|17|18)px/);
+        }
         expect(rendering.backgroundRepeat.split(",").some((value) => value.trim() === "repeat")).toBe(true);
         expect(rendering.textureOpacity).toBeGreaterThan(0);
         expect(rendering.textureOpacity).toBeLessThanOrEqual(viewport.width <= 390 ? 4.2 : 6.5);
