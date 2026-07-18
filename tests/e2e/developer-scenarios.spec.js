@@ -2059,6 +2059,116 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault hero search submits canonical results into view without interrupting typing", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.setViewportSize({ width: 1280, height: 820 });
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const viewportCases = [
+      { width: 1280, height: 820 },
+      { width: 768, height: 900 },
+      { width: 390, height: 844 },
+    ];
+    for (const viewport of viewportCases) {
+      await page.setViewportSize(viewport);
+      await page.goto("/#seed-vault");
+      await closeScenarioPanel(page);
+
+      const vault = page.locator("#my-seed-vault");
+      const library = vault.locator(".seed-vault-library-shell");
+      const libraryTitle = vault.locator("#seed-vault-library-title");
+      const heroSearch = vault.locator("[data-seed-vault-hero-search-form='true'] input");
+      const heroSearchForm = vault.locator("[data-seed-vault-hero-search-form='true']");
+      const searchButton = vault.locator(".seed-vault-overview-search-submit");
+      const resultsCount = vault.locator(".seed-vault-results-count");
+
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      const typingScrollY = await page.evaluate(() => window.scrollY);
+      await heroSearch.fill("no-vault-entry-matches-this");
+      await expect(resultsCount).toContainText("0 of 50 Vault Entries");
+      await expect(heroSearch).toHaveValue("no-vault-entry-matches-this");
+      expect(Math.abs((await page.evaluate(() => window.scrollY)) - typingScrollY)).toBeLessThanOrEqual(2);
+
+      await heroSearch.press("Enter");
+      await expect(heroSearch).toBeFocused();
+      await expect.poll(async () => library.evaluate((node) => {
+        const navigation = document.querySelector(".topbar");
+        const navigationStyle = navigation instanceof HTMLElement ? getComputedStyle(navigation) : null;
+        const navigationRect = navigation instanceof HTMLElement ? navigation.getBoundingClientRect() : null;
+        const stickyOffset = navigationRect && (navigationStyle?.position === "sticky" || navigationStyle?.position === "fixed")
+          ? Math.max(0, navigationRect.bottom)
+          : 0;
+        const rootStyle = getComputedStyle(document.documentElement);
+        const pageGap = Number.parseFloat(rootStyle.getPropertyValue("--space-5")) || 0;
+        return Math.abs(node.getBoundingClientRect().top - stickyOffset - pageGap);
+      })).toBeLessThanOrEqual(2);
+      const titlePosition = await libraryTitle.evaluate((node) => {
+        const navigation = document.querySelector(".topbar");
+        const navigationStyle = navigation instanceof HTMLElement ? getComputedStyle(navigation) : null;
+        const navigationRect = navigation instanceof HTMLElement ? navigation.getBoundingClientRect() : null;
+        const stickyOffset = navigationRect && (navigationStyle?.position === "sticky" || navigationStyle?.position === "fixed")
+          ? Math.max(0, navigationRect.bottom)
+          : 0;
+        return { titleTop: node.getBoundingClientRect().top, stickyOffset };
+      });
+      expect(titlePosition.titleTop).toBeGreaterThan(titlePosition.stickyOffset);
+
+      const visibleLibraryScrollY = await page.evaluate(() => window.scrollY);
+      await heroSearchForm.evaluate((form) => form.requestSubmit());
+      expect(Math.abs((await page.evaluate(() => window.scrollY)) - visibleLibraryScrollY)).toBeLessThanOrEqual(2);
+
+      const clearScrollY = await page.evaluate(() => window.scrollY);
+      await heroSearch.evaluate((input) => {
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await expect(resultsCount).toContainText("50 of 50 Vault Entries");
+      await expect(heroSearch).toHaveValue("");
+      expect(Math.abs((await page.evaluate(() => window.scrollY)) - clearScrollY)).toBeLessThanOrEqual(2);
+
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      await heroSearch.fill("Blue Dream");
+      const iconTypingScrollY = await page.evaluate(() => window.scrollY);
+      expect(iconTypingScrollY).toBeLessThanOrEqual(2);
+      await searchButton.click();
+      await expect.poll(async () => library.evaluate((node) => {
+        const rootStyle = getComputedStyle(document.documentElement);
+        const pageGap = Number.parseFloat(rootStyle.getPropertyValue("--space-5")) || 0;
+        return Math.abs(node.getBoundingClientRect().top - pageGap);
+      })).toBeLessThanOrEqual(2);
+    }
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1280, height: 820 });
+    await page.goto("/#seed-vault");
+    await closeScenarioPanel(page);
+    await page.evaluate(() => {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      const nativeScrollTo = window.scrollTo.bind(window);
+      window.__seedVaultSearchScrollBehaviors = [];
+      window.scrollTo = (options, ...rest) => {
+        if (options && typeof options === "object") {
+          window.__seedVaultSearchScrollBehaviors.push(options.behavior);
+          return nativeScrollTo({ ...options, behavior: "auto" });
+        }
+        return nativeScrollTo(options, ...rest);
+      };
+    });
+    const reducedMotionSearch = page.locator("#my-seed-vault [data-seed-vault-hero-search-form='true'] input");
+    await reducedMotionSearch.fill("no-vault-entry-matches-this");
+    await reducedMotionSearch.press("Enter");
+    await expect.poll(() => page.evaluate(() => window.__seedVaultSearchScrollBehaviors?.at(-1))).toBe("auto");
+
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault cards and hero search use existing canonical filters and destinations", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
