@@ -1743,6 +1743,12 @@ test.describe("local Developer Scenarios", () => {
     await expect(hero).toBeVisible();
     await expect(hero.locator(".seed-vault-expanded-profile-copy h3")).toBeVisible();
     await expect(hero.locator(".seed-vault-expanded-profile-stats > div")).toHaveCount(3);
+    const details = firstCard.locator(".seed-vault-entry-details");
+    const closeProfile = profile.getByRole("button", { name: "Close Entry Profile", exact: true });
+    await expect(details.locator(":scope > .seed-vault-expanded-profile")).toHaveCount(1);
+    await expect(details.locator(":scope > .seed-vault-expanded-details-head")).toHaveCount(0);
+    await expect(profile.locator(":scope > .seed-vault-collapse-details-button")).toHaveCount(1);
+    await expect(closeProfile).toBeVisible();
 
     const focalPositions = new Map([[390, "68% 50%"], [768, "62% 50%"], [1024, "58% 52%"], [1280, "58% 52%"]]);
     for (const [width, expectedPosition] of focalPositions) {
@@ -1753,7 +1759,17 @@ test.describe("local Developer Scenarios", () => {
         const titleBox = node.querySelector(".seed-vault-expanded-profile-copy h3").getBoundingClientRect();
         const thumbnailBox = node.querySelector(".seed-vault-expanded-profile-visual").getBoundingClientRect();
         const metricBoxes = [...node.querySelectorAll(".seed-vault-expanded-profile-stats > div")].map((metric) => metric.getBoundingClientRect());
-        const tabsBox = node.nextElementSibling.getBoundingClientRect();
+        const profile = node.parentElement;
+        const details = profile.parentElement;
+        const closeButton = profile.querySelector(":scope > .seed-vault-collapse-details-button");
+        const tabs = node.nextElementSibling;
+        const content = tabs.nextElementSibling;
+        const tabsBox = tabs.getBoundingClientRect();
+        const contentBox = content.getBoundingClientRect();
+        const profileBox = profile.getBoundingClientRect();
+        const closeBox = closeButton.getBoundingClientRect();
+        const detailsStyle = getComputedStyle(details);
+        const profileStyle = getComputedStyle(profile);
         return {
           backgroundImage: style.backgroundImage,
           backgroundSize: style.backgroundSize,
@@ -1762,7 +1778,14 @@ test.describe("local Developer Scenarios", () => {
           titleInside: titleBox.left >= heroBox.left - 1 && titleBox.right <= heroBox.right + 1,
           thumbnailInside: thumbnailBox.left >= heroBox.left - 1 && thumbnailBox.right <= heroBox.right + 1,
           metricsInside: metricBoxes.every((box) => box.left >= heroBox.left - 1 && box.right <= heroBox.right + 1),
-          tabsFollowHero: tabsBox.top >= heroBox.bottom - 1,
+          tabsFollowHero: Math.abs(tabsBox.top - heroBox.bottom) <= 1,
+          contentFollowsTabs: Math.abs(contentBox.top - tabsBox.bottom) <= 1,
+          closeInsideCard: closeBox.top >= profileBox.top && closeBox.right <= profileBox.right && closeBox.bottom <= heroBox.bottom,
+          closeClearOfIdentity: closeBox.bottom <= Math.min(titleBox.top, thumbnailBox.top) + 1,
+          closeHeight: closeBox.height,
+          childOrder: [...profile.children].map((child) => child.className),
+          outerBorder: Number.parseFloat(detailsStyle.borderTopWidth),
+          innerBorder: [profileStyle.borderTopWidth, profileStyle.borderRightWidth, profileStyle.borderBottomWidth, profileStyle.borderLeftWidth].map(Number.parseFloat).reduce((sum, value) => sum + value, 0),
           overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
         };
       });
@@ -1775,11 +1798,25 @@ test.describe("local Developer Scenarios", () => {
       expect(contract.thumbnailInside).toBe(true);
       expect(contract.metricsInside).toBe(true);
       expect(contract.tabsFollowHero).toBe(true);
+      expect(contract.contentFollowsTabs).toBe(true);
+      expect(contract.closeInsideCard).toBe(true);
+      expect(contract.closeClearOfIdentity).toBe(true);
+      expect(contract.closeHeight).toBeGreaterThanOrEqual(width <= 390 ? 44 : 36);
+      expect(contract.childOrder).toEqual([
+        "seed-vault-collapse-details-button",
+        "seed-vault-expanded-profile-hero",
+        "seed-vault-expanded-profile-nav",
+        "seed-vault-expanded-profile-content",
+      ]);
+      expect(contract.outerBorder).toBeGreaterThan(0);
+      expect(contract.innerBorder).toBe(0);
       expect(contract.overflow).toBeLessThanOrEqual(1);
       await expect(tabs).toBeVisible();
     }
 
-    await firstCard.getByRole("button", { name: "Close Entry Profile", exact: true }).click();
+    await tabs.getByRole("button", { name: "Images", exact: true }).click();
+    await expect(profile.locator(".seed-vault-expanded-profile-section--images")).toBeFocused();
+    await closeProfile.click();
     await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(0);
     expect(consoleErrors).toEqual([]);
   });

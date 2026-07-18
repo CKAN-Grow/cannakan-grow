@@ -80288,6 +80288,9 @@ a.source-directory-variety-chip:focus-visible {
   border: 1px solid color-mix(in srgb, var(--seed-vault-accent, #94d159) 18%, transparent);
   border-radius: 17px;
   background: rgba(5, 10, 7, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 18px 42px rgba(0, 0, 0, 0.24);
   overflow: hidden;
 }
 
@@ -80295,27 +80298,36 @@ a.source-directory-variety-chip:focus-visible {
   display: none;
 }
 
-.seed-vault-expanded-details-head {
-  display: flex;
-  justify-content: flex-end;
-  padding: 9px 10px 0;
-}
-
 .seed-vault-collapse-details-button {
-  min-height: 34px;
-  padding: 0 10px;
-  border: 0;
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 3;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(226, 234, 225, 0.7);
+  background: rgba(4, 8, 5, 0.72);
+  color: rgba(235, 242, 232, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055), 0 8px 20px rgba(0, 0, 0, 0.22);
   font-size: 0.7rem;
   font-weight: 820;
   cursor: pointer;
 }
 
+.seed-vault-collapse-details-button:hover,
+.seed-vault-collapse-details-button:focus-visible {
+  border-color: color-mix(in srgb, var(--seed-vault-accent, #94d159) 34%, transparent);
+  background: color-mix(in srgb, var(--seed-vault-accent, #94d159) 9%, rgba(4, 8, 5, 0.78));
+  color: #f6fbf3;
+}
+
 .seed-vault-expanded-profile {
+  position: relative;
   display: grid;
   gap: 0;
+  overflow: hidden;
+  border-radius: inherit;
 }
 
 .seed-vault-expanded-profile-hero {
@@ -80324,7 +80336,7 @@ a.source-directory-variety-chip:focus-visible {
   grid-template-columns: 140px minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
-  padding: 16px 18px 20px;
+  padding: 52px 18px 20px;
   overflow: hidden;
   isolation: isolate;
   border-bottom: 1px solid rgba(255, 255, 255, 0.095);
@@ -81045,7 +81057,7 @@ a.source-directory-variety-chip:focus-visible {
   .seed-vault-expanded-profile-hero {
     grid-template-columns: 88px minmax(0, 1fr);
     gap: 12px;
-    padding: 12px;
+    padding: 60px 12px 12px;
     background-image:
       linear-gradient(90deg, rgba(5, 8, 6, 0.96) 0%, rgba(5, 8, 6, 0.86) 44%, rgba(5, 8, 6, 0.68) 100%),
       linear-gradient(180deg, rgba(3, 6, 4, 0.12) 0%, rgba(3, 6, 4, 0.26) 54%, rgba(2, 5, 3, 0.84) 100%),
@@ -81060,6 +81072,10 @@ a.source-directory-variety-chip:focus-visible {
 
   .seed-vault-expanded-profile-copy h3 {
     font-size: 1.28rem;
+  }
+
+  .seed-vault-collapse-details-button {
+    min-height: 44px;
   }
 
   .seed-vault-expanded-profile-stats {
