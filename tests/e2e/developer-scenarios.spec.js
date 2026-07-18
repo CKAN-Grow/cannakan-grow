@@ -60,8 +60,21 @@ async function waitForSeedVaultInventoryState(page, expectedTotal = 50) {
     const cardCount = await page.locator("#my-seed-vault .seed-vault-entry-card").count();
     const resultsText = await page.locator("#my-seed-vault .seed-vault-results-count").textContent();
     const countMatch = String(resultsText || "").match(/(\d+) of (\d+) Vault Entries/);
-    return Boolean(countMatch && Number(countMatch[1]) === cardCount && Number(countMatch[2]) === expectedTotal);
+    const matchingCount = Number(countMatch?.[1]);
+    return Boolean(countMatch && cardCount === Math.min(10, matchingCount) && Number(countMatch[2]) === expectedTotal);
   }).toBe(true);
+}
+
+async function revealAllSeedVaultListRows(page) {
+  const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
+  for (let batch = 0; batch < 10; batch += 1) {
+    const showMore = page.locator("#my-seed-vault [data-seed-vault-show-more='true']");
+    if (await showMore.count() === 0) return;
+    const previousCount = await cards.count();
+    await showMore.click();
+    await expect.poll(async () => cards.count()).toBeGreaterThan(previousCount);
+  }
+  throw new Error("Seed Vault Show More did not complete within ten batches");
 }
 
 async function clearSeedVaultFiltersAndWait(page, resetSelector, resetValue = "all") {
@@ -73,7 +86,7 @@ async function clearSeedVaultFiltersAndWait(page, resetSelector, resetValue = "a
   const resetFilter = page.locator(`#my-seed-vault .seed-vault-controls ${resetSelector}`);
   await expect(resetFilter).toHaveCount(1);
   await expect(resetFilter).toHaveValue(resetValue);
-  await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(50);
+  await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(10);
   await expect(page.locator("#my-seed-vault .seed-vault-results-count")).toContainText("50 of 50 Vault Entries");
 }
 
@@ -584,9 +597,9 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator(".seed-vault-living-dashboard, .seed-vault-collection-layout")).toHaveCount(0);
 
     const inventoryCards = page.locator("#my-seed-vault .seed-vault-entry-card");
-    await expect(inventoryCards).toHaveCount(50);
+    await expect(inventoryCards).toHaveCount(10);
     await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(0);
-    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(50);
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(10);
 
     const firstCard = inventoryCards.first();
     const firstVisualBox = await firstCard.locator("[data-seed-vault-quick-peek]").boundingBox();
@@ -723,6 +736,92 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault List View reveals matching entries ten at a time", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.setViewportSize({ width: 1280, height: 980 });
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
+    const results = page.locator("#my-seed-vault .seed-vault-results-count");
+    const showMore = page.locator("#my-seed-vault [data-seed-vault-show-more='true']");
+    await expect(results).toContainText("50 of 50 Vault Entries");
+    await expect(cards).toHaveCount(10);
+    await expect(showMore).toHaveAttribute("aria-controls", "my-seed-vault-entry-grid");
+    await expect(showMore).toHaveAttribute("aria-label", "Show 10 more Seed Vault entries");
+
+    await showMore.scrollIntoViewIfNeeded();
+    const scrollBeforeFirstClick = await page.evaluate(() => window.scrollY);
+    await showMore.click();
+    await expect(cards).toHaveCount(20);
+    await expect.poll(async () => page.evaluate((before) => Math.abs(window.scrollY - before), scrollBeforeFirstClick)).toBeLessThanOrEqual(1);
+    for (const expectedCount of [30, 40, 50]) {
+      await showMore.click();
+      await expect(cards).toHaveCount(expectedCount);
+    }
+    await expect(showMore).toHaveCount(0);
+    const renderedIds = await cards.evaluateAll((items) => items.map((item) => item.dataset.seedVaultEntryId));
+    expect(new Set(renderedIds).size).toBe(50);
+
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: width === 390 ? 900 : 980 });
+      await expect.poll(async () => page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth))).toBeLessThanOrEqual(1);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 980 });
+    await page.locator("[data-seed-vault-layout='gallery']").click();
+    await expect(page.locator("#my-seed-vault .seed-vault-entry-grid")).toHaveClass(/seed-vault-entry-grid--gallery/);
+    await expect(cards).toHaveCount(50);
+    await expect(showMore).toHaveCount(0);
+    await page.locator("[data-seed-vault-layout='list']").click();
+    await expect(cards).toHaveCount(10);
+    await expect(showMore).toHaveCount(1);
+
+    await showMore.click();
+    await expect(cards).toHaveCount(20);
+    const search = page.locator("#my-seed-vault .seed-vault-controls [data-seed-vault-search='true']");
+    await search.fill("a");
+    await expect.poll(async () => page.evaluate(() => appState.seedVaultListVisibleCount)).toBe(10);
+    await search.fill("");
+    await expect(cards).toHaveCount(10);
+
+    await showMore.click();
+    await expect(cards).toHaveCount(20);
+    const favorites = page.locator("#my-seed-vault [data-seed-vault-favorite-filter='true']");
+    await favorites.selectOption("favorites");
+    await expect.poll(async () => page.evaluate(() => appState.seedVaultListVisibleCount)).toBe(10);
+    await favorites.selectOption("all");
+    await expect(cards).toHaveCount(10);
+
+    await showMore.click();
+    await expect(cards).toHaveCount(20);
+    await page.locator("#my-seed-vault [data-seed-vault-sort='true']").selectOption("oldest");
+    await expect.poll(async () => page.evaluate(() => appState.seedVaultListVisibleCount)).toBe(10);
+    await expect(cards).toHaveCount(10);
+
+    await page.evaluate(() => setSeedVaultListVisibleCount("shared", 50));
+    await page.getByRole("button", { name: "Shared With Me", exact: true }).click();
+    await expect.poll(async () => page.evaluate(() => appState.seedVaultSharedListVisibleCount)).toBe(10);
+    await page.evaluate(() => setSeedVaultListVisibleCount("owner", 50));
+    await page.getByRole("button", { name: "My Vault", exact: true }).click();
+    await expect.poll(async () => page.evaluate(() => appState.seedVaultListVisibleCount)).toBe(10);
+    await expect(cards).toHaveCount(10);
+
+    await useMixAndMatch(page);
+    await page.evaluate(() => setSeedVaultListVisibleCount("owner", 50));
+    const seedVaultScenario = page.locator("select[data-developer-scenario-module='seedVault']");
+    await seedVaultScenario.selectOption("collector");
+    await expect.poll(async () => page.evaluate(() => appState.seedVaultListVisibleCount)).toBe(10);
+    await expect(cards).toHaveCount(9);
+    await expect(showMore).toHaveCount(0);
+    expect(consoleErrors).toEqual([]);
+  });
   test("Seed Vault inventory rows expose collectible semantic hierarchy", async ({ page }) => {
     test.setTimeout(90_000);
     const consoleErrors = [];
@@ -766,6 +865,7 @@ test.describe("local Developer Scenarios", () => {
     }
 
     const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
+    await revealAllSeedVaultListRows(page);
     await expect(cards).toHaveCount(50);
     const favoriteButton = cards.locator(".seed-vault-favorite-button.is-active").first();
     const inactiveButton = cards.locator(".seed-vault-favorite-button:not(.is-active)").first();
@@ -981,7 +1081,7 @@ test.describe("local Developer Scenarios", () => {
       await page.setViewportSize({ width, height: width < 700 ? 844 : 980 });
       await page.goto("/#seed-vault");
       if (index === 0) await useFullGrowDemo(page);
-      await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(50);
+      await expect(page.locator("#my-seed-vault .seed-vault-entry-card")).toHaveCount(10);
       await expect(page.locator(".seed-vault-collection-layout, .seed-vault-summary-panel")).toHaveCount(0);
 
       const geometry = await page.evaluate(() => {
