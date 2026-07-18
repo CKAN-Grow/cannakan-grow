@@ -626,7 +626,13 @@ test.describe("local Developer Scenarios", () => {
       "sourceCompanyBuilding",
       "collection",
     ]);
-    await expect(hero.locator(".seed-vault-overview-stat.is-sources[data-seed-vault-hero-metric-icon='sourceCompanyBuilding']")).toBeVisible();
+    const sourceBuilding = hero.locator(".seed-vault-overview-stat.is-sources[data-seed-vault-hero-metric-icon='sourceCompanyBuilding']");
+    await expect(sourceBuilding).toBeVisible();
+    await expect(sourceBuilding.locator("[data-building-shell='true']")).toHaveCount(1);
+    await expect(sourceBuilding.locator("[data-building-roofline='true']")).toHaveCount(1);
+    await expect(sourceBuilding.locator("[data-building-window-columns='true']")).toHaveCount(1);
+    await expect(sourceBuilding.locator("[data-building-entry='true']")).toHaveCount(1);
+    await expect(sourceBuilding.locator("[data-building-base='true']")).toHaveCount(1);
     await expect(page.locator(".seed-vault-planning-destination.is-testing[data-seed-vault-planning-icon='flask']")).toBeVisible();
 
     const iconGeometry = await hero.locator("[data-seed-vault-title-icon], [data-seed-vault-hero-metric-icon] .seed-vault-overview-stat-icon").evaluateAll((nodes) => nodes.map((node) => {
