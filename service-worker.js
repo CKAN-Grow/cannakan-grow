@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v29-seed-vault-list-rows";
+const CACHE_NAME = "cannakan-grow-shell-v30-semantic-colors";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",

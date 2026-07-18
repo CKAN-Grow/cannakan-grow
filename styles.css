@@ -3,7 +3,24 @@ html {
 }
 
 :root {
-  --cannakan-brand-green: #94d159;
+  /* Global semantic color language: entity and state meaning only. */
+  --grow-color-variety: #94d159;
+  --grow-color-seed: #b8875b;
+  --grow-color-source: #55cae7;
+  --grow-color-collection: #b889e8;
+  --grow-color-grower: var(--grow-color-variety);
+  --grow-color-recognition: #e9b34d;
+  --grow-color-planned: #e9b34d;
+  --grow-color-testing: var(--grow-color-variety);
+  --grow-color-growalong: var(--grow-color-source);
+  --grow-color-favorite: #e84c5b;
+  --grow-color-healthy: var(--grow-color-variety);
+  --grow-color-low-stock: #eda05a;
+  --grow-color-out-of-stock: #ec6572;
+  --grow-color-older-seed: #dbb768;
+  --grow-color-recent: var(--grow-color-source);
+  --grow-color-archived: #9aa49d;
+  --cannakan-brand-green: var(--grow-color-variety);
   --cannakan-brand-green-rgb: 148, 209, 89;
   --space-1: 4px;
   --space-2: 8px;
@@ -10573,11 +10590,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance-trend {
-  --community-glance-chart-accent: #94d159;
-  --community-glance-chart-bright: #cfff64;
-  --community-glance-chart-soft: rgba(148, 209, 89, 0.12);
-  --community-glance-chart-grid: rgba(181, 232, 111, 0.09);
-  --community-glance-chart-glow: rgba(181, 232, 111, 0.28);
+  --community-glance-chart-accent: var(--grow-color-grower);
+  --community-glance-chart-bright: color-mix(in srgb, var(--grow-color-grower) 72%, white 28%);
+  --community-glance-chart-soft: color-mix(in srgb, var(--grow-color-grower) 12%, transparent);
+  --community-glance-chart-grid: color-mix(in srgb, var(--grow-color-grower) 9%, transparent);
+  --community-glance-chart-glow: color-mix(in srgb, var(--grow-color-grower) 28%, transparent);
   position: relative;
   z-index: 1;
   grid-column: 1 / -1;
@@ -10593,27 +10610,27 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-at-a-glance-trend--tone-seed {
-  --community-glance-chart-accent: #b8d85a;
-  --community-glance-chart-bright: #d6ef7a;
-  --community-glance-chart-soft: rgba(184, 216, 90, 0.13);
-  --community-glance-chart-grid: rgba(214, 239, 122, 0.1);
-  --community-glance-chart-glow: rgba(214, 239, 122, 0.24);
+  --community-glance-chart-accent: var(--grow-color-seed);
+  --community-glance-chart-bright: color-mix(in srgb, var(--grow-color-seed) 72%, white 28%);
+  --community-glance-chart-soft: color-mix(in srgb, var(--grow-color-seed) 13%, transparent);
+  --community-glance-chart-grid: color-mix(in srgb, var(--grow-color-seed) 10%, transparent);
+  --community-glance-chart-glow: color-mix(in srgb, var(--grow-color-seed) 24%, transparent);
 }
 
 .community-at-a-glance-trend--tone-source {
-  --community-glance-chart-accent: #55c98a;
-  --community-glance-chart-bright: #8de7b1;
-  --community-glance-chart-soft: rgba(85, 201, 138, 0.13);
-  --community-glance-chart-grid: rgba(141, 231, 177, 0.1);
-  --community-glance-chart-glow: rgba(85, 201, 138, 0.24);
+  --community-glance-chart-accent: var(--grow-color-source);
+  --community-glance-chart-bright: color-mix(in srgb, var(--grow-color-source) 72%, white 28%);
+  --community-glance-chart-soft: color-mix(in srgb, var(--grow-color-source) 13%, transparent);
+  --community-glance-chart-grid: color-mix(in srgb, var(--grow-color-source) 10%, transparent);
+  --community-glance-chart-glow: color-mix(in srgb, var(--grow-color-source) 24%, transparent);
 }
 
 .community-at-a-glance-trend--tone-variety {
-  --community-glance-chart-accent: #78d8d0;
-  --community-glance-chart-bright: #a9eee8;
-  --community-glance-chart-soft: rgba(120, 216, 208, 0.13);
-  --community-glance-chart-grid: rgba(169, 238, 232, 0.1);
-  --community-glance-chart-glow: rgba(120, 216, 208, 0.24);
+  --community-glance-chart-accent: var(--grow-color-variety);
+  --community-glance-chart-bright: color-mix(in srgb, var(--grow-color-variety) 72%, white 28%);
+  --community-glance-chart-soft: color-mix(in srgb, var(--grow-color-variety) 13%, transparent);
+  --community-glance-chart-grid: color-mix(in srgb, var(--grow-color-variety) 10%, transparent);
+  --community-glance-chart-glow: color-mix(in srgb, var(--grow-color-variety) 24%, transparent);
 }
 
 .community-at-a-glance-trend--tone-global {
@@ -11950,8 +11967,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-recognition-icon {
-  --recognition-accent: #ffd34d;
-  --recognition-highlight: #94d159;
+  --recognition-accent: var(--grow-color-recognition);
+  --recognition-highlight: var(--grow-color-variety);
   position: relative;
   display: inline-grid;
   place-items: center;
@@ -11994,18 +12011,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-recognition-icon--documentation {
-  --recognition-accent: #c184ff;
-  --recognition-highlight: #6bb8ff;
+  --recognition-accent: var(--grow-color-recognition);
+  --recognition-highlight: var(--grow-color-variety);
 }
 
 .community-recognition-icon--consistency {
-  --recognition-accent: #ffd34d;
-  --recognition-highlight: #94d159;
+  --recognition-accent: var(--grow-color-recognition);
+  --recognition-highlight: var(--grow-color-variety);
 }
 
 .community-recognition-icon--discovery {
-  --recognition-accent: #a78bfa;
-  --recognition-highlight: #38d9ff;
+  --recognition-accent: var(--grow-color-recognition);
+  --recognition-highlight: var(--grow-color-variety);
 }
 
 .community-recognition-svg {
@@ -12653,11 +12670,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-discovery-row--source .community-discovery-icon {
-  --community-discovery-accent: #ffc857;
+  --community-discovery-accent: var(--grow-color-source);
 }
 
 .community-discovery-row--growth .community-discovery-icon {
-  --community-discovery-accent: #94d159;
+  --community-discovery-accent: var(--grow-color-variety);
 }
 
 .community-discovery-row--rare .community-discovery-icon {
@@ -39554,18 +39571,33 @@ textarea::placeholder {
 }
 
 .source-directory-metric-card {
+  --source-directory-metric-accent: var(--grow-color-variety);
   position: relative;
   min-height: 142px;
   overflow: hidden;
-  border-color: rgba(148, 209, 89, 0.18);
+  border-color: color-mix(in srgb, var(--source-directory-metric-accent) 18%, transparent);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0) 25%),
-    radial-gradient(circle at 16% 8%, rgba(181, 232, 111, 0.13), transparent 34%),
+    radial-gradient(circle at 16% 8%, color-mix(in srgb, var(--source-directory-metric-accent) 13%, transparent), transparent 34%),
     linear-gradient(145deg, rgba(13, 24, 17, 0.96), rgba(7, 12, 10, 0.98));
   box-shadow:
     var(--glass-shadow),
     var(--glass-inset),
-    0 0 28px rgba(148, 209, 89, 0.075);
+    0 0 28px color-mix(in srgb, var(--source-directory-metric-accent) 7.5%, transparent);
+}
+
+.source-directory-hero-stat-card--seeds,
+.seed-explorer-stat-card--seeds {
+  --source-directory-metric-accent: var(--grow-color-seed);
+}
+
+.seed-explorer-stat-card--varieties {
+  --source-directory-metric-accent: var(--grow-color-variety);
+}
+
+.source-directory-hero-stat-card--attribution,
+.source-directory-hero-stat-card--trusted {
+  --source-directory-metric-accent: var(--grow-color-source);
 }
 
 .source-directory-metric-card::after {
@@ -39576,7 +39608,7 @@ textarea::placeholder {
   left: 18px;
   height: 1px;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(181, 232, 111, 0.34), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--source-directory-metric-accent) 34%, transparent), transparent);
   opacity: 0.68;
 }
 
@@ -39586,7 +39618,7 @@ textarea::placeholder {
 
 .source-directory-metric-card .stat-value {
   color: #f8fff0;
-  text-shadow: 0 0 18px rgba(148, 209, 89, 0.12);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--source-directory-metric-accent) 12%, transparent);
 }
 
 .source-directory-metric-card .summary-subtext {
@@ -39631,21 +39663,21 @@ textarea::placeholder {
   place-items: center;
   width: 58px;
   height: 58px;
-  border: 1px solid rgba(181, 232, 111, 0.22);
+  border: 1px solid color-mix(in srgb, var(--source-directory-metric-accent) 22%, transparent);
   border-radius: 50%;
-  color: #bdf279;
+  color: var(--source-directory-metric-accent);
   background:
-    radial-gradient(circle at 50% 42%, rgba(181, 232, 111, 0.14), transparent 54%),
-    rgba(148, 209, 89, 0.075);
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--source-directory-metric-accent) 14%, transparent), transparent 54%),
+    color-mix(in srgb, var(--source-directory-metric-accent) 7.5%, transparent);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 0 1px rgba(148, 209, 89, 0.04),
-    0 0 24px rgba(148, 209, 89, 0.08);
+    0 0 0 1px color-mix(in srgb, var(--source-directory-metric-accent) 4%, transparent),
+    0 0 24px color-mix(in srgb, var(--source-directory-metric-accent) 8%, transparent);
 }
 
 .source-directory-hero-stat-icon-svg {
   color: currentColor;
-  filter: drop-shadow(0 0 9px rgba(181, 232, 111, 0.28));
+  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--source-directory-metric-accent) 28%, transparent));
 }
 
 .source-directory-hero-stat-icon-svg .cg-icon-main-shape,
@@ -39670,55 +39702,55 @@ textarea::placeholder {
 
 .source-directory-hero-stat-viz-grid {
   fill: none;
-  stroke: rgba(181, 232, 111, 0.09);
+  stroke: color-mix(in srgb, var(--source-directory-metric-accent) 9%, transparent);
   stroke-width: 1;
 }
 
 .source-directory-hero-stat-viz-area {
-  fill: rgba(148, 209, 89, 0.12);
+  fill: color-mix(in srgb, var(--source-directory-metric-accent) 12%, transparent);
 }
 
 .source-directory-hero-stat-viz-line {
   fill: none;
-  stroke: #b8ef45;
+  stroke: var(--source-directory-metric-accent);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.3;
-  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.28));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--source-directory-metric-accent) 28%, transparent));
 }
 
 .source-directory-hero-stat-viz-markers circle {
-  fill: #cfff64;
+  fill: color-mix(in srgb, var(--source-directory-metric-accent) 72%, white 28%);
   stroke: rgba(7, 13, 10, 0.92);
   stroke-width: 1.5;
-  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.44));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--source-directory-metric-accent) 44%, transparent));
 }
 
 .source-directory-hero-stat-viz-bars rect {
-  fill: rgba(164, 222, 76, 0.7);
-  filter: drop-shadow(0 0 5px rgba(181, 232, 111, 0.18));
+  fill: color-mix(in srgb, var(--source-directory-metric-accent) 70%, transparent);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--source-directory-metric-accent) 18%, transparent));
 }
 
 .source-directory-hero-stat-viz-bars rect:nth-child(3n) {
-  fill: rgba(181, 232, 111, 0.46);
+  fill: color-mix(in srgb, var(--source-directory-metric-accent) 46%, transparent);
 }
 
 .source-directory-hero-stat-viz-bars rect:nth-child(5n) {
-  fill: rgba(207, 255, 100, 0.82);
+  fill: color-mix(in srgb, var(--source-directory-metric-accent) 82%, white 12%);
 }
 
 .source-directory-hero-stat-viz-trusted-fill {
-  fill: rgba(148, 209, 89, 0.11);
+  fill: color-mix(in srgb, var(--source-directory-metric-accent) 11%, transparent);
 }
 
 .source-directory-hero-stat-viz-trusted-line {
   fill: none;
-  stroke: rgba(181, 232, 111, 0.88);
+  stroke: color-mix(in srgb, var(--source-directory-metric-accent) 88%, transparent);
   stroke-dasharray: 5 7;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
-  filter: drop-shadow(0 0 6px rgba(181, 232, 111, 0.24));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--source-directory-metric-accent) 24%, transparent));
 }
 
 .source-directory-community-confidence-card {
@@ -39738,15 +39770,15 @@ textarea::placeholder {
 }
 
 .source-directory-metric-card--cstp {
-  border-color: rgba(148, 209, 89, 0.22);
+  border-color: color-mix(in srgb, var(--source-directory-metric-accent) 22%, transparent);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 24%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.16), transparent 36%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--source-directory-metric-accent) 16%, transparent), transparent 36%),
     var(--glass-bg-strong);
   box-shadow:
     var(--glass-shadow),
     var(--glass-inset),
-    0 0 24px rgba(148, 209, 89, 0.1);
+    0 0 24px color-mix(in srgb, var(--source-directory-metric-accent) 10%, transparent);
 }
 
 .source-directory-controls-card {
@@ -44887,15 +44919,15 @@ textarea::placeholder {
   height: 54px;
   display: grid;
   place-items: center;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   border-radius: 18px;
-  background: radial-gradient(circle at 50% 35%, rgba(156, 247, 91, 0.14), rgba(7, 15, 11, 0.12));
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--grow-color-grower) 14.000000000000002%, transparent), rgba(7, 15, 11, 0.12));
 }
 
 .my-grow-network-title-icon svg {
   width: 38px;
   height: 38px;
-  filter: drop-shadow(0 0 10px rgba(156, 247, 91, 0.28));
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--grow-color-grower) 28.000000000000004%, transparent));
 }
 
 .my-grow-network-preview .my-grow-section-head .button,
@@ -44905,7 +44937,7 @@ textarea::placeholder {
   gap: 8px;
   justify-content: center;
   border-radius: 18px;
-  border-color: rgba(156, 247, 91, 0.28);
+  border-color: color-mix(in srgb, var(--grow-color-grower) 28.000000000000004%, transparent);
   background: rgba(148, 209, 89, 0.075);
   color: #b9ff77;
   font-size: 1rem;
@@ -44951,7 +44983,7 @@ textarea::placeholder {
   width: 68px;
   height: 68px;
   border-radius: 999px;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   border-color: rgba(148, 209, 89, 0.2);
   background: radial-gradient(circle at 50% 35%, rgba(148, 209, 89, 0.22), rgba(148, 209, 89, 0.08));
 }
@@ -44971,7 +45003,7 @@ textarea::placeholder {
 
 .my-grow-network-counts small {
   margin-top: 4px;
-  color: #a6ff64;
+  color: color-mix(in srgb, var(--grow-color-grower) 72%, white 28%);
   font-size: 1.55rem;
   line-height: 1;
 }
@@ -45031,7 +45063,7 @@ textarea::placeholder {
   display: grid;
   place-items: center;
   border-radius: 14px;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   border: 1px solid rgba(148, 209, 89, 0.18);
   background: rgba(148, 209, 89, 0.06);
 }
@@ -45069,7 +45101,7 @@ textarea::placeholder {
   width: 58px;
   height: 58px;
   border-radius: 999px;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   background: radial-gradient(circle at 50% 35%, rgba(148, 209, 89, 0.2), rgba(148, 209, 89, 0.07));
 }
 
@@ -45100,7 +45132,7 @@ textarea::placeholder {
   grid-column: 2;
   grid-row: 1;
   align-self: center;
-  color: #a6ff64;
+  color: color-mix(in srgb, var(--grow-color-grower) 72%, white 28%);
   font-size: 2.35rem;
   line-height: 1;
 }
@@ -45145,13 +45177,13 @@ textarea::placeholder {
   bottom: 12px;
   width: 4px;
   border-radius: 999px;
-  background: #9cf75b;
-  box-shadow: 0 0 12px rgba(156, 247, 91, 0.24);
+  background: var(--grow-color-grower);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--grow-color-grower) 24%, transparent);
 }
 
 .my-grow-network-connection-card.is-source::before {
-  background: #55d8ff;
-  box-shadow: 0 0 12px rgba(85, 216, 255, 0.24);
+  background: var(--grow-color-source);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--grow-color-source) 24%, transparent);
 }
 
 .my-grow-network-connection-card.is-breeder::before {
@@ -45182,7 +45214,7 @@ textarea::placeholder {
 
 .my-grow-network-connection-card small {
   margin-top: 4px;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   font-weight: 850;
 }
 
@@ -45233,7 +45265,7 @@ textarea::placeholder {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   border: 1px solid rgba(148, 209, 89, 0.18);
   background: radial-gradient(circle at 50% 35%, rgba(148, 209, 89, 0.2), rgba(148, 209, 89, 0.07));
   box-shadow: 0 0 18px rgba(148, 209, 89, 0.12);
@@ -45260,12 +45292,12 @@ textarea::placeholder {
 }
 
 .my-grow-network-cta-secondary h4 {
-  color: #a6ff64;
+  color: color-mix(in srgb, var(--grow-color-grower) 72%, white 28%);
 }
 
 .my-grow-network-cta-mark {
   justify-self: end;
-  color: #9cf75b;
+  color: var(--grow-color-grower);
   opacity: 0.9;
 }
 
@@ -45280,7 +45312,7 @@ textarea::placeholder {
   overflow: hidden;
   gap: 24px;
   padding: clamp(26px, 3vw, 32px);
-  border-color: rgba(156, 247, 91, 0.2);
+  border-color: color-mix(in srgb, var(--grow-color-grower) 20%, transparent);
   background-color: #030806;
   background-image: url("public/assets/images/profile-community-hero-bg.png");
   background-position: center center;
@@ -45329,14 +45361,14 @@ textarea::placeholder {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  color: #9cf75b;
-  border: 1px solid rgba(156, 247, 91, 0.42);
+  color: var(--grow-color-grower);
+  border: 1px solid color-mix(in srgb, var(--grow-color-grower) 42%, transparent);
   background:
     radial-gradient(circle at 42% 34%, rgba(208, 255, 150, 0.26), transparent 38%),
-    radial-gradient(circle at 50% 60%, rgba(156, 247, 91, 0.14), rgba(6, 16, 12, 0.8));
+    radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--grow-color-grower) 14.000000000000002%, transparent), rgba(6, 16, 12, 0.8));
   box-shadow:
-    inset 0 0 18px rgba(156, 247, 91, 0.1),
-    0 0 28px rgba(156, 247, 91, 0.12);
+    inset 0 0 18px color-mix(in srgb, var(--grow-color-grower) 10%, transparent),
+    0 0 28px color-mix(in srgb, var(--grow-color-grower) 12%, transparent);
 }
 
 .my-grow-network-title-icon svg {
@@ -45358,11 +45390,11 @@ textarea::placeholder {
 }
 
 .my-grow-network-title-lockup p .is-growers {
-  color: #9cf75b;
+  color: var(--grow-color-grower);
 }
 
 .my-grow-network-title-lockup p .is-sources {
-  color: #49ddff;
+  color: var(--grow-color-source);
 }
 
 .my-grow-network-title-lockup p .is-breeders {
@@ -45374,14 +45406,14 @@ textarea::placeholder {
   min-width: 188px;
   min-height: 58px;
   border-radius: 19px;
-  border-color: rgba(156, 247, 91, 0.44);
+  border-color: color-mix(in srgb, var(--grow-color-grower) 44%, transparent);
   background:
-    radial-gradient(circle at 50% 0%, rgba(156, 247, 91, 0.14), transparent 58%),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--grow-color-grower) 14.000000000000002%, transparent), transparent 58%),
     rgba(8, 18, 13, 0.74);
   color: #b8ff63;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 20px rgba(156, 247, 91, 0.08);
+    0 0 20px color-mix(in srgb, var(--grow-color-grower) 8%, transparent);
 }
 
 .my-grow-network-counts {
@@ -45390,16 +45422,16 @@ textarea::placeholder {
   min-height: 162px;
   padding: 28px 34px;
   border-radius: 22px;
-  border: 1px solid rgba(156, 247, 91, 0.32);
+  border: 1px solid color-mix(in srgb, var(--grow-color-grower) 32%, transparent);
   background:
-    linear-gradient(90deg, rgba(156, 247, 91, 0.18), rgba(91, 226, 255, 0.12) 50%, rgba(255, 138, 31, 0.13)),
-    radial-gradient(circle at 11% 50%, rgba(156, 247, 91, 0.16), transparent 26%),
+    linear-gradient(90deg, color-mix(in srgb, var(--grow-color-grower) 18%, transparent), color-mix(in srgb, var(--grow-color-source) 12%, transparent) 50%, rgba(255, 138, 31, 0.13)),
+    radial-gradient(circle at 11% 50%, color-mix(in srgb, var(--grow-color-grower) 16%, transparent), transparent 26%),
     radial-gradient(circle at 92% 45%, rgba(255, 138, 31, 0.12), transparent 30%),
     rgba(4, 12, 10, 0.72);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 0 34px rgba(156, 247, 91, 0.045),
-    0 0 34px rgba(156, 247, 91, 0.08);
+    inset 0 0 34px color-mix(in srgb, var(--grow-color-grower) 4.5%, transparent),
+    0 0 34px color-mix(in srgb, var(--grow-color-grower) 8%, transparent);
 }
 
 .my-grow-network-counts::before,
@@ -45413,9 +45445,9 @@ textarea::placeholder {
 .my-grow-network-counts::before {
   opacity: 0.35;
   background:
-    linear-gradient(30deg, transparent 0 48%, rgba(156, 247, 91, 0.22) 48.4% 48.8%, transparent 49.2%),
-    linear-gradient(150deg, transparent 0 48%, rgba(91, 226, 255, 0.13) 48.4% 48.8%, transparent 49.2%),
-    radial-gradient(circle, rgba(156, 247, 91, 0.24) 0 1px, transparent 1.5px);
+    linear-gradient(30deg, transparent 0 48%, color-mix(in srgb, var(--grow-color-grower) 22%, transparent) 48.4% 48.8%, transparent 49.2%),
+    linear-gradient(150deg, transparent 0 48%, color-mix(in srgb, var(--grow-color-source) 13%, transparent) 48.4% 48.8%, transparent 49.2%),
+    radial-gradient(circle, color-mix(in srgb, var(--grow-color-grower) 24%, transparent) 0 1px, transparent 1.5px);
   background-size: 84px 74px, 84px 74px, 18px 18px;
   mask-image: linear-gradient(90deg, #000 0 22%, transparent 52%, #000 82%);
 }
@@ -45423,7 +45455,7 @@ textarea::placeholder {
 .my-grow-network-counts::after {
   border-radius: inherit;
   border-bottom: 1px solid rgba(255, 138, 31, 0.36);
-  border-top: 1px solid rgba(156, 247, 91, 0.42);
+  border-top: 1px solid color-mix(in srgb, var(--grow-color-grower) 42%, transparent);
 }
 
 .my-grow-network-counts article {
@@ -45442,14 +45474,14 @@ textarea::placeholder {
 .my-grow-network-counts article > span,
 .my-grow-network-category-icon,
 .my-grow-network-cta-icon {
-  color: var(--network-accent, #9cf75b);
-  border-color: rgba(var(--network-accent-rgb, 156, 247, 91), 0.44);
+  color: var(--network-accent, var(--grow-color-grower));
+  border-color: color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 44%, transparent);
   background:
     radial-gradient(circle at 42% 32%, rgba(255, 255, 255, 0.22), transparent 36%),
-    radial-gradient(circle at 50% 58%, rgba(var(--network-accent-rgb, 156, 247, 91), 0.2), rgba(3, 10, 9, 0.8));
+    radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 20%, transparent), rgba(3, 10, 9, 0.8));
   box-shadow:
-    inset 0 0 18px rgba(var(--network-accent-rgb, 156, 247, 91), 0.08),
-    0 0 22px rgba(var(--network-accent-rgb, 156, 247, 91), 0.12);
+    inset 0 0 18px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 8%, transparent),
+    0 0 22px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 12%, transparent);
 }
 
 .my-grow-network-counts article > span {
@@ -45468,10 +45500,10 @@ textarea::placeholder {
 }
 
 .my-grow-network-counts small {
-  color: var(--network-accent, #a6ff64);
+  color: var(--network-accent, color-mix(in srgb, var(--grow-color-grower) 72%, white 28%));
   font-size: 2.08rem;
   font-weight: 980;
-  text-shadow: 0 0 18px rgba(var(--network-accent-rgb, 156, 247, 91), 0.16);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 16%, transparent);
 }
 
 .my-grow-network-counts em {
@@ -45482,22 +45514,19 @@ textarea::placeholder {
 .my-grow-network-counts .is-growers,
 .my-grow-network-category-card.is-growers,
 .my-grow-network-connection-card.is-grower {
-  --network-accent: #9cf75b;
-  --network-accent-rgb: 156, 247, 91;
+  --network-accent: var(--grow-color-grower);
 }
 
 .my-grow-network-counts .is-sources,
 .my-grow-network-category-card.is-sources,
 .my-grow-network-connection-card.is-source {
-  --network-accent: #49ddff;
-  --network-accent-rgb: 73, 221, 255;
+  --network-accent: var(--grow-color-source);
 }
 
 .my-grow-network-counts .is-breeders,
 .my-grow-network-category-card.is-breeders,
 .my-grow-network-connection-card.is-breeder {
   --network-accent: #ff8a1f;
-  --network-accent-rgb: 255, 138, 31;
 }
 
 .my-grow-network-overview,
@@ -45505,10 +45534,10 @@ textarea::placeholder {
 .my-grow-network-cta-panel {
   position: relative;
   overflow: hidden;
-  border-color: rgba(156, 247, 91, 0.2);
+  border-color: color-mix(in srgb, var(--grow-color-grower) 20%, transparent);
   background:
-    radial-gradient(circle at 14% 0%, rgba(156, 247, 91, 0.09), transparent 34%),
-    radial-gradient(circle at 86% 28%, rgba(91, 226, 255, 0.06), transparent 38%),
+    radial-gradient(circle at 14% 0%, color-mix(in srgb, var(--grow-color-grower) 9%, transparent), transparent 34%),
+    radial-gradient(circle at 86% 28%, color-mix(in srgb, var(--grow-color-source) 6%, transparent), transparent 38%),
     linear-gradient(145deg, rgba(9, 22, 18, 0.82), rgba(4, 11, 10, 0.82));
 }
 
@@ -45521,7 +45550,7 @@ textarea::placeholder {
   pointer-events: none;
   opacity: 0.22;
   background:
-    radial-gradient(circle, rgba(156, 247, 91, 0.28) 0 1px, transparent 1.5px);
+    radial-gradient(circle, color-mix(in srgb, var(--grow-color-grower) 28.000000000000004%, transparent) 0 1px, transparent 1.5px);
   background-size: 18px 18px;
   mask-image: linear-gradient(135deg, transparent 0 42%, #000 70%, transparent 100%);
 }
@@ -45544,10 +45573,10 @@ textarea::placeholder {
 }
 
 .my-grow-network-panel-icon {
-  color: #9cf75b;
-  border-color: rgba(156, 247, 91, 0.42);
+  color: var(--grow-color-grower);
+  border-color: color-mix(in srgb, var(--grow-color-grower) 42%, transparent);
   background:
-    radial-gradient(circle at 50% 38%, rgba(156, 247, 91, 0.2), transparent 58%),
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--grow-color-grower) 20%, transparent), transparent 58%),
     rgba(6, 17, 13, 0.76);
 }
 
@@ -45561,11 +45590,11 @@ textarea::placeholder {
   overflow: hidden;
   min-height: 166px;
   padding: 20px;
-  border-color: rgba(var(--network-accent-rgb, 156, 247, 91), 0.34);
+  border-color: color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 34%, transparent);
   background-color: rgba(4, 12, 10, 0.82);
   background-image:
     linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(1, 7, 5, 0.39)),
-    radial-gradient(circle at 12% 18%, rgba(var(--network-accent-rgb, 156, 247, 91), 0.16), transparent 46%),
+    radial-gradient(circle at 12% 18%, color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 16%, transparent), transparent 46%),
     var(--network-card-artwork, none);
   background-position: center center;
   background-repeat: no-repeat;
@@ -45593,7 +45622,7 @@ textarea::placeholder {
   z-index: 0;
   pointer-events: none;
   opacity: 0.38;
-  background: radial-gradient(circle, rgba(var(--network-accent-rgb, 156, 247, 91), 0.5) 0 1.2px, transparent 1.8px);
+  background: radial-gradient(circle, color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 50%, transparent) 0 1.2px, transparent 1.8px);
   background-size: 16px 16px;
   mask-image: linear-gradient(180deg, transparent, #000);
 }
@@ -45619,7 +45648,7 @@ textarea::placeholder {
 }
 
 .my-grow-network-category-card .my-grow-network-category-summary {
-  color: var(--network-accent, #a6ff64);
+  color: var(--network-accent, color-mix(in srgb, var(--grow-color-grower) 72%, white 28%));
   font-size: 1rem;
   font-weight: 900;
 }
@@ -45650,54 +45679,53 @@ textarea::placeholder {
 }
 
 .my-grow-network-category-chevron {
-  color: var(--network-accent, #a6ff64);
-  text-shadow: 0 0 14px rgba(var(--network-accent-rgb, 156, 247, 91), 0.24);
+  color: var(--network-accent, color-mix(in srgb, var(--grow-color-grower) 72%, white 28%));
+  text-shadow: 0 0 14px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 24%, transparent);
 }
 
 .my-grow-network-mini-avatar {
-  border-color: rgba(var(--network-accent-rgb, 156, 247, 91), 0.62);
+  border-color: color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 62%, transparent);
   color: #f7fbf5;
   background:
-    radial-gradient(circle at 50% 35%, rgba(var(--network-accent-rgb, 156, 247, 91), 0.16), transparent 58%),
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 16%, transparent), transparent 58%),
     rgba(5, 13, 12, 0.92);
-  box-shadow: 0 0 14px rgba(var(--network-accent-rgb, 156, 247, 91), 0.1);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 10%, transparent);
 }
 
 .my-grow-network-mini-avatar.is-overflow {
-  color: var(--network-accent, #a6ff64);
+  color: var(--network-accent, color-mix(in srgb, var(--grow-color-grower) 72%, white 28%));
 }
 
 .my-grow-network-connection-row {
   overflow-x: auto;
   overscroll-behavior-inline: contain;
-  scrollbar-color: rgba(156, 247, 91, 0.58) rgba(255, 255, 255, 0.05);
+  scrollbar-color: color-mix(in srgb, var(--grow-color-grower) 57.99999999999999%, transparent) rgba(255, 255, 255, 0.05);
 }
 
 .my-grow-network-connection-card {
-  --network-accent: #9cf75b;
-  --network-accent-rgb: 156, 247, 91;
+  --network-accent: var(--grow-color-grower);
   min-height: 86px;
-  border-color: rgba(var(--network-accent-rgb), 0.26);
+  border-color: color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 26%, transparent);
   background:
-    radial-gradient(circle at 12% 40%, rgba(var(--network-accent-rgb), 0.11), transparent 42%),
+    radial-gradient(circle at 12% 40%, color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 11%, transparent), transparent 42%),
     rgba(255, 255, 255, 0.028);
 }
 
 .my-grow-network-connection-card::before {
   background: var(--network-accent);
-  box-shadow: 0 0 14px rgba(var(--network-accent-rgb), 0.28);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 28.000000000000004%, transparent);
 }
 
 .my-grow-network-connection-card.is-source::before,
 .my-grow-network-connection-card.is-breeder::before {
   background: var(--network-accent);
-  box-shadow: 0 0 14px rgba(var(--network-accent-rgb), 0.28);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 28.000000000000004%, transparent);
 }
 
 .my-grow-network-connection-avatar {
-  border-color: rgba(var(--network-accent-rgb), 0.66);
+  border-color: color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 66%, transparent);
   color: #f7fbf5;
-  box-shadow: 0 0 16px rgba(var(--network-accent-rgb), 0.12);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 12%, transparent);
 }
 
 .my-grow-network-connection-card small {
@@ -45708,15 +45736,15 @@ textarea::placeholder {
   grid-column: 2;
   grid-row: 3;
   justify-self: start;
-  border-color: rgba(var(--network-accent-rgb), 0.24);
-  color: #bfff7b;
-  background: rgba(156, 247, 91, 0.08);
+  border-color: color-mix(in srgb, var(--network-accent, var(--grow-color-grower)) 24%, transparent);
+  color: color-mix(in srgb, var(--grow-color-grower) 72%, white 28%);
+  background: color-mix(in srgb, var(--grow-color-grower) 8%, transparent);
 }
 
 .my-grow-network-cta-panel {
   min-height: 116px;
   background:
-    radial-gradient(circle at 92% 40%, rgba(156, 247, 91, 0.13), transparent 28%),
+    radial-gradient(circle at 92% 40%, color-mix(in srgb, var(--grow-color-grower) 13%, transparent), transparent 28%),
     linear-gradient(145deg, rgba(9, 22, 18, 0.86), rgba(4, 11, 10, 0.86));
 }
 
@@ -45730,20 +45758,20 @@ textarea::placeholder {
   pointer-events: none;
   opacity: 0.48;
   background:
-    radial-gradient(circle at 18% 58%, #9cf75b 0 3px, transparent 4px),
-    radial-gradient(circle at 52% 32%, #9cf75b 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 64%, #9cf75b 0 3px, transparent 4px),
-    radial-gradient(circle at 90% 22%, #49ddff 0 2px, transparent 3px),
-    linear-gradient(28deg, transparent 0 47%, rgba(156, 247, 91, 0.42) 47.4% 48%, transparent 48.4%),
-    linear-gradient(150deg, transparent 0 48%, rgba(73, 221, 255, 0.28) 48.4% 49%, transparent 49.4%);
+    radial-gradient(circle at 18% 58%, var(--grow-color-grower) 0 3px, transparent 4px),
+    radial-gradient(circle at 52% 32%, var(--grow-color-grower) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 64%, var(--grow-color-grower) 0 3px, transparent 4px),
+    radial-gradient(circle at 90% 22%, var(--grow-color-source) 0 2px, transparent 3px),
+    linear-gradient(28deg, transparent 0 47%, color-mix(in srgb, var(--grow-color-grower) 42%, transparent) 47.4% 48%, transparent 48.4%),
+    linear-gradient(150deg, transparent 0 48%, color-mix(in srgb, var(--grow-color-source) 28.000000000000004%, transparent) 48.4% 49%, transparent 49.4%);
 }
 
 .my-grow-network-cta-secondary h4 {
-  color: #a6ff64;
+  color: color-mix(in srgb, var(--grow-color-grower) 72%, white 28%);
 }
 
 .my-grow-network-cta-mark {
-  color: rgba(156, 247, 91, 0.7);
+  color: color-mix(in srgb, var(--grow-color-grower) 70%, transparent);
 }
 
 .my-grow-network-insight-list,
@@ -46795,15 +46823,15 @@ body.theme-dark .source-directory-note-icon {
 }
 
 body.theme-dark .source-directory-metric-card--cstp {
-  border-color: rgba(148, 209, 89, 0.2);
+  border-color: color-mix(in srgb, var(--source-directory-metric-accent) 20%, transparent);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 24%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.16), transparent 38%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--source-directory-metric-accent) 16%, transparent), transparent 38%),
     var(--glass-bg-strong);
   box-shadow:
     var(--glass-shadow),
     var(--glass-inset),
-    0 0 24px rgba(148, 209, 89, 0.1);
+    0 0 24px color-mix(in srgb, var(--source-directory-metric-accent) 10%, transparent);
 }
 
 body.theme-dark .source-directory-mock-note {
@@ -74057,22 +74085,30 @@ body.theme-dark option[selected] {
   fill: currentColor;
 }
 
-.grow-kpi-card.is-growth {
-  --grow-kpi-accent: rgba(148, 209, 89, 0.16);
-  --grow-kpi-icon: #b8ef7d;
-  --grow-kpi-glow: rgba(148, 209, 89, 0.16);
+.grow-kpi-card.is-growth,
+.grow-kpi-card.is-variety,
+.grow-kpi-card.is-grower {
+  --grow-kpi-accent: color-mix(in srgb, var(--grow-color-variety) 16%, transparent);
+  --grow-kpi-icon: var(--grow-color-variety);
+  --grow-kpi-glow: color-mix(in srgb, var(--grow-color-variety) 16%, transparent);
+}
+
+.grow-kpi-card.is-seed {
+  --grow-kpi-accent: color-mix(in srgb, var(--grow-color-seed) 16%, transparent);
+  --grow-kpi-icon: var(--grow-color-seed);
+  --grow-kpi-glow: color-mix(in srgb, var(--grow-color-seed) 16%, transparent);
 }
 
 .grow-kpi-card.is-collection {
-  --grow-kpi-accent: rgba(127, 184, 255, 0.14);
-  --grow-kpi-icon: #8fc7ff;
-  --grow-kpi-glow: rgba(127, 184, 255, 0.14);
+  --grow-kpi-accent: color-mix(in srgb, var(--grow-color-collection) 14%, transparent);
+  --grow-kpi-icon: var(--grow-color-collection);
+  --grow-kpi-glow: color-mix(in srgb, var(--grow-color-collection) 14%, transparent);
 }
 
 .grow-kpi-card.is-source {
-  --grow-kpi-accent: rgba(124, 211, 171, 0.14);
-  --grow-kpi-icon: #7cd3ab;
-  --grow-kpi-glow: rgba(124, 211, 171, 0.14);
+  --grow-kpi-accent: color-mix(in srgb, var(--grow-color-source) 14%, transparent);
+  --grow-kpi-icon: var(--grow-color-source);
+  --grow-kpi-glow: color-mix(in srgb, var(--grow-color-source) 14%, transparent);
 }
 
 .grow-kpi-card.is-warning {
@@ -80213,10 +80249,10 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-favorite-button.is-active {
-  border-color: rgba(232, 76, 91, 0.44);
-  background: rgba(232, 76, 91, 0.11);
-  color: #e84c5b;
-  box-shadow: 0 0 0 2px rgba(232, 76, 91, 0.08), 0 0 18px rgba(232, 76, 91, 0.18);
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 44%, transparent);
+  background: color-mix(in srgb, var(--grow-color-favorite) 11%, transparent);
+  color: var(--grow-color-favorite);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--grow-color-favorite) 8%, transparent), 0 0 18px color-mix(in srgb, var(--grow-color-favorite) 18%, transparent);
 }
 
 .seed-vault-action-menu {
@@ -82909,15 +82945,15 @@ a.source-directory-variety-chip:focus-visible {
   inset: 10px auto 10px -1px;
   width: 2px;
   border-radius: 0 2px 2px 0;
-  background: #e84c5b;
-  box-shadow: 0 0 14px rgba(232, 76, 91, 0.28);
+  background: var(--grow-color-favorite);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--grow-color-favorite) 28%, transparent);
   pointer-events: none;
 }
 
 .seed-vault-panel[data-seed-vault-theme] .seed-vault-entry-card.is-favorite {
-  border-color: rgba(232, 76, 91, 0.16);
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 16%, transparent);
   background:
-    radial-gradient(circle at 96% 50%, rgba(232, 76, 91, 0.045), transparent 25%),
+    radial-gradient(circle at 96% 50%, color-mix(in srgb, var(--grow-color-favorite) 4.5%, transparent), transparent 25%),
     linear-gradient(100deg, rgba(16, 23, 19, 0.94), rgba(11, 16, 14, 0.95));
 }
 
@@ -83128,8 +83164,8 @@ a.source-directory-variety-chip:focus-visible {
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: #b889e8;
-  box-shadow: 0 0 10px rgba(184, 137, 232, 0.22);
+  background: var(--grow-color-collection);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--grow-color-collection) 22%, transparent);
 }
 
 .seed-vault-entry-status-pills {
@@ -83152,8 +83188,8 @@ a.source-directory-variety-chip:focus-visible {
 
 .seed-vault-entry-status-pill.is-success,
 .seed-vault-entry-status-pill.is-in-vault {
-  border-color: rgba(148, 209, 89, 0.18);
-  color: #a6dc70;
+  border-color: color-mix(in srgb, var(--grow-color-healthy) 18%, transparent);
+  color: var(--grow-color-healthy);
 }
 
 .seed-vault-entry-status-pill.is-attention {
@@ -83162,64 +83198,64 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-entry-status-pill.is-planned {
-  border-color: rgba(233, 173, 54, 0.25);
-  color: #e9b34d;
+  border-color: color-mix(in srgb, var(--grow-color-planned) 25%, transparent);
+  color: var(--grow-color-planned);
 }
 
 .seed-vault-entry-status-pill.is-testing {
-  border-color: rgba(60, 199, 232, 0.28);
-  background: rgba(60, 199, 232, 0.08);
-  color: #55cae7;
+  border-color: color-mix(in srgb, var(--grow-color-testing) 28%, transparent);
+  background: color-mix(in srgb, var(--grow-color-testing) 8%, transparent);
+  color: var(--grow-color-testing);
 }
 
 .seed-vault-entry-status-pill.is-healthy,
 .seed-vault-entry-status-pill.is-active,
 .seed-vault-entry-status-pill.is-success,
 .seed-vault-entry-status-pill.is-in-vault {
-  border-color: rgba(148, 209, 89, 0.24);
-  background: rgba(148, 209, 89, 0.075);
-  color: #a6dc70;
+  border-color: color-mix(in srgb, var(--grow-color-healthy) 24%, transparent);
+  background: color-mix(in srgb, var(--grow-color-healthy) 7.5%, transparent);
+  color: var(--grow-color-healthy);
 }
 
 .seed-vault-entry-status-pill.is-low-stock,
 .seed-vault-entry-status-pill.is-attention {
-  border-color: rgba(237, 154, 72, 0.34);
-  background: rgba(237, 154, 72, 0.1);
-  color: #eda05a;
-  box-shadow: 0 0 12px rgba(237, 154, 72, 0.08);
+  border-color: color-mix(in srgb, var(--grow-color-low-stock) 34%, transparent);
+  background: color-mix(in srgb, var(--grow-color-low-stock) 10%, transparent);
+  color: var(--grow-color-low-stock);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--grow-color-low-stock) 8%, transparent);
 }
 
 .seed-vault-entry-status-pill.is-out-of-stock {
-  border-color: rgba(232, 76, 91, 0.38);
-  background: rgba(232, 76, 91, 0.1);
-  color: #ec6572;
-  box-shadow: 0 0 12px rgba(232, 76, 91, 0.1);
+  border-color: color-mix(in srgb, var(--grow-color-out-of-stock) 38%, transparent);
+  background: color-mix(in srgb, var(--grow-color-out-of-stock) 10%, transparent);
+  color: var(--grow-color-out-of-stock);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--grow-color-out-of-stock) 10%, transparent);
 }
 
 .seed-vault-entry-status-pill.is-older-seed,
 .seed-vault-entry-status-pill.is-warm,
 .seed-vault-entry-status-pill.is-mature {
-  border-color: rgba(217, 173, 86, 0.3);
-  background: rgba(217, 173, 86, 0.09);
-  color: #dbb768;
+  border-color: color-mix(in srgb, var(--grow-color-older-seed) 30%, transparent);
+  background: color-mix(in srgb, var(--grow-color-older-seed) 9%, transparent);
+  color: var(--grow-color-older-seed);
 }
 
 .seed-vault-entry-status-pill.is-recently-added {
-  border-color: rgba(67, 217, 245, 0.28);
-  background: rgba(67, 217, 245, 0.08);
-  color: #62d9ef;
+  border-color: color-mix(in srgb, var(--grow-color-recent) 28%, transparent);
+  background: color-mix(in srgb, var(--grow-color-recent) 8%, transparent);
+  color: var(--grow-color-recent);
 }
 
 .seed-vault-entry-status-pill.is-planned {
-  border-color: rgba(233, 173, 54, 0.3);
-  background: rgba(233, 173, 54, 0.09);
-  color: #e9b34d;
+  border-color: color-mix(in srgb, var(--grow-color-planned) 30%, transparent);
+  background: color-mix(in srgb, var(--grow-color-planned) 9%, transparent);
+  color: var(--grow-color-planned);
 }
 
 .seed-vault-entry-status-pill.is-grow-along {
-  border-color: rgba(181, 140, 255, 0.28);
-  background: rgba(181, 140, 255, 0.09);
-  color: #c9a8f5;
+  border-color: color-mix(in srgb, var(--grow-color-growalong) 28%, transparent);
+  background: color-mix(in srgb, var(--grow-color-growalong) 9%, transparent);
+  color: var(--grow-color-growalong);
 }
 
 .seed-vault-entry-status-pill.is-completed {
@@ -83230,9 +83266,9 @@ a.source-directory-variety-chip:focus-visible {
 
 .seed-vault-entry-status-pill.is-archived,
 .seed-vault-entry-status-pill.is-neutral {
-  border-color: rgba(188, 198, 190, 0.14);
-  background: rgba(188, 198, 190, 0.045);
-  color: rgba(205, 214, 207, 0.62);
+  border-color: color-mix(in srgb, var(--grow-color-archived) 14%, transparent);
+  background: color-mix(in srgb, var(--grow-color-archived) 4.5%, transparent);
+  color: color-mix(in srgb, var(--grow-color-archived) 62%, white 8%);
 }
 
 .seed-vault-entry-collapsed-row .seed-vault-entry-status-pill.is-favorite {
@@ -83265,16 +83301,16 @@ a.source-directory-variety-chip:focus-visible {
 
 .seed-vault-favorite-button:not(.is-active):hover,
 .seed-vault-favorite-button:not(.is-active):focus-visible {
-  border-color: rgba(232, 76, 91, 0.26);
-  background: rgba(232, 76, 91, 0.055);
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 26%, transparent);
+  background: color-mix(in srgb, var(--grow-color-favorite) 5.5%, transparent);
   color: rgba(236, 214, 217, 0.9);
 }
 
 .seed-vault-favorite-button.is-active {
-  border-color: rgba(232, 76, 91, 0.44);
-  background: rgba(232, 76, 91, 0.11);
-  color: #e84c5b;
-  box-shadow: 0 0 0 2px rgba(232, 76, 91, 0.08), 0 0 18px rgba(232, 76, 91, 0.18);
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 44%, transparent);
+  background: color-mix(in srgb, var(--grow-color-favorite) 11%, transparent);
+  color: var(--grow-color-favorite);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--grow-color-favorite) 8%, transparent), 0 0 18px color-mix(in srgb, var(--grow-color-favorite) 18%, transparent);
 }
 
 .seed-vault-favorite-button.is-active .seed-vault-action-icon path {
@@ -83648,16 +83684,16 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning {
-  border-color: rgba(231, 176, 71, 0.28);
+  border-color: color-mix(in srgb, var(--grow-color-planned) 28%, transparent);
   background:
-    radial-gradient(ellipse at 5% 4%, rgba(231, 176, 71, 0.085), transparent 35%),
+    radial-gradient(ellipse at 5% 4%, color-mix(in srgb, var(--grow-color-planned) 8.5%, transparent), transparent 35%),
     linear-gradient(145deg, rgba(20, 21, 15, 0.975), rgba(8, 13, 10, 0.98));
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collections {
-  border-color: rgba(190, 102, 222, 0.23);
+  border-color: color-mix(in srgb, var(--grow-color-collection) 23%, transparent);
   background:
-    radial-gradient(ellipse at 95% 2%, rgba(173, 85, 207, 0.08), transparent 36%),
+    radial-gradient(ellipse at 95% 2%, color-mix(in srgb, var(--grow-color-collection) 8%, transparent), transparent 36%),
     linear-gradient(145deg, rgba(17, 20, 20, 0.97), rgba(8, 12, 11, 0.98));
 }
 
@@ -83704,18 +83740,18 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-planning-destination.is-next-grow {
-  border-color: rgba(238, 174, 49, 0.28);
-  background: radial-gradient(circle at 10% 8%, rgba(238, 174, 49, 0.1), transparent 36%), linear-gradient(155deg, rgba(18, 17, 10, 0.94), rgba(7, 11, 8, 0.91));
+  border-color: color-mix(in srgb, var(--grow-color-planned) 28%, transparent);
+  background: radial-gradient(circle at 10% 8%, color-mix(in srgb, var(--grow-color-planned) 10%, transparent), transparent 36%), linear-gradient(155deg, rgba(18, 17, 10, 0.94), rgba(7, 11, 8, 0.91));
 }
 
 .seed-vault-planning-destination.is-testing {
-  border-color: rgba(148, 209, 89, 0.26);
-  background: radial-gradient(circle at 10% 8%, rgba(148, 209, 89, 0.09), transparent 36%), linear-gradient(155deg, rgba(13, 19, 11, 0.94), rgba(7, 11, 8, 0.91));
+  border-color: color-mix(in srgb, var(--grow-color-testing) 26%, transparent);
+  background: radial-gradient(circle at 10% 8%, color-mix(in srgb, var(--grow-color-testing) 9%, transparent), transparent 36%), linear-gradient(155deg, rgba(13, 19, 11, 0.94), rgba(7, 11, 8, 0.91));
 }
 
 .seed-vault-planning-destination.is-grow-along {
-  border-color: rgba(61, 201, 239, 0.27);
-  background: radial-gradient(circle at 10% 8%, rgba(61, 201, 239, 0.09), transparent 36%), linear-gradient(155deg, rgba(10, 17, 18, 0.94), rgba(7, 11, 9, 0.91));
+  border-color: color-mix(in srgb, var(--grow-color-growalong) 27%, transparent);
+  background: radial-gradient(circle at 10% 8%, color-mix(in srgb, var(--grow-color-growalong) 9%, transparent), transparent 36%), linear-gradient(155deg, rgba(10, 17, 18, 0.94), rgba(7, 11, 9, 0.91));
 }
 
 .seed-vault-planning-destination .seed-vault-overview-card-icon {
@@ -83756,20 +83792,11 @@ a.source-directory-variety-chip:focus-visible {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 10px 22px rgba(0, 0, 0, 0.18);
 }
 
-.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 1) {
-  border-color: rgba(141, 208, 76, 0.31);
-}
-
-.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 2) {
-  border-color: rgba(188, 91, 224, 0.3);
-}
-
-.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 3) {
-  border-color: rgba(226, 154, 43, 0.31);
-}
-
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 1),
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 2),
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n + 3),
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-card:not(.seed-vault-overview-collection-card--new):nth-child(4n) {
-  border-color: rgba(49, 195, 211, 0.31);
+  border-color: color-mix(in srgb, var(--grow-color-collection) 31%, transparent);
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collection-main {
@@ -84345,19 +84372,19 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-overview-stat.is-varieties .seed-vault-overview-stat-icon {
-  color: #9de84f;
+  color: var(--grow-color-variety);
 }
 
 .seed-vault-overview-stat.is-seeds .seed-vault-overview-stat-icon {
-  color: #b5e965;
+  color: var(--grow-color-seed);
 }
 
 .seed-vault-overview-stat.is-sources .seed-vault-overview-stat-icon {
-  color: #43d9f5;
+  color: var(--grow-color-source);
 }
 
 .seed-vault-overview-stat.is-collections .seed-vault-overview-stat-icon {
-  color: #c87cf2;
+  color: var(--grow-color-collection);
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section-icon {
@@ -84393,15 +84420,15 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-overview-planning .seed-vault-overview-section-icon {
-  color: #a8e955;
+  color: var(--grow-color-planned);
 }
 
 .seed-vault-overview-collections .seed-vault-overview-section-icon {
-  color: #c879ef;
+  color: var(--grow-color-collection);
 }
 
 .seed-vault-overview-recent-activity .seed-vault-overview-section-icon {
-  color: #9be64c;
+  color: var(--grow-color-recent);
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination .seed-vault-overview-card-icon {
@@ -84421,15 +84448,15 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-planning-destination.is-next-grow .seed-vault-overview-card-icon {
-  color: #f2ac28;
+  color: var(--grow-color-planned);
 }
 
 .seed-vault-planning-destination.is-testing .seed-vault-overview-card-icon {
-  color: #9be34b;
+  color: var(--grow-color-testing);
 }
 
 .seed-vault-planning-destination.is-grow-along .seed-vault-overview-card-icon {
-  color: #42d6f3;
+  color: var(--grow-color-growalong);
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-icon {
@@ -84991,14 +85018,14 @@ a.source-directory-variety-chip:focus-visible {
   grid-column: 1 / -1;
   min-height: 32px;
   padding: 7px 9px 7px 11px;
-  border-left: 2px solid rgba(184, 137, 232, 0.72);
+  border-left: 2px solid color-mix(in srgb, var(--grow-color-collection) 72%, transparent);
   border-radius: 0 8px 8px 0;
-  background: linear-gradient(90deg, rgba(184, 137, 232, 0.09), transparent 72%);
-  box-shadow: -6px 0 18px rgba(184, 137, 232, 0.055);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--grow-color-collection) 9%, transparent), transparent 72%);
+  box-shadow: -6px 0 18px color-mix(in srgb, var(--grow-color-collection) 5.5%, transparent);
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-insight-strip .is-collection strong {
-  color: #d7baf4;
+  color: color-mix(in srgb, var(--grow-color-collection) 72%, white 28%);
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-entry-insight-strip .is-collection strong::before {
@@ -85055,9 +85082,9 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-favorite-button.is-active {
-  border-color: rgba(232, 76, 91, 0.58);
-  background: rgba(74, 17, 25, 0.82);
-  color: #e84c5b;
+  border-color: color-mix(in srgb, var(--grow-color-favorite) 58%, transparent);
+  background: color-mix(in srgb, var(--grow-color-favorite) 24%, rgba(4, 8, 6, 0.82));
+  color: var(--grow-color-favorite);
 }
 
 .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded) .seed-vault-readonly-pill {

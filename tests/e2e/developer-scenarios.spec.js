@@ -48,6 +48,7 @@ async function closeScenarioPanel(page) {
 
 async function getReadySeedVaultFilter(page, selector) {
   const filter = page.locator(`#my-seed-vault .seed-vault-controls ${selector}`);
+  if (await filter.count() === 0) return null;
   await expect(filter).toHaveCount(1);
   await expect(filter).toBeVisible();
   await expect(filter).toBeEnabled();
@@ -642,6 +643,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#my-seed-vault .seed-vault-more-filters-panel [data-seed-vault-manage-collections='true']")).toBeVisible();
     const sourceSelector = '[data-seed-vault-source-filter="true"]';
     const sourceFilter = await getReadySeedVaultFilter(page, sourceSelector);
+    expect(sourceFilter).not.toBeNull();
     const firstSourceValue = await sourceFilter.locator("option").nth(1).getAttribute("value");
     expect(firstSourceValue).toBeTruthy();
     await sourceFilter.selectOption(firstSourceValue);
@@ -673,10 +675,15 @@ test.describe("local Developer Scenarios", () => {
       if (await renderedFilter.count() === 0) continue;
 
       const filter = await getReadySeedVaultFilter(page, filterCase.selector);
+      if (!filter) continue;
       const optionValue = await filter.locator("option").nth(1).getAttribute("value");
       expect(optionValue).toBeTruthy();
       await filter.selectOption(optionValue);
-      await expect(await getReadySeedVaultFilter(page, filterCase.selector)).toHaveValue(optionValue);
+      const selectedFilter = page.locator(`#my-seed-vault .seed-vault-controls ${filterCase.selector}`);
+      await expect(selectedFilter).toHaveCount(1);
+      await expect(selectedFilter).toBeVisible();
+      await expect(selectedFilter).toBeEnabled();
+      await expect(selectedFilter).toHaveValue(optionValue);
       await waitForSeedVaultInventoryState(page);
       await clearSeedVaultFiltersAndWait(page, filterCase.selector, filterCase.resetValue || "all");
     }
@@ -728,6 +735,36 @@ test.describe("local Developer Scenarios", () => {
     await useFullGrowDemo(page);
     await closeScenarioPanel(page);
 
+    const semanticTokens = await page.evaluate(() => {
+      const styles = getComputedStyle(document.documentElement);
+      return Object.fromEntries([
+        "variety", "seed", "source", "collection", "planned", "testing", "growalong", "favorite",
+      ].map((name) => [name, styles.getPropertyValue(`--grow-color-${name}`).trim()]));
+    });
+    expect(semanticTokens).toEqual({
+      variety: "#94d159",
+      seed: "#b8875b",
+      source: "#55cae7",
+      collection: "#b889e8",
+      planned: "#e9b34d",
+      testing: "#94d159",
+      growalong: "#55cae7",
+      favorite: "#e84c5b",
+    });
+
+    const semanticSurfaces = {
+      ".seed-vault-overview-stat.is-varieties .seed-vault-overview-stat-icon": "rgb(148, 209, 89)",
+      ".seed-vault-overview-stat.is-seeds .seed-vault-overview-stat-icon": "rgb(184, 135, 91)",
+      ".seed-vault-overview-stat.is-sources .seed-vault-overview-stat-icon": "rgb(85, 202, 231)",
+      ".seed-vault-overview-stat.is-collections .seed-vault-overview-stat-icon": "rgb(184, 137, 232)",
+      ".seed-vault-planning-destination.is-next-grow .seed-vault-overview-card-icon": "rgb(233, 179, 77)",
+      ".seed-vault-planning-destination.is-testing .seed-vault-overview-card-icon": "rgb(148, 209, 89)",
+      ".seed-vault-planning-destination.is-grow-along .seed-vault-overview-card-icon": "rgb(85, 202, 231)",
+    };
+    for (const [selector, color] of Object.entries(semanticSurfaces)) {
+      await expect(page.locator(selector)).toHaveCSS("color", color);
+    }
+
     const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
     await expect(cards).toHaveCount(50);
     const favoriteButton = cards.locator(".seed-vault-favorite-button.is-active").first();
@@ -749,13 +786,13 @@ test.describe("local Developer Scenarios", () => {
     expect(favoriteRowTreatment.glow).not.toBe("none");
 
     const expectedTones = {
-      healthy: "rgb(166, 220, 112)",
+      healthy: "rgb(148, 209, 89)",
       "low-stock": "rgb(237, 160, 90)",
       "older-seed": "rgb(219, 183, 104)",
       planned: "rgb(233, 179, 77)",
-      testing: "rgb(85, 202, 231)",
-      "grow-along": "rgb(201, 168, 245)",
-      "recently-added": "rgb(98, 217, 239)",
+      testing: "rgb(148, 209, 89)",
+      "grow-along": "rgb(85, 202, 231)",
+      "recently-added": "rgb(85, 202, 231)",
     };
     for (const [tone, color] of Object.entries(expectedTones)) {
       const pill = page.locator(`.seed-vault-entry-status-pill.is-${tone}`).first();
@@ -1043,10 +1080,10 @@ test.describe("local Developer Scenarios", () => {
       expect(computed.overflow).toBeLessThanOrEqual(1);
       expect(computed.overviewIcons).toHaveLength(4);
       expect(computed.overviewIcons.map(({ tone, color }) => ({ tone, color }))).toEqual([
-        { tone: "is-varieties", color: "rgb(157, 232, 79)" },
-        { tone: "is-seeds", color: "rgb(181, 233, 101)" },
-        { tone: "is-sources", color: "rgb(67, 217, 245)" },
-        { tone: "is-collections", color: "rgb(200, 124, 242)" },
+        { tone: "is-varieties", color: "rgb(148, 209, 89)" },
+        { tone: "is-seeds", color: "rgb(184, 135, 91)" },
+        { tone: "is-sources", color: "rgb(85, 202, 231)" },
+        { tone: "is-collections", color: "rgb(184, 137, 232)" },
       ]);
       expect(new Set(computed.overviewIcons.map(({ color }) => color)).size).toBe(4);
       expect(new Set(computed.overviewIcons.map(({ borderColor }) => borderColor)).size).toBe(4);
@@ -1086,10 +1123,10 @@ test.describe("local Developer Scenarios", () => {
       overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
     }));
     expect(smallVaultOverview.colors).toEqual([
-      "rgb(157, 232, 79)",
-      "rgb(181, 233, 101)",
-      "rgb(67, 217, 245)",
-      "rgb(200, 124, 242)",
+      "rgb(148, 209, 89)",
+      "rgb(184, 135, 91)",
+      "rgb(85, 202, 231)",
+      "rgb(184, 137, 232)",
     ]);
     expect(smallVaultOverview.overflow).toBeLessThanOrEqual(1);
 
