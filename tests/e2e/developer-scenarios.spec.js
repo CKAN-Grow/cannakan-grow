@@ -884,6 +884,83 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault and KAN companion hero assets survive hard reloads without fallback failures", async ({ page }) => {
+    const consoleErrors = [];
+    const failedAssetRequests = [];
+    const obsoleteAssetRequests = [];
+    const correctedAssetPaths = [
+      "/assets/images/seed-vault-hero-bg.png",
+      "/assets/images/methods/kan-grow-companion-bg.png",
+      "/assets/images/tutorials/placeholders/kan-system-walkthrough.webp",
+      "/assets/images/tutorials/placeholders/germination-stages.webp",
+    ];
+    const correctedAssetPathSet = new Set(correctedAssetPaths);
+
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+    page.on("request", (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith("/kan-grow-companion-hero.png")) obsoleteAssetRequests.push(pathname);
+    });
+    page.on("requestfailed", (request) => {
+      const pathname = new URL(request.url()).pathname;
+      if (correctedAssetPathSet.has(pathname) || pathname.endsWith("/kan-grow-companion-hero.png")) {
+        failedAssetRequests.push({ pathname, error: request.failure()?.errorText || "request failed" });
+      }
+    });
+    page.on("response", (response) => {
+      const pathname = new URL(response.url()).pathname;
+      if (correctedAssetPathSet.has(pathname) && response.status() >= 400) {
+        failedAssetRequests.push({ pathname, error: "HTTP " + response.status() });
+      }
+    });
+
+    for (const assetPath of correctedAssetPaths) {
+      const response = await page.request.get(assetPath);
+      expect(response.status(), assetPath).toBe(200);
+      expect(response.headers()["content-type"], assetPath).toMatch(/^image\//);
+      expect((await response.body()).byteLength, assetPath).toBeGreaterThan(1024);
+    }
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+    const seedVaultHero = page.locator(".seed-vault-approved-hero");
+    await expect(seedVaultHero).toBeVisible();
+    await expect.poll(() => seedVaultHero.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("seed-vault-hero-bg.png");
+    await expect.poll(() => page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration())?.active))).toBe(true);
+
+    const devtools = await page.context().newCDPSession(page);
+    await devtools.send("Network.enable");
+    await devtools.send("Network.clearBrowserCache");
+    const hardReloadComplete = page.waitForLoadState("domcontentloaded");
+    await devtools.send("Page.reload", { ignoreCache: true });
+    await hardReloadComplete;
+    await expect(seedVaultHero).toBeVisible();
+    await expect.poll(() => seedVaultHero.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain("seed-vault-hero-bg.png");
+
+    await page.goto("/#home");
+    const kanCompanion = page.locator('.session-progress-companion-card[data-method-companion-bg-src$="/assets/images/methods/kan-grow-companion-bg.png"]').first();
+    await expect(kanCompanion).toBeVisible();
+    await expect(kanCompanion).toHaveClass(/has-method-companion-background/);
+    const kanHero = kanCompanion.locator(".session-progress-companion-hero");
+    await expect.poll(() => kanHero.evaluate((node) => getComputedStyle(node, "::before").backgroundImage)).toContain("kan-grow-companion-bg.png");
+
+    await expect.poll(() => page.evaluate(() => {
+      const visibleImages = Array.from(document.images).filter((image) => image.getClientRects().length > 0 && image.currentSrc);
+      return {
+        pending: visibleImages.filter((image) => !image.complete).map((image) => image.currentSrc),
+        broken: visibleImages.filter((image) => image.complete && image.naturalWidth === 0).map((image) => image.currentSrc),
+      };
+    })).toEqual({ pending: [], broken: [] });
+
+    expect(obsoleteAssetRequests).toEqual([]);
+    expect(failedAssetRequests).toEqual([]);
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault Status filter exposes one canonical option per status", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {

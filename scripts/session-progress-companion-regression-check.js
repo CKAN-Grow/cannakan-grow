@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
-const kanCompanionHeroAssetPath = path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-hero.png");
+const kanCompanionBackgroundAssetPath = path.join(repoRoot, "public", "assets", "images", "methods", "kan-grow-companion-bg.png");
 const methodCompanionBackgroundFiles = Object.freeze([
   "kan-grow-companion-bg.png",
   "paper-towel-grow-companion-bg.png",
@@ -39,8 +39,11 @@ const commandCenterListSource = getFunctionSource(appSource, "renderMySessionsCo
 const commandCenterSectionSource = getFunctionSource(appSource, "renderMySessionsCommandCenterSectionMarkup");
 const commandCenterMountSource = getFunctionSource(appSource, "mountSharedSessionCommandCenter");
 
-if (!fs.existsSync(kanCompanionHeroAssetPath)) {
-  throw new Error("KAN Grow Companion hero background asset is missing.");
+if (!fs.existsSync(kanCompanionBackgroundAssetPath)) {
+  throw new Error("Canonical KAN Grow Companion background asset is missing.");
+}
+if (stylesSource.includes("kan-grow-companion-hero.png")) {
+  throw new Error("Legacy KAN Grow Companion hero asset path remains in CSS.");
 }
 
 function getMarkupSlice(startNeedle, endNeedle) {
@@ -123,7 +126,7 @@ if (!(roadmapStart < actionPanelStart && actionPanelStart < rightColumnEnd)) {
 }
 
 [
-  'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/images/methods";',
+  'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/methods";',
   "const KAN_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/kan-grow-companion-bg.png`;",
   "const PAPER_TOWEL_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/paper-towel-grow-companion-bg.png`;",
   "const ROCKWOOL_GROW_COMPANION_HERO_BACKGROUND = `${GROW_COMPANION_METHOD_BACKGROUND_BASE}/rockwool-grow-companion-bg.png`;",
@@ -175,13 +178,9 @@ if (!(roadmapStart < actionPanelStart && actionPanelStart < rightColumnEnd)) {
 });
 
 methodCompanionBackgroundFiles.forEach((fileName) => {
-  const publicPath = path.join(repoRoot, "public", "assets", "images", "images", "methods", fileName);
-  const localPath = path.join(repoRoot, "Assets", "images", "images", "methods", fileName);
+  const publicPath = path.join(repoRoot, "public", "assets", "images", "methods", fileName);
   if (!fs.existsSync(publicPath)) {
-    throw new Error(`Method Grow Companion background asset is missing from deployed public path: ${fileName}`);
-  }
-  if (!fs.existsSync(localPath)) {
-    throw new Error(`Method Grow Companion background asset is missing from local /assets path: ${fileName}`);
+    throw new Error(`Method Grow Companion background asset is missing from canonical public path: ${fileName}`);
   }
 });
 
@@ -429,7 +428,7 @@ if (!roadmapSource.includes("engineState?.timelineSteps")) {
 });
 
 [
-  'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/images/methods";',
+  'const GROW_COMPANION_METHOD_BACKGROUND_BASE = "/assets/images/methods";',
   "const GROW_COMPANION_METHOD_BACKGROUNDS = Object.freeze({",
   "heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.KAN",
   "heroBackgroundImage: GROW_COMPANION_METHOD_BACKGROUNDS.PAPER_TOWEL",
