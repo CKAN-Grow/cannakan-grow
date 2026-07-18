@@ -84999,7 +84999,7 @@ a.source-directory-variety-chip:focus-visible {
 
   .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-approved-hero-main {
     align-items: center;
-    padding: clamp(40px, 4.2vw, 54px) clamp(28px, 3.4vw, 46px) 126px;
+    padding: clamp(40px, 4.2vw, 54px) clamp(28px, 3.4vw, 46px) 84px;
   }
 }
 
