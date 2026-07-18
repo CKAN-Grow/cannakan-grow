@@ -1947,6 +1947,69 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault cards and hero search use existing canonical filters and destinations", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.setViewportSize({ width: 1280, height: 820 });
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const library = page.locator("#my-seed-vault .seed-vault-library-shell");
+    const heroSearch = page.locator("#my-seed-vault [data-seed-vault-hero-search-form='true'] input");
+    const searchButton = page.locator("#my-seed-vault .seed-vault-overview-search-submit");
+    const initialScrollY = await page.evaluate(() => window.scrollY);
+    await heroSearch.fill("no-vault-entry-matches-this");
+    await expect(page.locator("#my-seed-vault .seed-vault-results-count")).toContainText("0 of 50 Vault Entries");
+    expect(Math.abs((await page.evaluate(() => window.scrollY)) - initialScrollY)).toBeLessThanOrEqual(2);
+
+    await heroSearch.press("Enter");
+    await expect.poll(async () => library.evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
+    const libraryScrollY = await page.evaluate(() => window.scrollY);
+    await page.locator("#my-seed-vault [data-seed-vault-hero-search-form='true']").evaluate((form) => form.requestSubmit());
+    await expect.poll(async () => Math.abs((await page.evaluate(() => window.scrollY)) - libraryScrollY)).toBeLessThanOrEqual(2);
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.locator("#my-seed-vault [data-seed-vault-clear-filters='true']").click();
+    await expect(page.locator("#my-seed-vault .seed-vault-results-count")).toContainText("50 of 50 Vault Entries");
+    await searchButton.click();
+    await expect.poll(async () => library.evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
+
+    const planningCases = [
+      { card: ".seed-vault-planning-destination.is-next-grow", filter: "[data-seed-vault-planning-status-filter='true']", value: "planned", quick: "planned" },
+      { card: ".seed-vault-planning-destination.is-testing", filter: "[data-seed-vault-testing-program-filter='true']", value: "yes", quick: "testing" },
+      { card: ".seed-vault-planning-destination.is-grow-along", filter: "[data-seed-vault-grow-along-filter='true']", value: "yes", quick: "all" },
+    ];
+    for (const planningCase of planningCases) {
+      await page.locator("#my-seed-vault " + planningCase.card).click();
+      await expect(page.locator("#my-seed-vault " + planningCase.filter)).toHaveValue(planningCase.value);
+      await expect(page.locator("#my-seed-vault [data-seed-vault-quick-view='" + planningCase.quick + "']")).toHaveAttribute("aria-selected", "true");
+      await expect.poll(async () => library.evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
+    }
+
+    const collectionCard = page.locator("#my-seed-vault .seed-vault-overview-collection-main").first();
+    const collectionName = await collectionCard.getAttribute("data-seed-vault-overview-collection");
+    expect(collectionName).toBeTruthy();
+    await collectionCard.click();
+    await expect(page.locator("#my-seed-vault [data-seed-vault-collection-filter='true']")).toHaveValue(collectionName);
+    await expect.poll(async () => library.evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
+
+    await page.locator("#my-seed-vault .seed-vault-overview-stat.is-sources").click();
+    await expect(page.locator("#my-seed-vault .seed-vault-more-filters")).toHaveAttribute("open", "");
+    await expect(page.locator("#my-seed-vault [data-seed-vault-source-filter='true']")).toBeFocused();
+    await page.locator("#my-seed-vault .seed-vault-overview-stat.is-collections").click();
+    await expect.poll(async () => page.locator("#my-seed-vault .seed-vault-overview-collections").evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
+
+    await page.locator("#my-seed-vault .seed-vault-overview-stat.is-varieties").focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(async () => library.evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault footer settings remain balanced and accessible", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {

@@ -86521,3 +86521,89 @@ a.source-directory-variety-chip:focus-visible {
     inset 0 1px 0 color-mix(in srgb, var(--grow-color-favorite) 18%, transparent),
     0 0 12px color-mix(in srgb, var(--grow-color-favorite) 12%, transparent);
 }
+
+
+/* Seed Vault focused internal navigation */
+.seed-vault-approved-hero-controls .seed-vault-overview-search > label {
+  display: block;
+  min-width: 0;
+}
+
+.seed-vault-approved-hero-controls .seed-vault-overview-search > label > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.seed-vault-approved-hero-controls .seed-vault-overview-search::before {
+  content: none;
+}
+
+.seed-vault-approved-hero-controls .seed-vault-overview-search input {
+  padding-left: 48px;
+}
+
+.seed-vault-overview-search-submit {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(244, 249, 244, 0.78);
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.seed-vault-overview-search-submit:hover {
+  color: var(--seed-vault-theme-accent, #94d159);
+  background: color-mix(in srgb, var(--seed-vault-theme-accent, #94d159) 9%, transparent);
+}
+
+.seed-vault-overview-search-submit:focus-visible {
+  outline: 2px solid var(--seed-vault-theme-accent, #94d159);
+  outline-offset: -2px;
+}
+
+button.seed-vault-overview-stat {
+  width: 100%;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.075);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
+
+button.seed-vault-overview-stat:hover {
+  background: color-mix(in srgb, currentColor 3.5%, transparent);
+}
+
+button.seed-vault-overview-stat:focus-visible,
+button.seed-vault-planning-destination:focus-visible {
+  z-index: 3;
+  outline: 2px solid var(--seed-vault-theme-accent, #94d159);
+  outline-offset: -3px;
+}
+
+button.seed-vault-planning-destination {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+}
