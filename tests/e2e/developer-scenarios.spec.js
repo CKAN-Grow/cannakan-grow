@@ -665,7 +665,7 @@ test.describe("local Developer Scenarios", () => {
     await clearSeedVaultFiltersAndWait(page, sourceSelector);
 
     const filterCases = [
-      { selector: '[data-seed-vault-status-filter="true"]', advanced: false, resetValue: "in-vault" },
+      { selector: '[data-seed-vault-status-filter="true"]', advanced: false, resetValue: "all" },
       { selector: '[data-seed-vault-collection-filter="true"]', advanced: false },
       { selector: '[data-seed-vault-tag-filter="true"]', advanced: false },
       { selector: '[data-seed-vault-breeder-filter="true"]', advanced: true },
@@ -736,6 +736,61 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault Status filter exposes one canonical option per status", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const statusFilter = page.locator("#my-seed-vault .seed-vault-controls [data-seed-vault-status-filter='true']");
+    const expectedOptions = [
+      ["all", "All"],
+      ["in-vault", "In Stock"],
+      ["inventory", "Inventory"],
+      ["planned", "Planned"],
+      ["active", "Active"],
+      ["completed", "Completed"],
+      ["archived", "Archived"],
+    ];
+    const renderedOptions = await statusFilter.locator("option").evaluateAll((options) => options.map((option) => [option.value, option.textContent.trim()]));
+    expect(renderedOptions).toEqual(expectedOptions);
+    expect(new Set(renderedOptions.map(([value]) => value)).size).toBe(expectedOptions.length);
+    expect(renderedOptions.filter(([, label]) => label === "All")).toHaveLength(1);
+    expect(renderedOptions.filter(([, label]) => label === "Archived")).toHaveLength(1);
+
+    const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
+    const results = page.locator("#my-seed-vault .seed-vault-results-count");
+    for (const [value] of expectedOptions) {
+      await statusFilter.selectOption(value);
+      await expect(statusFilter).toHaveValue(value);
+      await expect.poll(async () => {
+        const match = String(await results.textContent() || "").match(/(\d+) of (\d+) Vault Entries/);
+        const matchingCount = Number(match?.[1]);
+        return Boolean(match && await cards.count() === Math.min(10, matchingCount));
+      }).toBe(true);
+      if (value === "all") {
+        await expect(results).toContainText("50 of 50 Vault Entries");
+      } else if (value === "in-vault") {
+        await expect(cards.locator(".is-archived")).toHaveCount(0);
+      } else {
+        const renderedPlanningStates = await cards.evaluateAll((items) => items.map((item) => item.dataset.seedVaultPlanningState));
+        expect(renderedPlanningStates.every((planningState) => planningState === value)).toBe(true);
+      }
+    }
+
+    await statusFilter.selectOption("planned");
+    const clearFilters = page.locator("#my-seed-vault .seed-vault-controls [data-seed-vault-clear-filters='true']");
+    await expect(clearFilters).toBeVisible();
+    await clearFilters.click();
+    await expect(statusFilter).toHaveValue("all");
+    await expect(results).toContainText("50 of 50 Vault Entries");
+    expect(consoleErrors).toEqual([]);
+  });
   test("Seed Vault List View reveals matching entries ten at a time", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
