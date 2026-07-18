@@ -1333,16 +1333,26 @@ test.describe("local Developer Scenarios", () => {
     });
 
     const semanticSurfaces = {
-      ".seed-vault-overview-stat.is-varieties .seed-vault-overview-stat-icon": "rgb(148, 209, 89)",
-      ".seed-vault-overview-stat.is-seeds .seed-vault-overview-stat-icon": "rgb(184, 135, 91)",
-      ".seed-vault-overview-stat.is-sources .seed-vault-overview-stat-icon": "rgb(85, 202, 231)",
-      ".seed-vault-overview-stat.is-collections .seed-vault-overview-stat-icon": "rgb(184, 137, 232)",
-      ".seed-vault-planning-destination.is-next-grow .seed-vault-overview-card-icon": "rgb(233, 179, 77)",
-      ".seed-vault-planning-destination.is-testing .seed-vault-overview-card-icon": "rgb(148, 209, 89)",
-      ".seed-vault-planning-destination.is-grow-along .seed-vault-overview-card-icon": "rgb(85, 202, 231)",
+      ".seed-vault-overview-stat.is-varieties .seed-vault-overview-stat-icon": ["variety", true],
+      ".seed-vault-overview-stat.is-seeds .seed-vault-overview-stat-icon": ["seed", true],
+      ".seed-vault-overview-stat.is-sources .seed-vault-overview-stat-icon": ["source", true],
+      ".seed-vault-overview-stat.is-collections .seed-vault-overview-stat-icon": ["collection", true],
+      ".seed-vault-planning-destination.is-next-grow .seed-vault-overview-card-icon": ["planned", false],
+      ".seed-vault-planning-destination.is-testing .seed-vault-overview-card-icon": ["testing", false],
+      ".seed-vault-planning-destination.is-grow-along .seed-vault-overview-card-icon": ["growalong", false],
     };
-    for (const [selector, color] of Object.entries(semanticSurfaces)) {
-      await expect(page.locator(selector)).toHaveCSS("color", color);
+    for (const [selector, [token, usesHeroMix]] of Object.entries(semanticSurfaces)) {
+      const colors = await page.locator(selector).evaluate((icon, { tokenName, mixed }) => {
+        const probe = document.createElement("span");
+        probe.style.color = mixed
+          ? `color-mix(in srgb, var(--grow-color-${tokenName}) 88%, white 12%)`
+          : `var(--grow-color-${tokenName})`;
+        document.body.append(probe);
+        const expected = getComputedStyle(probe).color;
+        probe.remove();
+        return { actual: getComputedStyle(icon).color, expected };
+      }, { tokenName: token, mixed: usesHeroMix });
+      expect(colors.actual).toBe(colors.expected);
     }
 
     const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
@@ -1387,11 +1397,11 @@ test.describe("local Developer Scenarios", () => {
       const multiple = items.find((item) => Number(item.dataset.collectionCount || 0) > 1);
       if (!multiple) return null;
       const marker = getComputedStyle(multiple.querySelector("strong"), "::before");
-      return { text: multiple.querySelector("strong")?.textContent || "", markerColor: marker.backgroundColor, markerWidth: parseFloat(marker.width) };
+      return { text: multiple.querySelector("strong")?.textContent || "", tone: multiple.dataset.seedVaultCollectionTone, markerColor: marker.backgroundColor, markerWidth: parseFloat(marker.width) };
     });
     expect(collectionContext).not.toBeNull();
     expect(collectionContext.text).toMatch(/ \+\d+$/);
-    expect(collectionContext.markerColor).toBe("rgb(184, 137, 232)");
+    expect(collectionContext.markerColor).toBe({ violet: "rgb(184, 137, 232)", cyan: "rgb(85, 202, 231)", amber: "rgb(233, 179, 77)", green: "rgb(148, 209, 89)", bronze: "rgb(184, 135, 91)", rose: "rgb(232, 76, 91)" }[collectionContext.tone]);
     expect(collectionContext.markerWidth).toBe(6);
 
     expect(await cards.locator(".seed-vault-seed-thumb:not(.has-image)").count()).toBeGreaterThan(0);
@@ -1461,6 +1471,80 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+
+  test("Seed Vault collection palette stays deterministic and presentation-only", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const contract = await page.evaluate(() => {
+      const canonical = getSeedVaultCollectionPresentation("Purple Hunt");
+      const caseVariant = getSeedVaultCollectionPresentation("  PURPLE HUNT  ");
+      const spacingVariant = getSeedVaultCollectionPresentation("purple   hunt");
+      const paletteNames = ["Purple Hunt", "Next Grow", "Outdoor 2027", "Breeder Trials", "Hash Project", "Rare Packs"];
+      const normalizedCollections = normalizeSeedVaultTextList([" Purple Hunt ", "Next Grow"]);
+      const mappedRow = mapSeedVaultEntryToRow({
+        id: "palette-contract-entry",
+        userId: "palette-contract-user",
+        seedName: "Palette Contract Entry",
+        collections: normalizedCollections,
+      });
+      return {
+        canonical,
+        caseVariant,
+        spacingVariant,
+        distinctTones: [...new Set(paletteNames.map((name) => getSeedVaultCollectionPresentation(name).tone))],
+        normalizedCollections,
+        persistedCollections: mappedRow.collections,
+        unexpectedPresentationFields: Object.keys(mappedRow).filter((key) => /(?:collection.*(?:color|theme)|(?:color|theme).*collection)/i.test(key)),
+      };
+    });
+    expect(contract.caseVariant).toEqual(contract.canonical);
+    expect(contract.spacingVariant).toEqual(contract.canonical);
+    expect(contract.distinctTones.length).toBeGreaterThan(1);
+    expect(contract.normalizedCollections).toEqual(["Purple Hunt", "Next Grow"]);
+    expect(contract.persistedCollections).toEqual(["Purple Hunt", "Next Grow"]);
+    expect(contract.unexpectedPresentationFields).toEqual([]);
+
+    const presentationSurfaces = [
+      ".seed-vault-overview-collection-card[data-seed-vault-collection-key]",
+      ".seed-vault-entry-insight-strip .is-collection[data-seed-vault-collection-key]",
+      ".seed-vault-collection-filter-control option[data-seed-vault-collection-key]",
+    ];
+    for (const selector of presentationSurfaces) {
+      const surface = page.locator(selector);
+      expect(await surface.count()).toBeGreaterThan(0);
+      const mismatches = await surface.evaluateAll((items) => items
+        .map((item) => ({ key: item.dataset.seedVaultCollectionKey, tone: item.dataset.seedVaultCollectionTone }))
+        .filter(({ key, tone }) => getSeedVaultCollectionPresentation(key).tone !== tone));
+      expect(mismatches).toEqual([]);
+    }
+
+    const firstCard = page.locator("#my-seed-vault .seed-vault-entry-card").first();
+    const firstCardId = await firstCard.getAttribute("data-seed-vault-entry-id");
+    await firstCard.locator(".seed-vault-more-button").click();
+    await firstCard.getByRole("menuitem", { name: "Open Entry Profile" }).click();
+    const expandedCard = page.locator('[data-seed-vault-entry-id="' + firstCardId + '"]');
+    const collectionPills = expandedCard.locator(".seed-vault-collection-pill[data-seed-vault-collection-key]");
+    expect(await collectionPills.count()).toBeGreaterThan(0);
+    const detailMismatches = await collectionPills.evaluateAll((items) => items
+      .map((item) => ({ key: item.dataset.seedVaultCollectionKey, tone: item.dataset.seedVaultCollectionTone }))
+      .filter(({ key, tone }) => getSeedVaultCollectionPresentation(key).tone !== tone));
+    expect(detailMismatches).toEqual([]);
+
+    const selectedCollection = await page.locator(".seed-vault-overview-collection-main").first().getAttribute("data-seed-vault-overview-collection");
+    await page.locator("[data-seed-vault-collection-filter='true']").selectOption(selectedCollection);
+    const expectedTone = await page.evaluate((name) => getSeedVaultCollectionPresentation(name).tone, selectedCollection);
+    await expect(page.locator(".seed-vault-collection-filter-control")).toHaveAttribute("data-seed-vault-collection-tone", expectedTone);
+    await expect(page.locator("[data-seed-vault-browse-context]")).toHaveAttribute("data-seed-vault-collection-tone", expectedTone);
+    expect(consoleErrors).toEqual([]);
+  });
 
   test("Seed Vault Gallery renders premium image-led collectible cards", async ({ page }) => {
     test.setTimeout(90_000);
