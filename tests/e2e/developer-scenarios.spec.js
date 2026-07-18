@@ -3,6 +3,68 @@ const { enableFounderLocalQa } = require("./support/founder-smoke");
 
 const STORAGE_KEY = "grow_developer_scenarios_v1";
 const LEGACY_STORAGE_KEYS = ["cannakan-grow-sample-seed-version", "cannakanGrowMockDataEnabled", "cannakanMockGalleryLikes", "cannakanMockGalleryLikes:legacy-user", "cannakanSeedAgeAnalyticsMockData"];
+const SEED_VAULT_ENTITY_RGB = Object.freeze({
+  "is-varieties": [148, 209, 89],
+  "is-seeds": [184, 135, 91],
+  "is-sources": [85, 202, 231],
+  "is-collections": [184, 137, 232],
+});
+
+function normalizeComputedCssColor(value) {
+  const input = String(value || "").trim().toLowerCase();
+  const clampByte = (channel) => Math.max(0, Math.min(255, Math.round(channel)));
+  const normalizeAlpha = (alpha = 1) => Math.max(0, Math.min(1, Number(alpha.toFixed(4))));
+  const parseAlpha = (part = "1") => part.endsWith("%") ? Number.parseFloat(part) / 100 : Number.parseFloat(part);
+  const format = (channels, alpha = 1) => {
+    const [red, green, blue] = channels.map(clampByte);
+    const normalizedAlpha = normalizeAlpha(alpha);
+    return normalizedAlpha === 1
+      ? "rgb(" + red + ", " + green + ", " + blue + ")"
+      : "rgba(" + red + ", " + green + ", " + blue + ", " + normalizedAlpha + ")";
+  };
+
+  const hexMatch = input.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hexMatch) {
+    const hex = hexMatch[1].length === 3
+      ? [...hexMatch[1]].map((character) => character + character).join("")
+      : hexMatch[1];
+    return format([0, 2, 4].map((index) => Number.parseInt(hex.slice(index, index + 2), 16)));
+  }
+
+  const srgbMatch = input.match(/^color\(srgb\s+(.+)\)$/);
+  if (srgbMatch) {
+    const [channelSource, alphaSource = "1"] = srgbMatch[1].split(/\s*\/\s*/);
+    const parts = channelSource.trim().split(/\s+/);
+    if (parts.length !== 3) throw new Error("Unsupported color(srgb) value: " + value);
+    const channels = parts.map((part) => part.endsWith("%") ? Number.parseFloat(part) * 2.55 : Number.parseFloat(part) * 255);
+    return format(channels, parseAlpha(alphaSource));
+  }
+
+  const rgbMatch = input.match(/^rgba?\((.+)\)$/);
+  if (rgbMatch) {
+    const [channelSource, slashAlpha] = rgbMatch[1].split(/\s*\/\s*/);
+    const parts = channelSource.trim().split(/[\s,]+/).filter(Boolean);
+    const alphaSource = slashAlpha || (parts.length === 4 ? parts.pop() : "1");
+    if (parts.length !== 3) throw new Error("Unsupported rgb() value: " + value);
+    const channels = parts.map((part) => part.endsWith("%") ? Number.parseFloat(part) * 2.55 : Number.parseFloat(part));
+    return format(channels, parseAlpha(alphaSource));
+  }
+
+  throw new Error("Unsupported computed CSS color: " + value);
+}
+
+function getExpectedSeedVaultOverviewColor(tone) {
+  const channels = SEED_VAULT_ENTITY_RGB[tone];
+  if (!channels) throw new Error("Unknown Seed Vault overview tone: " + tone);
+  const mixed = channels.map((channel) => (channel * 0.88) + (255 * 0.12));
+  return normalizeComputedCssColor("rgb(" + mixed.join(", ") + ")");
+}
+
+async function expectExactComputedCssColor(locator, property, expectedColor) {
+  const actualColor = await locator.evaluate((element, cssProperty) => getComputedStyle(element).getPropertyValue(cssProperty), property);
+  expect(normalizeComputedCssColor(actualColor)).toBe(normalizeComputedCssColor(expectedColor));
+}
+
 
 async function openScenarioPanel(page) {
   const launcher = page.locator("#developer-scenarios-launcher");
@@ -855,7 +917,13 @@ test.describe("local Developer Scenarios", () => {
       { selector: ".seed-vault-overview-collections", desktopMin: 0.18, mobileMin: 0.13 },
       { selector: ".seed-vault-overview-recent-activity", desktopMin: 0.15, mobileMin: 0.11 },
       { selector: ".seed-vault-sharing-hub", desktopMin: 0.2, mobileMin: 0.14 },
-      { selector: ".seed-vault-library-shell", desktopMin: 0.13, mobileMin: 0.1 },
+      {
+        selector: ".seed-vault-library-shell",
+        desktopMin: 0.8,
+        mobileMin: 0.62,
+        desktopMax: 0.84,
+        mobileMax: 0.66,
+      },
     ];
 
     for (const viewport of [
@@ -869,7 +937,13 @@ test.describe("local Developer Scenarios", () => {
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 
       const signatures = [];
-      for (const { selector, desktopMin, mobileMin } of contextualSurfaces) {
+      for (const {
+        selector,
+        desktopMin,
+        mobileMin,
+        desktopMax = 0.28,
+        mobileMax = 0.28,
+      } of contextualSurfaces) {
         const surface = panel.locator(selector);
         await expect(surface).toBeVisible();
         const artwork = await surface.evaluate((node) => {
@@ -888,7 +962,7 @@ test.describe("local Developer Scenarios", () => {
         expect(artwork.background).toContain("gradient");
         expect(artwork.background).not.toContain("url(");
         expect(artwork.opacity).toBeGreaterThanOrEqual(viewport.width <= 600 ? mobileMin : desktopMin);
-        expect(artwork.opacity).toBeLessThanOrEqual(0.28);
+        expect(artwork.opacity).toBeLessThanOrEqual(viewport.width <= 600 ? mobileMax : desktopMax);
         expect(artwork.pointerEvents).toBe("none");
         expect(artwork.left).toBeGreaterThanOrEqual(-1);
         expect(artwork.right).toBeLessThanOrEqual(viewport.width + 1);
@@ -1352,7 +1426,7 @@ test.describe("local Developer Scenarios", () => {
         probe.remove();
         return { actual: getComputedStyle(icon).color, expected };
       }, { tokenName: token, mixed: usesHeroMix });
-      expect(colors.actual).toBe(colors.expected);
+      expect(normalizeComputedCssColor(colors.actual)).toBe(normalizeComputedCssColor(colors.expected));
     }
 
     const cards = page.locator("#my-seed-vault .seed-vault-entry-card");
@@ -1364,8 +1438,8 @@ test.describe("local Developer Scenarios", () => {
     await expect(favoriteButton).toHaveAttribute("aria-label", "Remove Vault Entry from favorites");
     await expect(inactiveButton).toHaveAttribute("aria-pressed", "false");
     await expect(inactiveButton).toHaveAttribute("aria-label", "Favorite Vault Entry");
-    await expect(favoriteButton).toHaveCSS("color", "rgb(232, 76, 91)");
-    await expect(favoriteButton.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
+    await expectExactComputedCssColor(favoriteButton, "color", "rgb(232, 76, 91)");
+    await expectExactComputedCssColor(favoriteButton.locator("path"), "fill", "rgb(232, 76, 91)");
     await expect(inactiveButton.locator("path")).toHaveCSS("fill", "none");
 
     const favoriteOnlyCard = page.locator('#my-seed-vault .seed-vault-entry-card.is-favorite[data-seed-vault-planning-state="inventory"]:not(:has(.seed-vault-entry-status-pill.is-testing)):not(:has(.seed-vault-entry-status-pill.is-grow-along))').first();
@@ -1401,7 +1475,7 @@ test.describe("local Developer Scenarios", () => {
     expect(favoriteOnlyTreatment.background).not.toBe(favoriteOnlyTreatment.neutralBackground);
     expect(favoriteOnlyTreatment.borderColor).not.toBe(favoriteOnlyTreatment.neutralBorderColor);
     expect(favoriteOnlyTreatment.accentWidth).toBeGreaterThanOrEqual(3);
-    expect(favoriteOnlyTreatment.accentColor).toBe(favoriteOnlyTreatment.favoriteColor);
+    expect(normalizeComputedCssColor(favoriteOnlyTreatment.accentColor)).toBe(normalizeComputedCssColor(favoriteOnlyTreatment.favoriteColor));
     expect(favoriteOnlyTreatment.accentGlow).not.toBe("none");
     expect(favoriteOnlyTreatment.glow).not.toBe("none");
     expect(favoriteOnlyTreatment.neutralAccentContent).toBe("none");
@@ -1409,7 +1483,7 @@ test.describe("local Developer Scenarios", () => {
 
     const favoriteOnlyHeart = favoriteOnlyCard.locator(".seed-vault-favorite-button.is-active");
     await expect(favoriteOnlyHeart).toHaveAttribute("aria-pressed", "true");
-    await expect(favoriteOnlyHeart.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
+    await expectExactComputedCssColor(favoriteOnlyHeart.locator("path"), "fill", "rgb(232, 76, 91)");
 
     const favoritePlanningTreatment = await favoritePlanningCard.evaluate((card) => {
       const accent = getComputedStyle(card, "::before");
@@ -1439,10 +1513,10 @@ test.describe("local Developer Scenarios", () => {
       };
     });
     expect(favoritePlanningTreatment.accentWidth).toBeGreaterThanOrEqual(3);
-    expect(favoritePlanningTreatment.accentColor).toBe(favoritePlanningTreatment.primaryColor);
-    expect(favoritePlanningTreatment.planningPillColor).toBe(favoritePlanningTreatment.primaryColor);
+    expect(normalizeComputedCssColor(favoritePlanningTreatment.accentColor)).toBe(normalizeComputedCssColor(favoritePlanningTreatment.primaryColor));
+    expect(normalizeComputedCssColor(favoritePlanningTreatment.planningPillColor)).toBe(normalizeComputedCssColor(favoritePlanningTreatment.primaryColor));
     expect(favoritePlanningTreatment.secondaryWidth).toBeGreaterThanOrEqual(2);
-    expect(favoritePlanningTreatment.secondaryColor).toBe(favoritePlanningTreatment.favoriteColor);
+    expect(normalizeComputedCssColor(favoritePlanningTreatment.secondaryColor)).toBe(normalizeComputedCssColor(favoritePlanningTreatment.favoriteColor));
 
     const favoriteCollectionCard = page.locator('#my-seed-vault .seed-vault-entry-card.is-favorite:has(.is-collection[data-seed-vault-collection-key])').first();
     const favoriteCollectionTreatment = await favoriteCollectionCard.locator(".is-collection").evaluate((collection) => {
@@ -1455,7 +1529,7 @@ test.describe("local Developer Scenarios", () => {
       return { collectionColor, markerColor: marker.backgroundColor, key: collection.dataset.seedVaultCollectionKey };
     });
     expect(favoriteCollectionTreatment.key).toBeTruthy();
-    expect(favoriteCollectionTreatment.markerColor).toBe(favoriteCollectionTreatment.collectionColor);
+    expect(normalizeComputedCssColor(favoriteCollectionTreatment.markerColor)).toBe(normalizeComputedCssColor(favoriteCollectionTreatment.collectionColor));
 
     const preHoverBackground = await favoriteOnlyCard.evaluate((card) => getComputedStyle(card).backgroundImage);
     await favoriteOnlyCard.hover();
@@ -1482,7 +1556,7 @@ test.describe("local Developer Scenarios", () => {
     for (const [tone, color] of Object.entries(expectedTones)) {
       const pill = page.locator(`.seed-vault-entry-status-pill.is-${tone}`).first();
       await expect(pill).toBeVisible();
-      await expect(pill).toHaveCSS("color", color);
+      await expectExactComputedCssColor(pill, "color", color);
     }
     await expect(page.locator(".seed-vault-entry-collapsed-row .seed-vault-entry-status-pill.is-favorite")).toHaveCount(10);
     await expect(page.locator(".seed-vault-entry-collapsed-row .seed-vault-entry-status-pill.is-favorite").first()).toBeHidden();
@@ -1495,7 +1569,7 @@ test.describe("local Developer Scenarios", () => {
     });
     expect(collectionContext).not.toBeNull();
     expect(collectionContext.text).toMatch(/ \+\d+$/);
-    expect(collectionContext.markerColor).toBe({ violet: "rgb(184, 137, 232)", cyan: "rgb(85, 202, 231)", amber: "rgb(233, 179, 77)", green: "rgb(148, 209, 89)", bronze: "rgb(184, 135, 91)", rose: "rgb(232, 76, 91)" }[collectionContext.tone]);
+    expect(normalizeComputedCssColor(collectionContext.markerColor)).toBe(normalizeComputedCssColor({ violet: "rgb(184, 137, 232)", cyan: "rgb(85, 202, 231)", amber: "rgb(233, 179, 77)", green: "rgb(148, 209, 89)", bronze: "rgb(184, 135, 91)", rose: "rgb(232, 76, 91)" }[collectionContext.tone]));
     expect(collectionContext.markerWidth).toBe(6);
 
     expect(await cards.locator(".seed-vault-seed-thumb:not(.has-image)").count()).toBeGreaterThan(0);
@@ -1694,8 +1768,8 @@ test.describe("local Developer Scenarios", () => {
     expect(galleryContract.visibleStatuses.every((role) => role === "health" || role === "planning")).toBe(true);
 
     const favorite = cards.locator(".seed-vault-favorite-button.is-active").first();
-    await expect(favorite).toHaveCSS("color", "rgb(232, 76, 91)");
-    await expect(favorite.locator("path")).toHaveCSS("fill", "rgb(232, 76, 91)");
+    await expectExactComputedCssColor(favorite, "color", "rgb(232, 76, 91)");
+    await expectExactComputedCssColor(favorite.locator("path"), "fill", "rgb(232, 76, 91)");
     await expect(cards.locator('.seed-vault-entry-status-pill[data-seed-vault-status-role="context"]').first()).toBeHidden();
     const collection = cards.locator('.seed-vault-entry-insight-strip .is-collection[data-collection-count]:not([data-collection-count="0"])').first();
     await expect(collection).toBeVisible();
@@ -1841,11 +1915,11 @@ test.describe("local Developer Scenarios", () => {
 
       expect(computed.overflow).toBeLessThanOrEqual(1);
       expect(computed.overviewIcons).toHaveLength(4);
-      expect(computed.overviewIcons.map(({ tone, color }) => ({ tone, color }))).toEqual([
-        { tone: "is-varieties", color: "rgb(148, 209, 89)" },
-        { tone: "is-seeds", color: "rgb(184, 135, 91)" },
-        { tone: "is-sources", color: "rgb(85, 202, 231)" },
-        { tone: "is-collections", color: "rgb(184, 137, 232)" },
+      expect(computed.overviewIcons.map(({ tone, color }) => ({ tone, color: normalizeComputedCssColor(color) }))).toEqual([
+        { tone: "is-varieties", color: getExpectedSeedVaultOverviewColor("is-varieties") },
+        { tone: "is-seeds", color: getExpectedSeedVaultOverviewColor("is-seeds") },
+        { tone: "is-sources", color: getExpectedSeedVaultOverviewColor("is-sources") },
+        { tone: "is-collections", color: getExpectedSeedVaultOverviewColor("is-collections") },
       ]);
       expect(new Set(computed.overviewIcons.map(({ color }) => color)).size).toBe(4);
       expect(new Set(computed.overviewIcons.map(({ borderColor }) => borderColor)).size).toBe(4);
@@ -1884,11 +1958,11 @@ test.describe("local Developer Scenarios", () => {
       colors: icons.map((icon) => getComputedStyle(icon).color),
       overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
     }));
-    expect(smallVaultOverview.colors).toEqual([
-      "rgb(148, 209, 89)",
-      "rgb(184, 135, 91)",
-      "rgb(85, 202, 231)",
-      "rgb(184, 137, 232)",
+    expect(smallVaultOverview.colors.map(normalizeComputedCssColor)).toEqual([
+      getExpectedSeedVaultOverviewColor("is-varieties"),
+      getExpectedSeedVaultOverviewColor("is-seeds"),
+      getExpectedSeedVaultOverviewColor("is-sources"),
+      getExpectedSeedVaultOverviewColor("is-collections"),
     ]);
     expect(smallVaultOverview.overflow).toBeLessThanOrEqual(1);
 
