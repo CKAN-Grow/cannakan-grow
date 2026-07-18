@@ -79,10 +79,18 @@ async function revealAllSeedVaultListRows(page) {
 
 async function clearSeedVaultFiltersAndWait(page, resetSelector, resetValue = "all") {
   const clearFilters = page.locator('#my-seed-vault .seed-vault-controls [data-seed-vault-clear-filters="true"]');
-  await expect(clearFilters).toHaveCount(1);
-  await expect(clearFilters).toBeVisible();
-  await expect(clearFilters).toBeEnabled();
-  await clearFilters.evaluate((button) => button.click());
+  if (await clearFilters.count()) {
+    await expect(clearFilters).toHaveCount(1);
+    await expect(clearFilters).toBeVisible();
+    await expect(clearFilters).toBeEnabled();
+    await clearFilters.evaluate((button) => button.click());
+  } else {
+    const activeFilter = page.locator(`#my-seed-vault .seed-vault-controls ${resetSelector}`);
+    await expect(activeFilter).toHaveCount(1);
+    await expect(activeFilter).toBeVisible();
+    await expect(activeFilter).toBeEnabled();
+    await activeFilter.selectOption(resetValue);
+  }
   const resetFilter = page.locator(`#my-seed-vault .seed-vault-controls ${resetSelector}`);
   await expect(resetFilter).toHaveCount(1);
   await expect(resetFilter).toHaveValue(resetValue);
@@ -678,19 +686,32 @@ test.describe("local Developer Scenarios", () => {
     await firstCard.locator("summary[data-seed-vault-more]").click();
     await firstCard.getByRole("menuitem", { name: "Open Entry Profile", exact: true }).click();
     await expect(page.locator(".seed-vault-expanded-profile")).toHaveCount(1);
-    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(49);
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(9);
     const profile = firstCard.locator(".seed-vault-expanded-profile");
     for (const sectionName of ["Overview", "Planning & Collections", "Sessions & Analytics", "Notes", "Images"]) {
       await expect(profile).toContainText(sectionName);
     }
     await firstCard.getByRole("button", { name: "Close Entry Profile", exact: true }).click();
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(10);
+
+    const showMore = page.locator("#my-seed-vault [data-seed-vault-show-more='true']");
+    await expect(showMore).toBeVisible();
+    await expect(showMore).toBeEnabled();
+    await showMore.click();
+    await expect(inventoryCards).toHaveCount(20);
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(20);
+    await revealAllSeedVaultListRows(page);
+    await expect(inventoryCards).toHaveCount(50);
+    await expect(page.locator(".seed-vault-entry-details--lazy")).toHaveCount(50);
+    await expect(page.locator("#my-seed-vault [data-seed-vault-show-more='true']")).toHaveCount(0);
 
     await page.locator('[data-seed-vault-quick-view="favorites"]').click();
     await expect(page.locator(".seed-vault-browse-context")).toContainText("Favorites");
     await expect(page.locator(".seed-vault-browse-context")).toContainText("10 matching Vault Entries");
     await expect(inventoryCards).toHaveCount(10);
     await page.getByRole("button", { name: "View All Inventory", exact: true }).click();
-    await expect(inventoryCards).toHaveCount(50);
+    await waitForSeedVaultInventoryState(page);
+    await expect(inventoryCards).toHaveCount(10);
 
     let inventorySearch = await getReadySeedVaultFilter(page, '[data-seed-vault-search="true"]');
     await inventorySearch.fill("Do-Si-Dos");
