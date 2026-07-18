@@ -1854,6 +1854,99 @@ test.describe("local Developer Scenarios", () => {
     }
   });
 
+  test("Seed Vault hero owns the scope control without a permanent utility strip", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const pageShell = page.locator(".seed-vault-page");
+    const hero = page.locator("#my-seed-vault .seed-vault-approved-hero");
+    const scope = hero.locator(".seed-vault-hero-scope-control");
+    const myVaultTab = scope.locator("[data-seed-vault-page-view='mine']");
+    const sharedTab = scope.locator("[data-seed-vault-page-view='shared']");
+    await expect(pageShell.locator(":scope > .seed-vault-page-nav")).toHaveCount(0);
+    await expect(pageShell.locator(".seed-vault-back-button", { hasText: "Back to My Sessions" })).toHaveCount(0);
+    await expect(pageShell.locator(":scope > #seed-vault-section")).toBeVisible();
+    await expect(scope).toBeVisible();
+    await expect(scope).toHaveAttribute("role", "tablist");
+    await expect(myVaultTab).toHaveAttribute("aria-selected", "true");
+    await expect(sharedTab).toHaveAttribute("aria-selected", "false");
+    await expect(myVaultTab.locator(".seed-vault-scope-tab-icon")).toBeVisible();
+    await expect(sharedTab.locator(".seed-vault-scope-tab-icon")).toBeVisible();
+
+    const readingOrder = await hero.evaluate((node) => {
+      const title = node.querySelector("#my-seed-vault-title");
+      const tabs = node.querySelector(".seed-vault-hero-scope-control");
+      return Boolean(title && tabs && (title.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    expect(readingOrder).toBe(true);
+
+    for (const width of [390, 768, 1024, 1280]) {
+      await page.setViewportSize({ width, height: width <= 768 ? 900 : 820 });
+      await expect(hero).toBeVisible();
+      await expect(scope).toBeVisible();
+      const geometry = await hero.evaluate((node) => {
+        const utility = node.querySelector(".seed-vault-approved-hero-utility");
+        const tabs = node.querySelector(".seed-vault-hero-scope-control");
+        const controls = node.querySelector(".seed-vault-approved-hero-controls");
+        const search = node.querySelector(".seed-vault-overview-search");
+        const addButton = node.querySelector(".seed-vault-add-button");
+        const newest = node.querySelector(".seed-vault-newest-addition");
+        const rect = (element) => {
+          const box = element.getBoundingClientRect();
+          return { x: box.x, y: box.y, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+        };
+        return {
+          hero: rect(node),
+          utility: rect(utility),
+          tabs: rect(tabs),
+          controls: rect(controls),
+          search: rect(search),
+          add: rect(addButton),
+          newest: rect(newest),
+          tabHeights: [...tabs.querySelectorAll(".seed-vault-page-tab")].map((tab) => tab.getBoundingClientRect().height),
+          overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        };
+      });
+      expect(geometry.overflow).toBeLessThanOrEqual(1);
+      expect(geometry.tabs.y).toBeGreaterThanOrEqual(geometry.hero.y);
+      expect(geometry.tabs.right).toBeLessThanOrEqual(geometry.hero.right + 1);
+      expect(geometry.tabs.bottom).toBeLessThanOrEqual(geometry.controls.y + 1);
+      expect(geometry.newest.y).toBeGreaterThanOrEqual(geometry.controls.bottom);
+      expect(geometry.tabHeights.every((height) => height >= 44)).toBe(true);
+      if (width <= 760) {
+        expect(geometry.tabs.width).toBeGreaterThanOrEqual(geometry.utility.width - 1);
+        expect(geometry.add.y).toBeGreaterThanOrEqual(geometry.search.bottom);
+      } else {
+        expect(Math.abs(geometry.tabs.right - geometry.controls.right)).toBeLessThanOrEqual(1);
+      }
+    }
+
+    await myVaultTab.focus();
+    await page.keyboard.press("Tab");
+    await expect(sharedTab).toBeFocused();
+    const focusStyle = await sharedTab.evaluate((tab) => getComputedStyle(tab).outlineStyle);
+    expect(focusStyle).not.toBe("none");
+
+    await sharedTab.click();
+    const sharedPanel = page.locator(".seed-vault-shared-with-me-panel");
+    await expect(sharedPanel).toBeVisible();
+    const sharedScope = sharedPanel.locator(".seed-vault-header .seed-vault-hero-scope-control");
+    await expect(sharedScope).toBeVisible();
+    await expect(sharedScope.locator("[data-seed-vault-page-view='shared']")).toHaveAttribute("aria-selected", "true");
+    await expect(pageShell.locator(":scope > .seed-vault-page-nav")).toHaveCount(0);
+    await sharedScope.locator("[data-seed-vault-page-view='mine']").click();
+    await expect(hero).toBeVisible();
+    await expect(hero.locator("[data-seed-vault-page-view='mine']")).toHaveAttribute("aria-selected", "true");
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault footer settings remain balanced and accessible", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
