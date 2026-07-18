@@ -425,8 +425,23 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#session-history")).toContainText("2 drafts");
     await expect(page.locator("#session-history")).toContainText("2 archived");
     const historyRows = page.locator("[data-session-history-row^='scenario-full-grow-session-']");
+    await expect(page.locator(".session-history-table-head > span")).toHaveText([
+      "SESSION",
+      "DATE",
+      "SOURCE",
+      "METHOD",
+      "STATUS",
+      "SEEDS",
+      "GERMINATION",
+      "ACTIONS",
+    ]);
+    await expect(historyRows.locator("[data-label='Variety']")).toHaveCount(0);
+    await expect(historyRows.locator("[data-label='Source'] strong")).toHaveCount(23);
+    await expect(historyRows.locator("[data-label='Source'] strong").filter({ hasText: "Seedsman" }).first()).toBeVisible();
     const methodBadges = historyRows.locator("[data-session-history-method]");
+    const methodColumnBadges = historyRows.locator("[data-session-history-method-column]");
     await expect(methodBadges).toHaveCount(23);
+    await expect(methodColumnBadges).toHaveCount(23);
     await expect(methodBadges.filter({ hasText: /^KAN • Unit / }).first()).toBeVisible();
     await expect(historyRows.locator("[data-session-history-method='TRA']")).toHaveCount(0);
     for (const methodType of ["KAN", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]) {
@@ -442,6 +457,7 @@ test.describe("local Developer Scenarios", () => {
     for (const width of [1280, 768, 390, 320]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(methodBadges.first()).toBeVisible();
+      await expect(methodColumnBadges.first()).toBeVisible();
       const overflowingRows = await historyRows.evaluateAll((rows) => rows
         .filter((row) => row.scrollWidth > row.clientWidth + 1)
         .map((row) => row.getAttribute("data-session-history-row")));

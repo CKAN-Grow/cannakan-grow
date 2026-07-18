@@ -63173,7 +63173,7 @@ body.theme-dark #session-analytics-section {
 .session-history-table {
   display: grid;
   width: 100%;
-  --session-history-columns: minmax(240px, 1.7fr) minmax(120px, 0.8fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(80px, 0.5fr) minmax(100px, 0.6fr) minmax(188px, 1fr);
+  --session-history-columns: minmax(210px, 1.5fr) minmax(104px, 0.72fr) minmax(112px, 0.82fr) minmax(112px, 0.82fr) minmax(118px, 0.85fr) minmax(64px, 0.45fr) minmax(88px, 0.58fr) minmax(160px, 0.9fr);
 }
 
 .session-history-table-head,
@@ -64461,7 +64461,7 @@ body.theme-dark #session-analytics-section {
 
   .session-history-table-head,
   .session-history-table-row {
-    grid-template-columns: minmax(220px, 1.6fr) minmax(112px, 0.8fr) minmax(118px, 0.85fr) minmax(120px, 0.9fr) minmax(72px, 0.5fr) minmax(92px, 0.6fr) minmax(176px, 0.9fr);
+    grid-template-columns: minmax(200px, 1.45fr) minmax(100px, 0.72fr) minmax(108px, 0.8fr) minmax(108px, 0.8fr) minmax(112px, 0.84fr) minmax(64px, 0.46fr) minmax(84px, 0.58fr) minmax(156px, 0.9fr);
     column-gap: 14px;
   }
 
