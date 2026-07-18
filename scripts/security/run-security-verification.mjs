@@ -16,6 +16,24 @@ const run = (command, args) => {
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 const node = process.execPath;
+const repositoryHygienePathspec = [
+  ".",
+  ":(exclude,glob)node_modules/**",
+  ":(exclude,glob).git/**",
+  ":(exclude,glob)test-results/**",
+  ":(exclude,glob)playwright-report/**",
+  ":(exclude,glob)coverage/**",
+  ":(exclude,glob)dist/**",
+  ":(exclude,glob)build/**",
+  ":(exclude,glob)out/**",
+  ":(exclude,glob).next/**",
+  ":(exclude,glob).turbo/**",
+  ":(exclude,glob).cache/**",
+  ":(exclude,glob).chrome-test/**",
+  ":(exclude,glob).edge-test/**",
+  ":(exclude,glob).qa-home/**",
+  ":(exclude,glob).qa-home-live/**",
+];
 
 run(npx, ["supabase", "db", "reset"]);
 run(npm, ["run", "demo:seed"]);
@@ -33,6 +51,6 @@ for (const name of regressionNames) run(node, [resolve(REPOSITORY_ROOT, "scripts
 run(npx, ["supabase", "db", "lint", "--local", "--level", "warning"]);
 run(npx, ["playwright", "test", "--workers=1"]);
 run(npm, ["run", "build"]);
-run("git", ["diff", "--check"]);
+run("git", ["diff", "--check", "--", ...repositoryHygienePathspec]);
 
 console.log("\nComplete security verification passed.");
