@@ -795,12 +795,19 @@ test.describe("local Developer Scenarios", () => {
           const rect = node.getBoundingClientRect();
           return {
             background: style.backgroundImage,
+            backgroundSize: style.backgroundSize,
+            backgroundRepeat: style.backgroundRepeat,
             shadow: style.boxShadow,
+            textureOpacity: Number.parseFloat(style.getPropertyValue("--vault-section-texture-opacity")),
             left: rect.left,
             right: rect.right,
           };
         });
-        expect((rendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+        expect((rendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(3);
+        expect(rendering.backgroundSize).toMatch(/(?:14|15|16|17|18)px (?:14|15|16|17|18)px/);
+        expect(rendering.backgroundRepeat.split(",").some((value) => value.trim() === "repeat")).toBe(true);
+        expect(rendering.textureOpacity).toBeGreaterThan(0);
+        expect(rendering.textureOpacity).toBeLessThanOrEqual(viewport.width <= 390 ? 4.2 : 6.5);
         expect(rendering.shadow).not.toBe("none");
         expect(rendering.left).toBeGreaterThanOrEqual(-1);
         expect(rendering.right).toBeLessThanOrEqual(viewport.width + 1);
@@ -818,11 +825,13 @@ test.describe("local Developer Scenarios", () => {
       const imageOverlay = getComputedStyle(node.querySelector(".seed-vault-entry-visual-button"), "::after");
       return {
         background: style.backgroundImage,
+        backgroundSize: style.backgroundSize,
         shadow: style.boxShadow,
         imageOverlay: imageOverlay.backgroundImage,
       };
     });
     expect((galleryRendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(galleryRendering.backgroundSize).not.toMatch(/(?:14|15|16|17|18)px (?:14|15|16|17|18)px/);
     expect(galleryRendering.shadow).not.toBe("none");
     expect(galleryRendering.imageOverlay).toContain("radial-gradient");
 
@@ -850,13 +859,28 @@ test.describe("local Developer Scenarios", () => {
       const imageOverlay = getComputedStyle(node.querySelector(".seed-vault-entry-visual-button"), "::after");
       return {
         background: style.backgroundImage,
+        backgroundSize: style.backgroundSize,
         shadow: style.boxShadow,
         imageOverlay: imageOverlay.backgroundImage,
       };
     });
     expect((listRendering.background.match(/gradient/g) || []).length).toBeGreaterThanOrEqual(2);
+    expect(listRendering.backgroundSize).not.toMatch(/(?:14|15|16|17|18)px (?:14|15|16|17|18)px/);
     expect(listRendering.shadow).not.toBe("none");
     expect(listRendering.imageOverlay).toContain("radial-gradient");
+
+    const cleanNestedSelectors = [
+      ".seed-vault-controls",
+      ".seed-vault-planning-destination",
+      ".seed-vault-overview-collection-card",
+      ".seed-vault-overview-recent-row",
+    ];
+    for (const selector of cleanNestedSelectors) {
+      const nestedSurface = panel.locator(selector).first();
+      await expect(nestedSurface).toBeVisible();
+      const backgroundSize = await nestedSurface.evaluate((node) => getComputedStyle(node).backgroundSize);
+      expect(backgroundSize).not.toMatch(/(?:14|15|16|17|18)px (?:14|15|16|17|18)px/);
+    }
     expect(consoleErrors).toEqual([]);
   });
 
