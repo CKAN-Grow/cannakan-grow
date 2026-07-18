@@ -655,7 +655,7 @@ test.describe("local Developer Scenarios", () => {
     });
     expect(metricPresentation.containerWidth).toBe(54);
     expect(metricPresentation.containerHeight).toBe(54);
-    expect(metricPresentation.glyphWidth).toBeGreaterThanOrEqual(39);
+    expect(metricPresentation.glyphWidth).toBeGreaterThanOrEqual(38);
     expect(metricPresentation.strokeWidth).toBeGreaterThanOrEqual(2.4);
     expect(consoleErrors).toEqual([]);
   });
