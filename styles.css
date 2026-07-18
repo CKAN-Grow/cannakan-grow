@@ -84371,19 +84371,19 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-overview-stat.is-varieties .seed-vault-overview-stat-icon {
-  color: var(--grow-color-variety);
+  color: color-mix(in srgb, var(--grow-color-variety) 88%, white 12%);
 }
 
 .seed-vault-overview-stat.is-seeds .seed-vault-overview-stat-icon {
-  color: var(--grow-color-seed);
+  color: color-mix(in srgb, var(--grow-color-seed) 88%, white 12%);
 }
 
 .seed-vault-overview-stat.is-sources .seed-vault-overview-stat-icon {
-  color: var(--grow-color-source);
+  color: color-mix(in srgb, var(--grow-color-source) 88%, white 12%);
 }
 
 .seed-vault-overview-stat.is-collections .seed-vault-overview-stat-icon {
-  color: var(--grow-color-collection);
+  color: color-mix(in srgb, var(--grow-color-collection) 88%, white 12%);
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section-icon {
@@ -84594,12 +84594,12 @@ a.source-directory-variety-chip:focus-visible {
   flex-basis: 54px;
   width: 54px;
   height: 54px;
-  padding: 10px;
-  border-color: color-mix(in srgb, currentColor 36%, rgba(255, 255, 255, 0.1));
+  padding: 7px;
+  border-color: color-mix(in srgb, currentColor 42%, rgba(255, 255, 255, 0.11));
   border-radius: 14px;
   background:
-    radial-gradient(circle at 34% 24%, color-mix(in srgb, currentColor 24%, transparent), transparent 62%),
-    linear-gradient(145deg, color-mix(in srgb, currentColor 14%, rgba(20, 27, 22, 0.96)), rgba(6, 10, 8, 0.94));
+    radial-gradient(circle at 34% 24%, color-mix(in srgb, currentColor 29%, transparent), transparent 62%),
+    linear-gradient(145deg, color-mix(in srgb, currentColor 17%, rgba(20, 27, 22, 0.96)), rgba(6, 10, 8, 0.94));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 color-mix(in srgb, currentColor 17%, transparent),
@@ -84608,7 +84608,7 @@ a.source-directory-variety-chip:focus-visible {
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat-icon svg :where(path, circle, rect, line, polyline, polygon) {
-  stroke-width: 2.15px;
+  stroke-width: 2.45px;
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section-title {
@@ -85285,9 +85285,9 @@ a.source-directory-variety-chip:focus-visible {
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-stat .seed-vault-overview-stat-icon {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.13),
-    inset 0 -1px 0 color-mix(in srgb, currentColor 18%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, currentColor 22%, transparent),
     0 10px 22px rgba(0, 0, 0, 0.3),
-    0 0 25px color-mix(in srgb, currentColor 18%, transparent);
+    0 0 27px color-mix(in srgb, currentColor 22%, transparent);
 }
 
 .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section {

@@ -623,10 +623,10 @@ test.describe("local Developer Scenarios", () => {
     expect(await metricIcons.evaluateAll((nodes) => nodes.map((node) => node.dataset.seedVaultHeroMetricIcon))).toEqual([
       "leaf",
       "seed",
-      "sourceDirectoryBars",
+      "sourceCompanyBuilding",
       "collection",
     ]);
-    await expect(hero.locator(".seed-vault-overview-stat.is-sources[data-seed-vault-hero-metric-icon='sourceDirectoryBars']")).toBeVisible();
+    await expect(hero.locator(".seed-vault-overview-stat.is-sources[data-seed-vault-hero-metric-icon='sourceCompanyBuilding']")).toBeVisible();
     await expect(page.locator(".seed-vault-planning-destination.is-testing[data-seed-vault-planning-icon='flask']")).toBeVisible();
 
     const iconGeometry = await hero.locator("[data-seed-vault-title-icon], [data-seed-vault-hero-metric-icon] .seed-vault-overview-stat-icon").evaluateAll((nodes) => nodes.map((node) => {
@@ -642,6 +642,21 @@ test.describe("local Developer Scenarios", () => {
     }));
     expect(iconGeometry).toHaveLength(5);
     expect(iconGeometry.every((icon) => icon.svgCount === 1 && icon.viewBox === "0 0 24 24" && icon.visible && icon.contained)).toBe(true);
+    const metricPresentation = await metricIcons.first().locator(".seed-vault-overview-stat-icon").evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const svgBox = node.querySelector("svg").getBoundingClientRect();
+      const shape = node.querySelector("svg :is(path, circle, rect, line, polyline, polygon)");
+      return {
+        containerWidth: box.width,
+        containerHeight: box.height,
+        glyphWidth: svgBox.width,
+        strokeWidth: Number.parseFloat(getComputedStyle(shape).strokeWidth),
+      };
+    });
+    expect(metricPresentation.containerWidth).toBe(54);
+    expect(metricPresentation.containerHeight).toBe(54);
+    expect(metricPresentation.glyphWidth).toBeGreaterThanOrEqual(39);
+    expect(metricPresentation.strokeWidth).toBeGreaterThanOrEqual(2.4);
     expect(consoleErrors).toEqual([]);
   });
 
