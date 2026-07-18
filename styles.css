@@ -79313,8 +79313,7 @@ a.source-directory-variety-chip:focus-visible {
   border-color: color-mix(in srgb, var(--vault-theme-border) 86%, rgba(255, 255, 255, 0.1));
   background:
     linear-gradient(90deg, rgba(5, 11, 8, 0.92), rgba(5, 11, 8, 0.78) 48%, rgba(5, 11, 8, 0.34)),
-    radial-gradient(circle at 17% 50%, color-mix(in srgb, var(--vault-theme-glow) 56%, transparent), transparent 28%),
-    url("/assets/images/methods/kan-grow-companion-bg.png");
+    radial-gradient(circle at 17% 50%, color-mix(in srgb, var(--vault-theme-glow) 56%, transparent), transparent 28%);
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center right;
@@ -85593,5 +85592,252 @@ a.source-directory-variety-chip:focus-visible {
   .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):hover,
   .seed-vault-entry-grid--gallery .seed-vault-entry-card:not(.is-expanded):focus-within {
     transform: none;
+  }
+}
+
+
+/* Seed Vault 3.0 contextual section artwork */
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot,
+.seed-vault-page .seed-vault-library-shell,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state {
+  position: relative;
+  isolation: isolate;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section > *,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot > *,
+.seed-vault-page .seed-vault-library-shell > *,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state > * {
+  position: relative;
+  z-index: 1;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-section::before,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot::before,
+.seed-vault-page .seed-vault-library-shell::before,
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot::before {
+  inset: 8px 12px;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(239, 246, 241, 0.19) calc(25% - 1px) 25%),
+    linear-gradient(180deg, rgba(239, 246, 241, 0.16), transparent 42%),
+    linear-gradient(90deg, color-mix(in srgb, var(--grow-color-variety) 16%, transparent), color-mix(in srgb, var(--grow-color-seed) 12%, transparent) 31%, color-mix(in srgb, var(--grow-color-source) 12%, transparent) 63%, color-mix(in srgb, var(--grow-color-collection) 14%, transparent));
+  opacity: 0.14;
+  -webkit-mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.4) 82%, transparent);
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.4) 82%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning::before {
+  top: 18px;
+  right: 20px;
+  width: min(36%, 184px);
+  height: 98px;
+  border: 1px solid color-mix(in srgb, var(--grow-color-planned) 48%, transparent);
+  border-radius: 11px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--grow-color-planned) 54%, transparent), color-mix(in srgb, var(--grow-color-planned) 54%, transparent)) 0 20px / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--grow-color-planned) 38%, transparent) 0 1px, transparent 1px 29px) 0 21px / 100% 77px no-repeat,
+    repeating-linear-gradient(180deg, color-mix(in srgb, var(--grow-color-planned) 34%, transparent) 0 1px, transparent 1px 23px) 0 21px / 100% 77px no-repeat,
+    linear-gradient(90deg, color-mix(in srgb, var(--grow-color-planned) 25%, transparent), transparent) 0 0 / 100% 20px no-repeat;
+  opacity: 0.26;
+  transform: rotate(-1.5deg);
+  -webkit-mask-image: linear-gradient(118deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.34) 72%, transparent);
+  mask-image: linear-gradient(118deg, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.34) 72%, transparent);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collections::before {
+  top: 18px;
+  right: 20px;
+  width: min(36%, 196px);
+  height: 112px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--grow-color-collection) 56%, transparent), color-mix(in srgb, var(--grow-color-collection) 56%, transparent)) 0 30px / 100% 1px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--grow-color-collection) 49%, transparent), color-mix(in srgb, var(--grow-color-collection) 49%, transparent)) 0 68px / 100% 1px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--grow-color-collection) 43%, transparent), color-mix(in srgb, var(--grow-color-collection) 43%, transparent)) 0 106px / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--grow-color-collection) 42%, transparent) 0 2px, transparent 2px 16px, color-mix(in srgb, var(--grow-color-collection) 27%, transparent) 16px 18px, transparent 18px 29px);
+  opacity: 0.22;
+  transform: perspective(220px) rotateY(-5deg);
+  transform-origin: right center;
+  -webkit-mask-image: linear-gradient(105deg, transparent, rgba(0, 0, 0, 0.82) 32%, rgba(0, 0, 0, 0.38));
+  mask-image: linear-gradient(105deg, transparent, rgba(0, 0, 0, 0.82) 32%, rgba(0, 0, 0, 0.38));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-activity::before {
+  top: 20px;
+  right: 22px;
+  width: min(40%, 280px);
+  height: 92px;
+  background:
+    repeating-linear-gradient(180deg, color-mix(in srgb, var(--grow-color-recent) 27%, transparent) 0 1px, transparent 1px 23px),
+    linear-gradient(135deg, transparent 0 19%, color-mix(in srgb, var(--grow-color-recent) 42%, transparent) 19.5% 20.5%, transparent 21% 36%, color-mix(in srgb, var(--grow-color-recent) 36%, transparent) 36.5% 37.5%, transparent 38% 57%, color-mix(in srgb, var(--grow-color-recent) 32%, transparent) 57.5% 58.5%, transparent 59%);
+  opacity: 0.19;
+  -webkit-mask-image: linear-gradient(100deg, transparent, rgba(0, 0, 0, 0.9) 34%, rgba(0, 0, 0, 0.42));
+  mask-image: linear-gradient(100deg, transparent, rgba(0, 0, 0, 0.9) 34%, rgba(0, 0, 0, 0.42));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-hub::before {
+  top: 18px;
+  right: 18px;
+  width: min(48%, 190px);
+  height: 126px;
+  background:
+    radial-gradient(circle at 19% 72%, color-mix(in srgb, var(--grow-color-variety) 72%, transparent) 0 3px, transparent 4px),
+    radial-gradient(circle at 52% 28%, color-mix(in srgb, var(--grow-color-variety) 68%, transparent) 0 4px, transparent 5px),
+    radial-gradient(circle at 84% 67%, color-mix(in srgb, var(--grow-color-variety) 58%, transparent) 0 3px, transparent 4px),
+    linear-gradient(126deg, transparent 0 31%, color-mix(in srgb, var(--grow-color-variety) 35%, transparent) 31.5% 32.5%, transparent 33% 100%),
+    linear-gradient(38deg, transparent 0 52%, color-mix(in srgb, var(--grow-color-variety) 31%, transparent) 52.5% 53.5%, transparent 54% 100%);
+  opacity: 0.24;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--grow-color-variety) 22%, transparent));
+  -webkit-mask-image: linear-gradient(105deg, transparent, rgba(0, 0, 0, 0.9) 38%, rgba(0, 0, 0, 0.34));
+  mask-image: linear-gradient(105deg, transparent, rgba(0, 0, 0, 0.9) 38%, rgba(0, 0, 0, 0.34));
+}
+
+.seed-vault-page .seed-vault-library-shell::before {
+  top: 22px;
+  right: 24px;
+  width: min(32%, 280px);
+  height: 126px;
+  background:
+    linear-gradient(rgba(237, 244, 239, 0.28), rgba(237, 244, 239, 0.28)) 0 40px / 100% 1px no-repeat,
+    linear-gradient(rgba(237, 244, 239, 0.22), rgba(237, 244, 239, 0.22)) 0 82px / 100% 1px no-repeat,
+    linear-gradient(rgba(237, 244, 239, 0.17), rgba(237, 244, 239, 0.17)) 0 124px / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 34%, transparent) 0 1px, transparent 1px 34px);
+  opacity: 0.16;
+  -webkit-mask-image: linear-gradient(100deg, transparent, rgba(0, 0, 0, 0.68) 38%, rgba(0, 0, 0, 0.26));
+  mask-image: linear-gradient(100deg, transparent, rgba(0, 0, 0, 0.68) 38%, rgba(0, 0, 0, 0.26));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state {
+  background:
+    radial-gradient(ellipse at 82% 46%, color-mix(in srgb, var(--grow-color-seed) 18%, transparent), transparent 30%),
+    radial-gradient(circle at 16% 50%, color-mix(in srgb, var(--grow-color-variety) 12%, transparent), transparent 27%),
+    linear-gradient(112deg, rgba(9, 15, 11, 0.99), rgba(10, 15, 12, 0.965) 54%, rgba(14, 15, 11, 0.94));
+  background-repeat: no-repeat;
+  background-size: auto;
+  background-position: center;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state::before {
+  top: 14px;
+  right: 18px;
+  bottom: 14px;
+  width: min(38%, 250px);
+  border: 1px solid color-mix(in srgb, var(--grow-color-seed) 38%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse at 20% 29%, color-mix(in srgb, var(--grow-color-seed) 55%, transparent) 0 5px, transparent 6px),
+    radial-gradient(ellipse at 49% 29%, color-mix(in srgb, var(--grow-color-seed) 48%, transparent) 0 5px, transparent 6px),
+    radial-gradient(ellipse at 78% 29%, color-mix(in srgb, var(--grow-color-seed) 42%, transparent) 0 5px, transparent 6px),
+    radial-gradient(ellipse at 20% 70%, color-mix(in srgb, var(--grow-color-seed) 46%, transparent) 0 5px, transparent 6px),
+    radial-gradient(ellipse at 49% 70%, color-mix(in srgb, var(--grow-color-seed) 40%, transparent) 0 5px, transparent 6px),
+    radial-gradient(ellipse at 78% 70%, color-mix(in srgb, var(--grow-color-seed) 36%, transparent) 0 5px, transparent 6px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--grow-color-seed) 17%, transparent) 0 1px, transparent 1px 33.333%),
+    linear-gradient(color-mix(in srgb, var(--grow-color-seed) 17%, transparent), color-mix(in srgb, var(--grow-color-seed) 17%, transparent)) 0 50% / 100% 1px no-repeat;
+  opacity: 0.24;
+  -webkit-mask-image: linear-gradient(100deg, transparent, rgba(0, 0, 0, 0.94) 28%, rgba(0, 0, 0, 0.54));
+  mask-image: linear-gradient(100deg, transparent, rgba(0, 0, 0, 0.94) 28%, rgba(0, 0, 0, 0.54));
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination > * {
+  position: relative;
+  z-index: 1;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination::before {
+  content: "";
+  position: absolute;
+  inset: 9px 9px auto auto;
+  z-index: 0;
+  width: 68px;
+  height: 58px;
+  pointer-events: none;
+  opacity: 0.15;
+  -webkit-mask-image: linear-gradient(120deg, rgba(0, 0, 0, 0.85), transparent 88%);
+  mask-image: linear-gradient(120deg, rgba(0, 0, 0, 0.85), transparent 88%);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination::after {
+  z-index: 2;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination.is-next-grow::before {
+  border: 1px solid color-mix(in srgb, var(--grow-color-planned) 34%, transparent);
+  border-radius: 7px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--grow-color-planned) 43%, transparent), color-mix(in srgb, var(--grow-color-planned) 43%, transparent)) 0 14px / 100% 1px no-repeat,
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--grow-color-planned) 27%, transparent) 0 1px, transparent 1px 17px) 0 15px / 100% 43px no-repeat,
+    repeating-linear-gradient(180deg, color-mix(in srgb, var(--grow-color-planned) 24%, transparent) 0 1px, transparent 1px 14px) 0 15px / 100% 43px no-repeat;
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination.is-testing::before {
+  background:
+    radial-gradient(circle at 18% 72%, color-mix(in srgb, var(--grow-color-testing) 74%, transparent) 0 3px, transparent 4px),
+    radial-gradient(circle at 50% 24%, color-mix(in srgb, var(--grow-color-testing) 68%, transparent) 0 4px, transparent 5px),
+    radial-gradient(circle at 82% 68%, color-mix(in srgb, var(--grow-color-testing) 58%, transparent) 0 3px, transparent 4px),
+    linear-gradient(124deg, transparent 0 31%, color-mix(in srgb, var(--grow-color-testing) 35%, transparent) 31.5% 32.5%, transparent 33%),
+    linear-gradient(38deg, transparent 0 50%, color-mix(in srgb, var(--grow-color-testing) 31%, transparent) 50.5% 51.5%, transparent 52%);
+}
+
+.seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination.is-grow-along::before {
+  background:
+    radial-gradient(circle at 15% 28%, color-mix(in srgb, var(--grow-color-growalong) 70%, transparent) 0 3px, transparent 4px),
+    radial-gradient(circle at 50% 70%, color-mix(in srgb, var(--grow-color-growalong) 66%, transparent) 0 4px, transparent 5px),
+    radial-gradient(circle at 86% 25%, color-mix(in srgb, var(--grow-color-growalong) 56%, transparent) 0 3px, transparent 4px),
+    linear-gradient(38deg, transparent 0 30%, color-mix(in srgb, var(--grow-color-growalong) 34%, transparent) 30.5% 31.5%, transparent 32%),
+    linear-gradient(142deg, transparent 0 51%, color-mix(in srgb, var(--grow-color-growalong) 30%, transparent) 51.5% 52.5%, transparent 53%);
+}
+
+@media (max-width: 600px) {
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot::before,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning::before,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collections::before,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-activity::before,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-hub::before,
+  .seed-vault-page .seed-vault-library-shell::before,
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state::before {
+    right: 12px;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-snapshot::before {
+    opacity: 0.1;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-planning::before {
+    opacity: 0.16;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-collections::before {
+    opacity: 0.15;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-overview-recent-activity::before {
+    opacity: 0.13;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-sharing-hub::before {
+    opacity: 0.16;
+  }
+
+  .seed-vault-page .seed-vault-library-shell::before {
+    opacity: 0.12;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-empty-state::before {
+    opacity: 0.18;
+  }
+
+  .seed-vault-panel[data-seed-vault-mode="owner"] .seed-vault-planning-destination::before {
+    width: 58px;
+    height: 50px;
+    opacity: 0.1;
   }
 }

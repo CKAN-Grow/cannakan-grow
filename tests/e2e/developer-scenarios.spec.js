@@ -736,6 +736,99 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Seed Vault sections use contextual artwork without changing responsive geometry", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#seed-vault");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const contextualSurfaces = [
+      { selector: ".seed-vault-overview-snapshot", desktopMin: 0.12, mobileMin: 0.08 },
+      { selector: ".seed-vault-overview-planning", desktopMin: 0.22, mobileMin: 0.14 },
+      { selector: ".seed-vault-overview-collections", desktopMin: 0.18, mobileMin: 0.13 },
+      { selector: ".seed-vault-overview-recent-activity", desktopMin: 0.15, mobileMin: 0.11 },
+      { selector: ".seed-vault-sharing-hub", desktopMin: 0.2, mobileMin: 0.14 },
+      { selector: ".seed-vault-library-shell", desktopMin: 0.13, mobileMin: 0.1 },
+    ];
+
+    for (const viewport of [
+      { width: 1280, height: 900 },
+      { width: 768, height: 1024 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const panel = page.locator("#my-seed-vault").first();
+      await expect(panel).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+
+      const signatures = [];
+      for (const { selector, desktopMin, mobileMin } of contextualSurfaces) {
+        const surface = panel.locator(selector);
+        await expect(surface).toBeVisible();
+        const artwork = await surface.evaluate((node) => {
+          const pseudo = getComputedStyle(node, "::before");
+          const rect = node.getBoundingClientRect();
+          return {
+            content: pseudo.content,
+            background: pseudo.backgroundImage,
+            opacity: Number.parseFloat(pseudo.opacity),
+            pointerEvents: pseudo.pointerEvents,
+            left: rect.left,
+            right: rect.right,
+          };
+        });
+        expect(artwork.content).not.toBe("none");
+        expect(artwork.background).toContain("gradient");
+        expect(artwork.background).not.toContain("url(");
+        expect(artwork.opacity).toBeGreaterThanOrEqual(viewport.width <= 600 ? mobileMin : desktopMin);
+        expect(artwork.opacity).toBeLessThanOrEqual(0.28);
+        expect(artwork.pointerEvents).toBe("none");
+        expect(artwork.left).toBeGreaterThanOrEqual(-1);
+        expect(artwork.right).toBeLessThanOrEqual(viewport.width + 1);
+        signatures.push(artwork.background);
+      }
+      expect(new Set(signatures).size).toBe(contextualSurfaces.length);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const planningArtwork = await page.locator("#my-seed-vault .seed-vault-planning-destination").evaluateAll((cards) => cards.map((card) => {
+      const pseudo = getComputedStyle(card, "::before");
+      return { className: card.className, background: pseudo.backgroundImage, pointerEvents: pseudo.pointerEvents };
+    }));
+    expect(planningArtwork).toHaveLength(3);
+    expect(new Set(planningArtwork.map((artwork) => artwork.background)).size).toBe(3);
+    expect(planningArtwork.every((artwork) => artwork.background.includes("gradient") && artwork.pointerEvents === "none")).toBe(true);
+
+    await useMixAndMatch(page);
+    let seedVaultScenario = page.locator("select[data-developer-scenario-module='seedVault']");
+    await expect(seedVaultScenario).toBeVisible();
+    await seedVaultScenario.selectOption("empty");
+    seedVaultScenario = page.locator("select[data-developer-scenario-module='seedVault']");
+    await expect(seedVaultScenario).toHaveValue("empty");
+    await closeScenarioPanel(page);
+
+    const firstEntry = page.locator("#my-seed-vault .seed-vault-empty-state");
+    await expect(firstEntry).toBeVisible();
+    const emptyArtwork = await firstEntry.evaluate((node) => {
+      const style = getComputedStyle(node);
+      const pseudo = getComputedStyle(node, "::before");
+      return { surfaceBackground: style.backgroundImage, background: pseudo.backgroundImage, opacity: Number.parseFloat(pseudo.opacity), pointerEvents: pseudo.pointerEvents };
+    });
+    expect((emptyArtwork.background.match(/radial-gradient/g) || []).length).toBeGreaterThanOrEqual(6);
+    expect(emptyArtwork.surfaceBackground).toContain("gradient");
+    expect(emptyArtwork.surfaceBackground).not.toContain("url(");
+    expect(emptyArtwork.surfaceBackground).not.toContain("kan-grow-companion-bg.png");
+    expect(emptyArtwork.background).not.toContain("url(");
+    expect(emptyArtwork.opacity).toBeGreaterThanOrEqual(0.2);
+    expect(emptyArtwork.pointerEvents).toBe("none");
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault premium surfaces retain atmospheric rendering without geometry regressions", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
