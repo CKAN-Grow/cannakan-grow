@@ -593,6 +593,50 @@ test.describe("local Developer Scenarios", () => {
     expect(mismatchCode).toBe("DEVELOPER_SCENARIO_UNIFIED_PROVIDER_MISMATCH");
   });
 
+  test("Seed Vault Hero uses the approved unique semantic icons", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await page.goto("/#seed-vault");
+
+    const hero = page.locator(".seed-vault-approved-hero");
+    await expect(hero).toBeVisible();
+    const titleIcon = hero.locator("[data-seed-vault-title-icon='vault']");
+    await expect(titleIcon).toBeVisible();
+    await expect(titleIcon.locator("svg")).toHaveCount(1);
+
+    const metricIcons = hero.locator("[data-seed-vault-hero-metric-icon]");
+    await expect(metricIcons).toHaveCount(4);
+    expect(await metricIcons.evaluateAll((nodes) => nodes.map((node) => node.dataset.seedVaultHeroMetricIcon))).toEqual([
+      "leaf",
+      "seed",
+      "sourceDirectoryBars",
+      "collection",
+    ]);
+    await expect(hero.locator(".seed-vault-overview-stat.is-sources[data-seed-vault-hero-metric-icon='sourceDirectoryBars']")).toBeVisible();
+    await expect(page.locator(".seed-vault-planning-destination.is-testing[data-seed-vault-planning-icon='flask']")).toBeVisible();
+
+    const iconGeometry = await hero.locator("[data-seed-vault-title-icon], [data-seed-vault-hero-metric-icon] .seed-vault-overview-stat-icon").evaluateAll((nodes) => nodes.map((node) => {
+      const svg = node.querySelector("svg");
+      const container = node.getBoundingClientRect();
+      const graphic = svg?.getBoundingClientRect();
+      return {
+        svgCount: node.querySelectorAll("svg").length,
+        viewBox: svg?.getAttribute("viewBox") || "",
+        visible: Boolean(graphic?.width && graphic?.height),
+        contained: Boolean(graphic && graphic.left >= container.left - 1 && graphic.top >= container.top - 1 && graphic.right <= container.right + 1 && graphic.bottom <= container.bottom + 1),
+      };
+    }));
+    expect(iconGeometry).toHaveLength(5);
+    expect(iconGeometry.every((icon) => icon.svgCount === 1 && icon.viewBox === "0 0 24 24" && icon.visible && icon.contained)).toBe(true);
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("Seed Vault 3.0 preserves premium browsing and every inventory control", async ({ page }) => {
     test.setTimeout(60_000);
     const consoleErrors = [];
