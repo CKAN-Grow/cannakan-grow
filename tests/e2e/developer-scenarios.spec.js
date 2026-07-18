@@ -2064,7 +2064,7 @@ test.describe("local Developer Scenarios", () => {
     expect(presentation.activeWeight).toBeGreaterThan(presentation.inactiveWeight);
     expect(presentation.indicatorWidth).toBeGreaterThanOrEqual(18);
     expect(presentation.indicatorHeight).toBeGreaterThanOrEqual(2);
-    expect(presentation.iconWidths.every((width) => width >= 18)).toBe(true);
+    expect(presentation.iconWidths.every((width) => width >= 20)).toBe(true);
 
     const readingOrder = await hero.evaluate((node) => {
       const title = node.querySelector("#my-seed-vault-title");
@@ -2079,6 +2079,8 @@ test.describe("local Developer Scenarios", () => {
       await expect(scope).toBeVisible();
       const geometry = await hero.evaluate((node) => {
         const utility = node.querySelector(".seed-vault-approved-hero-utility");
+        const identity = node.querySelector(".seed-vault-approved-hero-identity");
+        const title = node.querySelector("#my-seed-vault-title");
         const tabs = node.querySelector(".seed-vault-hero-scope-control");
         const controls = node.querySelector(".seed-vault-approved-hero-controls");
         const search = node.querySelector(".seed-vault-overview-search");
@@ -2091,6 +2093,8 @@ test.describe("local Developer Scenarios", () => {
         return {
           hero: rect(node),
           utility: rect(utility),
+          identity: rect(identity),
+          title: rect(title),
           tabs: rect(tabs),
           controls: rect(controls),
           search: rect(search),
@@ -2106,13 +2110,31 @@ test.describe("local Developer Scenarios", () => {
       expect(geometry.tabs.right).toBeLessThanOrEqual(geometry.hero.right + 1);
       expect(geometry.tabs.bottom).toBeLessThanOrEqual(geometry.controls.y + 1);
       expect(geometry.newest.y).toBeGreaterThanOrEqual(geometry.controls.bottom);
-      expect(geometry.tabHeights.every((height) => height >= 48)).toBe(true);
-      if (width <= 760) {
-        expect(geometry.tabs.width).toBeGreaterThanOrEqual(geometry.utility.width - 1);
-        expect(Math.abs(geometry.tabWidths[0] - geometry.tabWidths[1])).toBeLessThanOrEqual(1);
-        expect(geometry.add.y).toBeGreaterThanOrEqual(geometry.search.bottom);
+      expect(geometry.tabHeights.every((height) => height >= 54)).toBe(true);
+      expect(geometry.tabs.height).toBeGreaterThanOrEqual(70);
+      expect(geometry.controls.y - geometry.tabs.bottom).toBeGreaterThanOrEqual(20);
+      const rightInset = geometry.hero.right - geometry.tabs.right;
+      if (width <= 820) {
+        expect(geometry.tabs.y).toBeGreaterThanOrEqual(geometry.identity.bottom);
+        if (width <= 760) {
+          expect(geometry.tabs.width).toBeGreaterThanOrEqual(geometry.utility.width - 1);
+          expect(Math.abs(geometry.tabWidths[0] - geometry.tabWidths[1])).toBeLessThanOrEqual(1);
+          expect(geometry.add.y).toBeGreaterThanOrEqual(geometry.search.bottom);
+        } else {
+          expect(rightInset).toBeGreaterThanOrEqual(24);
+          expect(rightInset).toBeLessThanOrEqual(33);
+        }
       } else {
-        expect(Math.abs(geometry.tabs.right - geometry.controls.right)).toBeLessThanOrEqual(1);
+        const topInset = geometry.tabs.y - geometry.hero.y;
+        expect(topInset).toBeGreaterThanOrEqual(24);
+        expect(topInset).toBeLessThanOrEqual(33);
+        expect(rightInset).toBeGreaterThanOrEqual(24);
+        expect(rightInset).toBeLessThanOrEqual(33);
+        const titleOverlapsTabs = geometry.title.right > geometry.tabs.x
+          && geometry.title.x < geometry.tabs.right
+          && geometry.title.bottom > geometry.tabs.y
+          && geometry.title.y < geometry.tabs.bottom;
+        expect(titleOverlapsTabs).toBe(false);
       }
     }
 
