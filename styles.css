@@ -85467,15 +85467,15 @@ a.source-directory-variety-chip:focus-visible {
 .seed-vault-page .seed-vault-library-shell {
   --vault-section-texture-color: var(--seed-vault-theme-accent, var(--grow-color-variety));
   --vault-section-texture-opacity: 3.2%;
-  --vault-library-grain-light: rgba(239, 246, 241, 0.032);
-  --vault-library-grain-dark: rgba(2, 7, 4, 0.045);
+  --vault-library-grain-light: rgba(239, 246, 241, 0.038);
+  --vault-library-grain-dark: rgba(2, 7, 4, 0.053);
   background:
     radial-gradient(ellipse at 8% 3%, color-mix(in srgb, var(--seed-vault-theme-accent, var(--grow-color-variety)) 7%, transparent), transparent 28%),
     radial-gradient(ellipse at 24% 0%, rgba(255, 255, 255, 0.022), transparent 34%),
     radial-gradient(circle at 1px 1px, var(--vault-library-grain-light) 0 0.34px, transparent 0.58px),
     radial-gradient(circle at 2px 3px, var(--vault-library-grain-dark) 0 0.3px, transparent 0.54px),
-    linear-gradient(rgba(238, 246, 240, 0.011) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(238, 246, 240, 0.009) 1px, transparent 1px),
+    linear-gradient(rgba(238, 246, 240, 0.013) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238, 246, 240, 0.0105) 1px, transparent 1px),
     var(--vault-surface-sheen),
     linear-gradient(145deg, rgba(14, 20, 17, 0.988), rgba(8, 13, 10, 0.993) 52%, rgba(5, 9, 7, 0.998));
   background-repeat: no-repeat, no-repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat;
@@ -85610,8 +85610,8 @@ a.source-directory-variety-chip:focus-visible {
   .seed-vault-page .seed-vault-library-shell {
     --vault-section-texture-opacity: 2.4%;
     --vault-section-texture-dot: 0.5px;
-    --vault-library-grain-light: rgba(239, 246, 241, 0.022);
-    --vault-library-grain-dark: rgba(2, 7, 4, 0.032);
+    --vault-library-grain-light: rgba(239, 246, 241, 0.026);
+    --vault-library-grain-dark: rgba(2, 7, 4, 0.038);
   }
 }
 
