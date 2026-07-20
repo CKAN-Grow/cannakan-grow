@@ -146,7 +146,7 @@ requireAll(appSource, [
   "SHARED SNAPSHOTS",
   "GROW NETWORK",
   "Connections that help Grow",
-  "Preview Public Profile",
+  "Public Profile",
   "Share Profile",
 ], "canonical Person Profile language");
 if (/Followers|Following|Message|Messaging/.test(sharedProfileBody)) {

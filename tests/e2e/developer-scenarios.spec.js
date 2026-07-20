@@ -3108,6 +3108,7 @@ test.describe("local Developer Scenarios", () => {
           handle: "alexandria-evergreen",
           roleLabel: "Grower",
           secondaryIdentity: "Lifelong learner",
+          identityStatement: "Passionate about growing with purpose.",
           locationLabel: "Pacific Northwest",
           joinedLabel: "July 2026",
           featuredRecognition: { id: "founding-grower", title: "Founding Grower" },
@@ -3126,8 +3127,9 @@ test.describe("local Developer Scenarios", () => {
       await expect(hero.getByRole("heading", { name: "Alexandria Evergreen Conservatory", exact: true })).toBeVisible();
       await expect(hero.locator("img.person-profile-avatar")).toBeVisible();
       await expect(hero.getByRole("link", { name: "Edit Profile", exact: true })).toBeVisible();
-      await expect(hero.getByRole("button", { name: "Preview Public Profile", exact: true })).toBeVisible();
+      await expect(hero.getByRole("button", { name: "Public Profile", exact: true })).toBeVisible();
       await expect(hero.getByRole("button", { name: "Share Profile", exact: true })).toBeVisible();
+      await expect(hero).not.toContainText("Passionate about growing with purpose.");
       const featuredRecognition = hero.getByRole("button", { name: "Founding Grower", exact: true });
       await expect(featuredRecognition).toBeVisible();
       const geometry = await hero.evaluate((element) => {
@@ -3135,7 +3137,12 @@ test.describe("local Developer Scenarios", () => {
         const coverImage = element.querySelector("[data-profile-hero-image='person']");
         const vignette = getComputedStyle(element, "::before");
         const texture = getComputedStyle(element, "::after");
-        const recognition = getComputedStyle(element.querySelector(".profile-featured-recognition"));
+        const recognitionElement = element.querySelector(".profile-featured-recognition");
+        const recognition = getComputedStyle(recognitionElement);
+        const identityCopy = element.querySelector(".person-profile-identity-copy");
+        const actionGroup = element.querySelector(".person-profile-hero-actions");
+        const actionButtons = [...actionGroup.querySelectorAll(".button")].map((button) => button.getBoundingClientRect());
+        const memberText = [...element.querySelectorAll(".person-profile-hero-meta span")].map((item) => item.textContent.trim());
         return {
           avatarWidth: avatar.width,
           height: element.getBoundingClientRect().height,
@@ -3146,6 +3153,11 @@ test.describe("local Developer Scenarios", () => {
           recognitionBackground: recognition.backgroundColor,
           recognitionBorderWidth: recognition.borderTopWidth,
           recognitionBoxShadow: recognition.boxShadow,
+          recognitionInsideRoleRow: recognitionElement.closest(".person-profile-role-row") !== null,
+          actionsInsideIdentity: actionGroup.parentElement === identityCopy,
+          actionHeights: actionButtons.map((rect) => rect.height),
+          actionWidths: actionButtons.map((rect) => rect.width),
+          memberText,
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
       });
@@ -3156,6 +3168,11 @@ test.describe("local Developer Scenarios", () => {
       expect(geometry.recognitionBackground).toBe("rgba(0, 0, 0, 0)");
       expect(geometry.recognitionBorderWidth).toBe("0px");
       expect(geometry.recognitionBoxShadow).toBe("none");
+      expect(geometry.recognitionInsideRoleRow).toBe(true);
+      expect(geometry.actionsInsideIdentity).toBe(true);
+      expect(geometry.actionHeights.every((height) => Math.abs(height - 44) <= 1)).toBe(true);
+      expect(Math.max(...geometry.actionWidths) - Math.min(...geometry.actionWidths)).toBeLessThanOrEqual(1);
+      expect(geometry.memberText).toEqual(["Member since July 2026", "Pacific Northwest"]);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
       expect(geometry.avatarWidth).toBeGreaterThanOrEqual(width <= 680 ? 108 : 136);
       expect(geometry.height).toBeLessThanOrEqual(width <= 680 ? 750 : 620);
@@ -3333,7 +3350,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(profile.getByRole("heading", { name: "Connections that help Grow", exact: true })).toBeVisible();
     await expect(profile).not.toContainText(/Germination Trend|Total Followers|Following|Followers|Message|Messaging|Your Grow Summary/i);
     await expect(profile.locator("[href='#profile']", { hasText: "Edit Profile" })).toBeVisible();
-    await expect(profile.getByRole("button", { name: "Preview Public Profile", exact: true })).toBeVisible();
+    await expect(profile.getByRole("button", { name: "Public Profile", exact: true })).toBeVisible();
 
     for (const width of [1280, 768, 390]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -3348,7 +3365,7 @@ test.describe("local Developer Scenarios", () => {
     }
 
     await page.setViewportSize({ width: 1280, height: 1000 });
-    await profile.getByRole("button", { name: "Preview Public Profile", exact: true }).click();
+    await profile.getByRole("button", { name: "Public Profile", exact: true }).click();
     await expect(profile).toHaveAttribute("data-profile-viewer", "visitor");
     await expect(profile).toHaveAttribute("data-public-preview", "true");
     await expect(profile.locator(".person-profile-collections")).toHaveCount(0);

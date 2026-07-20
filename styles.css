@@ -87637,7 +87637,7 @@ button.seed-vault-planning-destination {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 292px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: clamp(32px, 5vw, 72px);
   min-height: 480px;
@@ -87686,6 +87686,7 @@ img.person-profile-avatar {
 }
 
 .person-profile-identity-copy {
+  width: min(100%, 650px);
   max-width: 650px;
   min-width: 0;
 }
@@ -87695,7 +87696,7 @@ img.person-profile-avatar {
 .person-profile-note-section .eyebrow,
 .person-profile-feature-head .eyebrow,
 .person-profile-footer-cta .eyebrow {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: color-mix(in srgb, var(--person-profile-green) 88%, white);
   font-size: 0.7rem;
   font-weight: 760;
@@ -87714,7 +87715,7 @@ img.person-profile-avatar {
 }
 
 .person-profile-handle {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: rgba(228, 237, 232, 0.66);
   font-size: 0.9rem;
 }
@@ -87725,7 +87726,7 @@ img.person-profile-avatar {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin-top: 15px;
+  margin-top: 12px;
 }
 
 .person-profile-role,
@@ -87750,14 +87751,6 @@ img.person-profile-avatar {
   color: rgba(239, 244, 241, 0.76);
 }
 
-.person-profile-identity-statement {
-  max-width: 55ch;
-  margin: 15px 0 0;
-  color: rgba(243, 248, 245, 0.84);
-  font-size: clamp(1rem, 1.5vw, 1.16rem);
-  line-height: 1.55;
-}
-
 .person-profile-hero-meta span {
   display: inline-flex;
   align-items: center;
@@ -87773,7 +87766,8 @@ img.person-profile-avatar {
 }
 
 .person-grow-profile .profile-featured-recognition {
-  margin-top: 16px;
+  min-height: 28px;
+  margin: 0;
   border: 0;
   background: transparent;
   color: var(--grow-color-recognition, #d8ab43);
@@ -87783,42 +87777,58 @@ img.person-profile-avatar {
 
 .person-profile-hero-actions {
   display: grid;
-  align-self: end;
-  align-content: start;
-  grid-auto-rows: max-content;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   width: 100%;
-  height: max-content;
-  padding: 12px;
-  border: 1px solid rgba(221, 236, 227, 0.15);
-  border-radius: 16px;
-  background:
-    linear-gradient(145deg, rgba(24, 33, 29, 0.82), rgba(7, 12, 10, 0.78)),
-    radial-gradient(circle at 18% 0%, rgba(148, 209, 89, 0.1), transparent 52%);
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.28),
-    inset 0 1px rgba(255, 255, 255, 0.055);
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.person-grow-profile.is-owner .person-profile-hero-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .person-profile-hero-actions .button {
   justify-content: center;
-  height: 46px;
-  min-height: 46px;
-  max-height: 46px;
-  border-radius: 11px;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.24);
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  padding-inline: 14px;
+  border: 1px solid #94d159;
+  border-radius: 999px;
+  background: linear-gradient(145deg, rgba(16, 24, 20, 0.76), rgba(5, 10, 8, 0.84));
+  color: #fff;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06);
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .person-profile-hero-actions .button svg {
   width: 18px;
   height: 18px;
+  color: #94d159;
+}
+
+.person-profile-hero-actions .button:hover {
+  background: linear-gradient(145deg, rgba(28, 43, 33, 0.88), rgba(7, 14, 10, 0.9));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.08),
+    0 0 20px rgba(148, 209, 89, 0.2);
+  transform: translateY(-1px);
 }
 
 .person-profile-action-status {
-  min-height: 18px;
+  grid-column: 1 / -1;
+  min-height: 0;
   color: var(--person-profile-muted);
   font-size: 0.72rem;
-  text-align: center;
+  text-align: left;
+}
+
+.person-profile-action-status:empty {
+  display: none;
 }
 
 .person-profile-body {
@@ -88441,12 +88451,7 @@ img.person-profile-avatar {
   }
 
   .person-profile-hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .person-profile-hero-actions .button {
-    flex: 1 1 180px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .person-profile-action-status {
@@ -88529,6 +88534,10 @@ img.person-profile-avatar {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
+  }
+
+  .person-grow-profile.is-owner .person-profile-hero-actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .person-profile-hero-actions .button {
@@ -88620,8 +88629,13 @@ img.person-profile-avatar {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .person-profile-hero-actions .button,
   .person-profile-collection-card,
   .person-profile-collection-image img {
     transition: none;
+  }
+
+  .person-profile-hero-actions .button:hover {
+    transform: none;
   }
 }
