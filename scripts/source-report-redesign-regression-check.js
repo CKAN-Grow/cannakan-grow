@@ -5,6 +5,13 @@ const root = path.resolve(__dirname, "..");
 const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const styles = fs.readFileSync(path.join(root, "styles.css"), "utf8");
 const migration = fs.readFileSync(path.join(root, "supabase", "migrations", "20260713220000_gie_phase2b_group_b_community_analytics.sql"), "utf8");
+require(path.join(root, "profile-hero-catalog-data.js"));
+const profileHeroCatalogApi = require(path.join(root, "profile-hero-catalog.js"));
+const profileHeroCatalog = profileHeroCatalogApi.validateCatalog(JSON.parse(fs.readFileSync(path.join(root, "public", "assets", "images", "profile-heroes", "catalog.json"), "utf8")));
+const canonicalSourceHero = profileHeroCatalog.source.find((entry) => entry.default === true);
+const canonicalSourceHeroUrl = profileHeroCatalogApi.buildPublicUrl(canonicalSourceHero.file);
+const resolvedSourceHero = profileHeroCatalogApi.resolve({ entityType: "source" });
+const canonicalSourceHeroAsset = path.join(root, "public", "assets", "images", "profile-heroes", ...canonicalSourceHero.file.split("/"));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -73,7 +80,13 @@ assert(!sourceReport.includes("<progress") && !sourceReportHelpers.includes("sou
 assert(sourceReport.includes("Community Coverage") && sourceReport.includes("renderSourceReportRegionMap(report)"), "The regional world map must consume canonical Source Report coverage.");
 assert(sourceReportHelpers.includes("No regional Community evidence has been published yet.") && sourceReportHelpers.includes("/assets/app/source-report/world-map.svg"), "The empty regional state must use the neutral world map and exact limitation copy.");
 assert(sourceReportHelpers.includes("source-report-distribution-donut") && sourceReportHelpers.includes("report?.germinationDistribution"), "Distribution must render only chart-ready canonical GIE buckets.");
-assert(sourceReport.includes('/assets/images/seed-report-hero-bg.png'), "Source Report hero must use the target seed-report background asset.");
+assert(sourceReport.includes('const sourceHeroImage = resolveProfileHeroImage("source");')
+  && sourceReport.includes('src="${escapeHtml(sourceHeroImage.url)}"')
+  && sourceReport.includes('data-profile-hero-entity="source"'), "Source Report hero must consume the canonical Source Hero metadata resolver.");
+assert(resolvedSourceHero.sourceType === "default"
+  && resolvedSourceHero.selectedHeroId === canonicalSourceHero.id
+  && resolvedSourceHero.url === canonicalSourceHeroUrl
+  && fs.existsSync(canonicalSourceHeroAsset), "Source Report hero must resolve the tracked canonical Source default asset.");
 assert(sourceReport.includes("source-report-hero-verification") && sourceReport.includes("Latest evidence"), "Source verification and freshness metadata must sit beneath the hero description.");
 assert(sourceReport.includes("Evidence Strength") && !sourceReport.includes("GIE Confidence</span>") && !sourceReport.includes("report.confidence?.percent"), "Public Source Report confidence must use canonical plain-language labels without exposing the internal numeric score.");
 
