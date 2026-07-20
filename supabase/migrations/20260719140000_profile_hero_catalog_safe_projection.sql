@@ -1,5 +1,10 @@
 -- Expose Profile Hero cover URLs through the existing privacy-aware public
 -- projection. Storage paths remain private and are never projected.
+--
+-- Depends on 20260718120000_grow_identity_layer_phase1.sql, which owns both
+-- public.grow_identity_field_visibility and the cover_image_url profile field.
+-- Keep that migration earlier in clean replay order; this projection must not
+-- duplicate or weaken the Grow Identity privacy contract.
 
 create or replace view public.safe_public_member_profiles as
 select

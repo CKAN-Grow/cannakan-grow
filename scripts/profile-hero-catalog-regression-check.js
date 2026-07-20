@@ -88,7 +88,15 @@ assert.throws(() => catalogApi.validateCatalog({
 const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
 const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8");
 const serviceWorkerSource = fs.readFileSync(path.join(repoRoot, "service-worker.js"), "utf8");
-const migrationSource = fs.readFileSync(path.join(repoRoot, "supabase", "migrations", "20260719140000_profile_hero_catalog_safe_projection.sql"), "utf8");
+const growIdentityMigrationName = "20260718120000_grow_identity_layer_phase1.sql";
+const profileHeroMigrationName = "20260719140000_profile_hero_catalog_safe_projection.sql";
+const migrationsPath = path.join(repoRoot, "supabase", "migrations");
+const growIdentityMigrationPath = path.join(migrationsPath, growIdentityMigrationName);
+const profileHeroMigrationPath = path.join(migrationsPath, profileHeroMigrationName);
+assert.ok(fs.existsSync(growIdentityMigrationPath), "Profile Hero projection requires the tracked Grow Identity migration");
+assert.ok(growIdentityMigrationName < profileHeroMigrationName, "Grow Identity migration must replay before the Profile Hero projection");
+const growIdentityMigrationSource = fs.readFileSync(growIdentityMigrationPath, "utf8");
+const migrationSource = fs.readFileSync(profileHeroMigrationPath, "utf8");
 
 const buildSource = fs.readFileSync(path.join(repoRoot, "scripts", "build-config.mjs"), "utf8");
 for (const needle of [
@@ -104,6 +112,10 @@ assert.ok(buildSource.includes("buildProfileHeroCatalogRuntimeContents"), "Build
 assert.equal(appSource.includes("PROFILE_HERO_COMPILED_DEFAULT_URLS"), false, "App code must not duplicate metadata default filenames");
 assert.ok(serviceWorkerSource.includes("/profile-hero-catalog-data.js"));
 assert.ok(serviceWorkerSource.includes("/assets/images/profile-heroes/catalog.json"));
+assert.match(growIdentityMigrationSource, /create table if not exists public\.grow_identity_field_visibility/i);
+assert.match(growIdentityMigrationSource, /add column if not exists cover_image_url text/i);
+assert.ok(migrationSource.includes(`Depends on ${growIdentityMigrationName}`), "Profile Hero migration must document its Grow Identity dependency");
+assert.match(migrationSource, /from public\.grow_identity_field_visibility visibility/i);
 assert.match(migrationSource, /cover_image[^\n]+public[^\n]+cover_image_url/);
 assert.equal(/cover_image_path/i.test(migrationSource), false, "Private storage paths must not enter the public projection");
 
