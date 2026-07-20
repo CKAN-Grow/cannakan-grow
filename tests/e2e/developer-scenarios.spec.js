@@ -3010,10 +3010,16 @@ test.describe("local Developer Scenarios", () => {
 
   test("Person Grow Profile Hero uses the cinematic fallback and viewer-aware identity composition", async ({ page }) => {
     const consoleErrors = [];
+    const requestFailures = [];
+    const personHeroAssetResponses = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
     });
     page.on("pageerror", (error) => consoleErrors.push(error.message));
+    page.on("requestfailed", (request) => requestFailures.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText || "failed"}`));
+    page.on("response", (response) => {
+      if (response.url().includes("/assets/images/profile-heroes/person/")) personHeroAssetResponses.push({ status: response.status(), url: response.url() });
+    });
     await page.goto("/#home");
     const catalogResponse = await page.request.get("/assets/images/profile-heroes/catalog.json");
     expect(catalogResponse.ok()).toBe(true);
@@ -3024,7 +3030,72 @@ test.describe("local Developer Scenarios", () => {
     const personDefaultUrl = `/assets/images/profile-heroes/${personDefault.file.split("/").map(encodeURIComponent).join("/")}`;
     const defaultAssetResponse = await page.request.get(personDefaultUrl);
     expect(defaultAssetResponse.ok()).toBe(true);
-    await expect.poll(() => page.evaluate(() => window.ProfileHeroCatalog?.getStatus())).toMatch(/loaded|failed/);
+    await expect.poll(() => page.evaluate(() => window.ProfileHeroCatalog?.getStatus())).toBe("loaded");
+    const generatedDefaults = await page.evaluate(() => Object.fromEntries(
+      Object.entries(globalThis.CANNAKAN_PROFILE_HERO_CATALOG_FALLBACK || {}).map(([entityType, entries]) => [
+        entityType,
+        entries.filter((entry) => entry.default === true),
+      ]),
+    ));
+    for (const entityType of ["person", "source", "breeder"]) {
+      expect(generatedDefaults[entityType]).toEqual(catalog[entityType].filter((entry) => entry.default === true));
+    }
+
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+    await page.goto("/#grow-profile");
+    const liveHero = page.locator(".person-profile-hero");
+    const liveHeroImage = liveHero.locator("[data-profile-hero-image='person']");
+    await expect(liveHero).toHaveAttribute("data-profile-hero-id", personDefault.id);
+    await expect(liveHero).toHaveAttribute("data-profile-hero-source", "default");
+    await expect(liveHeroImage).toHaveAttribute("src", personDefaultUrl);
+    await expect.poll(() => personHeroAssetResponses.some((response) => response.url.endsWith(personDefaultUrl) && response.status === 200)).toBe(true);
+
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(liveHero).toBeVisible();
+      await expect(liveHeroImage).toBeVisible();
+      const liveGeometry = await liveHero.evaluate((element) => {
+        const image = element.querySelector("[data-profile-hero-image='person']");
+        const heroRect = element.getBoundingClientRect();
+        const imageRect = image?.getBoundingClientRect();
+        const heroStyle = getComputedStyle(element);
+        const imageStyle = image ? getComputedStyle(image) : null;
+        const coverStyle = image?.parentElement ? getComputedStyle(image.parentElement) : null;
+        const vignetteStyle = getComputedStyle(element, "::before");
+        const textureStyle = getComputedStyle(element, "::after");
+        return {
+          complete: Boolean(image?.complete),
+          naturalWidth: image?.naturalWidth || 0,
+          currentSrc: image?.currentSrc || "",
+          heroBackground: heroStyle.backgroundImage,
+          imageDisplay: imageStyle?.display || "none",
+          imageVisibility: imageStyle?.visibility || "hidden",
+          imageOpacity: imageStyle?.opacity || "0",
+          imageFilter: imageStyle?.filter || "none",
+          coverOpacity: coverStyle?.opacity || "0",
+          coverZIndex: coverStyle?.zIndex || "auto",
+          vignetteBackground: vignetteStyle.backgroundImage,
+          textureBackground: textureStyle.backgroundImage,
+          imageCoversHero: Boolean(imageRect && imageRect.width >= heroRect.width && imageRect.height >= heroRect.height),
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      expect(liveGeometry.complete).toBe(true);
+      expect(liveGeometry.naturalWidth).toBeGreaterThan(0);
+      expect(liveGeometry.currentSrc).toBe(new URL(personDefaultUrl, page.url()).href);
+      expect(liveGeometry.heroBackground).not.toBe("none");
+      expect(liveGeometry.imageDisplay).not.toBe("none");
+      expect(liveGeometry.imageVisibility).toBe("visible");
+      expect(liveGeometry.imageOpacity).toBe("1");
+      expect(liveGeometry.imageFilter).not.toBe("none");
+      expect(liveGeometry.coverOpacity).toBe("1");
+      expect(liveGeometry.coverZIndex).toBe("0");
+      expect(liveGeometry.vignetteBackground).not.toBe("none");
+      expect(liveGeometry.textureBackground).not.toBe("none");
+      expect(liveGeometry.imageCoversHero).toBe(true);
+      expect(liveGeometry.documentOverflow).toBeLessThanOrEqual(1);
+    }
 
     for (const width of [1280, 768, 390]) {
       await page.setViewportSize({ width, height: 1000 });
@@ -3117,6 +3188,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(visitorHero.getByRole("link", { name: "Edit Profile", exact: true })).toHaveCount(0);
     await expect(visitorHero).not.toContainText(/Message|Messaging|Followers|Following/i);
     expect(consoleErrors).toEqual([]);
+    expect(requestFailures).toEqual([]);
   });
 
   test("Profile Hero picker is catalog-driven, owner-only, and cancel-safe", async ({ page }) => {

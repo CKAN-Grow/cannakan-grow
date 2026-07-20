@@ -87590,8 +87590,8 @@ button.seed-vault-planning-destination {
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(90deg, rgba(3, 7, 6, 0.88) 0%, rgba(4, 9, 7, 0.62) 36%, rgba(4, 8, 7, 0.12) 66%, rgba(3, 7, 6, 0.34) 100%),
-    linear-gradient(0deg, rgba(3, 7, 6, 0.52) 0%, transparent 44%, rgba(4, 7, 7, 0.12) 100%);
+    linear-gradient(90deg, rgba(3, 7, 6, 0.84) 0%, rgba(4, 9, 7, 0.46) 36%, rgba(4, 8, 7, 0.08) 66%, rgba(3, 7, 6, 0.26) 100%),
+    linear-gradient(0deg, rgba(3, 7, 6, 0.4) 0%, transparent 44%, rgba(4, 7, 7, 0.08) 100%);
   content: "";
   pointer-events: none;
 }
@@ -87620,7 +87620,7 @@ button.seed-vault-planning-destination {
   height: 100%;
   object-fit: cover;
   object-position: center 44%;
-  filter: saturate(0.92) contrast(1.06) brightness(0.88);
+  filter: saturate(0.96) contrast(1.06) brightness(1.02);
   transform: scale(1.015);
 }
 
