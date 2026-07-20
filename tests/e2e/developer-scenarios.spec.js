@@ -3485,6 +3485,9 @@ test.describe("local Developer Scenarios", () => {
     await expect(profile).toHaveAttribute("data-profile-viewer", "owner");
     await expect(editorial).toHaveAttribute("data-profile-note-source", "grower");
     await expect(editorial.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
+    await expect(editorial.locator(".person-profile-note-copy .eyebrow")).toHaveText("FROM THE GROWER");
+    const artworkResponse = await page.request.get("/assets/images/profile/from-the-grower-journal.png");
+    expect(artworkResponse.status()).toBe(200);
     await expect(editorial.locator("blockquote")).not.toBeEmpty();
     await expect(growId.getByRole("heading", { name: "My Grow ID", exact: true })).toBeVisible();
     await expect(growId.locator(".person-profile-grow-id-handle")).toHaveText("@morgan-green");
@@ -3506,10 +3509,22 @@ test.describe("local Developer Scenarios", () => {
       await expect(editorial).toBeVisible();
       await expect(qr).toBeVisible();
       const geometry = await editorial.evaluate((section) => {
+        const noteElement = section.querySelector(".person-profile-note-copy");
+        const growIdElement = section.querySelector(".person-profile-grow-id");
+        const noteRect = noteElement.getBoundingClientRect();
+        const growIdRect = growIdElement.getBoundingClientRect();
         const qrElement = section.querySelector(".person-profile-grow-id-qr");
         const qrRect = qrElement.getBoundingClientRect();
         const actionRect = section.querySelector(".person-profile-grow-id-action").getBoundingClientRect();
+        const growIdStyles = getComputedStyle(growIdElement);
         return {
+          artworkBackground: getComputedStyle(section, "::before").backgroundImage,
+          growIdBackground: growIdStyles.backgroundImage,
+          growIdBorderLeft: growIdStyles.borderLeftWidth,
+          noteLeft: noteRect.left,
+          noteTop: noteRect.top,
+          growIdLeft: growIdRect.left,
+          growIdTop: growIdRect.top,
           qrWidth: qrRect.width,
           qrHeight: qrRect.height,
           qrLeft: qrRect.left,
@@ -3521,6 +3536,14 @@ test.describe("local Developer Scenarios", () => {
           actionRight: actionRect.right,
         };
       });
+      expect(geometry.artworkBackground).toContain("/assets/images/profile/from-the-grower-journal.png");
+      expect(geometry.growIdBackground).toBe("none");
+      expect(geometry.growIdBorderLeft).toBe("0px");
+      if (width > 680) {
+        expect(geometry.noteLeft).toBeLessThan(geometry.growIdLeft);
+      } else {
+        expect(geometry.noteTop).toBeLessThan(geometry.growIdTop);
+      }
       expect(geometry.qrWidth).toBeGreaterThanOrEqual(160);
       expect(geometry.qrHeight).toBeGreaterThanOrEqual(160);
       expect(geometry.qrLeft).toBeGreaterThanOrEqual(0);
