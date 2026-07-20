@@ -3140,9 +3140,15 @@ test.describe("local Developer Scenarios", () => {
         const recognitionElement = element.querySelector(".profile-featured-recognition");
         const recognition = getComputedStyle(recognitionElement);
         const identityCopy = element.querySelector(".person-profile-identity-copy");
+        const identityGroup = element.querySelector(".person-profile-identity");
         const actionGroup = element.querySelector(".person-profile-hero-actions");
-        const actionButtons = [...actionGroup.querySelectorAll(".button")].map((button) => button.getBoundingClientRect());
+        const actionElements = [...actionGroup.querySelectorAll(".button")];
+        const actionButtons = actionElements.map((button) => button.getBoundingClientRect());
         const memberText = [...element.querySelectorAll(".person-profile-hero-meta span")].map((item) => item.textContent.trim());
+        const heroRect = element.getBoundingClientRect();
+        const identityRect = identityGroup.getBoundingClientRect();
+        const identityTransform = new DOMMatrix(getComputedStyle(identityGroup).transform);
+        const actionStyle = actionElements.map((button) => getComputedStyle(button).backgroundImage);
         return {
           avatarWidth: avatar.width,
           height: element.getBoundingClientRect().height,
@@ -3157,6 +3163,15 @@ test.describe("local Developer Scenarios", () => {
           actionsInsideIdentity: actionGroup.parentElement === identityCopy,
           actionHeights: actionButtons.map((rect) => rect.height),
           actionWidths: actionButtons.map((rect) => rect.width),
+          actionGroupWidth: actionGroup.getBoundingClientRect().width,
+          identityCopyWidth: identityCopy.getBoundingClientRect().width,
+          primaryActionCount: actionGroup.querySelectorAll(".button-primary").length,
+          secondaryActionCount: actionGroup.querySelectorAll(".button-secondary").length,
+          primaryAndSecondaryDiffer: actionStyle[0] !== actionStyle[1] && actionStyle[1] === actionStyle[2],
+          compositionTranslateX: identityTransform.m41,
+          compositionTranslateY: identityTransform.m42,
+          compositionTopInset: identityRect.top - heroRect.top,
+          compositionBottomInset: heroRect.bottom - identityRect.bottom,
           memberText,
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
@@ -3172,6 +3187,17 @@ test.describe("local Developer Scenarios", () => {
       expect(geometry.actionsInsideIdentity).toBe(true);
       expect(geometry.actionHeights.every((height) => Math.abs(height - 44) <= 1)).toBe(true);
       expect(Math.max(...geometry.actionWidths) - Math.min(...geometry.actionWidths)).toBeLessThanOrEqual(1);
+      expect(geometry.primaryActionCount).toBe(1);
+      expect(geometry.secondaryActionCount).toBe(2);
+      expect(geometry.primaryAndSecondaryDiffer).toBe(true);
+      expect(geometry.compositionTranslateX).toBeGreaterThanOrEqual(8);
+      expect(geometry.compositionTranslateX).toBeLessThanOrEqual(18);
+      expect(geometry.compositionTranslateY).toBeLessThanOrEqual(-40);
+      expect(geometry.compositionTranslateY).toBeGreaterThanOrEqual(-60);
+      expect(geometry.compositionTopInset).toBeGreaterThanOrEqual(0);
+      expect(geometry.compositionBottomInset).toBeGreaterThanOrEqual(0);
+      if (width > 900) expect(geometry.actionGroupWidth / geometry.identityCopyWidth).toBeGreaterThanOrEqual(0.72);
+      if (width > 900) expect(geometry.actionGroupWidth / geometry.identityCopyWidth).toBeLessThanOrEqual(0.8);
       expect(geometry.memberText).toEqual(["Member since July 2026", "Pacific Northwest"]);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
       expect(geometry.avatarWidth).toBeGreaterThanOrEqual(width <= 680 ? 108 : 136);
