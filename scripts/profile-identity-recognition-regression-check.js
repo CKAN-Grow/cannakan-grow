@@ -147,8 +147,16 @@ requireAll(appSource, [
   "GROW NETWORK",
   "Connections that help Grow",
   "Public Profile",
-  "Share Profile",
+  "Edit Profile",
 ], "canonical Person Profile language");
+if (/Share Profile|data-grow-id-open|data-person-profile-share/.test(sharedProfileBody)) {
+  throw new Error("Person Profile Hero must leave sharing to the Grow ID experience.");
+}
+const locationMetaPosition = sharedProfileBody.indexOf("context.locationLabel");
+const joinedMetaPosition = sharedProfileBody.indexOf("context.joinedLabel");
+if (!(locationMetaPosition >= 0 && locationMetaPosition < joinedMetaPosition)) {
+  throw new Error("Person Profile Hero metadata must render privacy-safe Location before Member since.");
+}
 if (/Followers|Following|Message|Messaging/.test(sharedProfileBody)) {
   throw new Error("Person Profile must use Connections terminology and must not expose messaging.");
 }

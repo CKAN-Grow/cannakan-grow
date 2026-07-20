@@ -3109,6 +3109,7 @@ test.describe("local Developer Scenarios", () => {
           roleLabel: "Grower",
           secondaryIdentity: "Lifelong learner",
           identityStatement: "Passionate about growing with purpose.",
+          city: "Hidden City",
           locationLabel: "Pacific Northwest",
           joinedLabel: "July 2026",
           featuredRecognition: { id: "founding-grower", title: "Founding Grower" },
@@ -3126,9 +3127,10 @@ test.describe("local Developer Scenarios", () => {
       await expect(hero.locator("[data-profile-hero-image='person']")).toHaveAttribute("src", personDefaultUrl);
       await expect(hero.getByRole("heading", { name: "Alexandria Evergreen Conservatory", exact: true })).toBeVisible();
       await expect(hero.locator("img.person-profile-avatar")).toBeVisible();
-      await expect(hero.getByRole("link", { name: "Edit Profile", exact: true })).toBeVisible();
       await expect(hero.getByRole("button", { name: "Public Profile", exact: true })).toBeVisible();
-      await expect(hero.getByRole("button", { name: "Share Profile", exact: true })).toBeVisible();
+      await expect(hero.getByRole("link", { name: "Edit Profile", exact: true })).toBeVisible();
+      await expect(hero.getByRole("button", { name: "Share Profile", exact: true })).toHaveCount(0);
+      await expect(hero).not.toContainText("Hidden City");
       await expect(hero).not.toContainText("Passionate about growing with purpose.");
       const featuredRecognition = hero.getByRole("button", { name: "Founding Grower", exact: true });
       await expect(featuredRecognition).toBeVisible();
@@ -3148,7 +3150,9 @@ test.describe("local Developer Scenarios", () => {
         const heroRect = element.getBoundingClientRect();
         const identityRect = identityGroup.getBoundingClientRect();
         const identityTransform = new DOMMatrix(getComputedStyle(identityGroup).transform);
-        const actionStyle = actionElements.map((button) => getComputedStyle(button).backgroundImage);
+        const actionStyles = actionElements.map((button) => getComputedStyle(button));
+        const actionBackgroundImages = actionStyles.map((style) => style.backgroundImage);
+        const actionIconWidths = actionElements.map((button) => button.querySelector("svg")?.getBoundingClientRect().width || 0);
         return {
           avatarWidth: avatar.width,
           height: element.getBoundingClientRect().height,
@@ -3167,7 +3171,8 @@ test.describe("local Developer Scenarios", () => {
           identityCopyWidth: identityCopy.getBoundingClientRect().width,
           primaryActionCount: actionGroup.querySelectorAll(".button-primary").length,
           secondaryActionCount: actionGroup.querySelectorAll(".button-secondary").length,
-          primaryAndSecondaryDiffer: actionStyle[0] !== actionStyle[1] && actionStyle[1] === actionStyle[2],
+          actionBackgroundImages,
+          actionIconWidths,
           compositionTranslateX: identityTransform.m41,
           compositionTranslateY: identityTransform.m42,
           compositionTopInset: identityRect.top - heroRect.top,
@@ -3187,18 +3192,19 @@ test.describe("local Developer Scenarios", () => {
       expect(geometry.actionsInsideIdentity).toBe(true);
       expect(geometry.actionHeights.every((height) => Math.abs(height - 44) <= 1)).toBe(true);
       expect(Math.max(...geometry.actionWidths) - Math.min(...geometry.actionWidths)).toBeLessThanOrEqual(1);
-      expect(geometry.primaryActionCount).toBe(1);
+      expect(geometry.primaryActionCount).toBe(0);
       expect(geometry.secondaryActionCount).toBe(2);
-      expect(geometry.primaryAndSecondaryDiffer).toBe(true);
+      expect(geometry.actionBackgroundImages).toEqual(["none", "none"]);
+      expect(geometry.actionIconWidths.every((width) => Math.abs(width - 16) <= 1)).toBe(true);
       expect(geometry.compositionTranslateX).toBeGreaterThanOrEqual(8);
       expect(geometry.compositionTranslateX).toBeLessThanOrEqual(18);
       expect(geometry.compositionTranslateY).toBeLessThanOrEqual(-40);
       expect(geometry.compositionTranslateY).toBeGreaterThanOrEqual(-60);
       expect(geometry.compositionTopInset).toBeGreaterThanOrEqual(0);
       expect(geometry.compositionBottomInset).toBeGreaterThanOrEqual(0);
-      if (width > 900) expect(geometry.actionGroupWidth / geometry.identityCopyWidth).toBeGreaterThanOrEqual(0.72);
-      if (width > 900) expect(geometry.actionGroupWidth / geometry.identityCopyWidth).toBeLessThanOrEqual(0.8);
-      expect(geometry.memberText).toEqual(["Member since July 2026", "Pacific Northwest"]);
+      if (width > 900) expect(geometry.actionGroupWidth / geometry.identityCopyWidth).toBeGreaterThanOrEqual(0.48);
+      if (width > 900) expect(geometry.actionGroupWidth / geometry.identityCopyWidth).toBeLessThanOrEqual(0.56);
+      expect(geometry.memberText).toEqual(["Pacific Northwest", "Member since July 2026"]);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
       expect(geometry.avatarWidth).toBeGreaterThanOrEqual(width <= 680 ? 108 : 136);
       expect(geometry.height).toBeLessThanOrEqual(width <= 680 ? 750 : 620);
@@ -3227,7 +3233,8 @@ test.describe("local Developer Scenarios", () => {
       height: element.getBoundingClientRect().height,
     }));
     expect(Math.abs(fallbackAvatarGeometry.width - fallbackAvatarGeometry.height)).toBeLessThanOrEqual(1);
-    await expect(visitorHero.getByRole("button", { name: "Share Profile", exact: true })).toBeVisible();
+    await expect(visitorHero.getByRole("button", { name: "Share Profile", exact: true })).toHaveCount(0);
+    await expect(visitorHero.getByRole("button", { name: "Report", exact: true })).toBeVisible();
     await expect(visitorHero.getByRole("link", { name: "Edit Profile", exact: true })).toHaveCount(0);
     await expect(visitorHero).not.toContainText(/Message|Messaging|Followers|Following/i);
     expect(consoleErrors).toEqual([]);
