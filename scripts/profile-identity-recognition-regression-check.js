@@ -161,15 +161,24 @@ requireAll(sharedProfileBody, [
   "data-person-profile-grow-id-target",
   "data-grow-id-qr",
   "getGrowProfilePublicUrl(growIdHandle)",
+  "View Grow ID",
+  "data-grow-id-open",
 ], "Person Profile editorial identity and canonical Grow ID composition");
 requireAll(appSource, [
   "function renderGrowIdQrCode(target, profileUrl = \"\", options = {})",
   "function renderGrowIdQrCodes(scope = document)",
   "renderGrowIdQrCode(target, target.getAttribute(\"data-grow-id-qr\")",
   "void renderGrowIdQrCodes(app)",
+  "void openGrowIdModal()",
 ], "canonical Grow ID QR renderer reuse");
 if (/new QRCode|new QRCodeCtor/.test(sharedProfileBody)) {
   throw new Error("Person Profile must reuse the canonical Grow ID QR renderer instead of creating a second QR implementation.");
+}
+if ((sharedProfileBody.match(/data-grow-id-open/g) || []).length !== 1) {
+  throw new Error("Person Profile must render exactly one View Grow ID action.");
+}
+if (appSource.split(`app.querySelector("[data-grow-id-open='true']")`).length - 1 !== 1) {
+  throw new Error("Person Profile must bind the existing Grow ID modal handler exactly once.");
 }
 const locationMetaPosition = sharedProfileBody.indexOf("context.locationLabel");
 const joinedMetaPosition = sharedProfileBody.indexOf("context.joinedLabel");

@@ -3479,6 +3479,7 @@ test.describe("local Developer Scenarios", () => {
     const editorial = profile.locator("[data-person-profile-editorial-identity='true']");
     const growId = editorial.locator("[data-person-profile-grow-id='true']");
     const qr = growId.locator("[data-grow-id-qr]");
+    const growIdAction = growId.getByRole("button", { name: "View Grow ID", exact: true });
     const canonicalTarget = await page.evaluate(() => getGrowProfilePublicUrl("morgan-green"));
 
     await expect(profile).toHaveAttribute("data-profile-viewer", "owner");
@@ -3490,6 +3491,8 @@ test.describe("local Developer Scenarios", () => {
     await expect(growId).toHaveAttribute("data-person-profile-grow-id-target", canonicalTarget);
     await expect(qr).toHaveAttribute("data-grow-id-qr", canonicalTarget);
     await expect(qr).toHaveAttribute("aria-label", "Grow ID QR code for @morgan-green");
+    await expect(growIdAction).toHaveCount(1);
+    await expect(growIdAction).toBeVisible();
     await expect.poll(() => qr.getAttribute("data-grow-id-qr-ready")).toBe("true");
     await expect.poll(() => qr.evaluate((element) => (
       Array.from(element.querySelectorAll("canvas, img, svg")).some((child) => {
@@ -3505,6 +3508,7 @@ test.describe("local Developer Scenarios", () => {
       const geometry = await editorial.evaluate((section) => {
         const qrElement = section.querySelector(".person-profile-grow-id-qr");
         const qrRect = qrElement.getBoundingClientRect();
+        const actionRect = section.querySelector(".person-profile-grow-id-action").getBoundingClientRect();
         return {
           qrWidth: qrRect.width,
           qrHeight: qrRect.height,
@@ -3512,21 +3516,40 @@ test.describe("local Developer Scenarios", () => {
           qrRight: qrRect.right,
           viewportWidth: document.documentElement.clientWidth,
           documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          actionHeight: actionRect.height,
+          actionLeft: actionRect.left,
+          actionRight: actionRect.right,
         };
       });
       expect(geometry.qrWidth).toBeGreaterThanOrEqual(160);
       expect(geometry.qrHeight).toBeGreaterThanOrEqual(160);
       expect(geometry.qrLeft).toBeGreaterThanOrEqual(0);
       expect(geometry.qrRight).toBeLessThanOrEqual(geometry.viewportWidth);
+      expect(geometry.actionHeight).toBeGreaterThanOrEqual(44);
+      expect(geometry.actionLeft).toBeGreaterThanOrEqual(0);
+      expect(geometry.actionRight).toBeLessThanOrEqual(geometry.viewportWidth);
       expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
     }
 
     await page.setViewportSize({ width: 1280, height: 1000 });
+    await growIdAction.click();
+    const growIdModal = page.locator("dialog.grow-id-modal");
+    await expect(growIdModal).toBeVisible();
+    const modalContext = await page.evaluate(() => getCurrentGrowIdContext());
+    await expect(growIdModal.getByRole("heading", { name: modalContext.growId, exact: true })).toBeVisible();
+    await expect(growIdModal.locator("dd", { hasText: modalContext.displayName }).first()).toBeVisible();
+    const modalQr = growIdModal.locator("[data-grow-id-qr]");
+    await expect(modalQr).toHaveAttribute("data-grow-id-qr", modalContext.profileUrl);
+    await expect.poll(() => modalQr.getAttribute("data-grow-id-qr-ready")).toBe("true");
+    await growIdModal.getByRole("button", { name: "Close Grow ID", exact: true }).click();
+    await expect(growIdModal).toHaveCount(0);
+
     await profile.getByRole("button", { name: "Public Profile", exact: true }).click();
     await expect(profile).toHaveAttribute("data-profile-viewer", "visitor");
     const previewGrowId = profile.locator("[data-person-profile-grow-id='true']");
     await expect(previewGrowId).toHaveAttribute("data-person-profile-grow-id-target", canonicalTarget);
     await expect(previewGrowId.locator("[data-grow-id-qr]")).toHaveAttribute("data-grow-id-qr", canonicalTarget);
+    await expect(previewGrowId.getByRole("button", { name: "View Grow ID", exact: true })).toHaveCount(0);
 
     const fallbackContract = await page.evaluate(() => {
       const render = (isOwner) => {
