@@ -3204,8 +3204,9 @@ test.describe("local Developer Scenarios", () => {
     const before = await page.evaluate(() => ({
       coverImageUrl: getCurrentProfilePageSettings().coverImageUrl,
       catalogStatus: window.ProfileHeroCatalog.getStatus(),
+      defaultPersonHeroId: window.ProfileHeroCatalog.getDefault("person")?.id || "",
     }));
-    expect(before.catalogStatus).toMatch(/loaded|failed/);
+    expect(before.catalogStatus).toBe("loaded");
     await page.evaluate(() => openProfileEditor());
 
     const modal = page.locator("#profile-modal");
@@ -3229,7 +3230,8 @@ test.describe("local Developer Scenarios", () => {
       expect(responsive.choiceWidth).toBeGreaterThanOrEqual(width <= 390 ? 110 : 140);
     }
     await page.setViewportSize({ width: 1280, height: 1000 });
-    await expect(picker.locator("[data-profile-hero-id='seed-pods-dreamy-garden']")).toHaveAttribute("aria-checked", "true");
+    expect(before.defaultPersonHeroId).toBeTruthy();
+    await expect(picker.locator(`[data-profile-hero-id='${before.defaultPersonHeroId}']`)).toHaveAttribute("aria-checked", "true");
 
     const starryChoice = picker.locator("[data-profile-hero-id='starry-garden-retreat']");
     await starryChoice.click();

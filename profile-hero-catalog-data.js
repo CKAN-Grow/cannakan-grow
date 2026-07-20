@@ -3,9 +3,9 @@
 globalThis.CANNAKAN_PROFILE_HERO_CATALOG_FALLBACK = {
   "person": [
     {
-      "id": "seed-pods-dreamy-garden",
-      "title": "Seed Pods in a Dreamy Garden",
-      "file": "person/default-Seed pods in a dreamy garden.png",
+      "id": "new-life-golden-light",
+      "title": "New Life in Golden Light",
+      "file": "person/New life in golden light.png",
       "default": true
     }
   ],
