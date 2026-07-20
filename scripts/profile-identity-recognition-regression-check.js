@@ -90,6 +90,41 @@ requireAll(appSource, [
   'rpc("admin_manage_user_recognition"',
 ], "profile Recognition presentation");
 
+const growIdHandleStart = appSource.indexOf("function getPublicMemberProfileGrowIdHandle(profile = null)");
+const growIdHandleEnd = appSource.indexOf("function getGrowIdPreferredBase", growIdHandleStart);
+const publicProfileNormalizerStart = appSource.indexOf("function normalizePublicMemberProfileRow");
+const publicProfileNormalizerEnd = appSource.indexOf("function isPublicMemberProfilesViewUnavailableError", publicProfileNormalizerStart);
+const publicProfileMergeStart = appSource.indexOf("function mergePublicMemberProfileRecord");
+const publicProfileMergeEnd = appSource.indexOf("function getPublicMemberProfile", publicProfileMergeStart);
+if ([growIdHandleStart, growIdHandleEnd, publicProfileNormalizerStart, publicProfileNormalizerEnd, publicProfileMergeStart, publicProfileMergeEnd].some((position) => position < 0)) {
+  throw new Error("Could not inspect canonical Person Profile handle adapters.");
+}
+const growIdHandleBody = appSource.slice(growIdHandleStart, growIdHandleEnd);
+const publicProfileNormalizerBody = appSource.slice(publicProfileNormalizerStart, publicProfileNormalizerEnd);
+const publicProfileMergeBody = appSource.slice(publicProfileMergeStart, publicProfileMergeEnd);
+requireAll(growIdHandleBody, [
+  "profile.username || profile.publicHandle || profile.public_handle || profile.handle",
+], "canonical Grow Identity username precedence for Profile handles");
+requireAll(publicProfileNormalizerBody, [
+  'const canonicalUsername = normalizePublicProfileHandle(row.username || "");',
+  "canonicalUsername || row.public_handle || row.publicHandle || row.handle",
+  "username: canonicalUsername",
+], "canonical Grow Identity username preservation in public Profile normalization");
+requireAll(publicProfileMergeBody, [
+  "primaryProfile?.username || fallbackProfile?.username",
+  "username: canonicalUsername",
+  "canonicalUsername || primaryProfile?.publicHandle || fallbackProfile?.publicHandle",
+], "canonical Grow Identity username preservation in merged Person Profiles");
+
+requireAll(appSource, [
+  "async function loadMyCanonicalGrowIdentity",
+  'rpc("get_my_grow_identity")',
+  "appState.myGrowIdentity = identity;",
+  'loadMyCanonicalGrowIdentity("route:my-grow-profile")',
+  'getGrowIdHandle(appState.myGrowIdentity?.username || "")',
+  "authenticatedGrowIdentityHandle || getPublicMemberProfileGrowIdHandle(currentPublicProfile)",
+], "authenticated Person Profile canonical Grow Identity handle flow");
+
 requireAll(appSource, [
   "appState.identityRecognitionLoaded = true;",
   "appState.publicIdentityRecognition[normalizedUserId] = null;",
