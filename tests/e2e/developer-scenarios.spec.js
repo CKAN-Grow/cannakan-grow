@@ -3459,6 +3459,110 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("unifies From the Grower with the canonical My Grow ID", async ({ page }) => {
+    const consoleErrors = [];
+    const requestFailures = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+    page.on("requestfailed", (request) => {
+      requestFailures.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText || "failed"}`);
+    });
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+    await page.goto("/#grow-profile");
+
+    const profile = page.locator("[data-person-grow-profile='true']");
+    const editorial = profile.locator("[data-person-profile-editorial-identity='true']");
+    const growId = editorial.locator("[data-person-profile-grow-id='true']");
+    const qr = growId.locator("[data-grow-id-qr]");
+    const canonicalTarget = await page.evaluate(() => getGrowProfilePublicUrl("morgan-green"));
+
+    await expect(profile).toHaveAttribute("data-profile-viewer", "owner");
+    await expect(editorial).toHaveAttribute("data-profile-note-source", "grower");
+    await expect(editorial.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
+    await expect(editorial.locator("blockquote")).not.toBeEmpty();
+    await expect(growId.getByRole("heading", { name: "My Grow ID", exact: true })).toBeVisible();
+    await expect(growId.locator(".person-profile-grow-id-handle")).toHaveText("@morgan-green");
+    await expect(growId).toHaveAttribute("data-person-profile-grow-id-target", canonicalTarget);
+    await expect(qr).toHaveAttribute("data-grow-id-qr", canonicalTarget);
+    await expect(qr).toHaveAttribute("aria-label", "Grow ID QR code for @morgan-green");
+    await expect.poll(() => qr.getAttribute("data-grow-id-qr-ready")).toBe("true");
+    await expect.poll(() => qr.evaluate((element) => (
+      Array.from(element.querySelectorAll("canvas, img, svg")).some((child) => {
+        const rect = child.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      })
+    ))).toBe(true);
+
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(editorial).toBeVisible();
+      await expect(qr).toBeVisible();
+      const geometry = await editorial.evaluate((section) => {
+        const qrElement = section.querySelector(".person-profile-grow-id-qr");
+        const qrRect = qrElement.getBoundingClientRect();
+        return {
+          qrWidth: qrRect.width,
+          qrHeight: qrRect.height,
+          qrLeft: qrRect.left,
+          qrRight: qrRect.right,
+          viewportWidth: document.documentElement.clientWidth,
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      expect(geometry.qrWidth).toBeGreaterThanOrEqual(160);
+      expect(geometry.qrHeight).toBeGreaterThanOrEqual(160);
+      expect(geometry.qrLeft).toBeGreaterThanOrEqual(0);
+      expect(geometry.qrRight).toBeLessThanOrEqual(geometry.viewportWidth);
+      expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await profile.getByRole("button", { name: "Public Profile", exact: true }).click();
+    await expect(profile).toHaveAttribute("data-profile-viewer", "visitor");
+    const previewGrowId = profile.locator("[data-person-profile-grow-id='true']");
+    await expect(previewGrowId).toHaveAttribute("data-person-profile-grow-id-target", canonicalTarget);
+    await expect(previewGrowId.locator("[data-grow-id-qr]")).toHaveAttribute("data-grow-id-qr", canonicalTarget);
+
+    const fallbackContract = await page.evaluate(() => {
+      const render = (isOwner) => {
+        const host = document.createElement("div");
+        const profileUrl = getGrowProfilePublicUrl("fern-archive");
+        host.innerHTML = renderPersonGrowProfileMarkup({
+          isOwner,
+          displayName: "Fern Archive",
+          handle: "fern-archive",
+          profileUrl,
+          note: "",
+          collections: [],
+          sessions: [],
+          snapshots: [],
+          connections: [],
+        });
+        const section = host.querySelector("[data-person-profile-editorial-identity]");
+        return {
+          source: section?.getAttribute("data-profile-note-source") || "",
+          text: section?.textContent || "",
+          target: section?.querySelector("[data-person-profile-grow-id-target]")?.getAttribute("data-person-profile-grow-id-target") || "",
+        };
+      };
+      return { owner: render(true), visitor: render(false), target: getGrowProfilePublicUrl("fern-archive") };
+    });
+    expect(fallbackContract.owner.source).toBe("owner-guidance");
+    expect(fallbackContract.owner.text).toContain("Add one sentence that sounds like you");
+    expect(fallbackContract.visitor.source).toBe("grow-fallback");
+    expect(fallbackContract.visitor.text).toContain("This grower’s story is still taking root.");
+    expect(fallbackContract.visitor.text).not.toMatch(/Add your note|Add one sentence|no bio/i);
+    expect(fallbackContract.owner.target).toBe(fallbackContract.target);
+    expect(fallbackContract.visitor.target).toBe(fallbackContract.target);
+    expect(consoleErrors).toEqual([]);
+    expect(requestFailures).toEqual([]);
+  });
+
   test("keeps the curated Profile identity and Recognition on one profile fixture", async ({ page }) => {
     await page.goto("/#profile");
     await useFullGrowDemo(page);

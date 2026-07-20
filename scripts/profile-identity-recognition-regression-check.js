@@ -118,7 +118,7 @@ const featuredPosition = renderedProfileBody.indexOf("renderPersonProfileFeature
 const footerPosition = renderedProfileBody.indexOf("person-profile-footer-cta");
 if (!(heroPosition >= 0 && heroPosition < notePosition
   && notePosition < collectionPosition && collectionPosition < featuredPosition && featuredPosition < footerPosition)) {
-  throw new Error("Person Grow Profile order must remain Hero → From the Grower → Featured Collections → Featured Sections → supporting footer.");
+  throw new Error("Person Grow Profile order must remain Hero → From the Grower + Grow ID → Featured Collections → Featured Sections → supporting footer.");
 }
 
 requireAll(appSource, [
@@ -149,8 +149,27 @@ requireAll(appSource, [
   "Public Profile",
   "Edit Profile",
 ], "canonical Person Profile language");
-if (/Share Profile|data-grow-id-open|data-person-profile-share/.test(sharedProfileBody)) {
+const renderedHeroBody = renderedProfileBody.slice(0, notePosition);
+if (/Share Profile|data-grow-id-open|data-person-profile-share/.test(renderedHeroBody)) {
   throw new Error("Person Profile Hero must leave sharing to the Grow ID experience.");
+}
+requireAll(sharedProfileBody, [
+  "data-person-profile-editorial-identity",
+  "data-profile-note-source",
+  "This grower’s story is still taking root.",
+  "My Grow ID",
+  "data-person-profile-grow-id-target",
+  "data-grow-id-qr",
+  "getGrowProfilePublicUrl(growIdHandle)",
+], "Person Profile editorial identity and canonical Grow ID composition");
+requireAll(appSource, [
+  "function renderGrowIdQrCode(target, profileUrl = \"\", options = {})",
+  "function renderGrowIdQrCodes(scope = document)",
+  "renderGrowIdQrCode(target, target.getAttribute(\"data-grow-id-qr\")",
+  "void renderGrowIdQrCodes(app)",
+], "canonical Grow ID QR renderer reuse");
+if (/new QRCode|new QRCodeCtor/.test(sharedProfileBody)) {
+  throw new Error("Person Profile must reuse the canonical Grow ID QR renderer instead of creating a second QR implementation.");
 }
 const locationMetaPosition = sharedProfileBody.indexOf("context.locationLabel");
 const joinedMetaPosition = sharedProfileBody.indexOf("context.joinedLabel");
