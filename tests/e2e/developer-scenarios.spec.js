@@ -3486,7 +3486,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(editorial).toHaveAttribute("data-profile-note-source", "grower");
     await expect(editorial.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
     await expect(editorial.locator(".person-profile-note-copy .eyebrow")).toHaveText("FROM THE GROWER");
-    const artworkResponse = await page.request.get("/assets/images/profile/from-the-grower-journal.png");
+    const artworkResponse = await page.request.get("/assets/images/profile/editorial-profile-illustration.png");
     expect(artworkResponse.status()).toBe(200);
     await expect(editorial.locator("blockquote")).not.toBeEmpty();
     await expect(growId.getByRole("heading", { name: "My Grow ID", exact: true })).toBeVisible();
@@ -3536,7 +3536,7 @@ test.describe("local Developer Scenarios", () => {
           actionRight: actionRect.right,
         };
       });
-      expect(geometry.artworkBackground).toContain("/assets/images/profile/from-the-grower-journal.png");
+      expect(geometry.artworkBackground).toContain("/assets/images/profile/editorial-profile-illustration.png");
       expect(geometry.growIdBackground).toBe("none");
       expect(geometry.growIdBorderLeft).toBe("0px");
       if (width > 680) {

@@ -88672,7 +88672,7 @@ img.person-profile-avatar {
   inset: clamp(18px, 2.2vw, 30px) auto clamp(16px, 2vw, 26px) clamp(14px, 2vw, 28px);
   z-index: 0;
   width: clamp(240px, 24vw, 340px);
-  background: url("/assets/images/profile/from-the-grower-journal.png") left center / contain no-repeat;
+  background: url("/assets/images/profile/editorial-profile-illustration.png") left center / contain no-repeat;
   content: "";
   filter: saturate(0.76) sepia(0.08) brightness(0.82);
   opacity: 0.62;
