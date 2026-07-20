@@ -1,0 +1,29 @@
+{
+  "person": [
+    { "id": "breeding-notes", "title": "Breeding Notes", "file": "person/Breeding notes in a botanical workspace.png" },
+    { "id": "greenhouse-wide", "title": "Greenhouse", "file": "person/c-greenhouse.png" },
+    { "id": "cozy-nighttime-garden-retreat", "title": "Cozy Nighttime Garden Retreat", "file": "person/Cozy-nighttime-garden-retreat.png" },
+    { "id": "seed-pods-dreamy-garden", "title": "Seed Pods in a Dreamy Garden", "file": "person/default-Seed pods in a dreamy garden.png", "default": true },
+    { "id": "frosted-cannabis-bud-seeds", "title": "Frosted Cannabis Bud with Seeds", "file": "person/Frosted cannabis bud with seeds.png" },
+    { "id": "golden-seed-earth", "title": "Golden Seed on Earth", "file": "person/Golden seed on earthy surface.png" },
+    { "id": "in-the-garden", "title": "In the Garden", "file": "person/in-the-garden.png" },
+    { "id": "indoor-garden-journal", "title": "Indoor Garden Journal", "file": "person/Indoor garden workspace with grow journal.png" },
+    { "id": "indoor-grow-technology", "title": "Indoor Grow Technology", "file": "person/Indoor grow space with plants and tech.png" },
+    { "id": "natural-wood", "title": "Natural Wood", "file": "person/natural wood.png" },
+    { "id": "neon-hexagons", "title": "Neon Hexagons", "file": "person/Neon hexagons in dark geometry.png" },
+    { "id": "new-life-golden-light", "title": "New Life in Golden Light", "file": "person/New life in golden light.png" },
+    { "id": "plant-in-sun", "title": "Plant in the Sun", "file": "person/plant-in-sun.png" },
+    { "id": "seedling-greenhouse", "title": "Seedling Greenhouse", "file": "person/seedling-greenhouse.png" },
+    { "id": "seeds-dark-atmosphere", "title": "Seeds in a Dark Atmosphere", "file": "person/Seeds in dark atmosphere.png" },
+    { "id": "starry-garden-retreat", "title": "Starry Garden Retreat", "file": "person/Starry garden retreat under the Milky Way.png" },
+    { "id": "sunlit-forest-sprout", "title": "Sunlit Forest Sprout", "file": "person/Sunlit forest sprout in morning light.png" }
+  ],
+  "source": [
+    { "id": "rustic-seed-collection", "title": "Rustic Seed Collection", "file": "sources/defaul-Rustic seed collection on wooden table.png", "default": true },
+    { "id": "textured-seed-pile", "title": "Textured Seed Pile", "file": "sources/Textured seed pile with dark backdrop.png" }
+  ],
+  "breeder": [
+    { "id": "botanical-breeding-laboratory", "title": "Botanical Breeding Laboratory", "file": "breeder/default-Botanical study and seed breeding laboratory.png", "default": true },
+    { "id": "seed-preservation-dark", "title": "Seed Preservation", "file": "breeder/Seed preservation in dark ambiance.png" }
+  ]
+}

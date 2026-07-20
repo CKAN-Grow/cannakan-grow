@@ -90,28 +90,91 @@ requireAll(appSource, [
   'rpc("admin_manage_user_recognition"',
 ], "profile Recognition presentation");
 
-const ownProfileStart = appSource.indexOf("function renderGrowNetworkPage()");
+requireAll(appSource, [
+  "appState.identityRecognitionLoaded = true;",
+  "appState.publicIdentityRecognition[normalizedUserId] = null;",
+  ".then((recognition) => {",
+  "if (recognition && activeRoute.startsWith(\"members/\")) renderPublicMemberProfile(normalizedId);",
+  "if (recognition && getCurrentAppRawRoute().split(\"/\")[0] === \"grow-profile\") renderMyGrowProfilePage();",
+], "idempotent Profile Recognition failure handling");
+const sharedProfileStart = appSource.indexOf("function renderPersonGrowProfileMarkup(context = {})");
+const sharedProfileEnd = appSource.indexOf("function bindPersonGrowProfileInteractions", sharedProfileStart);
+const publicProfileStart = appSource.indexOf("function renderPublicMemberProfile(memberId)");
+const publicProfileEnd = appSource.indexOf("function normalizeCanonicalGrowNetworkRelationship", publicProfileStart);
+const ownProfileStart = appSource.indexOf("function renderMyGrowProfilePage()");
 const ownProfileEnd = appSource.indexOf("function getSessionDetailElements", ownProfileStart);
-if (ownProfileStart < 0 || ownProfileEnd < 0) throw new Error("Could not inspect My Grow Profile renderer.");
+if ([sharedProfileStart, sharedProfileEnd, publicProfileStart, publicProfileEnd, ownProfileStart, ownProfileEnd].some((position) => position < 0)) {
+  throw new Error("Could not inspect canonical Person Grow Profile renderers.");
+}
+const sharedProfileBody = appSource.slice(sharedProfileStart, sharedProfileEnd);
+const publicProfileBody = appSource.slice(publicProfileStart, publicProfileEnd);
 const ownProfileBody = appSource.slice(ownProfileStart, ownProfileEnd);
-const identityPosition = ownProfileBody.indexOf('aria-label="My Grow Home identity"');
-const recognitionPosition = ownProfileBody.indexOf("renderProfileRecognitionSectionMarkup");
-const summaryPosition = ownProfileBody.indexOf('aria-label="Your Grow Summary"');
-const trendPosition = ownProfileBody.indexOf('aria-label="Germination Trend"');
-if (!(identityPosition >= 0 && identityPosition < recognitionPosition
-  && recognitionPosition < summaryPosition && summaryPosition < trendPosition)) {
-  throw new Error("Grow Profile order must remain Identity → Recognition → Summary → Trend.");
+const outputStart = sharedProfileBody.lastIndexOf("return [");
+const renderedProfileBody = sharedProfileBody.slice(outputStart);
+const heroPosition = renderedProfileBody.indexOf("person-profile-hero ");
+const notePosition = renderedProfileBody.indexOf("noteMarkup");
+const collectionPosition = renderedProfileBody.indexOf("collectionsMarkup");
+const featuredPosition = renderedProfileBody.indexOf("renderPersonProfileFeaturedSectionsMarkup");
+const footerPosition = renderedProfileBody.indexOf("person-profile-footer-cta");
+if (!(heroPosition >= 0 && heroPosition < notePosition
+  && notePosition < collectionPosition && collectionPosition < featuredPosition && featuredPosition < footerPosition)) {
+  throw new Error("Person Grow Profile order must remain Hero → From the Grower → Featured Collections → Featured Sections → supporting footer.");
 }
 
+requireAll(appSource, [
+  "data-person-grow-profile",
+  "data-profile-viewer",
+  "data-public-preview",
+  "data-person-profile-module-count",
+  "buildPersonProfileFeaturedModules",
+  "return modules.slice(0, 3)",
+  "getApprovedPublicSnapshotsForMember",
+  "getPersonProfileCollectionCards(true)",
+  "appState.canonicalGrowNetwork.connections",
+], "canonical curated Person Profile composition");
+
+["Germination Trend", "Total Followers", "People You Follow", "Your Grow Summary", "aria-label=\"My Grow Home identity\""].forEach((obsoleteCopy) => {
+  if (publicProfileBody.includes(obsoleteCopy) || ownProfileBody.includes(obsoleteCopy)) {
+    throw new Error("Canonical Person Profile must not retain obsolete dashboard presentation: " + obsoleteCopy);
+  }
+});
+
+requireAll(appSource, [
+  "From the Grower",
+  "Featured Collections",
+  "GROW JOURNEY",
+  "SHARED SNAPSHOTS",
+  "GROW NETWORK",
+  "Connections that help Grow",
+  "Preview Public Profile",
+  "Share Profile",
+], "canonical Person Profile language");
+if (/Followers|Following|Message|Messaging/.test(sharedProfileBody)) {
+  throw new Error("Person Profile must use Connections terminology and must not expose messaging.");
+}
 requireAll(stylesSource, [
   ".profile-recognition-section",
-  ".profile-recognition-row",
-  "grid-template-columns: repeat(3, minmax(0, 1fr))",
-  "@media (max-width: 640px)",
-  "overflow-x: auto",
-  "scroll-snap-type: inline proximity",
   ".profile-recognition-gallery-card.is-locked",
-], "responsive compact Recognition styles");
+  "/* Canonical Person Grow Profile */",
+  ".person-grow-profile",
+  "width: min(100%, 1280px)",
+  ".person-profile-hero",
+  "rgba(3, 7, 6, 0.88)",
+  "rgba(4, 8, 7, 0.12)",
+  "filter: saturate(0.92) contrast(1.06) brightness(0.88)",
+  "min-height: 480px",
+  "width: clamp(136px, 14vw, 184px)",
+  ".person-grow-profile .profile-featured-recognition",
+  "background: transparent",
+  "text-shadow: 0 0 14px",
+  ".person-profile-note-section",
+  ".person-profile-collections",
+  ".person-profile-featured-sections.is-count-1",
+  ".person-profile-featured-sections.is-count-2",
+  ".person-profile-featured-sections.is-count-3",
+  "@media (max-width: 680px)",
+  "@media (prefers-reduced-motion: reduce)",
+], "responsive canonical Person Profile styles");
 
 requireNeedle(appSource, "function renderCommunityRecognitionIconMarkup", "existing Community Award renderer");
 requireNeedle(migrationSource, "Community Awards remain session-scoped", "Community Award data-model separation");

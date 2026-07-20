@@ -1,9 +1,12 @@
-const CACHE_NAME = "cannakan-grow-shell-v30-semantic-colors";
+const CACHE_NAME = "cannakan-grow-shell-v33-profile-hero-metadata";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/profile-hero-catalog-data.js",
+  "/profile-hero-catalog.js",
+  "/assets/images/profile-heroes/catalog.json",
   "/supabase-config.js",
   "/manifest.json",
   "/favicon.ico",
@@ -18,6 +21,8 @@ const NETWORK_FIRST_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/profile-hero-catalog.js",
+  "/assets/images/profile-heroes/catalog.json",
   "/supabase-config.js",
   "/manifest.json",
 ]);

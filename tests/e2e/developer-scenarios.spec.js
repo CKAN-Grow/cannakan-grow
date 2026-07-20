@@ -547,11 +547,11 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator(".seed-vault-overview-collections")).toContainText("Favorites");
     await expectNoFullGrowPlaceholders(page);
 
-    await page.goto("/#network");
-    await expect(page.locator(".grow-network-page")).toContainText("Morgan Green");
-    await expect(page.locator(".grow-network-page")).toContainText("Founding Grower");
-    await expect(page.getByRole("heading", { name: "Germination Trend" })).toBeVisible();
-    await expect(page.locator(".grow-network-page")).not.toContainText("Complete a session and record results to begin");
+    await page.goto("/#grow-profile");
+    await expect(page.locator("[data-person-grow-profile='true']")).toContainText("Morgan Green");
+    await expect(page.locator("[data-person-grow-profile='true']")).toContainText("Founding Grower");
+    await expect(page.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Featured Collections", exact: true })).toBeVisible();
     await expectNoFullGrowPlaceholders(page);
 
     await page.goto("/#gallery");
@@ -559,6 +559,64 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.getByRole("heading", { name: "Scenario Community Analytics" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("Loading");
     await expectNoFullGrowPlaceholders(page);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("Grow Network uses reciprocal Grow Identity connections and privacy-aware discovery", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+    await page.goto("/#network");
+
+    const network = page.locator("[data-grow-network-page='true']");
+    await expect(network).toHaveAttribute("data-grow-network-loaded", "true");
+    await expect(page.getByRole("heading", { name: "Grow Network", exact: true })).toBeVisible();
+    await expect(page.locator("[data-grow-network-metric='connections']")).toHaveText("4");
+    await expect(page.locator("[data-grow-network-metric='growers']")).toHaveText("2");
+    await expect(page.locator("[data-grow-network-metric='sources']")).toHaveText("1");
+    await expect(page.locator("[data-grow-network-metric='breeders']")).toHaveText("1");
+
+    const connections = page.locator("[data-grow-network-connections] [data-grow-network-member]");
+    await expect(connections).toHaveCount(4);
+    expect(await connections.evaluateAll((cards) => new Set(cards.map((card) => card.getAttribute("data-grow-network-member"))).size)).toBe(4);
+    await expect(page.locator("[data-grow-network-connections]")).toContainText("Avery Canopy");
+    await expect(page.locator("[data-grow-network-connections]")).toContainText("Community Contributor");
+    await expect(page.locator("[data-grow-network-connections]")).toContainText("Ontario, Canada");
+    await expect(page.locator("[data-grow-network-discovery]")).toContainText("Theo Greenhouse");
+    await expect(network).not.toContainText("Mika Fields");
+    await expect(network).not.toContainText("Casey Ridge");
+    await expect(network).not.toContainText(/Followers|Likes|social feed/i);
+    await expect(network.locator("[data-grow-network-requests], .my-grow-network-sidebar")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Sources", exact: true }).click();
+    await expect(page.locator("[data-grow-network-connections] [data-grow-network-role='source']")).toHaveCount(1);
+    await expect(page.locator("[data-grow-network-connections]")).toContainText("Riley Sprout");
+
+    await page.getByRole("button", { name: "All", exact: true }).click();
+    const search = page.locator("#grow-network-search");
+    await search.fill("Theo");
+    await page.getByRole("button", { name: "Discover Growers", exact: true }).click();
+    await expect(network).toHaveAttribute("data-grow-network-loaded", "true");
+    await expect(page.locator("[data-grow-network-discovery]")).toContainText("Theo Greenhouse");
+    await expect(page.locator("[data-grow-network-connections] [data-grow-network-member]")).toHaveCount(0);
+
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(page.getByRole("heading", { name: "Grow Network", exact: true })).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow).toBeLessThanOrEqual(1);
+      await expect(page.getByRole("button", { name: "Discover Growers", exact: true })).toBeVisible();
+    }
+
+    await page.goto("/#grow-profile");
+    await expect(page.locator("[data-person-grow-profile='true']")).toContainText("Morgan Green");
+    await expect(page.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
     expect(consoleErrors).toEqual([]);
   });
 
@@ -676,8 +734,9 @@ test.describe("local Developer Scenarios", () => {
 
     const hero = page.locator(".seed-vault-approved-hero");
     await expect(hero).toBeVisible();
-    const titleIcon = hero.locator("[data-seed-vault-title-icon='vault']");
+    const titleIcon = hero.locator("[data-seed-vault-title-icon='lock'][data-seed-vault-access-state='personal']");
     await expect(titleIcon).toBeVisible();
+    await expect(titleIcon).toHaveAccessibleName("Vault access: Personal");
     await expect(titleIcon.locator("svg")).toHaveCount(1);
 
     const metricIcons = hero.locator("[data-seed-vault-hero-metric-icon]");
@@ -2310,9 +2369,30 @@ test.describe("local Developer Scenarios", () => {
 
     await heroSearch.press("Enter");
     await expect.poll(async () => library.evaluate((node) => Math.abs(node.getBoundingClientRect().top))).toBeLessThanOrEqual(80);
-    const libraryScrollY = await page.evaluate(() => window.scrollY);
+    const measureSettledLibraryTop = () => library.evaluate(async (node) => {
+      const samples = [];
+      for (let index = 0; index < 4; index += 1) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        samples.push(node.getBoundingClientRect().top);
+      }
+      return {
+        top: samples.at(-1),
+        spread: Math.max(...samples) - Math.min(...samples),
+      };
+    });
+    await expect.poll(async () => (await measureSettledLibraryTop()).spread, {
+      message: "My Library should finish its initial smooth-scroll placement before measuring",
+    }).toBeLessThanOrEqual(0.5);
+    const libraryTopBeforeResubmit = (await measureSettledLibraryTop()).top;
     await page.locator("#my-seed-vault [data-seed-vault-hero-search-form='true']").evaluate((form) => form.requestSubmit());
-    await expect.poll(async () => Math.abs((await page.evaluate(() => window.scrollY)) - libraryScrollY)).toBeLessThanOrEqual(2);
+    await expect.poll(async () => {
+      const measurement = await measureSettledLibraryTop();
+      return measurement.spread <= 0.5
+        ? Math.abs(measurement.top - libraryTopBeforeResubmit)
+        : Number.POSITIVE_INFINITY;
+    }, {
+      message: "Resubmitting while My Library is visible must preserve its settled viewport position",
+    }).toBeLessThanOrEqual(2);
 
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.locator("#my-seed-vault [data-seed-vault-clear-filters='true']").click();
@@ -2351,7 +2431,7 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("Seed Vault footer settings remain balanced and accessible", async ({ page }) => {
+  test("Seed Vault Personal and Shared access presentation follows direct relationships", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
@@ -2366,37 +2446,52 @@ test.describe("local Developer Scenarios", () => {
     const theme = settings.locator(".seed-vault-theme-control");
     const sharing = settings.locator(".seed-vault-share-status");
     const shareButton = sharing.locator("[data-seed-vault-share='true']");
+    const heroAccessIcon = page.locator("#my-seed-vault [data-seed-vault-access-state='personal'][data-seed-vault-title-icon='lock']");
+    const sharingHub = page.locator("#my-seed-vault .seed-vault-sharing-hub");
+    const sharedByYou = sharingHub.locator("[data-seed-vault-shared-by-you='true']");
+    const sharedWithYou = sharingHub.locator("[data-seed-vault-shared-with-you='true']");
+
     await expect(settings).toBeVisible();
     await expect(theme).toContainText("Vault Theme");
-    await expect(sharing).toHaveAttribute("data-seed-vault-sharing-state", "private");
-    await expect(sharing.locator("#seed-vault-sharing-settings-title")).toHaveText("Private Vault");
-    await expect(sharing.locator(".seed-vault-sharing-settings-badge")).toHaveText("Private");
-    await expect(sharing).toContainText("Only you can view your Vault.");
-    await expect(sharing).toContainText("Invite others to view your Vault or collaborate on grows.");
+    await expect(sharing).toHaveAttribute("data-seed-vault-sharing-state", "personal");
+    await expect(sharing.locator("#seed-vault-sharing-settings-title")).toHaveText("Personal Vault");
+    await expect(sharing.locator(".seed-vault-sharing-settings-badge")).toHaveText("PERSONAL");
+    await expect(sharing.locator("[data-seed-vault-access-icon='lock']")).toHaveAccessibleName("Vault access: Personal");
+    await expect(sharing).toContainText("Only you can access this Vault.");
     await expect(shareButton).toHaveAccessibleName("Share Vault for your Seed Vault");
+    await expect(heroAccessIcon).toHaveAccessibleName("Vault access: Personal");
+    await expect(sharedByYou).toContainText("Not shared with anyone yet.");
+    await expect(sharedWithYou).toBeVisible();
 
     for (const width of [390, 768, 1024, 1280]) {
       await page.setViewportSize({ width, height: width <= 768 ? 900 : 820 });
       await expect(settings).toBeVisible();
       await expect(theme).toBeVisible();
       await expect(sharing).toBeVisible();
-      await expect(shareButton).toBeVisible();
-      const geometry = await settings.evaluate((node) => {
-        const themeCard = node.querySelector(".seed-vault-theme-control");
-        const sharingCard = node.querySelector(".seed-vault-share-status");
-        const action = node.querySelector("[data-seed-vault-share='true']");
+      await expect(sharingHub).toBeVisible();
+      const geometry = await page.locator("#my-seed-vault").evaluate((node) => {
+        const settingsNode = node.querySelector(".seed-vault-secondary-settings");
+        const themeCard = settingsNode.querySelector(".seed-vault-theme-control");
+        const sharingCard = settingsNode.querySelector(".seed-vault-share-status");
+        const title = sharingCard.querySelector("#seed-vault-sharing-settings-title").getBoundingClientRect();
+        const badge = sharingCard.querySelector(".seed-vault-sharing-settings-badge").getBoundingClientRect();
         const themeRect = themeCard.getBoundingClientRect();
         const sharingRect = sharingCard.getBoundingClientRect();
-        const actionRect = action.getBoundingClientRect();
+        const actionHeights = [...node.querySelectorAll(".seed-vault-share-status .button, .seed-vault-sharing-hub .button")]
+          .filter((button) => button.getClientRects().length > 0)
+          .map((button) => button.getBoundingClientRect().height);
         return {
           theme: { x: themeRect.x, y: themeRect.y, right: themeRect.right, bottom: themeRect.bottom, width: themeRect.width },
           sharing: { x: sharingRect.x, y: sharingRect.y, right: sharingRect.right, bottom: sharingRect.bottom, width: sharingRect.width },
-          actionHeight: actionRect.height,
+          titleBadgeSeparated: title.right <= badge.left + 0.5 || title.bottom <= badge.top + 0.5 || badge.bottom <= title.top + 0.5,
+          actionHeights,
           overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
         };
       });
       expect(geometry.overflow).toBeLessThanOrEqual(1);
-      expect(geometry.actionHeight).toBeGreaterThanOrEqual(44);
+      expect(geometry.actionHeights.length).toBeGreaterThan(0);
+      expect(geometry.actionHeights.every((height) => height >= 44)).toBe(true);
+      expect(geometry.titleBadgeSeparated).toBe(true);
       expect(geometry.theme.x).toBeGreaterThanOrEqual(0);
       expect(geometry.sharing.right).toBeLessThanOrEqual(width + 1);
       if (width > 960) {
@@ -2417,48 +2512,178 @@ test.describe("local Developer Scenarios", () => {
     });
     expect(focusTreatment.outline !== "none" || focusTreatment.shadow !== "none").toBe(true);
 
-    const sharedState = await page.evaluate(() => {
-      const host = document.createElement("div");
-      host.dataset.seedVaultSharingTestHost = "true";
-      host.innerHTML = renderSeedVaultShareStatusMarkup({ visibility: "link", publicSlug: "qa-vault" });
-      document.body.append(host);
-      const card = host.querySelector(".seed-vault-share-status");
-      const result = {
-        state: card?.getAttribute("data-seed-vault-sharing-state"),
-        title: card?.querySelector("#seed-vault-sharing-settings-title")?.textContent?.trim(),
-        badge: card?.querySelector(".seed-vault-sharing-settings-badge")?.textContent?.trim(),
-        action: card?.querySelector("[data-seed-vault-share='true'] > span:last-child")?.textContent?.trim(),
-      };
-      host.remove();
-      return result;
-    });
-    expect(sharedState).toEqual({ state: "shared", title: "Shared Vault", badge: "Share by Link", action: "Manage Sharing" });
+    await page.evaluate(() => openSeedVaultShareModal());
+    const modal = page.locator("#seed-vault-share-modal-overlay");
+    await expect(modal).toBeVisible();
+    await expect(modal.locator("#seed-vault-share-modal-title")).toHaveText("Vault Sharing");
+    await expect(modal.locator("[data-seed-vault-share-modal-description]")).toHaveText("This Vault is only accessible by you.");
+    await expect(modal.getByRole("heading", { name: "Shared With" })).toBeVisible();
+    await expect(modal.getByText("Find Grow User", { exact: true })).toBeVisible();
+    await expect(modal).not.toContainText("Public Sharing");
+    await expect(modal).not.toContainText("Public access");
+    await expect(modal.locator("[name='seedVaultShareVisibility']")).toHaveCount(0);
+    await expect(modal.getByRole("button", { name: "Save permissions" })).toHaveCount(0);
+    await expect(modal.locator(".seed-vault-form-actions button")).toHaveCount(1);
+    await expect(modal.locator(".seed-vault-form-actions button")).toHaveText("Done");
+    await modal.locator("[data-seed-vault-share-close='true']").last().click();
+    await expect(modal).toHaveCount(0);
 
-    const directShareState = await page.evaluate(() => {
+    await page.evaluate(async () => {
+      const sharedUser = {
+        shared_with_user_id: "recipient-mo",
+        display_name: "Mo Grower",
+        public_handle: "mo-grows",
+        can_view_quantity: false,
+        can_view_storage_location: false,
+        can_view_storage_notes: false,
+        can_view_notes: false,
+        active: true,
+      };
+      window.__seedVaultPermissionUpdates = [];
+      appState.user = { ...(appState.user || {}), id: appState.user?.id || "owner-user" };
+      appState.supabase = {
+        rpc: async (name, args = {}) => {
+          if (name === "get_seed_vault_user_shares") return { data: [sharedUser], error: null };
+          if (name === "upsert_seed_vault_user_share") {
+            window.__seedVaultPermissionUpdates.push({ name, args });
+            return {
+              data: {
+                ...sharedUser,
+                can_view_quantity: args.next_can_view_quantity,
+                can_view_storage_location: args.next_can_view_storage_location,
+                can_view_storage_notes: args.next_can_view_storage_notes,
+                can_view_notes: args.next_can_view_notes,
+              },
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        },
+      };
+      await openSeedVaultShareModal();
+    });
+
+    const sharedModal = page.locator("#seed-vault-share-modal-overlay");
+    const sharedRow = sharedModal.locator("[data-seed-vault-user-share-row='recipient-mo']");
+    await expect(sharedModal.locator("#seed-vault-share-modal-title")).toHaveText("Vault Sharing");
+    await expect(sharedModal.locator("[data-seed-vault-share-modal-description]")).toHaveText("Shared with 1 Grow User.");
+    await expect(sharedRow).toBeVisible();
+    await expect(sharedRow.getByText("Allowed to view", { exact: true })).toBeVisible();
+    await expect(sharedRow.getByRole("button", { name: "Save permissions" })).toHaveCount(0);
+    const quantityPermission = sharedRow.locator("[data-seed-vault-user-share-permission='canViewQuantities']");
+    await expect(quantityPermission).not.toBeChecked();
+    await quantityPermission.click();
+    await expect(sharedModal.locator("[data-seed-vault-share-message]")).toHaveText("Permissions updated.");
+    await expect(sharedModal.locator("[data-seed-vault-user-share-row='recipient-mo'] [data-seed-vault-user-share-permission='canViewQuantities']")).toBeChecked();
+    const permissionUpdates = await page.evaluate(() => window.__seedVaultPermissionUpdates);
+    expect(permissionUpdates).toHaveLength(1);
+    expect(permissionUpdates[0]).toMatchObject({
+      name: "upsert_seed_vault_user_share",
+      args: { target_user_id: "recipient-mo", next_can_view_quantity: true },
+    });
+    await sharedModal.locator("[data-seed-vault-share-close='true']").last().click();
+    await expect(sharedModal).toHaveCount(0);
+
+    const accessContracts = await page.evaluate(() => {
       const previousLoaded = appState.seedVaultUserSharesLoaded;
       const previousShares = appState.seedVaultUserShares;
+      const previousSharedWithMeLoaded = appState.seedVaultSharedWithMeLoaded;
+      const previousSharedWithMe = appState.seedVaultSharedWithMe;
       appState.seedVaultUserSharesLoaded = true;
-      appState.seedVaultUserShares = [{ userId: "qa-grower-one" }, { userId: "qa-grower-two" }];
-      const host = document.createElement("div");
-      host.innerHTML = renderSeedVaultShareStatusMarkup({ visibility: "private" });
-      const card = host.querySelector(".seed-vault-share-status");
-      const result = {
-        state: card?.getAttribute("data-seed-vault-sharing-state"),
-        title: card?.querySelector("#seed-vault-sharing-settings-title")?.textContent?.trim(),
-        badge: card?.querySelector(".seed-vault-sharing-settings-badge")?.textContent?.trim(),
-        description: card?.querySelector(".seed-vault-sharing-settings-description")?.textContent?.trim(),
-        support: card?.querySelector(".seed-vault-sharing-settings-support")?.textContent?.trim(),
+      appState.seedVaultSharedWithMeLoaded = true;
+
+      const renderContract = (shares, settings = { visibility: "private" }) => {
+        appState.seedVaultUserShares = shares;
+        const cardHost = document.createElement("div");
+        cardHost.innerHTML = renderSeedVaultShareStatusMarkup(settings);
+        const card = cardHost.querySelector(".seed-vault-share-status");
+        const heroHost = document.createElement("div");
+        heroHost.innerHTML = renderSeedVaultOwnerOverviewMarkup({ activeEntries: [] }, [], { searchQuery: "" }, [], { overview: {} });
+        const heroIcon = heroHost.querySelector("[data-seed-vault-title-icon]");
+        const hubHost = document.createElement("div");
+        hubHost.innerHTML = renderSeedVaultSharingHubMarkup(settings, [{
+          ownerUserId: "owner-alex",
+          userId: "owner-alex",
+          displayName: "Alex",
+          visibleEntryCount: 2,
+          active: true,
+        }], 1);
+        const hub = hubHost.querySelector(".seed-vault-sharing-hub");
+        return {
+          state: card?.getAttribute("data-seed-vault-sharing-state"),
+          title: card?.querySelector("#seed-vault-sharing-settings-title")?.textContent?.trim(),
+          badge: card?.querySelector(".seed-vault-sharing-settings-badge")?.textContent?.trim(),
+          description: card?.querySelector(".seed-vault-sharing-settings-description")?.textContent?.trim(),
+          action: card?.querySelector("[data-seed-vault-share='true'] > span:last-child")?.textContent?.trim(),
+          icon: card?.querySelector("[data-seed-vault-access-icon]")?.getAttribute("data-seed-vault-access-icon"),
+          iconLabel: card?.querySelector("[data-seed-vault-access-icon]")?.getAttribute("aria-label"),
+          heroState: heroIcon?.getAttribute("data-seed-vault-access-state"),
+          heroIcon: heroIcon?.getAttribute("data-seed-vault-title-icon"),
+          heroLabel: heroIcon?.getAttribute("aria-label"),
+          sharedByIds: [...hub.querySelectorAll("[data-seed-vault-shared-by-user]")].map((row) => row.getAttribute("data-seed-vault-shared-by-user")),
+          sharedByText: hub.querySelector("[data-seed-vault-shared-by-you]")?.textContent?.replace(/\s+/g, " ").trim(),
+          sharedWithOwnerIds: [...hub.querySelectorAll("[data-seed-vault-open-shared-owner]")].map((button) => button.getAttribute("data-seed-vault-open-shared-owner")),
+          hubText: hub.textContent?.replace(/\s+/g, " ").trim(),
+        };
       };
+
+      const personal = renderContract([], { visibility: "link", publicSlug: "legacy-link" });
+      const single = renderContract([
+        { userId: "recipient-mo", displayName: "Mo", publicHandle: "Cannakan", active: true },
+        { userId: "recipient-mo", displayName: "Duplicate Mo", active: true },
+      ]);
+      const multiple = renderContract([
+        { userId: "recipient-mo", displayName: "Mo", publicHandle: "Cannakan", active: true },
+        { userId: "recipient-sam", displayName: "Sam", publicHandle: "sam-grows", active: true },
+        { userId: "inactive-user", displayName: "Inactive", active: false },
+      ]);
+
       appState.seedVaultUserSharesLoaded = previousLoaded;
       appState.seedVaultUserShares = previousShares;
-      return result;
+      appState.seedVaultSharedWithMeLoaded = previousSharedWithMeLoaded;
+      appState.seedVaultSharedWithMe = previousSharedWithMe;
+      return { personal, single, multiple };
     });
-    expect(directShareState).toEqual({
+
+    expect(accessContracts.personal).toMatchObject({
+      state: "personal",
+      title: "Personal Vault",
+      badge: "PERSONAL",
+      description: "Only you can access this Vault.",
+      action: "Share Vault",
+      icon: "lock",
+      iconLabel: "Vault access: Personal",
+      heroState: "personal",
+      heroIcon: "lock",
+      heroLabel: "Vault access: Personal",
+      sharedByIds: [],
+      sharedWithOwnerIds: ["owner-alex"],
+    });
+    expect(accessContracts.personal.hubText).not.toMatch(/Public Vault|Private Vault|Share by Link/i);
+    expect(accessContracts.single).toMatchObject({
       state: "shared",
       title: "Shared Vault",
-      badge: "Direct Share",
-      description: "Shared privately with selected people.",
-      support: "2 people have direct access.",
+      badge: "SHARED",
+      description: "Shared with 1 person.",
+      action: "Manage Sharing",
+      icon: "people",
+      iconLabel: "Vault access: Shared with 1",
+      heroState: "shared",
+      heroIcon: "people",
+      heroLabel: "Vault access: Shared with 1",
+      sharedByIds: ["recipient-mo"],
+      sharedWithOwnerIds: ["owner-alex"],
+    });
+    expect(accessContracts.single.sharedByText).toMatch(/Mo|Duplicate Mo/);
+    expect(accessContracts.single.sharedByText).toContain("1 visible entry");
+    expect(accessContracts.single.hubText).not.toContain("Only you can access this Vault.");
+    expect(accessContracts.single.sharedByIds).not.toContain("owner-alex");
+    expect(accessContracts.single.sharedWithOwnerIds).not.toContain("recipient-mo");
+    expect(accessContracts.multiple).toMatchObject({
+      state: "shared",
+      description: "Shared with 2 people.",
+      sharedByIds: ["recipient-mo", "recipient-sam"],
+      sharedWithOwnerIds: ["owner-alex"],
     });
     expect(consoleErrors).toEqual([]);
   });
@@ -2783,20 +3008,346 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("main")).toContainText("Seedsman");
   });
 
-  test("keeps profile summary, trend, identity, and recognition on one profile fixture", async ({ page }) => {
+  test("Person Grow Profile Hero uses the cinematic fallback and viewer-aware identity composition", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+    await page.goto("/#home");
+    const catalogResponse = await page.request.get("/assets/images/profile-heroes/catalog.json");
+    expect(catalogResponse.ok()).toBe(true);
+    const catalog = await catalogResponse.json();
+    const personDefaults = catalog.person.filter((entry) => entry.default === true);
+    expect(personDefaults).toHaveLength(1);
+    const personDefault = personDefaults[0];
+    const personDefaultUrl = `/assets/images/profile-heroes/${personDefault.file.split("/").map(encodeURIComponent).join("/")}`;
+    const defaultAssetResponse = await page.request.get(personDefaultUrl);
+    expect(defaultAssetResponse.ok()).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.ProfileHeroCatalog?.getStatus())).toMatch(/loaded|failed/);
+
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.evaluate(() => {
+        app.innerHTML = renderPersonGrowProfileMarkup({
+          isOwner: true,
+          displayName: "Alexandria Evergreen Conservatory",
+          avatarUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%2394d159' d='M15 85 50 12l35 73z'/%3E%3C/svg%3E",
+          coverImageUrl: "",
+          handle: "alexandria-evergreen",
+          roleLabel: "Grower",
+          secondaryIdentity: "Lifelong learner",
+          locationLabel: "Pacific Northwest",
+          joinedLabel: "July 2026",
+          featuredRecognition: { id: "founding-grower", title: "Founding Grower" },
+          identityRecognition: null,
+          collections: [],
+          sessions: [],
+          snapshots: [],
+          connections: [],
+        });
+      });
+      const hero = page.locator(".person-profile-hero");
+      await expect(hero).toHaveClass(/is-fallback/);
+      await expect(hero).toHaveAttribute("data-profile-hero-id", personDefault.id);
+      await expect(hero).toHaveAttribute("data-profile-hero-source", "default");
+      await expect(hero.locator("[data-profile-hero-image='person']")).toHaveAttribute("src", personDefaultUrl);
+      await expect(hero.getByRole("heading", { name: "Alexandria Evergreen Conservatory", exact: true })).toBeVisible();
+      await expect(hero.locator("img.person-profile-avatar")).toBeVisible();
+      await expect(hero.getByRole("link", { name: "Edit Profile", exact: true })).toBeVisible();
+      await expect(hero.getByRole("button", { name: "Preview Public Profile", exact: true })).toBeVisible();
+      await expect(hero.getByRole("button", { name: "Share Profile", exact: true })).toBeVisible();
+      const featuredRecognition = hero.getByRole("button", { name: "Founding Grower", exact: true });
+      await expect(featuredRecognition).toBeVisible();
+      const geometry = await hero.evaluate((element) => {
+        const avatar = element.querySelector(".person-profile-avatar-shell").getBoundingClientRect();
+        const coverImage = element.querySelector("[data-profile-hero-image='person']");
+        const vignette = getComputedStyle(element, "::before");
+        const texture = getComputedStyle(element, "::after");
+        const recognition = getComputedStyle(element.querySelector(".profile-featured-recognition"));
+        return {
+          avatarWidth: avatar.width,
+          height: element.getBoundingClientRect().height,
+          coverImageSrc: coverImage?.getAttribute("src") || "",
+          coverImageWidth: coverImage?.getBoundingClientRect().width || 0,
+          vignetteBackground: vignette.backgroundImage,
+          textureBackground: texture.backgroundImage,
+          recognitionBackground: recognition.backgroundColor,
+          recognitionBorderWidth: recognition.borderTopWidth,
+          recognitionBoxShadow: recognition.boxShadow,
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+      expect(geometry.coverImageSrc).toBe(personDefaultUrl);
+      expect(geometry.coverImageWidth).toBeGreaterThan(300);
+      expect(geometry.vignetteBackground).toContain("linear-gradient");
+      expect(geometry.textureBackground).toContain("radial-gradient");
+      expect(geometry.recognitionBackground).toBe("rgba(0, 0, 0, 0)");
+      expect(geometry.recognitionBorderWidth).toBe("0px");
+      expect(geometry.recognitionBoxShadow).toBe("none");
+      expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+      expect(geometry.avatarWidth).toBeGreaterThanOrEqual(width <= 680 ? 108 : 136);
+      expect(geometry.height).toBeLessThanOrEqual(width <= 680 ? 750 : 620);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.evaluate(() => {
+      app.innerHTML = renderPersonGrowProfileMarkup({
+        isOwner: false,
+        displayName: "Sparse Grower",
+        avatarUrl: "",
+        coverImageUrl: "/assets/demo/snapshots/5678.jpg",
+        roleLabel: "Grower",
+        collections: [], sessions: [], snapshots: [], connections: [],
+      });
+    });
+    const visitorHero = page.locator(".person-profile-hero");
+    await expect(visitorHero).toHaveClass(/has-cover/);
+    await expect(visitorHero).toHaveAttribute("data-profile-hero-source", "custom");
+    await expect(visitorHero.locator("[data-profile-hero-image='person']")).toHaveAttribute("src", "/assets/demo/snapshots/5678.jpg");
+    await expect(visitorHero.locator(".person-profile-hero-cover img")).toHaveCount(1);
+    const fallbackAvatar = visitorHero.locator(".person-profile-avatar");
+    await expect(fallbackAvatar).toBeVisible();
+    const fallbackAvatarGeometry = await fallbackAvatar.evaluate((element) => ({
+      width: element.getBoundingClientRect().width,
+      height: element.getBoundingClientRect().height,
+    }));
+    expect(Math.abs(fallbackAvatarGeometry.width - fallbackAvatarGeometry.height)).toBeLessThanOrEqual(1);
+    await expect(visitorHero.getByRole("button", { name: "Share Profile", exact: true })).toBeVisible();
+    await expect(visitorHero.getByRole("link", { name: "Edit Profile", exact: true })).toHaveCount(0);
+    await expect(visitorHero).not.toContainText(/Message|Messaging|Followers|Following/i);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("Profile Hero picker is catalog-driven, owner-only, and cancel-safe", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+
+    const before = await page.evaluate(() => ({
+      coverImageUrl: getCurrentProfilePageSettings().coverImageUrl,
+      catalogStatus: window.ProfileHeroCatalog.getStatus(),
+    }));
+    expect(before.catalogStatus).toMatch(/loaded|failed/);
+    await page.evaluate(() => openProfileEditor());
+
+    const modal = page.locator("#profile-modal");
+    const picker = modal.locator("[data-profile-hero-picker='true']");
+    await expect(picker).toBeVisible();
+    await expect(picker.locator("[data-profile-hero-id]")).toHaveCount(17);
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(picker).toBeVisible();
+      await expect(picker.locator("[data-profile-hero-upload]")).toBeVisible();
+      const responsive = await picker.evaluate((element) => {
+        const firstChoice = element.querySelector("[data-profile-hero-id]");
+        return {
+          pickerOverflow: element.scrollWidth - element.clientWidth,
+          documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          choiceWidth: firstChoice?.getBoundingClientRect().width || 0,
+        };
+      });
+      expect(responsive.pickerOverflow).toBeLessThanOrEqual(1);
+      expect(responsive.documentOverflow).toBeLessThanOrEqual(1);
+      expect(responsive.choiceWidth).toBeGreaterThanOrEqual(width <= 390 ? 110 : 140);
+    }
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await expect(picker.locator("[data-profile-hero-id='seed-pods-dreamy-garden']")).toHaveAttribute("aria-checked", "true");
+
+    const starryChoice = picker.locator("[data-profile-hero-id='starry-garden-retreat']");
+    await starryChoice.click();
+    await expect(starryChoice).toHaveAttribute("aria-checked", "true");
+    await expect(picker.locator("[data-profile-hero-picker-status]")).toContainText("Save Profile to apply it");
+
+    await picker.locator("[data-profile-hero-upload]").setInputFiles({
+      name: "custom-profile-hero.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+    });
+    await expect(picker.locator("[data-profile-hero-custom-preview] img")).toBeVisible();
+    await expect(picker.locator("[data-profile-hero-picker-status]")).toContainText("Custom background selected");
+
+    await modal.locator("[data-profile-close]").click();
+    await expect(modal).not.toBeVisible();
+    const afterCancel = await page.evaluate(() => getCurrentProfilePageSettings().coverImageUrl);
+    expect(afterCancel).toBe(before.coverImageUrl);
+
+    await page.goto("/#sources");
+    await expect(page.locator("#profile-modal")).not.toBeVisible();
+    await expect(page.locator("#app [data-profile-hero-picker]")).toHaveCount(0);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("Profile rendering remains idempotent when Recognition is unavailable", async ({ page }) => {
+    await page.goto("/#home");
+    await page.evaluate(() => {
+      appState.user = { id: "profile-runtime-owner", email: "profile-runtime@example.invalid" };
+      appState.profile = { id: "profile-runtime-owner", username: "Runtime Grower", profileSetupComplete: true };
+      appState.canonicalGrowNetworkLoaded = true;
+      appState.identityRecognition = null;
+      appState.identityRecognitionLoaded = false;
+      appState.identityRecognitionLoadPromise = null;
+      window.__profileRuntimeCounts = { renders: 0, recognitionRequests: 0 };
+      const emptyQuery = new Proxy({
+        then(resolve, reject) {
+          return Promise.resolve({ data: [], error: null }).then(resolve, reject);
+        },
+      }, {
+        get(target, property) {
+          if (property === "then") return target.then;
+          return () => emptyQuery;
+        },
+      });
+      appState.supabase = {
+        from() { return emptyQuery; },
+        rpc(functionName) {
+          if (functionName === "get_my_identity_and_recognition") {
+            window.__profileRuntimeCounts.recognitionRequests += 1;
+            return Promise.resolve({ data: null, error: { message: "Simulated Recognition outage" } });
+          }
+          return Promise.resolve({ data: null, error: null });
+        },
+      };
+      const originalRender = window.renderMyGrowProfilePage;
+      window.renderMyGrowProfilePage = function countedProfileRender(...args) {
+        window.__profileRuntimeCounts.renders += 1;
+        if (window.__profileRuntimeCounts.renders > 20) {
+          throw new Error("Profile render loop exceeded its idempotency limit.");
+        }
+        return originalRender(...args);
+      };
+    });
+
+    await page.getByRole("link", { name: "Profile", exact: true }).click();
+    await expect(page.locator("[data-person-grow-profile='true']")).toBeVisible();
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const firstSettledCounts = await page.evaluate(() => ({ ...window.__profileRuntimeCounts }));
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const finalCounts = await page.evaluate(() => ({ ...window.__profileRuntimeCounts }));
+    expect(finalCounts.recognitionRequests).toBe(1);
+    expect(finalCounts.renders).toBeLessThanOrEqual(8);
+    expect(finalCounts.renders).toBe(firstSettledCounts.renders);
+  });
+
+  test("renders the canonical curated Person Grow Profile for owners, visitors, and public preview", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+    await page.goto("/#grow-profile");
+
+    const profile = page.locator("[data-person-grow-profile='true']");
+    await expect(profile).toHaveAttribute("data-profile-viewer", "owner");
+    await expect(profile.getByRole("heading", { name: "Morgan Green", exact: true })).toBeVisible();
+    await expect(profile.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
+    await expect(profile.getByRole("heading", { name: "Featured Collections", exact: true })).toBeVisible();
+    await expect(profile.locator(".person-profile-collection-card")).toHaveCount(3);
+    await expect.poll(() => page.evaluate(() => appState.canonicalGrowNetworkLoaded)).toBe(true);
+    await expect(profile.locator("[data-person-profile-module-count='3']")).toBeVisible();
+    await expect(profile.getByRole("heading", { name: "A path built one grow at a time", exact: true })).toBeVisible();
+    await expect(profile.getByRole("heading", { name: "Moments worth documenting", exact: true })).toBeVisible();
+    await expect(profile.getByRole("heading", { name: "Connections that help Grow", exact: true })).toBeVisible();
+    await expect(profile).not.toContainText(/Germination Trend|Total Followers|Following|Followers|Message|Messaging|Your Grow Summary/i);
+    await expect(profile.locator("[href='#profile']", { hasText: "Edit Profile" })).toBeVisible();
+    await expect(profile.getByRole("button", { name: "Preview Public Profile", exact: true })).toBeVisible();
+
+    for (const width of [1280, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(profile).toBeVisible();
+      const geometry = await profile.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        viewportWidth: document.documentElement.clientWidth,
+        documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      }));
+      expect(geometry.width).toBeLessThanOrEqual(Math.min(1280, geometry.viewportWidth));
+      expect(geometry.documentOverflow).toBeLessThanOrEqual(1);
+    }
+
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await profile.getByRole("button", { name: "Preview Public Profile", exact: true }).click();
+    await expect(profile).toHaveAttribute("data-profile-viewer", "visitor");
+    await expect(profile).toHaveAttribute("data-public-preview", "true");
+    await expect(profile.locator(".person-profile-collections")).toHaveCount(0);
+    await expect(profile.locator("[href='#profile']", { hasText: "Edit Profile" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Exit preview", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Exit preview", exact: true }).click();
+    await expect(profile).toHaveAttribute("data-profile-viewer", "owner");
+
+    const compositionContract = await page.evaluate(() => {
+      const sample = { key: "journey", icon: "journeyFlag", eyebrow: "FEATURED", title: "Sample", description: "Sample", body: "", href: "#home", linkLabel: "Explore" };
+      const counts = [0, 1, 2, 3].map((count) => {
+        const host = document.createElement("div");
+        host.innerHTML = renderPersonProfileFeaturedSectionsMarkup(Array.from({ length: count }, (_, index) => ({ ...sample, key: "sample-" + index })), { isOwner: true });
+        const section = host.firstElementChild;
+        return {
+          count: Number(section?.getAttribute("data-person-profile-module-count")),
+          className: section?.className || "",
+          cardCount: host.querySelectorAll(".person-profile-feature-card").length,
+        };
+      });
+      const sparseHost = document.createElement("div");
+      sparseHost.innerHTML = renderPersonGrowProfileMarkup({
+        isOwner: false,
+        displayName: "Fern Archive",
+        avatarUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath fill='%2394d159' d='M1 9 5 1l4 8z'/%3E%3C/svg%3E",
+        coverImageUrl: "",
+        roleLabel: "Grower",
+        collections: [],
+        sessions: [],
+        snapshots: [],
+        connections: [],
+      });
+      return {
+        counts,
+        sparseFallback: sparseHost.querySelector(".person-profile-hero.is-fallback") !== null,
+        sparseModules: sparseHost.querySelectorAll(".person-profile-feature-card").length,
+        nonHumanAvatar: sparseHost.querySelector("img.person-profile-avatar") !== null,
+      };
+    });
+    expect(compositionContract.counts).toEqual([
+      { count: 0, className: "person-profile-section person-profile-featured-sections is-empty", cardCount: 0 },
+      { count: 1, className: "person-profile-section person-profile-featured-sections is-count-1", cardCount: 1 },
+      { count: 2, className: "person-profile-section person-profile-featured-sections is-count-2", cardCount: 2 },
+      { count: 3, className: "person-profile-section person-profile-featured-sections is-count-3", cardCount: 3 },
+    ]);
+    expect(compositionContract.sparseFallback).toBe(true);
+    expect(compositionContract.sparseModules).toBe(0);
+    expect(compositionContract.nonHumanAvatar).toBe(true);
+
+    const visitorProfileLink = profile.locator(".person-profile-connection").first();
+    await expect(visitorProfileLink).toHaveAttribute("href", "#members/avery-canopy");
+    await visitorProfileLink.click();
+    const visitorProfile = page.locator("[data-person-grow-profile='true']");
+    await expect(visitorProfile).toHaveAttribute("data-profile-viewer", "visitor");
+    await expect(visitorProfile.locator(".person-profile-collections")).toHaveCount(0);
+    await expect(visitorProfile.locator("[href='#profile']", { hasText: "Edit Profile" })).toHaveCount(0);
+    await expect(visitorProfile).not.toContainText(/Followers|Following|Message|Messaging/i);
+    expect(consoleErrors).toEqual([]);
+  });
+
+  test("keeps the curated Profile identity and Recognition on one profile fixture", async ({ page }) => {
     await page.goto("/#profile");
     await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='profile']").selectOption("community-leader");
-    await page.goto("/#network");
+    await page.goto("/#grow-profile");
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Community Leader");
-    await expect(page.locator(".grow-network-page")).toContainText("Community Leader");
-    await expect(page.locator(".grow-network-page")).toContainText("222");
-    await expect(page.locator(".grow-network-page")).toContainText("93%");
-    await expect(page.getByRole("heading", { name: "Germination Trend" })).toBeVisible();
-    await expect(page.locator(".grow-network-page")).not.toContainText("Complete a session and record results to begin your Germination Trend.");
+    const profile = page.locator("[data-person-grow-profile='true']");
+    await expect(profile).toContainText("Community Leader");
+    await expect(profile.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
+    await expect(profile.locator("[data-person-profile-module-count]")).toHaveCount(1);
+    await expect(profile).not.toContainText(/Germination Trend|Total Followers|Following|Followers|Your Grow Summary/i);
   });
-
   test("keeps the approved Seed Vault overview, planning, collections, and Library insights on one fixture", async ({ page }) => {
     await page.goto("/#seed-vault");
     await useFullGrowDemo(page);
@@ -2806,7 +3357,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator(".seed-vault-overview-planning")).toContainText("Next Grow");
     await expect(page.locator(".seed-vault-overview-collections")).toContainText("Collections");
     await expect(page.locator(".seed-vault-overview-recent-activity")).toContainText("Recent Activity");
-    await expect(page.locator(".seed-vault-sharing-hub")).toContainText("Share Your Vault");
+    await expect(page.locator(".seed-vault-sharing-hub")).toContainText("Personal Vault");
     await expect(page.locator(".seed-vault-library-shell .seed-vault-insights")).toContainText("Insights");
     await expect(page.locator(".seed-vault-overview")).not.toContainText("Quick Insights");
     await expect(page.locator("#my-seed-vault")).not.toContainText("Loading");
