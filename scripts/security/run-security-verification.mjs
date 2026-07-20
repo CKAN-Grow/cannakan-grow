@@ -42,6 +42,7 @@ run(npm, ["run", "security:access-audit"]);
 run(npm, ["run", "security:fingerprint"]);
 run(npm, ["run", "security:function-audit"]);
 run(npm, ["run", "security:function-hardening"]);
+run(npm, ["run", "qa:grow-identity"]);
 
 const regressionNames = readdirSync(resolve(REPOSITORY_ROOT, "scripts"))
   .filter((name) => /^(?:gie-|canonical-rank-display|community-insights|explorer-completed-session-aggregate|grow-intelligence-health|seed-vault-owner-analytics-ambiguity|source-report-redesign).*regression-check\.js$/.test(name))

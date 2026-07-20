@@ -49,7 +49,7 @@ begin
     'seed_vault_entries', 'seed_vault_collections', 'seed_vault_entry_collections',
     'seed_vault_tags', 'seed_vault_entry_tags', 'seed_vault_grow_notes',
     'seed_vault_share_settings', 'seed_vault_share_users', 'public_member_profiles',
-    'source_directory', 'variety_directory', 'recognition_definitions',
+    'grow_identity_field_visibility', 'source_directory', 'variety_directory', 'recognition_definitions',
     'user_recognitions', 'founders', 'contact_messages', 'cstp_requests',
     'cstp_tests', 'cstp_test_sessions', 'cstp_admin_events', 'cstp_reports',
     'cstp_report_snapshots', 'cstp_report_metrics', 'cstp_report_sessions',
@@ -65,8 +65,16 @@ begin
 
   if has_table_privilege('anon', 'public.profiles', 'select')
      or has_table_privilege('anon', 'public.grow_sessions', 'select')
-     or has_table_privilege('anon', 'public.public_member_profiles', 'select') then
+     or has_table_privilege('anon', 'public.public_member_profiles', 'select')
+     or has_table_privilege('anon', 'public.grow_identity_field_visibility', 'select') then
     raise exception 'Anonymous role can read a private owner table';
+  end if;
+
+  if not has_table_privilege('authenticated', 'public.grow_identity_field_visibility', 'select')
+     or has_table_privilege('authenticated', 'public.grow_identity_field_visibility', 'insert')
+     or has_table_privilege('authenticated', 'public.grow_identity_field_visibility', 'update')
+     or has_table_privilege('authenticated', 'public.grow_identity_field_visibility', 'delete') then
+    raise exception 'Grow Identity field visibility grants are broader than owner read-only';
   end if;
 
   if not has_table_privilege('authenticated', 'public.profiles', 'select,insert,update,delete')
@@ -242,7 +250,7 @@ for (const table of [
   "grow_gallery_snapshot_likes", "grow_follows", "community_activity",
   "user_notification_preferences", "user_filter_paper_supply_settings",
   "user_push_subscriptions", "push_notification_deliveries", "seed_vault_entries",
-  "public_member_profiles", "safe_public_member_profiles", "source_directory",
+  "public_member_profiles", "grow_identity_field_visibility", "safe_public_member_profiles", "source_directory",
   "variety_directory", "recognition_definitions", "user_recognitions", "founders",
 ]) {
   const response = await request(`/rest/v1/${table}?select=*&limit=1`, { token: accessToken });
@@ -254,7 +262,7 @@ for (const table of ["sources", "grow_gallery_snapshots", "grow_gallery_snapshot
   assert.equal(response.status, 200, `${table} anonymous REST read failed: ${response.body}`);
 }
 
-for (const table of ["profiles", "grow_sessions", "public_member_profiles", "cstp_requests"]) {
+for (const table of ["profiles", "grow_sessions", "public_member_profiles", "grow_identity_field_visibility", "cstp_requests"]) {
   const response = await request(`/rest/v1/${table}?select=*&limit=1`);
   assert.ok([401, 403].includes(response.status), `${table} unexpectedly allowed anonymous REST read (${response.status}).`);
 }
@@ -283,6 +291,13 @@ for (const rpc of ["get_gie_global_analytics", "get_gie_community_analytics"]) {
 
 const ownerRpc = await request("/rest/v1/rpc/get_gie_my_analytics", { token: accessToken, method: "POST", body: {} });
 assert.equal(ownerRpc.status, 200, `Owner GIE RPC failed: ${ownerRpc.body}`);
+
+const growIdentityRpc = await request("/rest/v1/rpc/get_my_grow_identity", { token: accessToken, method: "POST", body: {} });
+assert.equal(growIdentityRpc.status, 200, `Owner Grow Identity RPC failed: ${growIdentityRpc.body}`);
+assert.equal(JSON.parse(growIdentityRpc.body)?.version, "grow-identity.v1", "Grow Identity RPC returned the wrong contract.");
+
+const anonymousGrowIdentityRpc = await request("/rest/v1/rpc/get_my_grow_identity", { method: "POST", body: {} });
+assert.ok([401, 403, 404].includes(anonymousGrowIdentityRpc.status), "Anonymous caller reached the owner Grow Identity RPC.");
 
 const anonymousAdminRpc = await request("/rest/v1/rpc/admin_delete_grow_gallery_snapshot", {
   method: "POST",

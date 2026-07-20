@@ -25,6 +25,7 @@
     "security:verify": "node ./scripts/security/run-security-verification.mjs",
     "qa:founder": "node ./scripts/run-founder-admin-qa-sweep.js",
     "qa:developer-scenarios": "node ./scripts/developer-scenarios-regression-check.mjs",
+    "qa:grow-identity": "node ./scripts/grow-identity-phase1-regression-check.mjs",
     "qa:semantic-colors": "node ./scripts/semantic-color-system-regression-check.js",
     "qa:single-seed-position-methods": "node ./scripts/single-seed-position-method-regression-check.js",
     "test:e2e": "playwright test --project=founder-desktop",

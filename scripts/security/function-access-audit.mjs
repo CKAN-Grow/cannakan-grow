@@ -16,9 +16,14 @@ const FRONTEND_RPCS = new Set([
   "get_public_member_follow_members", "get_seed_vault_user_shares", "get_seed_vaults_shared_with_me",
   "get_shared_seed_vault", "record_community_activity", "record_source_directory_usage",
   "record_variety_directory_usage", "remove_seed_vault_user_share", "review_source_directory_community_source",
-  "review_variety_directory_community_variety", "search_seed_vault_share_users", "set_member_admin_access",
-  "set_my_featured_recognition", "update_owner_grow_session_times", "update_seed_vault_share_settings",
+  "review_variety_directory_community_variety", "search_seed_vault_share_users",
+  "set_member_admin_access", "set_my_featured_recognition",
+  "update_owner_grow_session_times", "update_seed_vault_share_settings",
   "upsert_seed_vault_user_share",
+]);
+const GROW_IDENTITY_PHASE1_RPCS = new Set([
+  "can_request_grow_connection_v1", "get_grow_identity_contract_v1", "get_grow_identity_v1",
+  "get_my_grow_identity", "search_grow_identities_v1", "update_my_grow_identity_v1",
 ]);
 const SERVER_RPCS = new Set([
   "admin_preview_community_grow_publication_reset", "admin_execute_community_grow_publication_reset",
@@ -53,6 +58,8 @@ order by p.proname, pg_get_function_identity_arguments(p.oid);
 const access = (row) => [row.anon && "anon", row.authenticated && "authenticated", row.serviceRole && "service_role", "postgres/owner"].filter(Boolean).join(", ");
 const purpose = (row) => row.name.replaceAll("_", " ");
 const caller = (row) => {
+  if (GROW_IDENTITY_PHASE1_RPCS.has(row.name)) return "frontend-ready: Grow Identity Phase 1 RPC";
+  if (/^grow_identity_(?:default|field_keys|invitation_preferences_valid|provenance_valid)/.test(row.name)) return "canonical identity validation helper";
   if (FRONTEND_RPCS.has(row.name)) return `frontend: app.js RPC`;
   if (SERVER_RPCS.has(row.name)) return "server: elevated maintenance script RPC";
   if (row.triggerCaller) return "trigger";
@@ -69,7 +76,7 @@ const exposure = (row) => {
 const status = (row) => {
   if (ONE_TIME_FUNCTIONS.has(row.name)) return "one-time; no runtime caller found";
   if (LEGACY_COMPATIBILITY.has(row.name)) return "legacy compatibility; retained";
-  if (FRONTEND_RPCS.has(row.name) || SERVER_RPCS.has(row.name)) return "authoritative boundary";
+  if (FRONTEND_RPCS.has(row.name) || GROW_IDENTITY_PHASE1_RPCS.has(row.name) || SERVER_RPCS.has(row.name)) return "authoritative boundary";
   return "authoritative support/internal";
 };
 const esc = (value) => String(value).replaceAll("|", "\\|").replaceAll(/\s+/g, " ").trim();
@@ -78,7 +85,7 @@ export const renderFunctionAudit = () => {
   const lines = [
     "# Grow function caller and access audit",
     "",
-    "Last reviewed: 2026-07-15",
+    "Last reviewed: 2026-07-18",
     "",
     "This is the function-level companion to `grow-supabase-security-access-audit-2026-07-15.md`. It inventories every application-defined function present after a clean migration replay. Current and required access match because the reviewed reconciliation is applied. `postgres/owner` is implicit and is the only caller for owner-internal helpers.",
     "",
@@ -92,6 +99,7 @@ export const renderFunctionAudit = () => {
     "",
     "- Public execution is retained only for deliberate anonymous projections: canonical public GIE wrappers, public identity/follow projections, active shared-Vault slug lookup, the legacy Explorer compatibility projection, and `current_user_is_admin()` where anonymous RLS evaluation requires it.",
     "- Seed Vault management/sharing RPCs are authenticated-only. Trigger functions, one-time backfills, slug helpers, and internal GIE functions are not client-executable.",
+    "- Grow Identity Phase 1 read/update/search/permission RPCs are authenticated-only; internal relationship and field-resolution helpers remain owner-only. Pure allowlist/normalization helpers are authenticated for constraint and legacy Profile-write compatibility.",
     "- Service-role execution remains explicit for Community publication reset, lifecycle/diagnostic support, and server health workflows. CSTP continues to use server-side table access and has no browser RPC boundary.",
     "- Every security-definer function fixes `search_path`; all are owned by `postgres`. Invoker trigger helpers use the caller default path but are no longer client-executable.",
     "- `record_community_activity` now rejects cross-user writes and performs a serialized, deterministic logical-key update-or-insert. `set_member_admin_access` retains its admin check and uses its named unique constraint.",
@@ -103,7 +111,6 @@ export const renderFunctionAudit = () => {
     "- Fixed: ambiguous `user_id` in `set_member_admin_access`.",
     "- Fixed: two confirmed-unused local variables in `get_gie_owner_phase2_analytics_v1`; canonical output fingerprint is unchanged.",
     "- Accepted static-analysis limitation: `cleanup_founder_test_grow_sessions` creates `pg_temp.cleanup_founder_test_session_candidates` before using it. Runtime dry-run regression succeeds; no unsafe dependency exists. Rewriting the cleanup workflow only to satisfy the analyzer would add risk.",
-    "",
   ];
   return `${lines.join("\n")}\n`;
 };

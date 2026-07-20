@@ -17,7 +17,7 @@ const requireNeedle = (needle, label) => {
   "profile.hasCustomPublicProfile !== false",
   "profile.isDerivedPublicProfile !== true",
   "profile.isPublicVisible !== false",
-  "profile.profileVisibility !== \"private\"",
+  "profile.profileVisibility !== \"personal\"",
   "function getGallerySnapshotCardMemberProfile(snapshot)",
   "? \"Private Grower\"",
   ": \"Community Member\"",
