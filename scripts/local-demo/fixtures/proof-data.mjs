@@ -1,10 +1,10 @@
-import { DEMO_OWNER_DISPLAY_NAME, DEMO_OWNER_EMAIL } from "../config.mjs";
+import { DEMO_OWNER_DISPLAY_NAME, DEMO_OWNER_EMAIL, DEMO_OWNER_JOINED_AT } from "../config.mjs";
 import { ids } from "../ids.mjs";
 
 export const LOCAL_DEMO_PASSWORD_HASH = "$2a$10$/qNE4whxuTUAF/GL9ufFZeNs.fFYxVuPnFMnrU7rOMtnscQC6oexG";
 
 export const contributors = Object.freeze([
-  { key: "owner", id: ids.users.owner, identityId: ids.identities.owner, publicProfileId: ids.publicProfiles.owner, email: DEMO_OWNER_EMAIL, username: "demo-founder", displayName: DEMO_OWNER_DISPLAY_NAME, handle: "demo-founder", country: "US", region: "MA", bio: "Fictional local founder profile for deterministic demo validation." },
+  { key: "owner", id: ids.users.owner, identityId: ids.identities.owner, publicProfileId: ids.publicProfiles.owner, email: DEMO_OWNER_EMAIL, username: "demo-founder", displayName: DEMO_OWNER_DISPLAY_NAME, handle: "demo-founder", country: "US", region: "MA", joinedAt: DEMO_OWNER_JOINED_AT, bio: "Fictional local founder profile for deterministic demo validation." },
   { key: "california", id: ids.users.california, identityId: ids.identities.california, publicProfileId: ids.publicProfiles.california, email: "mara.fields@example.test", username: "mara-fields", displayName: "Mara Fields", handle: "mara-fields", country: "US", region: "California", bio: "Fictional California contributor for local-only regional evidence." },
   { key: "germany", id: ids.users.germany, identityId: ids.identities.germany, publicProfileId: ids.publicProfiles.germany, email: "jonas.wald@example.test", username: "jonas-wald", displayName: "Jonas Wald", handle: "jonas-wald", country: "DE", region: "Germany", bio: "Fictional German contributor for local-only regional evidence." },
   { key: "massachusetts", id: ids.users.massachusetts, identityId: ids.identities.massachusetts, publicProfileId: ids.publicProfiles.massachusetts, email: "nia.grove@example.test", username: "nia-grove", displayName: "Nia Grove", handle: "nia-grove", country: "US", region: "Massachusetts", bio: "Fictional Massachusetts contributor for local-only community evidence." },

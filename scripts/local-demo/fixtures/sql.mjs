@@ -26,10 +26,22 @@ function partitionFor(session) {
 const values = (rows) => rows.join(",\n");
 
 export function buildSeedSql() {
-  const authRows = contributors.map((row) => `(${sqlLiteral(row.id)}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', ${sqlLiteral(row.email)}, ${sqlLiteral(LOCAL_DEMO_PASSWORD_HASH)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlJson({ provider: "email", providers: ["email"] })}, ${sqlJson({ name: row.displayName, full_name: row.displayName })}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, '', '', '', '', '', null, '', '', '', false, false)`);
-  const identityRows = contributors.map((row) => `(${sqlLiteral(row.identityId)}, ${sqlLiteral(row.email)}, ${sqlLiteral(row.id)}, ${sqlJson({ sub: row.id, email: row.email, email_verified: true, phone_verified: false })}, 'email', ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`);
-  const profileRows = contributors.map((row) => `(${sqlLiteral(row.id)}, ${sqlLiteral(row.username)}, ${sqlLiteral(row.email)}, 'active', true, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`);
-  const publicProfileRows = contributors.map((row) => `(${sqlLiteral(row.publicProfileId)}, ${sqlLiteral(row.id)}, ${sqlLiteral(row.displayName)}, ${sqlLiteral(row.bio)}, ${sqlLiteral(row.handle)}, ${sqlLiteral(row.region)}, ${sqlLiteral(row.country)}, 'public', true, true, 'grower', 'grower', ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`);
+  const authRows = contributors.map((row) => {
+    const joinedAt = row.joinedAt || DEMO_REFERENCE_TIME;
+    return `(${sqlLiteral(row.id)}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', ${sqlLiteral(row.email)}, ${sqlLiteral(LOCAL_DEMO_PASSWORD_HASH)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlJson({ provider: "email", providers: ["email"] })}, ${sqlJson({ name: row.displayName, full_name: row.displayName })}, ${sqlLiteral(joinedAt)}, ${sqlLiteral(DEMO_REFERENCE_TIME)}, '', '', '', '', '', null, '', '', '', false, false)`;
+  });
+  const identityRows = contributors.map((row) => {
+    const joinedAt = row.joinedAt || DEMO_REFERENCE_TIME;
+    return `(${sqlLiteral(row.identityId)}, ${sqlLiteral(row.email)}, ${sqlLiteral(row.id)}, ${sqlJson({ sub: row.id, email: row.email, email_verified: true, phone_verified: false })}, 'email', ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(joinedAt)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`;
+  });
+  const profileRows = contributors.map((row) => {
+    const joinedAt = row.joinedAt || DEMO_REFERENCE_TIME;
+    return `(${sqlLiteral(row.id)}, ${sqlLiteral(row.username)}, ${sqlLiteral(row.email)}, 'active', true, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(joinedAt)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`;
+  });
+  const publicProfileRows = contributors.map((row) => {
+    const joinedAt = row.joinedAt || DEMO_REFERENCE_TIME;
+    return `(${sqlLiteral(row.publicProfileId)}, ${sqlLiteral(row.id)}, ${sqlLiteral(row.displayName)}, ${sqlLiteral(row.bio)}, ${sqlLiteral(row.handle)}, ${sqlLiteral(row.region)}, ${sqlLiteral(row.country)}, 'public', true, true, 'grower', 'grower', ${sqlLiteral(joinedAt)}, ${sqlLiteral(joinedAt)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`;
+  });
   const sourceRows = sources.map((row) => `(${sqlLiteral(row.id)}, ${sqlLiteral(row.name)}, ${sqlLiteral(row.description)}, 'active', false, ${sqlLiteral(DEMO_REFERENCE_TIME)}, ${sqlLiteral(DEMO_REFERENCE_TIME)})`);
   const varietyRows = varieties.map((row) => {
     const source = sourceByKey[row.sourceKey];
@@ -78,13 +90,13 @@ delete from public.community_activity where id = any(${uuidArray(Object.values(i
 delete from public.grow_gallery_snapshots where id = any(${uuidArray(Object.values(ids.snapshots))});
 delete from public.grow_sessions where id = any(${uuidArray([...Object.values(ids.completedSessions), ...Object.values(ids.activeSessions)])});
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, email_change_token_current, phone, phone_change, phone_change_token, reauthentication_token, is_sso_user, is_anonymous) values
-${values(authRows)} on conflict (id) do update set instance_id=excluded.instance_id,email=excluded.email, encrypted_password=excluded.encrypted_password, email_confirmed_at=excluded.email_confirmed_at, raw_app_meta_data=excluded.raw_app_meta_data, raw_user_meta_data=excluded.raw_user_meta_data, confirmation_token='', recovery_token='', email_change_token_new='', email_change='', email_change_token_current='', phone=null, phone_change='', phone_change_token='', reauthentication_token='', updated_at=excluded.updated_at;
+${values(authRows)} on conflict (id) do update set instance_id=excluded.instance_id,email=excluded.email, encrypted_password=excluded.encrypted_password, email_confirmed_at=excluded.email_confirmed_at, raw_app_meta_data=excluded.raw_app_meta_data, raw_user_meta_data=excluded.raw_user_meta_data, created_at=excluded.created_at, confirmation_token='', recovery_token='', email_change_token_new='', email_change='', email_change_token_current='', phone=null, phone_change='', phone_change_token='', reauthentication_token='', updated_at=excluded.updated_at;
 insert into auth.identities (id, provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at) values
-${values(identityRows)} on conflict (id) do update set provider_id=excluded.provider_id, user_id=excluded.user_id, identity_data=excluded.identity_data, updated_at=excluded.updated_at;
+${values(identityRows)} on conflict (id) do update set provider_id=excluded.provider_id, user_id=excluded.user_id, identity_data=excluded.identity_data, created_at=excluded.created_at, updated_at=excluded.updated_at;
 insert into public.profiles (id, username, email, account_status, profile_setup_complete, last_active_at, created_at, updated_at) values
-${values(profileRows)} on conflict (id) do update set username=excluded.username, email=excluded.email, account_status='active', profile_setup_complete=true, last_active_at=excluded.last_active_at, updated_at=excluded.updated_at;
+${values(profileRows)} on conflict (id) do update set username=excluded.username, email=excluded.email, account_status='active', profile_setup_complete=true, last_active_at=excluded.last_active_at, created_at=excluded.created_at, updated_at=excluded.updated_at;
 insert into public.public_member_profiles (id,user_id,display_name,bio,public_handle,location_region,country_code,profile_visibility,show_profile_in_community_grow,show_grow_stats_publicly,profile_type,account_type,joined_at,created_at,updated_at) values
-${values(publicProfileRows)} on conflict (id) do update set display_name=excluded.display_name,bio=excluded.bio,public_handle=excluded.public_handle,location_region=excluded.location_region,country_code=excluded.country_code,profile_visibility='public',show_profile_in_community_grow=true,show_grow_stats_publicly=true,profile_type='grower',account_type='grower',updated_at=excluded.updated_at;
+${values(publicProfileRows)} on conflict (id) do update set display_name=excluded.display_name,bio=excluded.bio,public_handle=excluded.public_handle,location_region=excluded.location_region,country_code=excluded.country_code,profile_visibility='public',show_profile_in_community_grow=true,show_grow_stats_publicly=true,profile_type='grower',account_type='grower',joined_at=excluded.joined_at,created_at=excluded.created_at,updated_at=excluded.updated_at;
 insert into public.sources (id,name,description,status,is_mock,created_at,updated_at) values
 ${values(sourceRows)} on conflict (id) do update set name=excluded.name,description=excluded.description,status='active',is_mock=false,updated_at=excluded.updated_at;
 insert into public.variety_directory (id,name,source_name,variety_type,verified,active,needs_admin_review,created_at,updated_at) values
@@ -107,6 +119,7 @@ insert into public.seed_vault_grow_notes (id,user_id,seed_vault_entry_id,session
 ${values(noteRows)} on conflict (id) do update set session_id=excluded.session_id,note_text=excluded.note_text,updated_at=excluded.updated_at;
 insert into public.community_activity (id,user_id,activity_type,session_id,snapshot_id,title,summary,metadata,visibility,created_at,is_mock) values
 ${values(activityRows)} on conflict (id) do update set activity_type=excluded.activity_type,session_id=excluded.session_id,snapshot_id=excluded.snapshot_id,title=excluded.title,summary=excluded.summary,metadata=excluded.metadata,visibility='public',created_at=excluded.created_at,is_mock=false;
+select public.reconcile_user_recognitions_v1(${sqlLiteral(ids.users.owner)}, false, 'reconciliation');
 commit;
 `;
 }

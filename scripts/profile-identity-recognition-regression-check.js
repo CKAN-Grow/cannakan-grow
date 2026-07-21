@@ -10,6 +10,9 @@ const migrationSource = fs.readFileSync(
   path.join(repoRoot, "supabase", "migrations", "20260713234000_profile_identity_and_recognition.sql"),
   "utf8",
 );
+const localDemoConfigSource = fs.readFileSync(path.join(repoRoot, "scripts", "local-demo", "config.mjs"), "utf8");
+const localDemoProofSource = fs.readFileSync(path.join(repoRoot, "scripts", "local-demo", "fixtures", "proof-data.mjs"), "utf8");
+const localDemoSqlSource = fs.readFileSync(path.join(repoRoot, "scripts", "local-demo", "fixtures", "sql.mjs"), "utf8");
 
 function requireNeedle(source, needle, label) {
   if (!source.includes(needle)) throw new Error(`Missing ${label}: ${needle}`);
@@ -25,6 +28,25 @@ const recognitionIds = [
   "collection-creator", "grow-planner", "detailed-record", "reliable-reporter", "source-tracker",
 ];
 recognitionIds.forEach((id) => requireNeedle(migrationSource, `('${id}'`, "recognition catalog definition"));
+
+const earlySupporterCutoffMatch = migrationSource.match(/stats\.joined_at <= '([^']+)'::timestamptz/);
+const localFounderJoinedMatch = localDemoConfigSource.match(/DEMO_OWNER_JOINED_AT = "([^"]+)"/);
+if (!earlySupporterCutoffMatch || !localFounderJoinedMatch) {
+  throw new Error("Could not compare the canonical Early Supporter cutoff with the local founder profile date.");
+}
+if (Date.parse(localFounderJoinedMatch[1]) > Date.parse(earlySupporterCutoffMatch[1])) {
+  throw new Error("Local founder profile must remain canonically eligible for Early Supporter recognition.");
+}
+requireNeedle(localDemoProofSource, "joinedAt: DEMO_OWNER_JOINED_AT", "local founder canonical join date fixture");
+requireAll(localDemoSqlSource, [
+  "const joinedAt = row.joinedAt || DEMO_REFERENCE_TIME;",
+  "created_at=excluded.created_at",
+  "joined_at=excluded.joined_at",
+  "select public.reconcile_user_recognitions_v1",
+], "local founder canonical Recognition reconciliation");
+if (/insert\s+into\s+public\.user_recognitions/i.test(localDemoSqlSource)) {
+  throw new Error("Local demo data must earn recognitions through the canonical reconciler, not hardcoded recognition rows.");
+}
 
 requireAll(migrationSource, [
   "create table if not exists public.recognition_definitions",

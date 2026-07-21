@@ -17,6 +17,7 @@ function buildVerificationSql() {
 do $$
 declare
   contract jsonb := public.get_gie_community_analytics();
+  owner_recognition jsonb;
   chad jsonb;
   seedsman jsonb;
 begin
@@ -40,6 +41,11 @@ begin
   if exists (select 1 from unnest(${uuidArray(Object.values(ids.activeSessions))}) session_id where public.is_community_intelligence_session_eligible(session_id)) then raise exception 'active demo session entered completed analytics'; end if;
   if (select count(*) from public.get_gie_community_evidence_v1() evidence where evidence.id = any(${uuidArray(Object.values(ids.snapshots))})) <> ${expectedCounts.communitySnapshots} then raise exception 'demo snapshots are not canonical Community evidence'; end if;
   if (select count(distinct row_data.variety_key) from public.get_gie_scoped_result_rows_v1('community', null) row_data where row_data.evidence_id = any(${uuidArray(Object.values(ids.snapshots))}::text[])) <> ${expectedCounts.analyticsVarieties} then raise exception 'analytics variety count mismatch'; end if;
+
+  owner_recognition := public.get_identity_and_recognition_v1(${sqlLiteral(ids.users.owner)}, false, false);
+  if (select count(*) from jsonb_array_elements(owner_recognition -> 'recognitions') recognition where recognition ->> 'id' = 'early-supporter' and (recognition ->> 'earned')::boolean) <> 1 then raise exception 'local founder Early Supporter recognition mismatch'; end if;
+  if owner_recognition #>> '{recognitions,0,id}' <> 'early-supporter' then raise exception 'local founder recognition ordering mismatch'; end if;
+  if (select count(*) from public.user_recognitions where user_id = ${sqlLiteral(ids.users.owner)} and recognition_id = 'early-supporter' and revoked_at is null) <> 1 then raise exception 'local founder Early Supporter persistence mismatch'; end if;
 
   select report into chad from jsonb_array_elements(contract #> '{analytics,source_reports}') report where report ->> 'key' = ${sqlLiteral(ids.sources.chadWestport)};
   if chad is null or (chad ->> 'session_count')::integer <> 1 then raise exception 'sparse Chad report missing'; end if;
