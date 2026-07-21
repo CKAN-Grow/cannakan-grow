@@ -88672,12 +88672,12 @@ img.person-profile-avatar {
   inset: clamp(18px, 2.2vw, 30px) auto clamp(16px, 2vw, 26px) clamp(14px, 2vw, 28px);
   z-index: 0;
   width: clamp(240px, 24vw, 340px);
-  background: url("/assets/images/profile/editorial-profile-illustration.png") left center / contain no-repeat;
+  background: url("/assets/images/profile/editorial-profile-illustration.png") left center / auto 128% no-repeat;
   content: "";
-  filter: saturate(0.76) sepia(0.08) brightness(0.82);
-  opacity: 0.62;
-  -webkit-mask-image: linear-gradient(90deg, #000 0 72%, transparent 100%);
-  mask-image: linear-gradient(90deg, #000 0 72%, transparent 100%);
+  filter: saturate(0.82) sepia(0.05) brightness(0.84);
+  opacity: 0.56;
+  -webkit-mask-image: linear-gradient(180deg, #000 0 72%, rgba(0, 0, 0, 0.72) 84%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0 72%, rgba(0, 0, 0, 0.72) 84%, transparent 100%);
   pointer-events: none;
 }
 
@@ -88811,9 +88811,9 @@ img.person-profile-avatar {
 
   .person-profile-note-section[data-person-profile-editorial-identity]::before {
     inset: 24px auto 24px -46px;
-    width: 310px;
-    filter: saturate(0.7) sepia(0.08) brightness(0.72);
-    opacity: 0.28;
+    width: 250px;
+    filter: saturate(0.76) sepia(0.05) brightness(0.76);
+    opacity: 0.36;
   }
 
   .person-profile-note-copy {
@@ -88835,19 +88835,19 @@ img.person-profile-avatar {
   }
 
   .person-profile-note-section[data-person-profile-editorial-identity]::before {
-    inset: 12px -54px auto auto;
-    width: 270px;
-    height: 210px;
-    background-position: right top;
-    filter: saturate(0.68) sepia(0.08) brightness(0.68);
-    opacity: 0.2;
-    -webkit-mask-image: linear-gradient(270deg, #000 0 62%, transparent 100%);
-    mask-image: linear-gradient(270deg, #000 0 62%, transparent 100%);
+    inset: 10px auto auto -20px;
+    width: 220px;
+    height: 220px;
+    background-position: left top;
+    filter: saturate(0.72) sepia(0.05) brightness(0.72);
+    opacity: 0.24;
+    -webkit-mask-image: linear-gradient(180deg, #000 0 70%, rgba(0, 0, 0, 0.68) 84%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0 70%, rgba(0, 0, 0, 0.68) 84%, transparent 100%);
   }
 
   .person-profile-note-copy {
     min-height: 190px;
-    padding: 0 clamp(0px, 11vw, 44px) 0 0;
+    padding: 0 0 0 clamp(76px, 23vw, 92px);
   }
 
   .person-profile-grow-id {

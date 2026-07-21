@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v33-profile-hero-metadata";
+const CACHE_NAME = "cannakan-grow-shell-v34-profile-editorial-illustration";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",

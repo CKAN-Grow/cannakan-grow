@@ -3488,6 +3488,13 @@ test.describe("local Developer Scenarios", () => {
     await expect(editorial.locator(".person-profile-note-copy .eyebrow")).toHaveText("FROM THE GROWER");
     const artworkResponse = await page.request.get("/assets/images/profile/editorial-profile-illustration.png");
     expect(artworkResponse.status()).toBe(200);
+    const artworkDimensions = await page.evaluate(() => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+      image.onerror = () => reject(new Error("Canonical Profile editorial illustration failed to load."));
+      image.src = "/assets/images/profile/editorial-profile-illustration.png";
+    }));
+    expect(artworkDimensions).toEqual({ width: 1024, height: 1536 });
     await expect(editorial.locator("blockquote")).not.toBeEmpty();
     await expect(growId.getByRole("heading", { name: "My Grow ID", exact: true })).toBeVisible();
     await expect(growId.locator(".person-profile-grow-id-handle")).toHaveText("@morgan-green");
@@ -3517,8 +3524,16 @@ test.describe("local Developer Scenarios", () => {
         const qrRect = qrElement.getBoundingClientRect();
         const actionRect = section.querySelector(".person-profile-grow-id-action").getBoundingClientRect();
         const growIdStyles = getComputedStyle(growIdElement);
+        const artworkStyles = getComputedStyle(section, "::before");
         return {
-          artworkBackground: getComputedStyle(section, "::before").backgroundImage,
+          artworkBackground: artworkStyles.backgroundImage,
+          artworkDisplay: artworkStyles.display,
+          artworkVisibility: artworkStyles.visibility,
+          artworkWidth: Number.parseFloat(artworkStyles.width) || 0,
+          artworkHeight: Number.parseFloat(artworkStyles.height) || 0,
+          artworkOpacity: Number.parseFloat(artworkStyles.opacity) || 0,
+          artworkZIndex: artworkStyles.zIndex,
+          artworkMask: artworkStyles.maskImage || artworkStyles.webkitMaskImage,
           growIdBackground: growIdStyles.backgroundImage,
           growIdBorderLeft: growIdStyles.borderLeftWidth,
           noteLeft: noteRect.left,
@@ -3537,6 +3552,11 @@ test.describe("local Developer Scenarios", () => {
         };
       });
       expect(geometry.artworkBackground).toContain("/assets/images/profile/editorial-profile-illustration.png");
+      expect(geometry.artworkDisplay).not.toBe("none");
+      expect(geometry.artworkVisibility).toBe("visible");
+      expect(geometry.artworkWidth).toBeGreaterThanOrEqual(100);
+      expect(geometry.artworkHeight).toBeGreaterThanOrEqual(160);
+      expect(geometry.artworkOpacity).toBeGreaterThanOrEqual(0.2);
       expect(geometry.growIdBackground).toBe("none");
       expect(geometry.growIdBorderLeft).toBe("0px");
       if (width > 680) {
