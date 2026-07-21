@@ -88864,3 +88864,436 @@ img.person-profile-avatar {
     max-width: 25ch;
   }
 }
+
+/* Session lifecycle foundation: Germination -> Grow -> Reflection */
+.session-workspace-shell--detail .session-phase-foundation {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-phase-navigator {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
+    rgba(8, 13, 10, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.session-workspace-shell--detail .session-phase-navigator-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-list > li {
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.018);
+  color: rgba(226, 234, 224, 0.72);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button:hover {
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.055);
+  color: #f4f8f1;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button:focus-visible,
+.session-workspace-shell--detail .session-phase-section-toggle:focus-visible {
+  outline: 2px solid rgba(184, 239, 132, 0.92);
+  outline-offset: 2px;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button.is-current {
+  border-color: rgba(148, 209, 89, 0.46);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.14), rgba(148, 209, 89, 0.055)),
+    rgba(18, 28, 16, 0.7);
+  color: #f5faf1;
+  box-shadow: inset 0 1px 0 rgba(220, 255, 190, 0.08);
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button.is-complete {
+  border-color: rgba(148, 209, 89, 0.25);
+  color: #d9e9ce;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button.is-future {
+  color: rgba(207, 217, 203, 0.52);
+}
+
+.session-workspace-shell--detail .session-phase-navigator-marker,
+.session-workspace-shell--detail .session-phase-section-marker {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 1px solid rgba(173, 190, 167, 0.4);
+  border-radius: 50%;
+  background: rgba(4, 8, 5, 0.7);
+}
+
+.session-workspace-shell--detail .is-current > .session-phase-navigator-marker,
+.session-workspace-shell--detail .session-phase-section.is-current .session-phase-section-marker {
+  border-color: #94d159;
+  box-shadow: 0 0 0 4px rgba(148, 209, 89, 0.08);
+}
+
+.session-workspace-shell--detail .is-current > .session-phase-navigator-marker::after,
+.session-workspace-shell--detail .session-phase-section.is-current .session-phase-section-marker::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: #94d159;
+}
+
+.session-workspace-shell--detail .is-complete > .session-phase-navigator-marker,
+.session-workspace-shell--detail .session-phase-section.is-complete .session-phase-section-marker {
+  border-color: rgba(148, 209, 89, 0.68);
+  background: rgba(148, 209, 89, 0.16);
+}
+
+.session-workspace-shell--detail .is-complete > .session-phase-navigator-marker::after,
+.session-workspace-shell--detail .session-phase-section.is-complete .session-phase-section-marker::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #b8ef84;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-copy strong {
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-copy small {
+  color: inherit;
+  font-size: 0.65rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  opacity: 0.76;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell--detail .session-phase-section {
+  min-width: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  scroll-margin-top: 92px;
+}
+
+.session-workspace-shell--detail .session-phase-section-header {
+  display: grid;
+  gap: 12px;
+  padding: 14px 2px 0;
+}
+
+.session-workspace-shell--detail .session-phase-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f3f7ef;
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-workspace-shell--detail .session-phase-section-heading {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-phase-section-heading .eyebrow {
+  margin: 0;
+  color: #9edc69;
+  font-size: 0.64rem;
+}
+
+.session-workspace-shell--detail .session-phase-section-heading strong {
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.session-workspace-shell--detail .session-phase-section-action {
+  margin-left: auto;
+  color: #b8ef84;
+  font-size: 0.74rem;
+  font-weight: 760;
+  text-align: right;
+}
+
+.session-workspace-shell--detail .session-phase-section.is-future .session-phase-section-heading,
+.session-workspace-shell--detail .session-phase-section.is-future .session-phase-section-action {
+  opacity: 0.62;
+}
+
+.session-workspace-shell--detail .session-phase-section-body {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding-top: 14px;
+}
+
+.session-workspace-shell--detail .session-phase-section-body[hidden] {
+  display: none !important;
+}
+
+.session-workspace-shell--detail .session-phase-completion-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 0 2px 30px;
+}
+
+.session-workspace-shell--detail .session-phase-completion-summary > span,
+.session-workspace-shell--detail .session-phase-completion-summary strong,
+.session-workspace-shell--detail .session-phase-completion-summary small {
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-phase-completion-summary > span {
+  display: grid;
+  gap: 2px;
+}
+
+.session-workspace-shell--detail .session-phase-completion-summary strong {
+  overflow: hidden;
+  color: #eaf5e2;
+  font-size: 0.84rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-workspace-shell--detail .session-phase-completion-summary small {
+  color: rgba(214, 225, 210, 0.62);
+  font-size: 0.66rem;
+  line-height: 1.2;
+}
+
+.session-workspace-shell--detail .session-phase-locked-state,
+.session-workspace-shell--detail .session-phase-foundation-intro {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.session-workspace-shell--detail .session-phase-lock-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  border-radius: 12px;
+  color: #a9d77d;
+  font-size: 1.25rem;
+}
+
+.session-workspace-shell--detail .session-phase-lock-svg {
+  width: 20px;
+  height: 20px;
+}
+
+.session-workspace-shell--detail :is(.session-phase-locked-state, .session-phase-foundation-intro) :is(.eyebrow, h3, p),
+.session-workspace-shell--detail .session-phase-foundation-grid :is(.eyebrow, h4, p) {
+  margin: 0;
+}
+
+.session-workspace-shell--detail :is(.session-phase-locked-state, .session-phase-foundation-intro) > div:first-of-type,
+.session-workspace-shell--detail .session-phase-foundation-grid > section {
+  display: grid;
+  gap: 7px;
+}
+
+.session-workspace-shell--detail :is(.session-phase-locked-state, .session-phase-foundation-intro) p,
+.session-workspace-shell--detail .session-phase-foundation-grid p,
+.session-workspace-shell--detail .session-phase-foundation-note {
+  color: rgba(213, 223, 210, 0.66);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.session-workspace-shell--detail .session-phase-foundation-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.session-workspace-shell--detail .session-phase-foundation-actions .button {
+  min-height: 44px;
+}
+
+.session-workspace-shell--detail .session-phase-foundation-note {
+  margin: -8px 0 0;
+}
+
+.session-workspace-shell--detail .session-phase-foundation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.session-workspace-shell--detail .session-phase-foundation-grid > section {
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.016);
+}
+
+.session-workspace-shell--detail .session-reflection-foundation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  opacity: 0.7;
+}
+
+.session-workspace-shell--detail .session-reflection-foundation > legend {
+  padding: 0 6px;
+  color: rgba(220, 230, 216, 0.7);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.session-workspace-shell--detail .session-reflection-foundation > label {
+  display: grid;
+  gap: 7px;
+}
+
+.session-workspace-shell--detail .session-reflection-foundation > label:last-of-type {
+  grid-column: 1 / -1;
+}
+
+.session-workspace-shell--detail .session-reflection-choice-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.session-workspace-shell--detail .session-reflection-choice-group > legend {
+  padding: 0 5px;
+}
+
+@media (max-width: 720px) {
+  .session-workspace-shell--detail .session-phase-navigator-button {
+    gap: 7px;
+    padding-inline: 8px;
+  }
+
+  .session-workspace-shell--detail .session-phase-navigator-copy strong {
+    font-size: 0.74rem;
+  }
+
+  .session-workspace-shell--detail .session-phase-completion-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-left: 30px;
+  }
+
+  .session-workspace-shell--detail .session-phase-foundation-intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .session-workspace-shell--detail .session-phase-foundation-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .session-workspace-shell--detail .session-phase-foundation-actions .button {
+    flex: 1 1 0;
+  }
+
+  .session-workspace-shell--detail .session-phase-foundation-grid,
+  .session-workspace-shell--detail .session-reflection-foundation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-workspace-shell--detail .session-reflection-foundation > label:last-of-type {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 440px) {
+  .session-workspace-shell--detail .session-phase-navigator {
+    padding: 6px;
+  }
+
+  .session-workspace-shell--detail .session-phase-navigator-list {
+    gap: 5px;
+  }
+
+  .session-workspace-shell--detail .session-phase-navigator-button {
+    justify-content: center;
+    padding-inline: 5px;
+  }
+
+  .session-workspace-shell--detail .session-phase-navigator-marker {
+    display: none;
+  }
+
+  .session-workspace-shell--detail .session-phase-navigator-copy {
+    text-align: center;
+  }
+
+  .session-workspace-shell--detail .session-phase-section-action {
+    max-width: 45%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-workspace-shell--detail .session-phase-navigator-button {
+    transition: none;
+  }
+}

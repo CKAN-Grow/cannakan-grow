@@ -12,6 +12,7 @@ Foundation Notes allow Grow to preserve strong ideas without interrupting the cu
 - **Planned** — assigned to a future platform phase
 - **In Development** — actively being implemented
 - **Implemented** — completed and incorporated into Grow
+- **Foundational Architecture** — establishes a durable platform contract for future implementation
 
 ## Foundation Note index
 
@@ -20,6 +21,7 @@ Foundation Notes allow Grow to preserve strong ideas without interrupting the cu
 | [FN-001](./foundation-notes/FN-001-growing-conditions.md) | Growing Conditions | Validated | Sessions, GEE, GPE, Recommendations, Learning |
 | FN-002 | [Product Language & Ownership](./foundation-notes/FN-002-product-language-and-ownership.md) | Validated | Navigation, UX, Grow Profile, Grow Sessions, Grow Seed Vault |
 | FN-003 | [Canonical Entities & Representation](./foundation-notes/FN-003-canonical-entities-and-representation.md) | Validated | Grow Network, Sources, Breeders, Organizations, Testing Programs |
+| FN-004 | [Session Lifecycle & Grow Companion](./foundation-notes/FN-004-session-lifecycle-and-grow-companion.md) | Foundational Architecture | Sessions, Seed Vault, Grow Companion, GEE |
 
 ## Reusable Foundation Note template
 
