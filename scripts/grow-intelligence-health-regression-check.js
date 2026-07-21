@@ -32,6 +32,8 @@ assert(app.includes('storedKey === "explorer-data-health" ? "grow-intelligence-h
 assert(loader.includes('appState.supabase.rpc("get_gie_global_analytics")'), "Grow Intelligence Health must load the canonical Global GIE contract.");
 assert(healthMarkup.includes("System Health") && healthMarkup.includes("Data Quality"), "System health and data quality must be presented separately.");
 assert(healthMarkup.includes("aggregate.dataQualityScore") && healthMarkup.includes("aggregate.dataQualityStatus"), "Health UI must render canonical score fields.");
+assert(healthMarkup.includes("formatAdminTimestamp(aggregate.generatedAt)") && healthMarkup.includes("formatAdminTimestamp(contract.generatedAt)"), "Grow Intelligence Health must use the canonical Admin timestamp formatter.");
+assert(!healthMarkup.includes("formatDateTimeForDisplay"), "Grow Intelligence Health must not reference the removed date formatter.");
 assert(!healthMarkup.includes("Math.round") && !healthMarkup.includes("getGrowIntelligenceEngineAttributionStatus"), "Health UI must not calculate GIE quality classifications.");
 assert(!healthMarkup.includes("data-repair") && !healthMarkup.includes("data-delete") && !healthMarkup.includes("data-override"), "Health UI must remain read-only.");
 

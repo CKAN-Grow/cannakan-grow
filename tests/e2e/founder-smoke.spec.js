@@ -149,6 +149,33 @@ test.describe("founder desktop smoke", () => {
     });
   }
 
+  test("Admin Grow Intelligence Health renderer completes without runtime errors", async ({ page }) => {
+    const runtimeErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") runtimeErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => runtimeErrors.push(error.message));
+
+    await gotoFounderRoute(page, "#home");
+    const rendererAvailable = await page.evaluate(() => {
+      if (typeof window.renderGrowIntelligenceHealthSectionMarkup !== "function") {
+        return false;
+      }
+      const probe = document.createElement("section");
+      probe.id = "admin-grow-intelligence-health-runtime-probe";
+      probe.innerHTML = window.renderGrowIntelligenceHealthSectionMarkup();
+      document.body.append(probe);
+      return true;
+    });
+
+    expect(rendererAvailable).toBe(true);
+    const healthProbe = page.locator("#admin-grow-intelligence-health-runtime-probe");
+    await expect(healthProbe).toContainText("Grow Intelligence Health");
+    await expect(healthProbe).toContainText("Grow Intelligence Engine health and data quality");
+    await expect(healthProbe.locator("#admin-grow-intelligence-health-content")).toBeAttached();
+    expect(runtimeErrors).toEqual([]);
+  });
+
   test("New Session system modal fits the desktop viewport when available", async ({ page }, testInfo) => {
     await gotoFounderRoute(page, "#new");
 
