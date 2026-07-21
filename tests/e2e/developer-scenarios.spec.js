@@ -1,4 +1,5 @@
 const { test, expect } = require("@playwright/test");
+const { PNG } = require("pngjs");
 const { enableFounderLocalQa } = require("./support/founder-smoke");
 
 const STORAGE_KEY = "grow_developer_scenarios_v1";
@@ -51,6 +52,27 @@ function normalizeComputedCssColor(value) {
   }
 
   throw new Error("Unsupported computed CSS color: " + value);
+}
+
+function measurePngPixelDifference(visibleBuffer, hiddenBuffer) {
+  const visible = PNG.sync.read(visibleBuffer);
+  const hidden = PNG.sync.read(hiddenBuffer);
+  expect({ width: visible.width, height: visible.height }).toEqual({ width: hidden.width, height: hidden.height });
+  let changedPixels = 0;
+  const pixelCount = visible.width * visible.height;
+  for (let offset = 0; offset < visible.data.length; offset += 4) {
+    const difference = Math.max(
+      Math.abs(visible.data[offset] - hidden.data[offset]),
+      Math.abs(visible.data[offset + 1] - hidden.data[offset + 1]),
+      Math.abs(visible.data[offset + 2] - hidden.data[offset + 2]),
+      Math.abs(visible.data[offset + 3] - hidden.data[offset + 3]),
+    );
+    if (difference >= 8) changedPixels += 1;
+  }
+  return {
+    changedPixels,
+    changedRatio: pixelCount ? changedPixels / pixelCount : 0,
+  };
 }
 
 function getExpectedSeedVaultOverviewColor(tone) {
@@ -3477,6 +3499,7 @@ test.describe("local Developer Scenarios", () => {
 
     const profile = page.locator("[data-person-grow-profile='true']");
     const editorial = profile.locator("[data-person-profile-editorial-identity='true']");
+    const artwork = editorial.locator("img.person-profile-editorial-artwork");
     const growId = editorial.locator("[data-person-profile-grow-id='true']");
     const qr = growId.locator("[data-grow-id-qr]");
     const growIdAction = growId.getByRole("button", { name: "View Grow ID", exact: true });
@@ -3486,15 +3509,11 @@ test.describe("local Developer Scenarios", () => {
     await expect(editorial).toHaveAttribute("data-profile-note-source", "grower");
     await expect(editorial.getByRole("heading", { name: "From the Grower", exact: true })).toBeVisible();
     await expect(editorial.locator(".person-profile-note-copy .eyebrow")).toHaveText("FROM THE GROWER");
-    const artworkResponse = await page.request.get("/assets/images/profile/editorial-profile-illustration.png");
+    await expect(artwork).toHaveAttribute("src", "/assets/images/profile/editorial-profile-illustration.png");
+    await expect(artwork).toHaveAttribute("alt", "");
+    const artworkResponse = await page.request.get(await artwork.getAttribute("src"));
     expect(artworkResponse.status()).toBe(200);
-    const artworkDimensions = await page.evaluate(() => new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
-      image.onerror = () => reject(new Error("Canonical Profile editorial illustration failed to load."));
-      image.src = "/assets/images/profile/editorial-profile-illustration.png";
-    }));
-    expect(artworkDimensions).toEqual({ width: 1024, height: 1536 });
+    await expect.poll(() => artwork.evaluate((image) => ({ width: image.naturalWidth, height: image.naturalHeight }))).toEqual({ width: 1024, height: 1536 });
     await expect(editorial.locator("blockquote")).not.toBeEmpty();
     await expect(growId.getByRole("heading", { name: "My Grow ID", exact: true })).toBeVisible();
     await expect(growId.locator(".person-profile-grow-id-handle")).toHaveText("@morgan-green");
@@ -3514,26 +3533,47 @@ test.describe("local Developer Scenarios", () => {
     for (const width of [1280, 768, 390]) {
       await page.setViewportSize({ width, height: 1000 });
       await expect(editorial).toBeVisible();
+      await expect(artwork).toBeVisible();
       await expect(qr).toBeVisible();
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const visibleArtworkPixels = await editorial.screenshot();
+      await artwork.evaluate((image) => { image.style.visibility = "hidden"; });
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const hiddenArtworkPixels = await editorial.screenshot();
+      await artwork.evaluate((image) => { image.style.removeProperty("visibility"); });
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const pixelDifference = measurePngPixelDifference(visibleArtworkPixels, hiddenArtworkPixels);
+      expect(pixelDifference.changedPixels, `${width}px artwork must change rendered pixels`).toBeGreaterThan(2000);
+      expect(pixelDifference.changedRatio, `${width}px artwork pixel-change ratio`).toBeGreaterThan(0.005);
       const geometry = await editorial.evaluate((section) => {
+        const artworkElement = section.querySelector("img.person-profile-editorial-artwork");
         const noteElement = section.querySelector(".person-profile-note-copy");
         const growIdElement = section.querySelector(".person-profile-grow-id");
+        const artworkRect = artworkElement.getBoundingClientRect();
+        const noteContentRect = noteElement.querySelector(".eyebrow").getBoundingClientRect();
         const noteRect = noteElement.getBoundingClientRect();
         const growIdRect = growIdElement.getBoundingClientRect();
         const qrElement = section.querySelector(".person-profile-grow-id-qr");
         const qrRect = qrElement.getBoundingClientRect();
         const actionRect = section.querySelector(".person-profile-grow-id-action").getBoundingClientRect();
         const growIdStyles = getComputedStyle(growIdElement);
-        const artworkStyles = getComputedStyle(section, "::before");
+        const artworkStyles = getComputedStyle(artworkElement);
         return {
-          artworkBackground: artworkStyles.backgroundImage,
           artworkDisplay: artworkStyles.display,
           artworkVisibility: artworkStyles.visibility,
-          artworkWidth: Number.parseFloat(artworkStyles.width) || 0,
-          artworkHeight: Number.parseFloat(artworkStyles.height) || 0,
+          artworkWidth: artworkRect.width,
+          artworkHeight: artworkRect.height,
           artworkOpacity: Number.parseFloat(artworkStyles.opacity) || 0,
           artworkZIndex: artworkStyles.zIndex,
-          artworkMask: artworkStyles.maskImage || artworkStyles.webkitMaskImage,
+          artworkObjectFit: artworkStyles.objectFit,
+          artworkObjectPosition: artworkStyles.objectPosition,
+          artworkFilter: artworkStyles.filter,
+          artworkClipPath: artworkStyles.clipPath,
+          artworkNaturalWidth: artworkElement.naturalWidth,
+          artworkNaturalHeight: artworkElement.naturalHeight,
+          artworkRight: artworkRect.right,
+          artworkPaintRight: artworkRect.left + (artworkRect.width * 0.69),
+          noteContentLeft: noteContentRect.left,
           growIdBackground: growIdStyles.backgroundImage,
           growIdBorderLeft: growIdStyles.borderLeftWidth,
           noteLeft: noteRect.left,
@@ -3551,12 +3591,17 @@ test.describe("local Developer Scenarios", () => {
           actionRight: actionRect.right,
         };
       });
-      expect(geometry.artworkBackground).toContain("/assets/images/profile/editorial-profile-illustration.png");
       expect(geometry.artworkDisplay).not.toBe("none");
       expect(geometry.artworkVisibility).toBe("visible");
       expect(geometry.artworkWidth).toBeGreaterThanOrEqual(100);
       expect(geometry.artworkHeight).toBeGreaterThanOrEqual(160);
-      expect(geometry.artworkOpacity).toBeGreaterThanOrEqual(0.2);
+      expect(geometry.artworkOpacity).toBeGreaterThanOrEqual(0.65);
+      expect(geometry.artworkObjectFit).toBe("contain");
+      expect(geometry.artworkObjectPosition).toBe(width <= 680 ? "0% 0%" : "0% 50%");
+      expect(geometry.artworkNaturalWidth).toBe(1024);
+      expect(geometry.artworkNaturalHeight).toBe(1536);
+      expect(geometry.artworkClipPath).toBe("none");
+      expect(geometry.artworkPaintRight).toBeLessThanOrEqual(geometry.noteContentLeft + 1);
       expect(geometry.growIdBackground).toBe("none");
       expect(geometry.growIdBorderLeft).toBe("0px");
       if (width > 680) {
