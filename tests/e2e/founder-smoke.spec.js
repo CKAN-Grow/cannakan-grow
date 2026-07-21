@@ -176,6 +176,65 @@ test.describe("founder desktop smoke", () => {
     expect(runtimeErrors).toEqual([]);
   });
 
+  test("local Admin navigation converges for the canonical Dev QA fixture", async ({ page }) => {
+    const runtimeErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") runtimeErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => runtimeErrors.push(error.message));
+
+    await gotoFounderRoute(page, "#home");
+    await page.locator("#account-menu-trigger").click();
+    const adminLink = page.locator("#account-admin-link");
+    await expect(adminLink).toBeVisible();
+    await adminLink.click();
+
+    await expect(page).toHaveURL(/#admin$/);
+    await expect(page.locator(".admin-page-hero")).toContainText("Admin Tools");
+    await expect(page.locator(".account-dropdown.is-open")).toHaveCount(0);
+    await expect(page.locator(".app-hero--home")).toHaveCount(0);
+    await expect(page.locator("#admin-grow-intelligence-health-content")).toBeAttached();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/#home$/);
+    await expect(page.locator(".app-hero--home")).toBeVisible();
+
+    await page.goForward();
+    await expect(page).toHaveURL(/#admin$/);
+    await expect(page.locator(".admin-page-hero")).toBeVisible();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.locator(".admin-page-hero")).toBeVisible();
+    await expect(page.locator("#admin-grow-intelligence-health-content")).toBeAttached();
+    expect(runtimeErrors).toEqual([]);
+  });
+
+  test("local non-admin identity remains blocked from Admin", async ({ page }) => {
+    await gotoFounderRoute(page, "#home");
+    await page.evaluate(() => {
+      localStorage.removeItem("cannakanGrowDevQaBypass");
+      window.CANNAKAN_SUPABASE_CONFIG = {
+        ...window.CANNAKAN_SUPABASE_CONFIG,
+        url: "https://local-authorization.test",
+        anonKey: "local-authorization-test-key",
+      };
+      window.applyResolvedAuthState({
+        user: {
+          id: "local-non-admin-user",
+          email: "local-user@example.test",
+          app_metadata: { role: "user" },
+          user_metadata: { name: "Local Non-Admin" },
+        },
+      }, "playwright:local-non-admin");
+      window.history.pushState(null, "", "#admin");
+      window.safeRender();
+    });
+
+    await expect(page).toHaveURL(/#admin$/);
+    await expect(page.getByRole("heading", { name: "Admin access required" })).toBeVisible();
+    await expect(page.locator(".admin-page-hero")).toHaveCount(0);
+  });
+
   test("New Session system modal fits the desktop viewport when available", async ({ page }, testInfo) => {
     await gotoFounderRoute(page, "#new");
 
