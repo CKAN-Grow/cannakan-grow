@@ -3015,7 +3015,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#detail-session-result-breakdown")).not.toContainText("Pending");
   });
 
-  test("extends a Session through Germination, Grow, and Reflection without changing the germination record", async ({ page }) => {
+  test("keeps one Grow Companion through Germination, Growing, and Reflection without changing the germination record", async ({ page }) => {
     const consoleErrors = [];
     const backendMutations = [];
     page.on("console", (message) => {
@@ -3034,18 +3034,22 @@ test.describe("local Developer Scenarios", () => {
 
     await page.goto("/#sessions/scenario-full-grow-session-18");
     const foundation = page.locator("[data-session-phase-foundation]");
+    const companion = foundation.locator("[data-grow-companion-primary]");
     const navigator = foundation.locator("[data-session-phase-navigator]");
     await expect(foundation).toBeVisible();
+    await expect(companion).toHaveCount(1);
+    await expect(companion.locator("[data-session-phase-navigator]")).toHaveCount(1);
     await expect(navigator.locator("[data-session-phase-nav]")).toHaveCount(3);
     await expect(navigator.locator("[data-session-phase-nav='germination']")).toHaveAttribute("aria-current", "step");
     await expect(navigator.locator("[data-session-phase-nav='germination']")).toContainText("Current");
-    await expect(navigator.locator("[data-session-phase-nav='grow']")).toContainText("Upcoming");
+    await expect(navigator.locator("[data-session-phase-nav='grow']")).toContainText("Growing");
+    await expect(navigator.locator("[data-session-phase-nav='grow']")).toHaveAttribute("aria-disabled", "true");
     await expect(navigator.locator("[data-session-phase-nav='reflection']")).toContainText("Upcoming");
 
-    const activeGermination = foundation.locator("[data-session-phase-section='germination']");
-    await expect(activeGermination).toHaveAttribute("data-session-phase-status", "current");
-    await expect(activeGermination.locator("[data-session-phase-toggle='germination']")).toHaveAttribute("aria-expanded", "true");
-    await expect(activeGermination.locator("[data-session-phase-body='germination']")).toBeVisible();
+    const activeGermination = foundation.locator("[data-session-current-phase-workspace][data-session-current-phase='germination']");
+    await expect(activeGermination).toBeVisible();
+    await expect(activeGermination.getByRole("heading", { name: "Germination", exact: true })).toBeVisible();
+    await expect(foundation.locator("[data-session-phase-section]")).toHaveCount(0);
     const germinationModuleSelectors = [
       "#detail-lifecycle-section",
       "#detail-chart-shell",
@@ -3065,36 +3069,39 @@ test.describe("local Developer Scenarios", () => {
     await germinationNav.press("ArrowRight");
     await expect(growNav).toBeFocused();
     await growNav.press("Enter");
-    const futureGrow = foundation.locator("[data-session-phase-section='grow']");
-    await expect(futureGrow.locator("[data-session-phase-toggle='grow']")).toHaveAttribute("aria-expanded", "true");
-    await expect(futureGrow).toContainText("Grow Companion becomes available after the Germination phase is complete.");
-
-    await navigator.locator("[data-session-phase-nav='reflection']").click();
-    const reflection = foundation.locator("[data-session-phase-section='reflection']");
-    await expect(reflection.locator("[data-session-phase-body='reflection']")).toBeVisible();
-    await expect(reflection.getByText("Overall Experience", { exact: true })).toBeVisible();
-    await expect(reflection.getByText("Would Grow Again?", { exact: true })).toBeVisible();
-    await expect(reflection.getByText("Final Thoughts", { exact: true })).toBeVisible();
-    await expect.poll(async () => reflection.locator("input, textarea").evaluateAll(
-      (fields) => fields.length > 0 && fields.every((field) => field.disabled),
-    )).toBe(true);
+    await expect(activeGermination).toBeVisible();
+    await expect(foundation.locator("[data-session-phase-section='grow']")).toHaveCount(0);
+    const reflectionNav = navigator.locator("[data-session-phase-nav='reflection']");
+    await reflectionNav.focus();
+    await reflectionNav.press("Enter");
+    await expect(activeGermination).toBeVisible();
+    await expect(foundation.getByText("Overall Experience", { exact: true })).toHaveCount(0);
 
     await page.goto("/#sessions/scenario-full-grow-session-01");
     const completedFoundation = page.locator("[data-session-phase-foundation]");
     const completedGermination = completedFoundation.locator("[data-session-phase-section='germination']");
-    const currentGrow = completedFoundation.locator("[data-session-phase-section='grow']");
+    const currentGrowing = completedFoundation.locator("[data-session-current-phase-workspace][data-session-current-phase='grow']");
+    await expect(page.locator("[data-session-summary-card='status']")).toContainText("In Progress");
+    await expect(page.locator("[data-session-summary-card='current-phase']")).toContainText("Growing");
+    await expect(page.locator("[data-session-detail-status-badge='true']")).toHaveCount(0);
     await expect(completedGermination).toHaveAttribute("data-session-phase-status", "complete");
     await expect(completedGermination.locator("[data-session-phase-toggle='germination']")).toHaveAttribute("aria-expanded", "false");
     await expect(completedGermination.locator("[data-session-phase-summary='germination']")).toContainText("Germinated");
     await expect(completedGermination.locator("[data-session-phase-summary='germination']")).toContainText("Tested");
     await expect(completedGermination.locator("[data-session-phase-summary='germination']")).toContainText("Elapsed");
     await expect(completedGermination.locator("[data-session-phase-summary='germination']")).toContainText(/\d+%/);
-    await expect(currentGrow).toHaveAttribute("data-session-phase-status", "current");
-    await expect(currentGrow.locator("[data-session-phase-body='grow']")).toBeVisible();
-    await expect(currentGrow).toContainText("Upcoming Tasks");
-    await expect(currentGrow).toContainText("Recent Activity");
-    await expect(currentGrow.getByRole("button", { name: "Add Task" })).toBeDisabled();
-    await expect(currentGrow.getByRole("button", { name: "Add Event" })).toBeDisabled();
+    await expect(currentGrowing).toBeVisible();
+    await expect(currentGrowing.getByRole("heading", { name: "Growing", exact: true })).toBeVisible();
+    await expect(currentGrowing).toContainText("Upcoming Tasks");
+    await expect(currentGrowing).toContainText("Recent Activity");
+    await expect(currentGrowing.getByRole("button", { name: "Add Task" })).toBeDisabled();
+    await expect(currentGrowing.getByRole("button", { name: "Add Event" })).toBeDisabled();
+    await expect(completedFoundation.locator("[data-grow-companion-primary]")).toHaveCount(1);
+    await expect(completedFoundation.locator("[data-session-phase-section='grow']")).toHaveCount(0);
+    expect(await completedFoundation.locator("[data-session-current-phase-workspace]").evaluate((workspace) => (
+      workspace.compareDocumentPosition(document.querySelector("[data-session-phase-section='germination']"))
+      & Node.DOCUMENT_POSITION_FOLLOWING
+    ) !== 0)).toBe(true);
 
     const completedGerminationToggle = completedGermination.locator("[data-session-phase-toggle='germination']");
     const completedNavigator = completedFoundation.locator("[data-session-phase-navigator]");
@@ -3104,7 +3111,7 @@ test.describe("local Developer Scenarios", () => {
       await completedGerminationToggle.click();
       await expect(completedGermination.locator("[data-session-phase-body='germination']")).toBeHidden();
       await completedNavigator.locator("[data-session-phase-nav='grow']").click();
-      await expect(currentGrow.locator("[data-session-phase-body='grow']")).toBeVisible();
+      await expect(currentGrowing).toBeVisible();
       await completedNavigator.locator("[data-session-phase-nav='germination']").click();
       await expect(completedGermination.locator("[data-session-phase-body='germination']")).toBeVisible();
       await completedGerminationToggle.click();
@@ -3112,6 +3119,7 @@ test.describe("local Developer Scenarios", () => {
       await completedGerminationToggle.click();
       await expect(completedGermination.locator("[data-session-phase-body='germination']")).toBeVisible();
       for (const selector of germinationModuleSelectors) {
+        await expect(completedFoundation.locator(selector)).toHaveCount(1);
         await expect(completedGermination.locator(selector)).toHaveCount(1);
       }
       await expect(completedGermination.locator("#detail-session-result-breakdown")).not.toContainText("Pending");

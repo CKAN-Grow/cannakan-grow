@@ -88865,17 +88865,89 @@ img.person-profile-avatar {
   }
 }
 
-/* Session lifecycle foundation: Germination -> Grow -> Reflection */
+/* Session lifecycle foundation: one Grow Companion across Germination -> Growing -> Reflection */
 .session-workspace-shell--detail .session-phase-foundation {
   display: grid;
-  gap: 14px;
+  gap: 18px;
   min-width: 0;
+}
+
+.session-workspace-shell--detail .session-grow-companion-surface {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: clamp(14px, 2vw, 20px);
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.1), transparent 34%),
+    linear-gradient(145deg, rgba(16, 25, 18, 0.95), rgba(7, 12, 9, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(230, 255, 210, 0.055),
+    0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+.session-workspace-shell--detail .session-grow-companion-header {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.34fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(14px, 2.2vw, 28px);
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-grow-companion-title-copy,
+.session-workspace-shell--detail .session-grow-companion-workspace-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-title-copy :is(.eyebrow, h2, p),
+.session-workspace-shell--detail .session-grow-companion-workspace-heading :is(.eyebrow, h3, p) {
+  margin: 0;
+}
+
+.session-workspace-shell--detail .session-grow-companion-title-copy h2 {
+  font-size: clamp(1.3rem, 2vw, 1.65rem);
+}
+
+.session-workspace-shell--detail .session-grow-companion-title-copy > p:last-child,
+.session-workspace-shell--detail .session-grow-companion-workspace-heading > p {
+  color: rgba(218, 229, 214, 0.68);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.session-workspace-shell--detail .session-grow-companion-workspace {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  scroll-margin-top: 92px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-workspace-heading {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.32fr) minmax(0, 1fr);
+  align-items: end;
+  gap: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.075);
+}
+
+.session-workspace-shell--detail .session-grow-companion-workspace-body,
+.session-workspace-shell--detail .session-completed-phase-records {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-completed-phase-records[hidden] {
+  display: none !important;
 }
 
 .session-workspace-shell--detail .session-phase-navigator {
   min-width: 0;
   padding: 8px;
-  border: 1px solid rgba(148, 209, 89, 0.14);
+  border: 1px solid rgba(148, 209, 89, 0.18);
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
@@ -88937,6 +89009,11 @@ img.person-profile-avatar {
 .session-workspace-shell--detail .session-phase-navigator-button.is-complete {
   border-color: rgba(148, 209, 89, 0.25);
   color: #d9e9ce;
+}
+
+.session-workspace-shell--detail .session-phase-navigator-button[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.62;
 }
 
 .session-workspace-shell--detail .session-phase-navigator-button.is-future {
@@ -89010,16 +89087,21 @@ img.person-profile-avatar {
   text-transform: uppercase;
 }
 
-.session-workspace-shell--detail .session-phase-section {
+.session-workspace-shell--detail .session-phase-record {
   min-width: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.008)),
+    rgba(7, 11, 8, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   scroll-margin-top: 92px;
 }
 
 .session-workspace-shell--detail .session-phase-section-header {
   display: grid;
   gap: 12px;
-  padding: 14px 2px 0;
+  padding: 13px 16px;
 }
 
 .session-workspace-shell--detail .session-phase-section-toggle {
@@ -89070,7 +89152,7 @@ img.person-profile-avatar {
   display: grid;
   gap: 18px;
   min-width: 0;
-  padding-top: 14px;
+  padding: 0 16px 16px;
 }
 
 .session-workspace-shell--detail .session-phase-section-body[hidden] {
@@ -89113,7 +89195,7 @@ img.person-profile-avatar {
 .session-workspace-shell--detail .session-phase-locked-state,
 .session-workspace-shell--detail .session-phase-foundation-intro {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   min-width: 0;
   padding: 18px;
@@ -89140,7 +89222,7 @@ img.person-profile-avatar {
 }
 
 .session-workspace-shell--detail :is(.session-phase-locked-state, .session-phase-foundation-intro) :is(.eyebrow, h3, p),
-.session-workspace-shell--detail .session-phase-foundation-grid :is(.eyebrow, h4, p) {
+.session-workspace-shell--detail :is(.session-phase-foundation-intro, .session-phase-foundation-grid) :is(.eyebrow, h4, p) {
   margin: 0;
 }
 
@@ -89227,6 +89309,20 @@ img.person-profile-avatar {
 }
 
 @media (max-width: 720px) {
+  .session-workspace-shell--detail .session-grow-companion-header,
+  .session-workspace-shell--detail .session-grow-companion-workspace-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-workspace-shell--detail .session-grow-companion-surface {
+    gap: 16px;
+  }
+
+  .session-workspace-shell--detail .session-grow-companion-workspace-heading {
+    align-items: start;
+    gap: 8px;
+  }
+
   .session-workspace-shell--detail .session-phase-navigator-button {
     gap: 7px;
     padding-inline: 8px;
