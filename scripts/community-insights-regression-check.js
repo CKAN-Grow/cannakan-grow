@@ -17,7 +17,7 @@ function between(source, start, end) {
   return source.slice(startIndex, endIndex);
 }
 
-const loader = between(app, "async function loadGieCommunityAnalytics", "async function loadGieContractDiagnostics");
+const loader = between(app, "async function loadGeeCommunityAnalytics", "async function loadGeeContractDiagnostics");
 const state = between(app, "function buildCommunityInsightsState()", "function renderCommunityInsightsKpiGrid");
 const page = between(app, "function renderCommunityInsightsPage()", "function renderCommunityInsightsDrilldownPage");
 const drilldown = between(app, "function renderCommunityInsightsDrilldownPage", "function formatSeedAgePercentMetric");
@@ -32,11 +32,11 @@ for (const forbidden of ["getApprovedPublicGallerySnapshots(", "getSessions(", "
   assert(!drilldown.includes(forbidden), `Community ranking pages must not aggregate locally: ${forbidden}`);
   assert(!galleryDashboard.includes(forbidden), `Gallery analytics dashboard must not aggregate locally: ${forbidden}`);
 }
-assert(app.includes('data-gie-community-consumer="community"'), "Community consumer marker is missing.");
-assert(app.includes('data-gie-community-consumer="leaderboards"'), "Leaderboard consumer marker is missing.");
+assert(app.includes('data-gee-community-consumer="community"'), "Community consumer marker is missing.");
+assert(app.includes('data-gee-community-consumer="leaderboards"'), "Leaderboard consumer marker is missing.");
 assert(app.includes("state.overview?.sources") && app.includes("state.overview?.varieties"), "Community counts must render canonical overview fields.");
 assert(drilldown.includes("state.topSources") && drilldown.includes("state.topVarieties"), "Ranking routes must render canonical ranking arrays.");
-assert(galleryDashboard.includes("state.leaderboards?.sources") && galleryDashboard.includes("state.leaderboards?.varieties"), "Gallery leaderboards must render GIE leaderboards.");
+assert(galleryDashboard.includes("state.leaderboards?.sources") && galleryDashboard.includes("state.leaderboards?.varieties"), "Gallery leaderboards must render GEE leaderboards.");
 assert(!app.includes("function getCommunityIntelligenceDashboardData"), "Legacy gallery analytics aggregator must remain removed.");
 
 for (const selector of [".community-insights-page", ".community-insights-kpi-grid", ".community-insights-grid", ".community-insights-chart-card"]) {

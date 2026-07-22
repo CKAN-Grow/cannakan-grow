@@ -20,7 +20,7 @@ const moderationMigration = fs.readFileSync(
   "utf8",
 );
 const docs = fs.readFileSync(
-  path.join(root, "docs", "architecture", "grow-intelligence-engine.md"),
+  path.join(root, "docs", "architecture", "grow-evidence-engine.md"),
   "utf8",
 );
 const buildConfig = fs.readFileSync(path.join(root, "scripts", "build-config.mjs"), "utf8");
@@ -42,7 +42,7 @@ function between(source, startNeedle, endNeedle) {
 const contractDefinitions = migration.match(
   /create or replace function public\.get_gie_(?:global|owner|community)_analytics\(/g,
 ) || [];
-assert(contractDefinitions.length === 3, "Phase 1 must define exactly three canonical GIE analytics contracts.");
+assert(contractDefinitions.length === 3, "Phase 1 must define exactly three canonical GEE analytics contracts.");
 assert(new Set(contractDefinitions).size === 3, "Global, Owner, and Community contract definitions must each exist once.");
 
 for (const field of [
@@ -102,7 +102,7 @@ for (const privateField of ["public_grow_note", "snapshot_image", "submitted_pro
   assert(!communityRows.includes(privateField), `Community analytics must not select ${privateField}.`);
 }
 
-assert(globalContract.includes("get_gie_contract_analytics_v1('global', null)"), "Global must compose the single GIE contract dispatcher.");
+assert(globalContract.includes("get_gie_contract_analytics_v1('global', null)"), "Global must compose the single GEE contract dispatcher.");
 assert(migration.includes("return public.get_grow_intelligence_engine_analytics_legacy_v1()"), "The shared dispatcher must preserve the released anonymous implementation for Global.");
 assert(priorEngine.includes("from public.grow_sessions") && !globalContract.includes("grow_gallery_snapshots"), "Global truth must remain completed-session based.");
 assert(moderationMigration.includes("delete from public.grow_gallery_snapshots") && !between(moderationMigration, "create or replace function public.admin_delete_grow_gallery_snapshot", "revoke all on function public.admin_delete_grow_gallery_snapshot").includes("delete from public.grow_sessions"), "Deleting Community evidence must not delete the underlying Global session.");
@@ -112,7 +112,7 @@ const compatibilityWrapper = between(
   "create or replace function public.get_grow_intelligence_engine_analytics()",
   "-- Admin-only, read-only contract health.",
 );
-assert(compatibilityWrapper.includes("select public.get_gie_global_analytics() -> 'analytics'"), "The released GIE RPC must delegate to the Global contract.");
+assert(compatibilityWrapper.includes("select public.get_gie_global_analytics() -> 'analytics'"), "The released GEE RPC must delegate to the Global contract.");
 assert(!compatibilityWrapper.includes("from public.grow_sessions") && !compatibilityWrapper.includes("jsonb_array_elements"), "Compatibility wrapper must contain no analytics implementation.");
 assert(app.includes('appState.supabase.rpc("get_gie_global_analytics")'), "Seed and Source Explorer must consume the Global contract directly.");
 
@@ -128,8 +128,8 @@ for (const forbidden of ["SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "se
   assert(!app.toLowerCase().includes(forbidden.toLowerCase()), `Browser code must not contain ${forbidden}.`);
 }
 
-assert(docs.includes("There is exactly one Grow Intelligence Engine"), "Documentation must freeze the single-engine rule.");
+assert(docs.includes("There is exactly one Grow Evidence Engine"), "Documentation must freeze the single-engine rule.");
 assert(docs.includes("Need analytics?") && docs.includes("Never calculate analytics locally"), "Documentation is missing the permanent contract workflow.");
 assert(docs.includes("Phase 1 consumer migration inventory") && docs.includes("Phase 2 migration roadmap"), "Documentation must include inventory and Phase 2 roadmap.");
 
-console.log("GIE multi-contract Phase 1 regression checks passed (one engine; three contracts). ");
+console.log("GEE multi-contract Phase 1 regression checks passed (one engine; three contracts). ");

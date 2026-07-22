@@ -32,9 +32,9 @@ The `service_role` is server-only and must never enter browser code or generated
 - Public read-only data: approved Community publications, active Source metadata, safe public profile projections, and canonical public analytics.
 - Authenticated owner data: profiles, sessions, Seed Vault, settings, subscriptions, and owner publication state under UID-based RLS.
 - Shared/read-only data: Seed Vault sharing through security-definer RPCs that enforce slug visibility or an explicit share.
-- Community publication data: direct REST only for operational state; GIE RPCs remain authoritative for analytics evidence.
+- Community publication data: direct REST only for operational state; GEE RPCs remain authoritative for analytics evidence.
 - Admin-only data: admin reports, contact inbox, cleanup/time-edit audit, moderation, and role management.
-- Canonical analytics: RPC-first GIE contracts. Browser access to raw cross-user evidence or GIE internals is prohibited.
+- Canonical analytics: RPC-first GEE contracts. Browser access to raw cross-user evidence or GEE internals is prohibited.
 - Server-only operations: CSTP, notification delivery, reminder orchestration, and elevated publication reset.
 - Storage: bucket-specific read rules and UID/admin write rules; database table access does not imply object access.
 
@@ -45,9 +45,9 @@ Operations use `S/I/U/D`. “Owner” means authenticated UID-scoped RLS; “adm
 | Resource | Purpose / authority | Method | `anon` | `authenticated` | `service_role` | RLS/publication rule | Feature / RPC boundary |
 |---|---|---|---|---|---|---|---|
 | `profiles` | Private account authority | REST | — | owner S/I/U/D | — | owner/admin | auth, profile, settings |
-| `grow_sessions` | Canonical session/evidence authority | REST + RPC evidence | — | owner S/I/U; admin D | S/U | owner lifecycle; admin hard delete | sessions; GIE reads via RPC |
+| `grow_sessions` | Canonical session/evidence authority | REST + RPC evidence | — | owner S/I/U; admin D | S/U | owner lifecycle; admin hard delete | sessions; GEE reads via RPC |
 | `sources` | Active Source metadata authority | REST | active S | S; admin I/U/D | S | active public/admin mutation | Source directory/report metadata |
-| `grow_gallery_snapshots` | Publication workflow authority | REST + GIE RPC | approved S | owner/admin S/I/U/D | — | approved public; owner/admin mutation | Community Gallery |
+| `grow_gallery_snapshots` | Publication workflow authority | REST + GEE RPC | approved S | owner/admin S/I/U/D | — | approved public; owner/admin mutation | Community Gallery |
 | `grow_gallery_snapshot_likes` | Like authority | REST | visible S | owner S/I/D | — | linked approved snapshot; liker owns write | Community likes |
 | `grow_follows` | Follow relationship authority | REST | — | participant S; follower I/D | — | participant/admin | Grow Network |
 | `community_activity` | Community feed authority | REST read, RPC write | public S | public/owner/admin S | — | public or owner/admin | `record_community_activity` |
@@ -79,7 +79,7 @@ Operations use `S/I/U/D`. “Owner” means authenticated UID-scoped RLS; “adm
 | `seed_vault_grow_notes` | Private grow notes | REST | — | owner S/I/U/D | — | owner | Seed Vault |
 | `seed_vault_share_settings` | Vault publication settings | RPC-first | — | owner support access | — | owner | sharing RPCs |
 | `seed_vault_share_users` | Direct-share authority | RPC-first | — | owner support access | — | owner/shared target | sharing RPCs |
-| `grow_intelligence_engine_config` | Canonical GIE configuration | server/internal | — | — | S/I/U | no browser access | GIE internal contracts |
+| `grow_intelligence_engine_config` | Canonical GEE configuration | server/internal | — | — | S/I/U | no browser access | GEE internal contracts |
 | `cstp_requests` | CSTP request authority | server-only | — | — | S/I/U/D | RLS, no browser policy | protected CSTP API |
 | `cstp_tests` | CSTP test authority | server-only | — | — | S/I/U/D | RLS, no browser policy | protected CSTP API |
 | `cstp_test_sessions` | CSTP session links | server-only | — | — | S/I/U/D | RLS, no browser policy | protected CSTP API |
@@ -106,7 +106,7 @@ Storage object policies are fingerprinted by name, command, roles, normalized `U
 
 ## RPC boundaries
 
-- GIE canonical analytics: public Global/Community projections, authenticated Owner projection, admin cross-owner projection, and protected diagnostics. Internal versioned helpers are owner-only.
+- GEE canonical analytics: public Global/Community projections, authenticated Owner projection, admin cross-owner projection, and protected diagnostics. Internal versioned helpers are owner-only.
 - Public identity: safe public identity, recognition, and follow projections; private profile tables are not exposed.
 - Sharing: authenticated management/direct-share RPCs and one intentionally public slug reader.
 - Directory mutation: authenticated record-usage and admin review/promote RPCs; direct REST remains read-only.
@@ -119,7 +119,7 @@ Exact function callers, signatures, privileges, owners, and search paths are mai
 
 ## Developer Preview and Developer Scenarios
 
-Preview fixtures are client-memory/static fixtures. They never write to Supabase, never mix with live records, never contribute to GIE analytics, never appear in production mode, and are not part of the database security model. Preview mutation guards must remain read-only. Deterministic local database demo fixtures are a separate local-only QA system with explicit safety checks.
+Preview fixtures are client-memory/static fixtures. They never write to Supabase, never mix with live records, never contribute to GEE analytics, never appear in production mode, and are not part of the database security model. Preview mutation guards must remain read-only. Deterministic local database demo fixtures are a separate local-only QA system with explicit safety checks.
 
 ## Migration and review rules
 
@@ -130,4 +130,4 @@ Preview fixtures are client-memory/static fixtures. They never write to Supabase
 - Every security-definer function requires a caller, internal authorization, owner, mutation/exposure, and fixed-search-path review.
 - Keep canonical analytics RPC-first; do not grant raw cross-user evidence to browser roles.
 - Review the human-readable fingerprint diff before intentionally updating `scripts/security/approved-security-fingerprint.json`. CI has no accept mode.
-- Run `npm run security:verify` with local Supabase started before pushing. This cleanly replays migrations, seeds/verifies deterministic demo data, checks access/fingerprints/function inventory/GIE regressions/lint, runs Playwright and the production build, and finishes with `git diff --check`.
+- Run `npm run security:verify` with local Supabase started before pushing. This cleanly replays migrations, seeds/verifies deterministic demo data, checks access/fingerprints/function inventory/GEE regressions/lint, runs Playwright and the production build, and finishes with `git diff --check`.

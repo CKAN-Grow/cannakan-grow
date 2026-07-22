@@ -290,7 +290,7 @@ for (const rpc of ["get_gie_global_analytics", "get_gie_community_analytics"]) {
 }
 
 const ownerRpc = await request("/rest/v1/rpc/get_gie_my_analytics", { token: accessToken, method: "POST", body: {} });
-assert.equal(ownerRpc.status, 200, `Owner GIE RPC failed: ${ownerRpc.body}`);
+assert.equal(ownerRpc.status, 200, `Owner GEE RPC failed: ${ownerRpc.body}`);
 
 const growIdentityRpc = await request("/rest/v1/rpc/get_my_grow_identity", { token: accessToken, method: "POST", body: {} });
 assert.equal(growIdentityRpc.status, 200, `Owner Grow Identity RPC failed: ${growIdentityRpc.body}`);

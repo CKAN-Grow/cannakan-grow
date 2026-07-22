@@ -56,7 +56,14 @@ order by p.proname, pg_get_function_identity_arguments(p.oid);
 `, { tuplesOnly: true, quiet: true }).split(/\r?\n/).filter(Boolean).map(JSON.parse);
 
 const access = (row) => [row.anon && "anon", row.authenticated && "authenticated", row.serviceRole && "service_role", "postgres/owner"].filter(Boolean).join(", ");
-const purpose = (row) => row.name.replaceAll("_", " ");
+const purpose = (row) => {
+  const normalized = row.name.replaceAll("_", " ");
+  if (row.name.startsWith("get_gie_")) return normalized.replace(/^get gie /, "get GEE ");
+  if (row.name.startsWith("get_grow_intelligence_engine_")) {
+    return normalized.replace(/^get grow intelligence engine /, "legacy GEE compatibility ");
+  }
+  return normalized;
+};
 const caller = (row) => {
   if (GROW_IDENTITY_PHASE1_RPCS.has(row.name)) return "frontend-ready: Grow Identity Phase 1 RPC";
   if (/^grow_identity_(?:default|field_keys|invitation_preferences_valid|provenance_valid)/.test(row.name)) return "canonical identity validation helper";
@@ -97,8 +104,8 @@ export const renderFunctionAudit = () => {
     "",
     "## Audit conclusions",
     "",
-    "- Public execution is retained only for deliberate anonymous projections: canonical public GIE wrappers, public identity/follow projections, active shared-Vault slug lookup, the legacy Explorer compatibility projection, and `current_user_is_admin()` where anonymous RLS evaluation requires it.",
-    "- Seed Vault management/sharing RPCs are authenticated-only. Trigger functions, one-time backfills, slug helpers, and internal GIE functions are not client-executable.",
+    "- Public execution is retained only for deliberate anonymous projections: canonical public GEE wrappers, public identity/follow projections, active shared-Vault slug lookup, the legacy Explorer compatibility projection, and `current_user_is_admin()` where anonymous RLS evaluation requires it.",
+    "- Seed Vault management/sharing RPCs are authenticated-only. Trigger functions, one-time backfills, slug helpers, and internal GEE functions are not client-executable.",
     "- Grow Identity Phase 1 read/update/search/permission RPCs are authenticated-only; internal relationship and field-resolution helpers remain owner-only. Pure allowlist/normalization helpers are authenticated for constraint and legacy Profile-write compatibility.",
     "- Service-role execution remains explicit for Community publication reset, lifecycle/diagnostic support, and server health workflows. CSTP continues to use server-side table access and has no browser RPC boundary.",
     "- Every security-definer function fixes `search_path`; all are owned by `postgres`. Invoker trigger helpers use the caller default path but are no longer client-executable.",

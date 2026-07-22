@@ -18,20 +18,20 @@ exist to protect consistency, maintainability, security, scalability, and
 long-term architectural stability. Implementations will change; these
 decision-making principles should remain stable.
 
-## Principle 1 — One Grow Intelligence Engine
+## Principle 1 — One Grow Evidence Engine
 
 Grow has exactly one analytics engine. Do not create another. When analytics
-need to evolve, extend the existing Grow Intelligence Engine (GIE).
+need to evolve, extend the existing Grow Evidence Engine (GEE).
 
 **Why:** One engine eliminates conflicting statistics and preserves one
 canonical source of analytical truth.
 
-## Principle 2 — No Analytics Without GIE
+## Principle 2 — No Analytics Without GEE
 
 Whenever a feature requires analytics:
 
 1. Determine the appropriate analytics scope.
-2. Extend the existing GIE contract if necessary.
+2. Extend the existing GEE contract if necessary.
 3. Version the contract or schema.
 4. Consume the normalized contract.
 
@@ -43,7 +43,7 @@ UI.
 ## Principle 3 — Lifecycle Determines Participation
 
 The Grow Session Lifecycle Resolver decides whether a session participates in
-analytics. GIE consumes that decision and never duplicates lifecycle logic.
+analytics. GEE consumes that decision and never duplicates lifecycle logic.
 
 **Why:** One lifecycle decision prevents inconsistent inclusion, exclusion,
 and completion rules.
@@ -52,7 +52,7 @@ and completion rules.
 
 Operational tables support workflows such as editing and completing sessions,
 updating Seed Vault, managing profiles, and publishing Community reports. They
-must not become analytics engines. Derived statistics originate only from GIE.
+must not become analytics engines. Derived statistics originate only from GEE.
 
 **Why:** Workflow state and analytical interpretation have different
 responsibilities and change for different reasons.
@@ -63,7 +63,7 @@ responsibilities and change for different reasons.
 Lifecycle
     │
     ▼
-Grow Intelligence Engine
+Grow Evidence Engine
     │
     ▼
 Contracts
@@ -80,7 +80,7 @@ another.
 
 ## Principle 6 — Exactly Three Analytics Contracts
 
-GIE exposes exactly three analytics contracts:
+GEE exposes exactly three analytics contracts:
 
 - **Global Analytics:** anonymous platform-wide truth, trends, confidence, and
   aggregate data quality.
@@ -144,7 +144,7 @@ only when they delegate without recalculating analytics.
 
 ## Principle 11 — Data Quality Matters
 
-Data quality is a first-class platform capability. GIE owns Source Attribution,
+Data quality is a first-class platform capability. GEE owns Source Attribution,
 Data Quality Score, duplicate detection, Unknown Sources, and Unknown
 Varieties. Consumers render canonical values and states; they never calculate
 or reclassify them.
@@ -166,7 +166,7 @@ systems, local formulas, or private fallbacks.
 
 ## Principle 14 — Architecture Stability
 
-The Grow Intelligence Engine architecture is stable. Evolve it only to solve a
+The Grow Evidence Engine architecture is stable. Evolve it only to solve a
 genuine platform limitation—not for local convenience. Future work should
 focus on products and user experience built on top of the established
 architecture.
@@ -175,7 +175,7 @@ architecture.
 
 Before implementing an engineering decision, ask:
 
-1. Does this belong in GIE?
+1. Does this belong in GEE?
 2. Which analytics contract owns it?
 3. Does this duplicate existing logic?
 4. Does it preserve privacy?
@@ -186,7 +186,7 @@ If the proposed design fails these questions, redesign it before implementing.
 
 ## Closing Statement
 
-> The Grow Intelligence Engine is the permanent analytics foundation of the
+> The Grow Evidence Engine is the permanent analytics foundation of the
 > Grow platform.
 >
 > Engineering decisions should strengthen this foundation rather than work

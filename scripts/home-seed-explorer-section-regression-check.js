@@ -96,7 +96,7 @@ for (const field of ["varietyName", "source", "germinationSuccess", "communitySe
 }
 assert(!seedDataHelper.includes("row.communityConfidence") && !seedDataHelper.includes("row.confidencePercent"), "Trending varieties must not expect stale per-record confidence fields.");
 assert(!seedRenderer.includes('confidenceLabel || "Not available"') && !seedRenderer.includes("row.confidencePercent"), "Valid trending records must not render stale Not available confidence text.");
-assert(!seedDataHelper.includes("buildCommunityInsightsState") && !seedDataHelper.includes("gieCommunityAnalytics"), "Seed Explorer Home preview must not consume Community Analytics.");
+assert(!seedDataHelper.includes("buildCommunityInsightsState") && !seedDataHelper.includes("geeCommunityAnalytics"), "Seed Explorer Home preview must not consume Community Analytics.");
 assert(!seedDataHelper.includes("getSeedExplorerRecords().sort") && !seedDataHelper.includes("fallbackRows") && !seedDataHelper.includes(".reduce("), "Seed Explorer Home preview must not calculate or independently rank analytics.");
 assert(seedRenderer.includes("formatHomeCanonicalMetric(kpi.value, preview.state)"), "Loading, unavailable, malformed, and true-zero Global metrics must remain distinct.");
 assert(fullSeedExplorer.includes("buildExplorerAggregateFromCachedPayload(appState.explorerCompletedSessionAggregate)"), "Home and full Seed Explorer must share the normalized Global cache.");

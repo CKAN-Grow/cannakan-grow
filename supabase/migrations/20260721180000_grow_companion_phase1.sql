@@ -2,7 +2,7 @@
 --
 -- This migration depends on the canonical public.grow_sessions table created by
 -- 20260501000000_legacy_public_schema_baseline.sql. Activity remains internal to
--- its parent Session: it is not projected into Community, Seed Vault, GIE, or
+-- its parent Session: it is not projected into Community, Seed Vault, GEE, or
 -- public-profile contracts.
 
 create table if not exists public.grow_session_tasks (
@@ -200,6 +200,6 @@ revoke all privileges on table public.grow_session_tasks, public.grow_session_ev
 grant select, insert, update, delete on table public.grow_session_tasks, public.grow_session_events to authenticated;
 
 comment on table public.grow_session_tasks is
-  'Owner-private Grow Companion tasks scoped to one canonical Grow Session. Not GIE or public evidence.';
+  'Owner-private Grow Companion tasks scoped to one canonical Grow Session. Not GEE or public evidence.';
 comment on table public.grow_session_events is
-  'Owner-private Grow Companion events scoped to one canonical Grow Session. Not GIE or public evidence.';
+  'Owner-private Grow Companion events scoped to one canonical Grow Session. Not GEE or public evidence.';

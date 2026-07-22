@@ -19,7 +19,7 @@ function requireNeedle(source, needle, label) {
 }
 
 requireNeedle(app, 'await upsertSeedVaultRows(row, { single: true })', "Seed Vault frontend upsert");
-requireNeedle(app, 'loadGieOwnerAnalytics("seed-vault-entry-save")', "post-save Owner Analytics refresh");
+requireNeedle(app, 'loadGeeOwnerAnalytics("seed-vault-entry-save")', "post-save Owner Analytics refresh");
 requireNeedle(app, 'rpc("get_gie_my_analytics")', "canonical Owner Analytics RPC");
 requireNeedle(originalMigration, "seeds_tested integer :=", "conflicting PL/pgSQL variable evidence");
 requireNeedle(originalMigration, "sum(seeds_tested)::integer as seeds_tested", "original ambiguous CTE evidence");

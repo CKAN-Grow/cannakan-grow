@@ -18,7 +18,7 @@ function between(source, startNeedle, endNeedle) {
   return source.slice(start, end);
 }
 
-const adapter = between(app, "function normalizeGieCommunityAnalyticsPayload", "function getCanonicalCommunityAnalytics");
+const adapter = between(app, "function normalizeGeeCommunityAnalyticsPayload", "function getCanonicalCommunityAnalytics");
 const rankHelpers = between(app, "function getCanonicalRankDisplayMeta", "function renderSourceDirectoryTopVarietiesMarkup");
 const sourceReport = between(app, "function renderSourceProfilePage", "function getSourceCstpReportDetail");
 const varietyReport = between(app, "function renderSeedProfilePage", "function renderExploreSegmentedNavItemMarkup");
@@ -26,7 +26,7 @@ const seedExplorerCard = between(app, "function renderSeedExplorerCardMarkup", "
 const sourceTable = between(app, "function renderSourceReportRankingsTable", "function renderSourceProfilePage");
 
 assert(adapter.includes("rankDisplay: mapRankDisplay(row)"), "The Community adapter must preserve canonical rank_display metadata.");
-assert(rankHelpers.includes("supplied?.kind === \"percentile\""), "Rank 4+ must require a canonical percentile supplied by GIE.");
+assert(rankHelpers.includes("supplied?.kind === \"percentile\""), "Rank 4+ must require a canonical percentile supplied by GEE.");
 assert(!rankHelpers.includes("Math.ceil") && !rankHelpers.includes("/ total") && !rankHelpers.includes("eligiblePopulation) *"), "The browser must not calculate rank percentiles.");
 assert(sourceReport.includes('entityLabel: "Source Rank"'), "Source Report hero must use the shared rank display.");
 assert(varietyReport.includes('entityLabel: "Variety Rank"'), "Variety Report hero must use the shared rank display.");
@@ -51,7 +51,7 @@ const fourth = {
   performanceRank: 4,
   rankDisplay: { kind: "percentile", rank: 4, label: "Top 8%", eligiblePopulation: 50 },
 };
-assert(helpers.getCanonicalRankDisplayMeta(fourth)?.label === "Top 8%", "Rank 4+ must render the exact GIE-supplied percentile label.");
+assert(helpers.getCanonicalRankDisplayMeta(fourth)?.label === "Top 8%", "Rank 4+ must render the exact GEE-supplied percentile label.");
 const fourthMarkup = helpers.renderCanonicalRankDisplayMarkup(fourth, { entityLabel: "Source Rank", populationLabel: "of eligible Community sources" });
 assert(fourthMarkup.includes("Top 8%") && fourthMarkup.includes("of eligible Community sources"), "The percentile badge must render the canonical placement and eligible-population context.");
 assert(helpers.getCanonicalRankDisplayMeta({ performanceRank: 4 }) === null, "Rank 4+ must not be estimated when canonical percentile metadata is absent.");
@@ -67,7 +67,7 @@ for (const contractNeedle of [
   "'rank_populations'",
   "order by ranked.ordinality",
 ]) {
-  assert(migration.includes(contractNeedle), `The additive GIE rank contract is missing ${contractNeedle}.`);
+  assert(migration.includes(contractNeedle), `The additive GEE rank contract is missing ${contractNeedle}.`);
 }
 
 assert(migration.includes("get_gie_rank_display_v1(1, 50") && migration.includes("get_gie_rank_display_v1(2, 50") && migration.includes("get_gie_rank_display_v1(3, 50") && migration.includes("get_gie_rank_display_v1(4, 50"), "Migration-time checks must cover ranks 1, 2, 3, and 4+.");

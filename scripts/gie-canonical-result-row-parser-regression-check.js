@@ -63,4 +63,4 @@ const homeExplorer = app.slice(homeExplorerStart, homeExplorerEnd);
 assert(homeExplorerStart >= 0 && homeExplorerEnd > homeExplorerStart, "Missing Home Explorer contract-rendering range.");
 assert(!/seedCount|seed_count|totalCount|germinatedCount|plantedCount/.test(homeExplorer), "Home Explorer UI must render contract fields without parsing raw result-row aliases.");
 
-console.log("GIE canonical result-row parser regression checks passed.");
+console.log("GEE canonical result-row parser regression checks passed.");

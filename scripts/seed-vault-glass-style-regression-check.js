@@ -76,7 +76,7 @@ for (const filterAttribute of [
   "data-seed-vault-testing-program-filter",
 ]) assertIncludes(panelRenderer, filterAttribute, "Advanced filter missing");
 
-assertIncludes(appSource, 'appState.supabase.rpc("get_gie_my_analytics")', "Canonical owner GIE RPC missing");
+assertIncludes(appSource, 'appState.supabase.rpc("get_gie_my_analytics")', "Canonical owner GEE RPC missing");
 assertIncludes(appSource, "function getCanonicalOwnerAnalytics()", "Canonical owner analytics adapter missing");
 assertExcludes(ownerOverviewRenderer, "getSessions()", "Approved overview introduced a raw-session analytics read");
 assertExcludes(ownerOverviewRenderer, "getCanonicalOwnerAnalytics()", "Inventory overview bypassed its Vault provider analytics input");

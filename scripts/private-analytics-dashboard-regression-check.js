@@ -26,7 +26,7 @@ for (const needle of [
   "function renderPrivateAnalyticsDashboardPage()",
   "return renderOwnerAnalyticsDashboardPage();",
   "getCanonicalOwnerAnalytics()",
-  "data-gie-owner-consumer=\"session-analytics\"",
+  "data-gee-owner-consumer=\"session-analytics\"",
   "Owner Analytics Contract",
   "Canonical Recommendations",
   "Completed Sessions",

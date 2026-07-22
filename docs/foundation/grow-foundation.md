@@ -80,9 +80,9 @@ The flywheel must remain voluntary, privacy-aware, and evidence-led at every sta
 
 ## GEE — Grow Evidence Engine
 
-GEE is the future platform terminology for the canonical evidence layer. Its purpose is to transform eligible grow records into reproducible, appropriately qualified evidence while preserving provenance, sample size, confidence, and data-quality boundaries.
+GEE is the canonical platform terminology for the evidence layer. Its purpose is to transform eligible grow records into reproducible, appropriately qualified evidence while preserving provenance, sample size, confidence, and data-quality boundaries.
 
-GEE must not manufacture data, treat low evidence as high confidence, or allow presentation code to redefine analytics. Current GIE contracts remain in place until a controlled, compatibility-safe GEE naming migration is completed; this document does not rename repository objects.
+GEE must not manufacture data, treat low evidence as high confidence, or allow presentation code to redefine analytics. Legacy `gie_*` and `grow_intelligence_engine_*` contract identifiers remain compatibility-bound until a controlled additive migration can replace them safely; this document does not rename repository objects.
 
 ## Future engine direction
 

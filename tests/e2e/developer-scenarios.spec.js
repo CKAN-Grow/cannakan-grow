@@ -4067,14 +4067,14 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#my-seed-vault")).not.toContainText("Loading");
   });
 
-  test("renders Explore scenarios without canonical GIE requests or fixture leakage", async ({ page }) => {
-    const scenarioGieRequests = [];
+  test("renders Explore scenarios without canonical GEE requests or fixture leakage", async ({ page }) => {
+    const scenarioGeeRequests = [];
     await page.goto("/#seeds");
     await useFullGrowDemo(page);
     await useMixAndMatch(page);
     await page.locator("select[data-developer-scenario-module='explore']").selectOption("healthy");
     page.on("request", (request) => {
-      if (/\/rpc\/get_gie_(global|community|my)_analytics/.test(request.url())) scenarioGieRequests.push(request.url());
+      if (/\/rpc\/get_gie_(global|community|my)_analytics/.test(request.url())) scenarioGeeRequests.push(request.url());
     });
     await page.goto("/#seeds");
     await expect(page.locator(".developer-scenario-page-badge")).toContainText("Sample Explore Analytics");
@@ -4089,7 +4089,7 @@ test.describe("local Developer Scenarios", () => {
     await page.goto(`/${firstSourceReportHref}`);
     await expect(page.locator("main")).toContainText("Source Report");
     await expect(page.locator("main")).not.toContainText("Canonical data is not available");
-    expect(scenarioGieRequests).toEqual([]);
+    expect(scenarioGeeRequests).toEqual([]);
 
     await openScenarioPanel(page);
     await page.getByRole("button", { name: "Return to Live Data", exact: true }).click();

@@ -182,19 +182,19 @@ location was introduced into client code.
 - CSTP: no Phase 1 dependency was found. Its public-product retirement remains a
   separate product migration; no CSTP behavior changes here.
 
-## GIE to GEE naming plan
+## GEE terminology and legacy contract identifiers
 
-GIE is becoming **GEE — Grow Evidence Engine**, but Phase 1 does not rename it or
-alter formulas, contracts, eligibility, ranking, or analytics. The audit found
-1,050 matching lines across 55 files: 15 migration files, 28 scripts, 9 docs, one
-Playwright file, and two root application/style files. Applied migration names,
-database objects, RPC names, security fingerprints, fixtures, and tests are all
-coupled to the current name.
+**GEE — Grow Evidence Engine** is the canonical product and architecture name.
+This terminology cleanup does not alter formulas, contracts, eligibility,
+ranking, or analytics. Released database objects, RPC names, contract-version
+values, applied migration filenames, security fingerprints, and persisted
+fixtures retain legacy identifiers such as `get_gie_*`, `gie-*.v1`, and
+`grow_intelligence_engine_*` where changing them would break compatibility.
 
-A safe later migration should:
+Any later contract-identifier migration should:
 
 1. inventory exact database objects and external clients;
-2. add GEE-named compatibility wrappers without dropping GIE contracts;
+2. add GEE-named compatibility wrappers without dropping legacy contracts;
 3. migrate application call sites and observability labels in bounded groups;
 4. run dual-contract parity and analytics-eligibility tests;
 5. deprecate old names for a documented release window;

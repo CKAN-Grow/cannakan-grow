@@ -23,12 +23,12 @@ const homeSource = between(app, "function renderHomeTestedSourcesPreviewSectionM
 const homeSeed = between(app, "function getHomeSeedExplorerPreviewData", "function renderHomeSeedExplorerPreviewSectionMarkup");
 const homeGlobalState = between(app, "function getHomeGlobalAnalyticsCacheState", "function renderHomeTestedSourcesPreviewSectionMarkup");
 const homeRender = between(app, "function renderHome()", "function renderHomeCurrentSessionExperience");
-const communityLoader = between(app, "async function loadGieCommunityAnalytics", "async function loadGieContractDiagnostics");
+const communityLoader = between(app, "async function loadGeeCommunityAnalytics", "async function loadGeeContractDiagnostics");
 const mutationRefresh = between(app, "async function refreshGrowAnalyticsAfterSessionMutation", "function getFounderSessionCleanupCandidateIds");
 
 assert(migration.includes("get_gie_community_evidence_v1()"), "A canonical Community evidence resolver is required.");
 assert(migration.includes("from public.get_gie_community_evidence_v1() evidence"), "Community scoped rows must consume the canonical evidence resolver.");
-assert(migration.includes("get_gie_canonical_seed_count") && migration.includes("'totalCount'"), "Current gallery partition totalCount must be recognized by the canonical GIE parser.");
+assert(migration.includes("get_gie_canonical_seed_count") && migration.includes("'totalCount'"), "Current gallery partition totalCount must be recognized by the canonical GEE parser.");
 for (const predicate of [
   "lower(coalesce(snapshot_row.status, '')) = 'approved'",
   "coalesce(snapshot_row.is_published, false) = true",
@@ -41,7 +41,7 @@ for (const predicate of [
 assert(migration.includes("get_gie_community_gallery_evidence()") && migration.includes("get_gie_community_analytics()"), "Gallery and Community contract must expose the same resolver-backed evidence.");
 assert(!migration.includes("update public.grow_gallery_snapshots") && !migration.includes("delete from public.grow_gallery_snapshots"), "The wiring migration must not modify production reports.");
 
-assert(galleryLoader.includes('.rpc("get_gie_community_gallery_evidence")'), "Community gallery must load canonical GIE evidence.");
+assert(galleryLoader.includes('.rpc("get_gie_community_gallery_evidence")'), "Community gallery must load canonical GEE evidence.");
 assert(galleryLoader.includes("communityEvidenceEligible: true"), "Canonical evidence identity must be retained in the gallery cache.");
 assert(galleryVisibility.includes("snapshot.communityEvidenceEligible === true"), "Public gallery visibility must render the resolver decision.");
 assert(galleryEligibility.includes("snapshot.communityEvidenceEligible === true"), "Gallery analytics eligibility must render the resolver decision.");
@@ -62,13 +62,13 @@ for (const homeExplorer of [homeSeed, homeSource]) {
 }
 assert(app.includes("Canonical Seed Explorer metrics could not be loaded") && app.includes("Canonical Source Explorer metrics could not be loaded"), "Home Explorer teasers need explicit unavailable states.");
 assert(communityLoader.includes('.rpc("get_gie_community_analytics")'), "Community Insights must remain on the Community contract.");
-assert(homeRender.includes('loadExplorerCompletedSessionAggregate("route:home")') && homeRender.includes('loadGieOwnerAnalytics("route:home")') && homeRender.includes('refreshGallerySnapshots("route:home")'), "Direct Home entry must hydrate Global, authenticated Owner, and Community contracts.");
+assert(homeRender.includes('loadExplorerCompletedSessionAggregate("route:home")') && homeRender.includes('loadGeeOwnerAnalytics("route:home")') && homeRender.includes('refreshGallerySnapshots("route:home")'), "Direct Home entry must hydrate Global, authenticated Owner, and Community contracts.");
 assert(app.includes('refreshGallerySnapshots("route:community-insights")'), "Direct Community entry must hydrate canonical Community evidence and analytics.");
-for (const cache of ["explorerCompletedSessionAggregate", "gieOwnerAnalytics", "gieCommunityAnalytics"]) {
+for (const cache of ["explorerCompletedSessionAggregate", "geeOwnerAnalytics", "geeCommunityAnalytics"]) {
   assert(app.includes(`appState.${cache}`), `Normalized contract cache is missing or conflated: ${cache}.`);
 }
 assert(mutationRefresh.includes("if (aggregate)") && mutationRefresh.includes("appState.explorerCompletedSessionAggregate = aggregate"), "A failed refresh must not replace valid Global data with a null/zero fallback.");
-assert(app.includes("hasCanonicalGieAnalyticsPayload") && app.includes("if (communityAnalytics)"), "Empty contract responses must not replace valid normalized caches.");
+assert(app.includes("hasCanonicalGeeAnalyticsPayload") && app.includes("if (communityAnalytics)"), "Empty contract responses must not replace valid normalized caches.");
 for (const reason of ["moderation:", "published-moderation:", "published-delete", "owner-unpublish", "owner-delete", "post-publish:"]) {
   assert(app.includes(reason), `Community publication/deletion refresh is missing: ${reason}`);
 }

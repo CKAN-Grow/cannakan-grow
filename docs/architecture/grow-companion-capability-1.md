@@ -16,7 +16,7 @@ Capability 1 adds the first durable post-germination records to the existing Gro
 
 RLS and explicit grants make both tables authenticated-owner only. Anonymous access is revoked. Preview Studio records are blocked before any write request. Browser code never exposes a service-role credential.
 
-Tasks and Events are private Session workflow records. They are **not GIE evidence**, do not change analytics or report eligibility, and are not projected into Seed Vault, Community, shared Vaults, public profiles, or Grow Network.
+Tasks and Events are private Session workflow records. They are **not GEE evidence**, do not change analytics or report eligibility, and are not projected into Seed Vault, Community, shared Vaults, public profiles, or Grow Network.
 
 ## Read model and UI
 
@@ -26,4 +26,4 @@ The existing Growing workspace owns the interface. It provides loading, error, a
 
 ## Intentionally deferred
 
-Capability 1 does not add recurring tasks, reminders, notifications, assignments, attachments, batch operations, public sharing, automation, grow-stage inference, GIE derivation, Session completion controls, or Reflection persistence.
+Capability 1 does not add recurring tasks, reminders, notifications, assignments, attachments, batch operations, public sharing, automation, grow-stage inference, GEE derivation, Session completion controls, or Reflection persistence.

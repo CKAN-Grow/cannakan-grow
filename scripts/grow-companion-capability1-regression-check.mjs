@@ -60,7 +60,7 @@ assert.match(app, /data-grow-companion-action="add-task"/);
 assert.match(app, /data-grow-companion-action="add-event"/);
 assert.match(app, /window\.confirm\(`Delete/);
 assert.doesNotMatch(app, /localStorage.*grow.?companion|grow.?companion.*localStorage/i);
-assert.match(documentation, /Not GIE evidence/i);
+assert.match(documentation, /Not GEE evidence/i);
 assert.match(documentation, /Preview Studio/i);
 
 console.log("Grow Companion Capability 1 regression checks passed.");

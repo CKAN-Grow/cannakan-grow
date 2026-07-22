@@ -64,7 +64,7 @@ end;
 $$;
 select jsonb_build_object(
   'counts', jsonb_build_object('contributors', ${expectedCounts.authUsers}, 'sources', ${expectedCounts.sources}, 'completed_sessions', ${expectedCounts.completedSessions}, 'active_sessions', ${expectedCounts.activeSessions}, 'analytics_varieties', ${expectedCounts.analyticsVarieties}, 'vault_entries', ${expectedCounts.vaultEntries}, 'collections', ${expectedCounts.collections}, 'tags', ${expectedCounts.tags}, 'planning_entries', ${expectedCounts.planningEntries}),
-  'gie', (select jsonb_build_object('contract_version', payload ->> 'contract_version', 'schema_version', payload ->> 'schema_version', 'source_reports', payload #> '{analytics,source_reports}', 'variety_reports', payload #> '{analytics,variety_reports}') from (select public.get_gie_community_analytics() payload) canonical)
+  'gee', (select jsonb_build_object('contract_version', payload ->> 'contract_version', 'schema_version', payload ->> 'schema_version', 'source_reports', payload #> '{analytics,source_reports}', 'variety_reports', payload #> '{analytics,variety_reports}') from (select public.get_gie_community_analytics() payload) canonical)
 )::text;
 `;
 }
@@ -118,9 +118,9 @@ export async function verifyDemo({ safetyCommand = "verify" } = {}) {
   await verifyLocalLogin(collectRuntimeSafetyContext(safetyCommand).status);
   verifySafetyRegression(collectRuntimeSafetyContext(safetyCommand));
   verifyProductionIsolation();
-  const canonical = JSON.stringify(summary.gie);
+  const canonical = JSON.stringify(summary.gee);
   const fingerprint = createHash("sha256").update(canonical).digest("hex").slice(0, 16);
-  console.log(`Canonical GIE fingerprint: ${fingerprint}`);
+  console.log(`Canonical GEE fingerprint: ${fingerprint}`);
   console.log(`Verified deterministic counts: ${JSON.stringify(summary.counts)}`);
   return { ...summary, fingerprint, safety };
 }

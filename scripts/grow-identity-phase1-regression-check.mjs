@@ -18,8 +18,8 @@ assert.doesNotMatch(migration, /update_my_grow_identity_v1\([^)]*owner_user_id/i
 assert.match(migration, /constraint grow_identity_field_visibility_key_check/i);
 assert.match(migration, /revoke all privileges on table public\.grow_identity_field_visibility/i);
 assert.doesNotMatch(migration, /service[_-]?role[^\n]*(?:key|secret)/i);
-assert.match(architecture, /GIE is becoming \*\*GEE — Grow Evidence Engine\*\*/);
-assert.match(architecture, /1,050 matching lines across 55 files/);
+assert.match(architecture, /\*\*GEE — Grow Evidence Engine\*\* is the canonical product and architecture name\./);
+assert.match(architecture, /fixtures retain legacy identifiers such as `get_gie_\*`, `gie-\*\.v1`, and/);
 
 const databaseContract = JSON.parse(runLocalSql(
   "select public.get_grow_identity_contract_v1()::text;",

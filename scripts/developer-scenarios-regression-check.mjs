@@ -129,7 +129,7 @@ const checks = [
   ["owner analytics use scenario provider", app.includes('if (shouldUseDeveloperScenarioProvider("sessions"))') && app.includes("return getSessionProvider().analytics;")],
   ["community analytics use scenario provider", app.includes("return getCommunityProvider().analytics;")],
   ["Explore analytics use scenario provider", app.includes("return getExploreProvider().aggregate;") && app.includes('Preview Studio — Sample Explore Analytics')],
-  ["scenario analytics skip live GIE loaders", app.includes('async function loadGieOwnerAnalytics') && app.includes('async function loadGieCommunityAnalytics') && app.includes('async function loadExplorerCompletedSessionAggregate')],
+  ["scenario analytics skip live GEE loaders", app.includes('async function loadGeeOwnerAnalytics') && app.includes('async function loadGeeCommunityAnalytics') && app.includes('async function loadExplorerCompletedSessionAggregate')],
   ["provider scope excludes admin and unrelated reports", app.includes("function shouldUseDeveloperScenarioProvider(") && app.includes("isAdminAreaRawRoute()")],
   ["central write guard", app.includes("function assertDeveloperScenarioWritesAllowed(")],
   ["session writes guarded", app.includes('assertDeveloperScenarioWritesAllowed("sessions", "create a session", session);')],

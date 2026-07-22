@@ -8,7 +8,7 @@ The REST failures were not caused by PostgREST cache staleness, schema exposure,
 
 - `20260501000000_legacy_public_schema_baseline.sql` creates the original operational tables.
 - It does not replay the RLS enablement, policies, storage buckets, storage policies, or application DML privileges retained by production history.
-- Later migrations secure and grant newer tables/RPCs individually, which is why GIE, Seed Vault, sharing, directories, and recognition continued to work.
+- Later migrations secure and grant newer tables/RPCs individually, which is why GEE, Seed Vault, sharing, directories, and recognition continued to work.
 - Production retained broad historical `GRANT ALL` ACLs and the policies found in `supabase-schema.sql`; a clean database did not.
 
 The root cause is therefore migration-history incompleteness plus production ACL drift, not a PostgREST defect.
@@ -30,9 +30,9 @@ The reconciliation migration does not use grants as a replacement for RLS. Every
 | Failure | Actual cause | Required path | Resolution |
 |---|---|---|---|
 | `profiles` | Clean replay had neither DML privileges nor RLS/policies. | Owner REST CRUD is required for auth hydration, onboarding, settings, and account removal. | Authenticated CRUD grant plus owner/admin policies. No anonymous base-table access. |
-| `grow_sessions` | Clean replay lacked DML privileges and owner policies; only a later admin-delete policy existed. | Owner REST read/create/update remains authoritative. GIE reads evidence through RPCs. | Authenticated CRUD capability with owner read/create/update and admin-only permanent delete RLS. |
+| `grow_sessions` | Clean replay lacked DML privileges and owner policies; only a later admin-delete policy existed. | Owner REST read/create/update remains authoritative. GEE reads evidence through RPCs. | Authenticated CRUD capability with owner read/create/update and admin-only permanent delete RLS. |
 | `sources` | Clean replay lacked usable SELECT/DML privileges and RLS. Production also retained a superseded `USING (true)` read policy. | REST is still required for public active metadata and admin source management; analytics remain RPC-only. | Public active-only SELECT, authenticated admin mutation, strict policies; permissive legacy policy removed. |
-| `grow_gallery_snapshots` | A later migration created a SELECT policy but RLS was not enabled and table DML privileges were missing. Mutation policies were absent. | Canonical public evidence uses GIE RPC; direct REST is still required for owner operational rows and publication submission. | Public approved-only read; authenticated owner/admin CRUD policies and exact grants. |
+| `grow_gallery_snapshots` | A later migration created a SELECT policy but RLS was not enabled and table DML privileges were missing. Mutation policies were absent. | Canonical public evidence uses GEE RPC; direct REST is still required for owner operational rows and publication submission. | Public approved-only read; authenticated owner/admin CRUD policies and exact grants. |
 | `grow_gallery_snapshot_likes` | Later SELECT/INSERT policies existed, but RLS was off, ACLs were missing, and DELETE policy was absent. Production had prototype public insert/read policies. | Direct REST remains the interactive like/unlike path. | Public visible-like read, authenticated owner insert/delete, prototype permissive policies removed. |
 | `grow_follows` | Baseline table existed without replayed grants, RLS, or policies. | Direct REST is still used for follow/unfollow and relationship state; public summaries use RPCs. | Participant-only read, follower-only insert/delete, admin support boundary. |
 | `community_activity` | Baseline table existed without grants/RLS/policy. | REST read is required; writes use `record_community_activity`. | Public/owner/admin SELECT only. No browser INSERT/UPDATE/DELETE grant. |
@@ -57,7 +57,7 @@ PostgREST returned PostgreSQL `42501` errors consistently with these ACL conditi
 | `source_directory` | Source autocomplete | S | Required | Authenticated visible rows; usage writes use RPC. |
 | `variety_directory` | Variety autocomplete | S | Required | Authenticated visible rows; usage writes use RPC. |
 | `sources` | Source metadata/admin management | public S; admin I/U/D | Required | Active metadata only publicly; not an analytics path. |
-| `grow_gallery_snapshots` | Owner publication workflow | public S; owner I/U/D | Required operationally | GIE RPC is authoritative for Community analytics/public evidence. |
+| `grow_gallery_snapshots` | Owner publication workflow | public S; owner I/U/D | Required operationally | GEE RPC is authoritative for Community analytics/public evidence. |
 | `grow_gallery_snapshot_likes` | Likes | public S; owner I/D | Required | Visibility derives from the linked approved snapshot. |
 | `grow_follows` | Grow Network relationships | S/I/D | Required | Participant-scoped. Public summaries remain RPC-based. |
 | `community_activity` | Recent public/owner activity | S | Required | REST read-only; writes remain RPC-controlled. |
@@ -72,7 +72,7 @@ PostgREST returned PostgreSQL `42501` errors consistently with these ACL conditi
 
 | Feature | RPC boundary | Recommendation |
 |---|---|---|
-| Global, Community, Owner, Source, and Variety analytics | Versioned GIE RPCs and public wrappers | Keep RPC-only. Do not grant browser reads on GIE configuration or raw cross-user evidence. |
+| Global, Community, Owner, Source, and Variety analytics | Versioned GEE RPCs and public wrappers | Keep RPC-only. Do not grant browser reads on GEE configuration or raw cross-user evidence. |
 | Community gallery analytics evidence | `get_gie_community_gallery_evidence` | Keep RPC-first. Direct snapshot REST remains only for the caller's operational/moderation state. |
 | Public identity/recognition | identity and recognition RPCs | Keep RPC-first to avoid exposing private profile columns. |
 | Seed Vault sharing | sharing/search/update RPCs | Keep RPC-first. Base share tables retain existing owner RLS only for internal consistency. |
@@ -101,7 +101,7 @@ CSTP tables are RLS-enabled with no browser policies and no anon/authenticated D
 | Seed Vault share tables | RPC-first support tables | Existing owner RLS retained. No anonymous table grants. |
 | Recognition definitions/user recognitions | RPC-backed plus authenticated catalog/self reads | Existing strict RLS and SELECT grants retained. |
 | Directory usage tables | RPC-written support tables | Authenticated self/admin SELECT only; no direct browser writes. |
-| GIE configuration | Internal authoritative configuration | Service-role only; browser access remains RPC-based. |
+| GEE configuration | Internal authoritative configuration | Service-role only; browser access remains RPC-based. |
 | Cleanup/time-edit audit tables | Admin audit records | Existing admin-only SELECT retained. |
 | `announcements` | Legacy database delivery path | Current client uses the generated announcement manifest, not table REST. No new table privilege was restored. The existing image bucket remains used. |
 | `grow_gallery_snapshot_like` | Deprecated singular name | Only appears in missing-table error compatibility logic; no query targets it. No table or privilege was created. |
@@ -116,7 +116,7 @@ The exact grants are recorded in `20260715220000_application_access_security_rec
 - browser writes to Community activity or directory usage;
 - browser access to CSTP tables;
 - serial/identity sequence grants (all audited application IDs use UUID defaults);
-- new access to GIE internals.
+- new access to GEE internals.
 
 ## RLS and leakage verification
 
@@ -144,7 +144,7 @@ The linked production schema was inspected read-only. It already had RLS enabled
 
 ## Remaining risks and long-term recommendations
 
-1. Move owner operational session mutations behind narrowly designed RPCs if richer lifecycle invariants continue to accumulate; do not move GIE reads back to REST.
+1. Move owner operational session mutations behind narrowly designed RPCs if richer lifecycle invariants continue to accumulate; do not move GEE reads back to REST.
 2. Replace email-list admin fallbacks in older policies/functions with the durable `founders`/`admin_users` helpers during a separately tested authorization migration.
 3. Retire duplicate historical policies and excessive function EXECUTE ACLs across the rest of the remote schema after a function-by-function caller audit.
 4. Decide whether the database `announcements` table is permanently deprecated; remove it only after production telemetry confirms no external consumer.

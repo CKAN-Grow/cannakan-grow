@@ -8,8 +8,8 @@ Developer Scenarios is an in-app presentation tool for approved local-developmen
 - Known production hostnames ignore the explicit preview-data environment flag and require resolved Founder authorization. Anonymous users, normal members, and non-Founder administrators remain denied. Production builds still fail if scenarios are not disabled by default, and Vercel builds reject the explicit preview-data environment flag.
 - Scenario choices are stored under `grow_developer_scenarios_v1`. Only enabled state, mode, and selector choices are persisted; fixture records are never stored.
 - Each supported module resolves data through a provider boundary: Seed Vault, Sessions, Profile, Community, and Explore.
-- In **Unified Demo** mode, every provider selects from one memoized relational graph. Cards, totals, charts, rankings, profile trends, and detail views therefore resolve from shared records instead of mixing unrelated fixtures or cached live GIE analytics.
-- Active scenario routes do not invoke the corresponding live GIE owner, community, or global analytics loader. Production routes continue to use the existing canonical contracts unchanged.
+- In **Unified Demo** mode, every provider selects from one memoized relational graph. Cards, totals, charts, rankings, profile trends, and detail views therefore resolve from shared records instead of mixing unrelated fixtures or cached live GEE analytics.
+- Active scenario routes do not invoke the corresponding live GEE owner, community, or global analytics loader. Production routes continue to use the existing canonical contracts unchanged.
 - Fixture sources are deeply frozen and cloned before use. Records use `scenario-` or `preview-` IDs and carry an explicit `isPreview` marker.
 - A centralized write guard blocks scenario records and every write path for an active scenario module. Analytics events and visitor-presence updates are also suppressed while any scenario is active.
 - The fixed warning and affected-page badge make preview state visible. **Return to Live Data** disables all scenario providers and restores live state without modifying it.

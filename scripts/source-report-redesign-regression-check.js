@@ -25,13 +25,13 @@ function between(source, startNeedle, endNeedle) {
   return source.slice(start, end);
 }
 
-const adapter = between(app, "function normalizeGieCommunityAnalyticsPayload", "function getCanonicalCommunityAnalytics");
+const adapter = between(app, "function normalizeGeeCommunityAnalyticsPayload", "function getCanonicalCommunityAnalytics");
 const sourceReport = between(app, "function renderSourceProfilePage", "function getSourceCstpReportDetail");
 const sourceReportHelpers = between(app, "function renderSourceReportDashboardCardHeader", "function renderSourceProfilePage");
 
 assert(app.includes('appState.supabase.rpc("get_gie_community_analytics")'), "Source Report must retain the canonical Community RPC.");
 assert(adapter.includes("sourceReports: mapReports(analytics?.source_reports"), "Source Report must retain the versioned canonical adapter.");
-assert(sourceReport.includes("getCanonicalCommunitySourceReport") && sourceReport.includes('data-gie-community-consumer="source-report"'), "Source Report must consume the canonical adapter.");
+assert(sourceReport.includes("getCanonicalCommunitySourceReport") && sourceReport.includes('data-gee-community-consumer="source-report"'), "Source Report must consume the canonical adapter.");
 
 for (const label of [
   "Source Report",
@@ -47,7 +47,7 @@ for (const label of [
   "Community Confidence Breakdown",
   "Community Coverage",
   "Source Rankings",
-  "Powered by <strong>GIE</strong>",
+  "Powered by <strong>GEE</strong>",
 ]) {
   assert(sourceReport.includes(label), `Source Report redesign is missing ${label}.`);
 }
@@ -79,7 +79,7 @@ assert(!sourceReport.includes("Not enough canonical distribution data.") && !sou
 assert(!sourceReport.includes("<progress") && !sourceReportHelpers.includes("source-report-result-rate"), "Source Report must not use stretched progress bars as primary visualizations.");
 assert(sourceReport.includes("Community Coverage") && sourceReport.includes("renderSourceReportRegionMap(report)"), "The regional world map must consume canonical Source Report coverage.");
 assert(sourceReportHelpers.includes("No regional Community evidence has been published yet.") && sourceReportHelpers.includes("/assets/app/source-report/world-map.svg"), "The empty regional state must use the neutral world map and exact limitation copy.");
-assert(sourceReportHelpers.includes("source-report-distribution-donut") && sourceReportHelpers.includes("report?.germinationDistribution"), "Distribution must render only chart-ready canonical GIE buckets.");
+assert(sourceReportHelpers.includes("source-report-distribution-donut") && sourceReportHelpers.includes("report?.germinationDistribution"), "Distribution must render only chart-ready canonical GEE buckets.");
 assert(sourceReport.includes('const sourceHeroImage = resolveProfileHeroImage("source");')
   && sourceReport.includes('src="${escapeHtml(sourceHeroImage.url)}"')
   && sourceReport.includes('data-profile-hero-entity="source"'), "Source Report hero must consume the canonical Source Hero metadata resolver.");
@@ -88,9 +88,9 @@ assert(resolvedSourceHero.sourceType === "default"
   && resolvedSourceHero.url === canonicalSourceHeroUrl
   && fs.existsSync(canonicalSourceHeroAsset), "Source Report hero must resolve the tracked canonical Source default asset.");
 assert(sourceReport.includes("source-report-hero-verification") && sourceReport.includes("Latest evidence"), "Source verification and freshness metadata must sit beneath the hero description.");
-assert(sourceReport.includes("Evidence Strength") && !sourceReport.includes("GIE Confidence</span>") && !sourceReport.includes("report.confidence?.percent"), "Public Source Report confidence must use canonical plain-language labels without exposing the internal numeric score.");
+assert(sourceReport.includes("Evidence Strength") && !sourceReport.includes("GEE Confidence</span>") && !sourceReport.includes("report.confidence?.percent"), "Public Source Report confidence must use canonical plain-language labels without exposing the internal numeric score.");
 
-const normalizeCommunityPayload = new Function(`${adapter}; return normalizeGieCommunityAnalyticsPayload;`)();
+const normalizeCommunityPayload = new Function(`${adapter}; return normalizeGeeCommunityAnalyticsPayload;`)();
 const chadWestportContract = normalizeCommunityPayload({
   analytics: {
     source_reports: [{
@@ -213,7 +213,7 @@ for (const eligibilityRule of [
   "coalesce(analytics_excluded, false) = false",
   "public.get_gie_scoped_result_rows_v1('community', null)",
 ]) {
-  assert(migration.includes(eligibilityRule), `Canonical GIE eligibility rule is missing: ${eligibilityRule}`);
+  assert(migration.includes(eligibilityRule), `Canonical GEE eligibility rule is missing: ${eligibilityRule}`);
 }
 
 console.log("Source Report redesign regression checks passed.");

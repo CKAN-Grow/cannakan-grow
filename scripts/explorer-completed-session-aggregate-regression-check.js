@@ -7,8 +7,8 @@ const migration = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20260713160000_grow_intelligence_engine.sql"),
   "utf8",
 );
-const gieDocs = fs.readFileSync(
-  path.join(root, "docs", "architecture", "grow-intelligence-engine.md"),
+const geeDocs = fs.readFileSync(
+  path.join(root, "docs", "architecture", "grow-evidence-engine.md"),
   "utf8",
 );
 
@@ -71,8 +71,8 @@ assert(app.includes("return getExplorerCompletedSessionAggregateExclusionReason(
 assert(app.includes("return resolveGrowSessionLifecycle(session, options).included === true;"), "Analytics eligibility must resolve through the lifecycle resolver.");
 assert(app.includes('["completed", "complete"].includes(normalizedStatus)') && app.includes("hasCompletedTimestamp"), "Explorer eligibility must support legacy completed status and completed timestamps.");
 assert(app.includes('const hidden = visibilityStatus === "hidden";') && app.includes("userDeleted || hardDeleted || archived || hidden || deletedStatus"), "Lifecycle resolver must treat hidden/deleted visibility as excluded.");
-assert(!app.includes("function getExplorerAggregateEligibleCompletedSessions"), "Explorer must not rebuild GIE aggregates from locally loaded sessions.");
-assert(aggregateBuilder.includes("buildExplorerAggregateFromCachedPayload(appState.explorerCompletedSessionAggregate)"), "Explorer must consume the cached canonical GIE payload.");
+assert(!app.includes("function getExplorerAggregateEligibleCompletedSessions"), "Explorer must not rebuild GEE aggregates from locally loaded sessions.");
+assert(aggregateBuilder.includes("buildExplorerAggregateFromCachedPayload(appState.explorerCompletedSessionAggregate)"), "Explorer must consume the cached canonical GEE payload.");
 assert(!aggregateBuilder.includes("getSessions(") && !aggregateBuilder.includes("resultSummary") && !aggregateBuilder.includes(".reduce("), "Explorer aggregate adapter must not calculate analytics locally.");
 assert(aggregateBuilder.includes("sourceMap") && aggregateBuilder.includes("seedRecords"), "Aggregate adapter must expose canonical Source and Seed records.");
 assert(sourceAggregate.includes("buildExplorerCompletedSessionAggregate"), "Source Explorer must reuse the shared completed-session aggregate.");
@@ -86,8 +86,8 @@ assert(!seedPanel.includes("Public variety profiles built from approved Communit
 assert(seedPanel.includes("Seed performance profiles built from anonymized completed session results."), "Seed Explorer aggregate copy is missing.");
 assert(varietyReport.includes("getCanonicalCommunityVarietyReport"), "Variety reports must use the canonical Community report payload.");
 assert(!varietyReport.includes("getApprovedPublicGallerySnapshots") && !varietyReport.includes(".reduce("), "Variety reports must not rebuild public analytics from snapshots.");
-assert(gieDocs.includes("The Grow Intelligence Engine (GIE) is the canonical analytics layer"), "Missing canonical GIE architecture documentation.");
-assert(gieDocs.includes("Do not create a second analytics engine."), "GIE docs must forbid duplicate analytics engines.");
+assert(geeDocs.includes("The Grow Evidence Engine (GEE) is the canonical analytics layer"), "Missing canonical GEE architecture documentation.");
+assert(geeDocs.includes("Do not create a second analytics engine."), "GEE docs must forbid duplicate analytics engines.");
 
 const aggregateRpc = getBetween(
   migration,
@@ -108,8 +108,8 @@ const diagnosticRpc = getBetween(
 assert(migration.includes("create or replace function public.resolve_grow_session_lifecycle"), "Missing canonical SQL Grow Session lifecycle resolver.");
 assert(migration.includes("create or replace function public.get_grow_session_lifecycle_exclusion_reason"), "Missing canonical SQL lifecycle exclusion-reason helper.");
 assert(migration.includes("create or replace function public.is_community_intelligence_session_eligible"), "Missing canonical SQL Community Intelligence eligibility helper.");
-assert(migration.includes("create or replace function public.get_grow_intelligence_engine_analytics()"), "Missing canonical Grow Intelligence Engine analytics RPC.");
-assert(migration.includes("'engine_version', 'gie.v1'") && migration.includes("'schema_version', '2026-07-13.2'"), "GIE payload must expose engine and schema version metadata.");
+assert(migration.includes("create or replace function public.get_grow_intelligence_engine_analytics()"), "Missing canonical Grow Evidence Engine analytics RPC.");
+assert(migration.includes("'engine_version', 'gie.v1'") && migration.includes("'schema_version', '2026-07-13.2'"), "GEE payload must expose engine and schema version metadata.");
 assert(migration.includes("create or replace function public.get_explorer_grow_session_exclusion_reason"), "Missing Explorer SQL compatibility exclusion-reason wrapper.");
 assert(migration.includes("create or replace function public.is_explorer_grow_session_eligible"), "Missing Explorer SQL compatibility eligibility wrapper.");
 assert(migration.includes("create or replace function public.get_explorer_completed_session_aggregates()"), "Missing Explorer aggregate RPC migration.");
@@ -119,13 +119,13 @@ assert(migration.includes("normalized_status not in ('completed', 'complete')") 
 assert(migration.includes("grow_session_cleanup_audit") && migration.includes("cleanup_deleted_session"), "Canonical Explorer predicate must exclude confirmed Founder Cleanup-deleted sessions.");
 assert(migration.includes("normalized_visibility_status in ('deleted', 'hidden', 'archived', 'archived_test')"), "Canonical Explorer predicate must exclude hidden/deleted visibility states.");
 assert(aggregateRpc.includes("public.is_community_intelligence_session_eligible(grow_sessions.id)"), "Public aggregate RPC must use the canonical Community Intelligence eligibility helper.");
-assert(explorerWrapperRpc.includes("public.get_grow_intelligence_engine_analytics()"), "Explorer aggregate RPC must remain a wrapper around the GIE.");
+assert(explorerWrapperRpc.includes("public.get_grow_intelligence_engine_analytics()"), "Explorer aggregate RPC must remain a wrapper around the GEE.");
 assert(diagnosticRpc.includes("public.resolve_grow_session_lifecycle(grow_sessions.id)"), "Diagnostic RPC must use the canonical SQL lifecycle resolver.");
 assert(diagnosticRpc.includes("'lifecycle_state'") && diagnosticRpc.includes("'eligibility_state'") && diagnosticRpc.includes("'deletion_source'"), "Diagnostic RPC must expose lifecycle state, eligibility state, and deletion source.");
-assert(diagnosticRpc.includes("'health_status'") && diagnosticRpc.includes("'integrity_score'"), "GIE diagnostic RPC must expose health status and integrity score.");
+assert(diagnosticRpc.includes("'health_status'") && diagnosticRpc.includes("'integrity_score'"), "GEE diagnostic RPC must expose health status and integrity score.");
 assert(migration.includes("'germinatedCount'") && migration.includes("'totalGerminated'"), "RPC must support current and legacy germinated count fields.");
-assert(migration.includes("grant execute on function public.get_grow_intelligence_engine_analytics() to anon"), "GIE RPC must expose only aggregate results to anon clients.");
-assert(migration.includes("grant execute on function public.get_grow_intelligence_engine_analytics() to authenticated"), "GIE RPC must expose only aggregate results to authenticated clients.");
+assert(migration.includes("grant execute on function public.get_grow_intelligence_engine_analytics() to anon"), "GEE RPC must expose only aggregate results to anon clients.");
+assert(migration.includes("grant execute on function public.get_grow_intelligence_engine_analytics() to authenticated"), "GEE RPC must expose only aggregate results to authenticated clients.");
 assert(migration.includes("grant execute on function public.get_explorer_completed_session_aggregates() to anon"), "RPC must expose only aggregate results to anon clients.");
 assert(migration.includes("grant execute on function public.get_explorer_completed_session_aggregates() to authenticated"), "RPC must expose only aggregate results to authenticated clients.");
 assert(migration.includes("Admin or service-role access is required"), "Diagnostic RPC must be admin/service-role restricted.");

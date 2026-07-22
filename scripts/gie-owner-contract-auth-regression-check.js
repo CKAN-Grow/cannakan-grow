@@ -12,7 +12,7 @@ const migration = fs.readFileSync(
   "utf8",
 );
 const docs = fs.readFileSync(
-  path.join(root, "docs", "architecture", "grow-intelligence-engine.md"),
+  path.join(root, "docs", "architecture", "grow-evidence-engine.md"),
   "utf8",
 );
 
@@ -97,4 +97,4 @@ assert(docs.includes("Normal owner analytics must derive identity from"), "Docum
 assert(docs.includes("never from a caller-supplied owner identifier"), "Documentation must prohibit caller-supplied owner identity.");
 assert(docs.includes("get_gie_my_analytics()") && docs.includes("get_gie_admin_owner_analytics"), "Documentation must distinguish normal and admin Owner RPCs.");
 
-console.log("GIE Owner contract authorization hardening regression checks passed.");
+console.log("GEE Owner contract authorization hardening regression checks passed.");

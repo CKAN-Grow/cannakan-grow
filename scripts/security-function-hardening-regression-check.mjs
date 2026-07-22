@@ -94,4 +94,4 @@ end
 $$;
 `, { quiet: true });
 
-console.log("Function hardening regression passed: ambiguity repairs, owner isolation, idempotent activity writes, GIE cleanup, and EXECUTE boundaries verified.");
+console.log("Function hardening regression passed: ambiguity repairs, owner isolation, idempotent activity writes, GEE cleanup, and EXECUTE boundaries verified.");

@@ -171,7 +171,7 @@ test.describe("founder desktop smoke", () => {
     expect(rendererAvailable).toBe(true);
     const healthProbe = page.locator("#admin-grow-intelligence-health-runtime-probe");
     await expect(healthProbe).toContainText("Grow Intelligence Health");
-    await expect(healthProbe).toContainText("Grow Intelligence Engine health and data quality");
+    await expect(healthProbe).toContainText("Grow Evidence Engine health and data quality");
     await expect(healthProbe.locator("#admin-grow-intelligence-health-content")).toBeAttached();
     expect(runtimeErrors).toEqual([]);
   });

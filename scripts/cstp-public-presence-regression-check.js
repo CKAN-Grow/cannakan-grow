@@ -102,7 +102,7 @@ if (!appSource.includes("No certification inferred") && !appSource.includes("no 
 }
 
 if (appSource.includes("function buildCommunityInsightsCstpPublicHooks")) {
-  throw new Error("CSTP public aggregate statistics must originate in GIE, not a snapshot helper.");
+  throw new Error("CSTP public aggregate statistics must originate in GEE, not a snapshot helper.");
 }
 
 if (!appSource.includes("renderPublicCstpTestingCertificationPanel(sourceProfile, { sourceKey: report.key })")) {
