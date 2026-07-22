@@ -89269,43 +89269,61 @@ img.person-profile-avatar {
 
 .session-workspace-shell--detail .session-reflection-foundation {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin: 0;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 16px;
-  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.012);
 }
 
-.session-workspace-shell--detail .session-reflection-foundation > legend {
-  padding: 0 6px;
+.session-workspace-shell--detail .session-reflection-foundation-title {
+  margin: 0;
   color: rgba(220, 230, 216, 0.7);
   font-size: 0.72rem;
   font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.session-workspace-shell--detail .session-reflection-foundation > label {
+.session-workspace-shell--detail .session-reflection-foundation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.session-workspace-shell--detail .session-reflection-foundation-item {
   display: grid;
   gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.012);
 }
 
-.session-workspace-shell--detail .session-reflection-foundation > label:last-of-type {
+.session-workspace-shell--detail .session-reflection-foundation-item--thoughts {
   grid-column: 1 / -1;
 }
 
-.session-workspace-shell--detail .session-reflection-choice-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
+.session-workspace-shell--detail .session-reflection-foundation-item > span {
+  color: rgba(220, 230, 216, 0.72);
+  font-size: 0.74rem;
+  font-weight: 720;
 }
 
-.session-workspace-shell--detail .session-reflection-choice-group > legend {
-  padding: 0 5px;
+.session-workspace-shell--detail .session-reflection-stars {
+  color: var(--grow-color-recognition, #e9b34d);
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.session-workspace-shell--detail .session-reflection-foundation-item p {
+  margin: 0;
+  color: rgba(226, 235, 222, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 @media (max-width: 720px) {
@@ -89352,11 +89370,11 @@ img.person-profile-avatar {
   }
 
   .session-workspace-shell--detail .session-phase-foundation-grid,
-  .session-workspace-shell--detail .session-reflection-foundation {
+  .session-workspace-shell--detail .session-reflection-foundation-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .session-workspace-shell--detail .session-reflection-foundation > label:last-of-type {
+  .session-workspace-shell--detail .session-reflection-foundation-item--thoughts {
     grid-column: auto;
   }
 }

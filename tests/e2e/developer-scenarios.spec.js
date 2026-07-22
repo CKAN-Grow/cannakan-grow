@@ -3037,6 +3037,7 @@ test.describe("local Developer Scenarios", () => {
     const companion = foundation.locator("[data-grow-companion-primary]");
     const navigator = foundation.locator("[data-session-phase-navigator]");
     await expect(foundation).toBeVisible();
+    await expect(page.getByText("Session Overview", { exact: true })).toHaveCount(1);
     await expect(companion).toHaveCount(1);
     await expect(companion.locator("[data-session-phase-navigator]")).toHaveCount(1);
     await expect(navigator.locator("[data-session-phase-nav]")).toHaveCount(3);
@@ -3079,6 +3080,8 @@ test.describe("local Developer Scenarios", () => {
 
     await page.goto("/#sessions/scenario-full-grow-session-01");
     const completedFoundation = page.locator("[data-session-phase-foundation]");
+    const completedCompanion = completedFoundation.locator("[data-grow-companion-primary]");
+    const completedRecords = completedCompanion.locator("[data-session-completed-phase-records]");
     const completedGermination = completedFoundation.locator("[data-session-phase-section='germination']");
     const currentGrowing = completedFoundation.locator("[data-session-current-phase-workspace][data-session-current-phase='grow']");
     await expect(page.locator("[data-session-summary-card='status']")).toContainText("In Progress");
@@ -3096,7 +3099,9 @@ test.describe("local Developer Scenarios", () => {
     await expect(currentGrowing).toContainText("Recent Activity");
     await expect(currentGrowing.getByRole("button", { name: "Add Task" })).toBeDisabled();
     await expect(currentGrowing.getByRole("button", { name: "Add Event" })).toBeDisabled();
-    await expect(completedFoundation.locator("[data-grow-companion-primary]")).toHaveCount(1);
+    await expect(completedCompanion).toHaveCount(1);
+    await expect(completedRecords).toHaveCount(1);
+    await expect(completedRecords.locator("[data-session-phase-section='germination']")).toHaveCount(1);
     await expect(completedFoundation.locator("[data-session-phase-section='grow']")).toHaveCount(0);
     expect(await completedFoundation.locator("[data-session-current-phase-workspace]").evaluate((workspace) => (
       workspace.compareDocumentPosition(document.querySelector("[data-session-phase-section='germination']"))
@@ -3125,6 +3130,7 @@ test.describe("local Developer Scenarios", () => {
       await expect(completedGermination.locator("#detail-session-result-breakdown")).not.toContainText("Pending");
       await completedGerminationToggle.click();
       await expect(completedGermination.locator("[data-session-phase-body='germination']")).toBeHidden();
+      await expect(completedGermination.locator("[data-session-phase-body='germination']")).toHaveAttribute("hidden", "");
     }
 
     for (const width of [1280, 768, 390]) {
@@ -3135,10 +3141,14 @@ test.describe("local Developer Scenarios", () => {
           - element.querySelector("[data-session-phase-navigator]").clientWidth,
         pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         minimumNavHeight: Math.min(...[...element.querySelectorAll("[data-session-phase-nav]")].map((button) => button.getBoundingClientRect().height)),
+        duplicateIds: [...element.querySelectorAll("[id]")]
+          .map((node) => node.id)
+          .filter((id, index, ids) => ids.indexOf(id) !== index),
       }));
       expect(geometry.navigatorOverflow).toBeLessThanOrEqual(1);
       expect(geometry.pageOverflow).toBeLessThanOrEqual(1);
       expect(geometry.minimumNavHeight).toBeGreaterThanOrEqual(44);
+      expect(geometry.duplicateIds).toEqual([]);
     }
 
     await page.emulateMedia({ reducedMotion: "reduce" });

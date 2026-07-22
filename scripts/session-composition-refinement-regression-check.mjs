@@ -25,6 +25,11 @@ assert.equal(
   "Session composition must expose exactly one canonical primary Grow Companion surface.",
 );
 assert.match(app, /data-session-phase-navigator aria-label="Session lifecycle phases"/, "Lifecycle navigator must be composed inside Grow Companion.");
+assert.match(
+  app,
+  /data-grow-companion-primary[\s\S]*data-session-completed-phase-records/,
+  "Completed phase records must remain inside the canonical Grow Companion surface.",
+);
 assert.match(app, /getSessionLifecyclePresentation\(session\)/, "Session Overview must consume the centralized lifecycle presentation selector.");
 assert.match(app, /label: "Session Status"/, "Session Overview must label full Session status explicitly.");
 assert.match(app, /label: "Current Phase"/, "Session Overview must expose the current lifecycle phase.");
@@ -36,6 +41,11 @@ assert.match(app, /recordBody\.append\(nodes\.lifecycleSection, nodes\.germinati
 assert.doesNotMatch(app, /cloneNode\([^)]*detail-lifecycle-section|cloneNode\([^)]*session-workspace-content/, "Germination modules must not be cloned.");
 assert.match(app, /button type="button" class="button button-secondary" disabled>Add Task<\/button>/, "Deferred Task action must remain honestly disabled.");
 assert.match(app, /button type="button" class="button button-secondary" disabled>Add Event<\/button>/, "Deferred Event action must remain honestly disabled.");
+assert.equal(app.match(/data-session-reflection-rating=/g)?.length, 2, "Reflection must expose exactly two canonical star-rating concepts.");
+assert.match(app, /data-session-reflection-rating="overall"[\s\S]*★★★★★/, "Overall Experience must use the canonical five-star foundation.");
+assert.match(app, /data-session-reflection-rating="grow-again"[\s\S]*★★★★★/, "Would Grow Again must use the canonical five-star foundation.");
+assert.doesNotMatch(app, /name="future-grow-again"/, "Obsolete Yes/Maybe/No Reflection choices must remain absent.");
+assert.doesNotMatch(app, /germination-companion/, "Germination progress must not be labeled as a second Grow Companion.");
 assert.doesNotMatch(app, /grow_companion_tasks|grow_companion_events/, "Composition must not introduce Task/Event persistence.");
 assert.doesNotMatch(app, /from\("grow_companion_|\.from\('grow_companion_/, "Composition must not issue Grow Companion backend queries.");
 assert.match(styles, /\.session-grow-companion-surface/, "Grow Companion hub styling must exist.");
