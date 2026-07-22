@@ -7,23 +7,68 @@
 
 ## Purpose
 
-This document establishes the long-term architecture for the Grow Session lifecycle.
+This document establishes the canonical architecture for the Grow Session lifecycle and Grow Companion.
 
-It defines how a Session evolves beyond germination while preserving Grow’s core philosophy:
+Grow is the platform.
+
+Session is the canonical user-owned object.
+
+There is one Session from start to finish.
+
+Grow Companion is the permanent operational hub inside that Session.
+
+Together they preserve Grow’s core philosophy:
 
 > “Every grow should make the next grow better.”
 
-The Session is not merely a germination tracker.
+The Session is the complete story and historical record of one grow experience.
 
-It is the grower’s private workspace, historical record, and learning engine.
+Grow Companion guides the work through Germination, Growing, and Reflection.
 
-The Seed Vault stores what the grower owns.
+GEE interprets eligible canonical evidence and produces knowledge.
 
-The Session records what happened.
+The Seed Vault preserves inventory and distilled lessons.
 
-The Final Reflection preserves what was learned.
+These responsibilities create a continuous improvement loop without creating parallel systems.
 
-Together they create a continuous improvement loop.
+## Canonical Domain Model
+
+### Grow
+
+Grow is the platform that connects Sessions, Grow Companion, GEE, the Seed Vault, Testing Programs, and other canonical domains.
+
+### Session
+
+Session is the canonical object created and owned by the user.
+
+A Session evolves across one complete lifecycle. Grow must not define separate Germination Sessions, Growing Sessions, Testing Sessions, or Reflection Sessions.
+
+A Session contains:
+
+- Session Overview
+- Grow Companion
+- completed phase records
+- reports and canonical relationships
+- privacy and ownership context
+- the full lifecycle history
+
+### Grow Companion
+
+Grow Companion is the permanent operational hub of every Session.
+
+It is not a separate Session, a lower-page feature card, a replacement for the Session, or a competing evidence engine.
+
+Grow Companion is the operational workflow engine responsible for:
+
+- lifecycle navigation
+- the current phase and current work
+- completed-phase access
+- future Tasks, Events, Calendar, Journal, Photos, and Milestones
+- future Testing Program guidance
+- future Reflection workflow
+
+Grow Companion remains in the same primary position while its active workspace changes with the current phase.
+
 
 ## Core Philosophy
 
@@ -41,8 +86,8 @@ This creates the Grow knowledge loop:
 Seed Vault
 → Start Session
 → Germination
-→ Grow Companion
-→ Final Reflection
+→ Growing
+→ Reflection
 → Seed Vault
 → Repeat
 ```
@@ -85,13 +130,25 @@ Instead:
 
 ## Session Lifecycle
 
-Grow recognizes three primary lifecycle phases:
+The visible top-level phases are:
 
 1. Germination
-2. Grow Companion
-3. Final Reflection
+2. Growing
+3. Reflection
 
-These are broad, top-level lifecycle phases.
+Use “Growing” rather than “Grow” for the middle visible phase so it cannot be confused with the Grow platform. Internal compatibility identifiers may remain stable where implementation history requires them.
+
+Only one phase is current at a time.
+
+Every phase has one of three states:
+
+- future
+- current
+- complete
+
+The governing interaction pattern is:
+
+> Work → Complete → Collapse → Preserve → Continue
 
 Do not make Vegetative, Flower, Harvest, or other cannabis-specific stages mandatory top-level phases.
 
@@ -126,13 +183,13 @@ It is never removed, moved to a separate archive, or replaced by only a summary 
 
 The original Germination experience remains reopenable.
 
-### 2. Grow Companion
+### 2. Growing
 
 Purpose:
 
-Guide the grower through the remainder of the grow.
+Guide the grower through post-germination work inside Grow Companion.
 
-Grow Companion becomes the primary workspace after germination.
+Grow Companion remains the primary Session hub and changes its active workspace from Germination to Growing.
 
 Grow Companion is intentionally generic and not cannabis-specific.
 
@@ -147,23 +204,23 @@ Future implementations may include:
 - Milestones
 - Environment
 - Photos
-- Grow Completion
+- Growing Completion
 
 Different plant types may use different stages or milestones without changing the overall architecture.
 
-### 3. Final Reflection
+### 3. Reflection
 
 Purpose:
 
 Capture the grower’s distilled experience.
 
-This is intentionally different from the Session journal.
+Reflection is intentionally different from the Session Journal.
 
-The Journal records the complete history.
+The Journal records the full history.
 
-Final Reflection records what mattered most.
+Reflection records what mattered most.
 
-Future Reflection may include:
+Reflection includes:
 
 - Overall Experience
 - Would Grow Again?
@@ -173,9 +230,9 @@ Reflection completes the knowledge loop and returns the learned experience to th
 
 ## Session Phase Navigator
 
-Every Session should expose its lifecycle through a persistent phase navigator.
+Grow Companion exposes the Session lifecycle through a persistent phase navigator.
 
-The navigator should always communicate:
+The navigator lives inside Grow Companion and always communicates:
 
 - where the grow currently is
 - where it has been
@@ -187,32 +244,60 @@ Behavioral principles:
 - Completed phases remain expandable.
 - Future phases remain visible but unavailable until eligible.
 - Selecting a completed phase reopens its full original record.
-- Phase navigation must never hide or destroy historical information.
+- Selecting the current phase returns focus to the current workspace.
+- Phase navigation never hides or destroys historical information.
 
-## Germination Completion vs Grow Completion
+## Completed Phase Records
 
-Germination completion and Grow completion are separate concepts.
+Completed phases become historical records inside the same Session and Grow Companion composition.
+
+Completed phase records:
+
+- remain permanently accessible
+- preserve the complete original experience
+- do not move to separate archive pages
+- do not become report-only summaries
+- retain notes, images, evidence, analytics, and controls
+- may collapse by default when no longer current
+- remain expandable from the lifecycle navigator or phase summary
+
+Nothing disappears.
+
+Germination completion produces a completed Germination Record. Future Growing completion produces a completed Growing Record. Reflection completion completes the overall Session.
+
+## Session Status vs Phase Status
+
+Session status and phase status are separate concepts.
 
 ### Germination Completion
 
 - Germination has ended.
 - Canonical germination results exist.
-- The Germination record becomes historical.
-- It does not inherently mean the entire grow has ended.
+- Germination status becomes complete.
+- The Germination Record becomes historical.
+- Session status remains active or in progress.
+- Current phase becomes Growing.
 
-### Grow Completion
+### Growing Completion
 
-- The post-germination Grow Companion lifecycle has ended.
-- This is distinct from germination completion.
-- It precedes Final Reflection.
+- Germination remains complete.
+- Growing status becomes complete.
+- Session status remains active or in progress.
+- Current phase becomes Reflection.
 
-### Final Reflection Completion
+### Reflection Completion
 
 - Captures the grower’s concise lesson.
-- Closes the complete grow lifecycle.
-- Returns the learned experience to the Seed Vault.
+- Completes the overall Session.
+- Links the distilled lesson into the related Seed Vault history.
 
-Existing legacy Session completion behavior may continue to represent germination completion for backward compatibility, but it must not permanently define full-grow completion.
+Compatibility adapters may translate legacy completion fields, but canonical Session status must remain distinct from phase completion.
+
+## Phase Capabilities
+
+Tasks, Events, Calendar, Journal, Photos, Milestones, and Testing Program guidance are capabilities of the active phase. They are not separate top-level platform systems, and not every capability must appear in every phase.
+
+Grow Companion reveals only the tools appropriate to the current phase. Germination may emphasize evidence, notes, images, and phase-relevant work. Growing may emphasize Tasks, Events, Calendar, Journal, Photos, Milestones, and Testing Program guidance. Reflection remains concise and focused on the final lesson.
 
 ## Tasks vs Events
 
@@ -261,7 +346,7 @@ Examples:
 - Power outage
 - Harvested
 
-Events become historical evidence.
+Events become historical observations. They become canonical evidence only when GEE determines that they are eligible through an explicit evidence boundary.
 
 Events are not reminders.
 
@@ -305,49 +390,57 @@ The Journal belongs to the Session.
 
 The full Journal is not copied into the Seed Vault.
 
-## Final Reflection
+## Reflection
 
-Final Reflection is intentionally concise.
+Reflection is intentionally concise.
 
 It answers:
 
 > “If you grow this variety again, what should you remember?”
 
-Future structure:
+Canonical structure:
 
 ### Overall Experience
 
+A structured 1–5 star rating.
+
 ### Would Grow Again?
 
-- Yes
-- Maybe
-- No
+A structured 1–5 star variety-experience signal:
+
+- 5 stars: absolutely would grow again
+- 4 stars: probably would
+- 3 stars: maybe
+- 2 stars: probably would not
+- 1 star: would not grow again
 
 ### Final Thoughts
 
-One concise summary.
+One concise answer to the Reflection question.
 
-A Reflection should remain associated with:
+One canonical Reflection should eventually relate to:
 
 - grower
 - Session
-- canonical variety or Vault item
+- canonical variety
+- Vault item where applicable
+- source attribution from the Session
 - overall experience
-- Would Grow Again response
+- Would Grow Again rating
 - final thoughts
 - completion timestamp
 
-The Reflection is the distilled lesson.
+The same Reflection is referenced from both the completed Session and the linked Seed Vault variety history. Grow must not create a separate Session Reflection and duplicate Vault note.
 
-It is not a duplicate of the full Session Journal.
+The Reflection is the distilled lesson, not a duplicate of the full Session Journal. It remains private unless the owner explicitly changes visibility under future sharing rules.
 
 ## Seed Vault Integration
 
-The Seed Vault stores accumulated personal knowledge.
+The Seed Vault stores inventory and accumulated personal knowledge.
 
 It does not duplicate Session history.
 
-Each completed grow may contribute one Final Reflection to the related variety history.
+Each completed grow may link one canonical Reflection into the related variety history.
 
 Example:
 
@@ -355,7 +448,7 @@ Example:
 >
 > ★★★★★
 >
-> **Would Grow Again:** Yes
+> **Would Grow Again:** ★★★★★
 >
 > “Excellent vigor. Reduce nutrients during early growth.”
 
@@ -372,43 +465,107 @@ Over time, the Seed Vault may summarize the grower’s own experience, such as:
 
 These summaries must remain grounded in canonical Session and GEE evidence.
 
+The Seed Vault receives the distilled lesson. It does not receive the full Grow Companion timeline or Journal.
+
 ## GEE Responsibilities
 
-GEE remains Grow’s canonical evidence and analytics engine.
+GEE remains the heart of Grow’s canonical evidence and knowledge architecture.
+
+> Grow Companion records. GEE understands.
+
+Grow Companion may capture:
+
+- Tasks
+- Events
+- Notes
+- Photos
+- milestones
+- Reflection
+- program-guided observations
 
 GEE is responsible for:
 
-- evidence
+- canonical evidence
 - normalization
 - canonical calculations
 - reporting
 - analytics
 - eligibility
 - aggregation
+- recommendations
+- insights
+- evidence interpretation
 
-Grow Companion does not create competing evidence or duplicate canonical calculations.
+Grow Companion must not create a competing evidence or analytics engine. GEE may later consume eligible post-germination observations through an explicit Evidence Adapter.
 
-The Session lifecycle is a workflow and presentation layer.
+Not every Task, Event, note, photo, milestone, or Reflection is automatically verified evidence. GEE determines eligibility, lineage, confidence, and interpretation.
 
-Grow Companion consumes canonical GEE-backed information where applicable.
+## Objective and Subjective Evidence
 
-GEE remains the source of truth.
+Objective evidence may include:
+
+- germination count
+- tested count
+- germination rate
+- elapsed time
+- canonical completion data
+- structured measured outcomes
+
+Subjective evidence may include:
+
+- Overall Experience
+- Would Grow Again
+- Final Thoughts
+- future structured grower observations
+
+Would Grow Again may become a Variety result through GEE aggregation, for example:
+
+> **Would Grow Again**
+>
+> 4.6 / 5
+>
+> Based on 243 completed Reflections
+
+GEE must preserve sample size, evidence lineage, source attribution, confidence context, and distribution where appropriate. A subjective rating must not be presented as equivalent to measured performance.
+
+For Source Reports, Would Grow Again may contribute indirectly through attributed variety outcomes. It must not be mislabeled as a direct rating of the Source unless Grow later asks a separate Source-specific question.
 
 ## Session, GEE, and Seed Vault Responsibilities
 
 ### Session
 
-Stores the complete history of what happened.
+Stores the story: identity, ownership, privacy, complete lifecycle, completed records, and historical context.
+
+### Grow Companion
+
+Guides the work: lifecycle navigation, current-phase workflow, and access to completed phase records.
 
 ### GEE
 
-Normalizes and interprets canonical evidence.
+Interprets the evidence: normalization, eligibility, analytics, aggregation, reports, recommendations, and insights.
 
 ### Seed Vault
 
-Stores what the grower owns and the distilled lessons they want to remember.
+Preserves the lesson: inventory, variety history, and the linked distilled Reflection.
 
 These responsibilities must remain separate.
+
+## Testing Programs
+
+Testing Programs configure the existing Session and Grow Companion architecture. They do not create a second Session type, Task system, Event system, Calendar, timeline, or evidence engine.
+
+Testing Programs may later provide:
+
+- program-created Tasks
+- required checkpoints and due windows
+- required observations
+- milestones
+- evidence requests
+- completion rules
+- participant progress
+- recognition outcomes
+
+All program guidance must use the same canonical Session, Grow Companion, Task, Event, Reflection, and GEE architecture.
 
 ## Privacy
 
@@ -424,9 +581,9 @@ The following must not become public automatically:
 - calendar entries
 - environment data
 - grow photos
-- Final Reflection
+- Reflection
 
-Saving a Final Reflection to the Seed Vault does not imply public visibility.
+Saving a Reflection to the Seed Vault does not imply public visibility.
 
 Public or social sharing must always require an explicit owner action and must respect Grow’s existing privacy and visibility architecture.
 
@@ -449,6 +606,28 @@ Future sharing may generate a clean external Share Card or selected social-ready
 The grower controls what is included.
 
 No direct in-app public grow feed is required by this foundation.
+
+## Version 1 Boundary
+
+The architectural completion target for Version 1 includes:
+
+- Session lifecycle and composition
+- Grow Companion foundation
+- Tasks, Events, and activity history
+- Growing progress
+- Testing Program integration through Grow Companion
+- Reflection and Seed Vault linkage
+- a GEE-compatible subjective evidence boundary
+
+Advanced capabilities remain extensions of this architecture and may be deferred, including:
+
+- full Calendar
+- recurrence
+- reminders
+- notifications
+- AI recommendations
+- advanced environment tracking
+- advanced breeder and Source dashboards
 
 ## Custom Scheduling and Notifications
 
@@ -491,8 +670,8 @@ The lifecycle intentionally ends where it began:
 Seed Vault
 → Start Session
 → Germination
-→ Grow Companion
-→ Final Reflection
+→ Growing
+→ Reflection
 → Seed Vault
 → Repeat
 ```
@@ -518,20 +697,28 @@ The goal is continuous improvement, not continuous data collection.
 
 > “Nothing disappears. Completed phases become accessible history.”
 
-> “The Session stores the story. GEE preserves the evidence. The Seed Vault preserves the lesson.”
+> “Grow Companion is the operational hub of the Session.”
+
+> “The Session stores the story.”
+
+> “Grow Companion guides the work.”
+
+> “GEE interprets the evidence.”
+
+> “The Seed Vault preserves the lesson.”
 
 > “Grow does not just help people grow plants. Grow helps people grow knowledge.”
 
 ## Foundational Decision
 
-The Grow Session is a continuous lifecycle, not a germination-only record.
+The Session is one continuous, user-owned lifecycle, not a germination-only record or a set of phase-specific Sessions.
 
-Germination remains permanently accessible.
+Grow Companion is the permanent operational hub inside that Session.
 
-Grow Companion becomes the ongoing workspace.
+Germination, Growing, and Reflection are phase workspaces. Completed phases remain permanently accessible records inside the same Session.
 
-Final Reflection closes the grow.
+GEE remains the canonical evidence and interpretation layer.
 
-The Seed Vault preserves the lesson.
+Testing Programs configure this architecture rather than creating a parallel workflow.
 
-Repeat turns the lesson into action.
+> “Every new feature must extend the existing Session through Grow Companion or integrate with GEE, the Seed Vault, or another established canonical domain. It must not create a parallel system without an explicit foundational decision.”
