@@ -3165,6 +3165,221 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test("Grow Companion owner can manage durable Tasks and Events through one activity timeline", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    const setup = await page.evaluate(() => {
+      const source = getSessions().find((session) => session.id === "scenario-full-grow-session-01");
+      if (!source) throw new Error("A completed Germination Session fixture is required.");
+      returnToLiveData();
+      const ownerId = String(appState.user?.id || "grow-companion-owner");
+      appState.user = { ...(appState.user || {}), id: ownerId };
+      const liveSession = {
+        ...source,
+        id: "grow-companion-capability-owner-session",
+        userId: ownerId,
+        devModeOnly: false,
+        dev_mode_only: false,
+        isSample: false,
+        is_sample: false,
+        isPreview: false,
+        is_preview: false,
+        isMock: false,
+        is_mock: false,
+        is_mock_data: false,
+        sessionStatus: "completed",
+        visibilityStatus: "active",
+        visibility_status: "active",
+        userDeleted: false,
+        user_deleted: false,
+        userDeletedAt: "",
+        user_deleted_at: "",
+        isDeleted: false,
+        is_deleted: false,
+        deletedAt: "",
+        deleted_at: "",
+      };
+      window.__growCompanionCapabilityLiveSession = liveSession;
+      window.__growCompanionCapabilityDb = { tasks: [], events: [], nextId: 1, failNext: "", delayNext: 0, attempts: [] };
+      const tableKey = (table) => table === "grow_session_tasks" ? "tasks" : "events";
+      const clone = (value) => JSON.parse(JSON.stringify(value));
+      appState.supabase = {
+        from(table) {
+          const state = { operation: "select", payload: null, filters: [], single: false };
+          const execute = async () => {
+            const key = tableKey(table);
+            const database = window.__growCompanionCapabilityDb;
+            const matches = (row) => state.filters.every(([field, value]) => String(row[field]) === String(value));
+            database.attempts.push({ table, operation: state.operation });
+            const delay = Number(database.delayNext || 0);
+            database.delayNext = 0;
+            if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+            if (database.failNext === state.operation) {
+              database.failNext = "";
+              return { data: null, error: { message: `Simulated ${state.operation} failure.` } };
+            }
+            if (state.operation === "select") {
+              const rows = database[key].filter(matches).map(clone);
+              return { data: state.single ? (rows[0] || null) : rows, error: null };
+            }
+            if (state.operation === "insert") {
+              const now = new Date().toISOString();
+              const row = { ...clone(state.payload), id: `capability-${key}-${database.nextId++}`, created_at: now, updated_at: now };
+              database[key].push(row);
+              return { data: clone(row), error: null };
+            }
+            if (state.operation === "update") {
+              let changed = null;
+              database[key] = database[key].map((row) => {
+                if (!matches(row)) return row;
+                changed = { ...row, ...clone(state.payload), updated_at: new Date().toISOString() };
+                return changed;
+              });
+              return { data: changed ? clone(changed) : null, error: changed ? null : { message: "Record not found." } };
+            }
+            if (state.operation === "delete") {
+              const before = database[key].length;
+              database[key] = database[key].filter((row) => !matches(row));
+              return { data: null, error: database[key].length < before ? null : { message: "Record not found." } };
+            }
+            return { data: null, error: { message: "Unsupported operation." } };
+          };
+          const query = {
+            select() { return query; },
+            insert(payload) { state.operation = "insert"; state.payload = payload; return query; },
+            update(payload) { state.operation = "update"; state.payload = payload; return query; },
+            delete() { state.operation = "delete"; return query; },
+            eq(field, value) { state.filters.push([field, value]); return query; },
+            single() { state.single = true; return execute(); },
+            then(resolve, reject) { return execute().then(resolve, reject); },
+          };
+          return query;
+        },
+      };
+      saveSessions([liveSession]);
+      history.replaceState(null, "", `#sessions/${liveSession.id}`);
+      renderSessionDetail(liveSession.id);
+      return {
+        sessionCount: getSessions().length,
+        found: Boolean(getSessions().find((session) => session.id === liveSession.id)),
+        softDeleted: isSessionSoftDeleted(getSessions().find((session) => session.id === liveSession.id)),
+        currentPhase: getSessionLifecyclePresentation(getSessions().find((session) => session.id === liveSession.id)).currentPhaseId,
+        rendered: Boolean(document.querySelector("[data-session-current-phase-workspace][data-session-current-phase='grow']")),
+      };
+    });
+    expect(setup).toEqual({ sessionCount: 1, found: true, softDeleted: false, currentPhase: "grow", rendered: true });
+    await page.evaluate(() => {
+      saveSessions([window.__growCompanionCapabilityLiveSession]);
+      history.replaceState(null, "", "#sessions/grow-companion-capability-owner-session");
+      renderSessionDetail("grow-companion-capability-owner-session");
+    });
+
+    const growing = page.locator("[data-session-current-phase-workspace][data-session-current-phase='grow']");
+    await expect(growing).toBeVisible();
+    await expect(growing.getByRole("button", { name: "Add Task" })).toBeEnabled();
+    await expect(growing.getByRole("button", { name: "Add Event" })).toBeEnabled();
+    await expect(growing).toContainText("No upcoming tasks");
+    await expect(growing).toContainText("No activity yet");
+
+    await growing.getByRole("button", { name: "Add Task" }).click();
+    let dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('input[name="title"]').fill("Failed task must roll back");
+    await dialog.locator('input[name="date"]').fill("2026-07-21");
+    await page.evaluate(() => { window.__growCompanionCapabilityDb.failNext = "insert"; });
+    await dialog.getByRole("button", { name: "Add Task", exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-grow-companion-form-message]")).toContainText("Simulated insert failure");
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.tasks)).toEqual([]);
+    await expect(growing.locator("[data-grow-companion-task-id]")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+
+    await growing.getByRole("button", { name: "Add Task" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[name="title"]').fill("Check canopy moisture");
+    await dialog.locator('textarea[name="details"]').fill("Review the top layer before watering.");
+    await dialog.locator('input[name="date"]').fill("2026-07-21");
+    await dialog.locator('input[name="time"]').fill("09:30");
+    const insertsBeforeDuplicateAttempt = await page.evaluate(() => window.__growCompanionCapabilityDb.attempts.filter((attempt) => attempt.operation === "insert" && attempt.table === "grow_session_tasks").length);
+    await page.evaluate(() => { window.__growCompanionCapabilityDb.delayNext = 75; });
+    await dialog.locator("form").evaluate((form) => {
+      const submit = form.querySelector('button[type="submit"]');
+      form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: submit }));
+      form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: submit }));
+    });
+    await expect(dialog).toHaveCount(0);
+    await expect(growing.locator("[data-grow-companion-upcoming]")).toContainText("Check canopy moisture");
+    await expect(growing.locator("[data-grow-companion-task-id]")).toHaveCount(1);
+    const duplicateSubmissionState = await page.evaluate(() => ({
+      taskCount: window.__growCompanionCapabilityDb.tasks.length,
+      taskInsertAttempts: window.__growCompanionCapabilityDb.attempts.filter((attempt) => attempt.operation === "insert" && attempt.table === "grow_session_tasks").length,
+    }));
+    expect(duplicateSubmissionState).toEqual({ taskCount: 1, taskInsertAttempts: insertsBeforeDuplicateAttempt + 1 });
+
+    await growing.getByRole("button", { name: "Add Event" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('input[name="title"]').fill("Moved into final container");
+    await dialog.locator('textarea[name="details"]').fill("Root ball remained intact.");
+    await dialog.locator('input[name="date"]').fill("2026-07-20");
+    await dialog.locator('input[name="time"]').fill("13:15");
+    await dialog.locator('select[name="category"]').selectOption("transplant");
+    await dialog.getByRole("button", { name: "Add Event", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Moved into final container");
+
+    await growing.getByRole("button", { name: "Edit task: Check canopy moisture" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('input[name="title"]').fill("Failed edit must roll back");
+    await page.evaluate(() => { window.__growCompanionCapabilityDb.failNext = "update"; });
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("[data-grow-companion-form-message]")).toContainText("Simulated update failure");
+    await expect(growing.locator("[data-grow-companion-upcoming]")).toContainText("Check canopy moisture");
+    await expect(growing.locator("[data-grow-companion-upcoming]")).not.toContainText("Failed edit must roll back");
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.tasks[0].title)).toBe("Check canopy moisture");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+
+    await growing.getByRole("button", { name: "Complete task: Check canopy moisture" }).click();
+    await expect(growing.locator("[data-grow-companion-upcoming]")).toContainText("No upcoming tasks");
+    await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Task completed");
+    await expect(growing.locator("[data-grow-companion-activity-id]")).toHaveCount(2);
+
+    await growing.getByRole("button", { name: "Edit task: Check canopy moisture" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('input[name="title"]').fill("Check canopy and soil moisture");
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Check canopy and soil moisture");
+
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await growing.getByRole("button", { name: "Delete event: Moved into final container" }).click();
+    await expect(growing.locator("[data-grow-companion-activity-id]")).toHaveCount(1);
+    await expect(growing.locator("[data-grow-companion-activity]")).not.toContainText("Moved into final container");
+
+    const persisted = await page.evaluate(() => window.__growCompanionCapabilityDb);
+    expect(persisted.tasks).toHaveLength(1);
+    expect(persisted.tasks[0]).toMatchObject({
+      session_id: "grow-companion-capability-owner-session",
+      title: "Check canopy and soil moisture",
+      status: "completed",
+      origin: "user",
+    });
+    expect(persisted.events).toEqual([]);
+
+    for (const width of [390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await expect(growing).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    }
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("renders Community scenario analytics and cards from the same records", async ({ page }) => {
     await page.goto("/#gallery");
     await useFullGrowDemo(page);

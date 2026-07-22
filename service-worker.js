@@ -1,9 +1,10 @@
-const CACHE_NAME = "cannakan-grow-shell-v34-profile-editorial-illustration";
+const CACHE_NAME = "cannakan-grow-shell-v36-grow-companion-capability-1";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/src/grow-companion-contract.js",
   "/profile-hero-catalog-data.js",
   "/profile-hero-catalog.js",
   "/assets/images/profile-heroes/catalog.json",

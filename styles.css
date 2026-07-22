@@ -89267,6 +89267,195 @@ img.person-profile-avatar {
   background: rgba(255, 255, 255, 0.016);
 }
 
+/* Grow Companion Capability 1: Session-owned tasks, events, and activity. */
+.session-workspace-shell--detail .session-grow-companion-activity-grid > section {
+  align-content: start;
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-grow-companion-feedback {
+  min-height: 1.2em;
+  margin: -8px 0 0;
+  color: #b9e28f;
+  font-size: 0.78rem;
+}
+
+.session-workspace-shell--detail .session-grow-companion-task-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 10px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-task-group > h5 {
+  margin: 0;
+  color: rgba(226, 237, 222, 0.72);
+  font-size: 0.7rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell--detail .session-grow-companion-task-group:first-of-type > h5 {
+  color: #efb075;
+}
+
+.session-workspace-shell--detail .session-grow-companion-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-workspace-shell--detail .session-grow-companion-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 13px;
+  background: rgba(3, 8, 5, 0.28);
+}
+
+.session-workspace-shell--detail .session-grow-companion-list--activity .session-grow-companion-item {
+  border-left-color: rgba(148, 209, 89, 0.28);
+}
+
+.session-workspace-shell--detail .session-grow-companion-item-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.session-workspace-shell--detail .session-grow-companion-item-copy strong {
+  overflow-wrap: anywhere;
+  color: #edf5e9;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.session-workspace-shell--detail .session-grow-companion-item-copy > span:not(.session-grow-companion-type) {
+  color: rgba(214, 225, 210, 0.62);
+  font-size: 0.72rem;
+}
+
+.session-workspace-shell--detail .session-grow-companion-item-copy > p {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  color: rgba(220, 231, 216, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.session-workspace-shell--detail .session-grow-companion-type {
+  width: max-content;
+  max-width: 100%;
+  color: #a7d87b;
+  font-size: 0.64rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell--detail .session-grow-companion-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-item-actions .button {
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 0.7rem;
+}
+
+.grow-companion-record-dialog {
+  width: min(560px, calc(100vw - 28px));
+  max-height: calc(100dvh - 28px);
+  padding: 0;
+  overflow: auto;
+  border: 1px solid rgba(148, 209, 89, 0.26);
+  border-radius: 20px;
+  color: #edf5e9;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.12), transparent 36%),
+    linear-gradient(150deg, #111a13, #080d0a);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.62);
+}
+
+.grow-companion-record-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.grow-companion-record-form {
+  display: grid;
+  gap: 16px;
+  padding: clamp(18px, 3vw, 26px);
+}
+
+.grow-companion-record-form header {
+  display: grid;
+  gap: 4px;
+}
+
+.grow-companion-record-form header :is(.eyebrow, h2) {
+  margin: 0;
+}
+
+.grow-companion-record-form label {
+  display: grid;
+  gap: 7px;
+  color: rgba(232, 241, 228, 0.88);
+  font-size: 0.8rem;
+  font-weight: 680;
+}
+
+.grow-companion-record-form label small {
+  color: rgba(218, 229, 214, 0.52);
+  font-weight: 520;
+}
+
+.grow-companion-record-form :is(input, textarea, select) {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+  color: #eef7e9;
+  background: rgba(2, 6, 4, 0.62);
+}
+
+.grow-companion-record-form textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.grow-companion-record-form :is(input, textarea, select):focus-visible {
+  outline: 2px solid rgba(148, 209, 89, 0.78);
+  outline-offset: 2px;
+}
+
+.grow-companion-record-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.grow-companion-record-form .form-message {
+  min-height: 1.2em;
+  margin: -6px 0 0;
+}
+
+.grow-companion-record-form footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .session-workspace-shell--detail .session-reflection-foundation {
   display: grid;
   gap: 12px;
@@ -89371,6 +89560,22 @@ img.person-profile-avatar {
 
   .session-workspace-shell--detail .session-phase-foundation-grid,
   .session-workspace-shell--detail .session-reflection-foundation-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-workspace-shell--detail .session-grow-companion-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-workspace-shell--detail .session-grow-companion-item-actions {
+    justify-content: flex-start;
+  }
+
+  .session-workspace-shell--detail .session-grow-companion-item-actions .button {
+    min-height: 44px;
+  }
+
+  .grow-companion-record-form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
