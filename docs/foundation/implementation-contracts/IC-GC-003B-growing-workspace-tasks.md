@@ -1,16 +1,16 @@
 # IC-GC-003B — Growing Workspace Tasks
 
-**Status:** Architecture Blocked — Implementation ICE Not Authorized
+**Status:** Implementation Ready — Bounded Task ICE Authorized
 
 This document is an implementation contract for the bounded canonical Task capability. It does not implement code, schema, migrations, persistence changes, or interface assets.
 
 ## 1. Purpose
 
-Define the canonical responsibility, identity, ownership, context, persistence boundary, and proof obligations for Tasks in the Growing Workspace.
+Define the canonical responsibility, identity, ownership, context, persistence boundary, due semantics, state semantics, compatibility, and proof obligations for Tasks in the Growing Workspace.
 
 A Task represents intended user work. This contract does not redefine the Growing Workspace, Session lifecycle, Growing evidence, or shared platform architecture.
 
-Implementation is blocked until the shared time and completed-record mutation decisions identified in Section 13 receive architecture approval.
+This revision applies AR-GC-003-01 and resolves the remaining Task-specific due, state, and compatibility decisions.
 
 ## 2. Dependencies and Architecture Gate
 
@@ -22,29 +22,25 @@ This contract must preserve:
 - [Grow Companion Composition Specification](../../product/grow-sessions/grow-companion-composition-specification.md);
 - [IC-GC-002C — Session Entry & Growing Foundation](./IC-GC-002C-session-entry-and-growing-foundation.md);
 - [CS-GC-003 — Growing Workspace Composition Specification](../../product/grow-sessions/growing-workspace-composition-specification.md);
-- [IC-GC-003A — Growing Workspace Shell](./IC-GC-003A-growing-workspace-shell.md); and
+- [IC-GC-003A — Growing Workspace Shell](./IC-GC-003A-growing-workspace-shell.md);
+- [AR-GC-003-01 — Workspace Time, State, Correction & Retention Semantics](../../architecture/AR-GC-003-01-workspace-time-state-correction-and-retention-semantics.md); and
 - the existing canonical private Task capability described by [Grow Companion Capability 1 — Tasks, Events, and Activity](../../architecture/grow-companion-capability-1.md).
 
-CS-GC-003 leaves two Task prerequisites unresolved:
-
-- instant, time-zone, and local-civil-time rules for Task due semantics; and
-- completed-phase and completed-Session correction, deletion, retention, and visible-provenance policy.
-
-No later repository document inspected for this contract approves those shared semantics. They must not be inferred from existing implementation behavior. Until both decisions are approved, this contract defines the stable Task foundation but does not authorize an implementation ICE.
+AR-GC-003-01 is authoritative for shared time, state-transition, correction, hard-deletion, retention, and provenance semantics. This contract applies those rules to Tasks and closes the Task-specific architecture gate.
 
 ## 3. Scope
 
 This contract defines only:
 
-- Task identity;
-- canonical Session ownership;
+- Task identity and canonical Session ownership;
 - optional Growing Phase and Plant Group context;
-- the smallest architecture-approved Task-owned record;
-- Task state boundaries;
+- the smallest canonical Task record;
+- Task due and state semantics;
 - dedicated persistence boundaries;
 - read-only derived Task projections;
-- privacy and authorization requirements; and
-- implementation acceptance criteria and architecture gates.
+- existing Task compatibility;
+- privacy and authorization; and
+- implementation acceptance criteria.
 
 It does not authorize unrelated workspace capabilities or changes to the Workspace shell.
 
@@ -61,9 +57,9 @@ A Task is not:
 - a reminder or notification; or
 - lifecycle state.
 
-Creating or changing a Task must not silently create an Event, manufacture evidence, or mutate structured evidence or lifecycle state. Any future conversion or evidence relationship requires separately approved architecture and explicit owner action.
+Creating or changing a Task must not silently create an Event, manufacture evidence, or mutate structured evidence or lifecycle state.
 
-The existing private Task capability remains canonical. This contract must evolve it rather than create a parallel Task system.
+The existing private Task capability remains canonical. This contract evolves it rather than creating a parallel Task system.
 
 ## 5. Identity and Ownership
 
@@ -74,15 +70,15 @@ A Task may optionally reference:
 - that Session's canonical Growing Phase; or
 - one Plant Group belonging to that Growing Phase and Session.
 
-Session ownership remains authoritative. Narrower context does not replace it. A phase or Plant Group reference is valid only when its canonical ownership chain resolves to the Task's Session. Cross-Session references must be rejected.
+Session ownership remains authoritative. Narrower context never replaces it. Cross-Session phase or Plant Group references must be rejected.
 
-Editing a Task must preserve its identity. Desktop and mobile use the same identity, ownership, and context model.
+Editing, correcting, completing, or reopening a Task preserves its identity. Desktop and mobile use the same identity, ownership, context, due, state, and persistence model.
 
-Context must use explicit canonical relationships. Miscellaneous polymorphic JSON, arbitrary metadata, string-based entity references, and duplicate Session, phase, or Plant Group identities are prohibited.
+Context uses explicit canonical relationships. Miscellaneous polymorphic JSON, arbitrary metadata, string-based entity references, and duplicate Session, phase, or Plant Group identities are prohibited.
 
 ## 6. Task-Owned Data
 
-The smallest architecture-approved Task record contains:
+The smallest canonical Task record contains:
 
 - stable Task identity;
 - canonical Session ownership;
@@ -90,36 +86,56 @@ The smallest architecture-approved Task record contains:
 - optional canonical Plant Group context;
 - title;
 - optional description;
-- created provenance; and
-- updated provenance.
+- one due form: none, date only, or instant;
+- state: `open` or `completed`;
+- `completed_at` when a newly completed Task has a known completion instant;
+- immutable created provenance; and
+- current updated provenance.
 
-The exact physical schema, identifier representation, timestamp generation mechanism, and API shape are implementation details to be proposed only after the architecture gate closes. The existing canonical Task store must not be replaced or duplicated.
+The exact physical schema, identifier representation, timestamp-generation mechanism, and API shape remain implementation details. The existing canonical Task store must be evolved rather than replaced or duplicated.
 
-The following candidate Task-owned data is not yet authorized:
+### 6.1 Canonical Due Model
 
-- `due_at` or any date-only/due-time variant, pending shared time semantics;
-- completion state and `completed_at`, pending correction, retention, and visible-provenance semantics;
-- reopening, deletion, soft deletion, archival, or completion history; and
-- deterministic manual ordering, because no approved first surface requires owner-defined ordering.
+A Task supports exactly one due form:
 
-Recurrence, priority systems, dependencies, assignments, reminders, notifications, automation, Event conversion, attachments, tags, and arbitrary metadata JSON are excluded.
+1. **No due value** — the owner intends the work but assigns no calendar commitment. It appears in Open Tasks while open and in no Due, Today, Upcoming, or overdue projection.
+2. **Date-only due value** — the Task is due on the stored calendar date without a time of day or time-zone conversion. It requires no local civil time, IANA zone, or offset. An open Task appears in Today when its date equals the current calendar date in the owner's active display zone, in Upcoming when later, and in the overdue projection when earlier.
+3. **Instant-based due value** — the Task is due at a specific moment. Under AR-GC-003-01 it preserves the UTC instant, entered local civil date and time, IANA zone, and resolved offset. Today and Upcoming use the due instant's calendar date in its recorded IANA zone; chronological ordering uses the UTC instant. Changing the owner's current zone never rewrites or reclassifies the recorded local date.
+
+Today, Upcoming, and overdue contain open Tasks only. Completed Tasks are excluded. Stable Task identity is the final deterministic ordering key when approved projection keys are otherwise equal.
+
+### 6.2 Excluded Data
+
+Recurrence, priorities, dependencies, assignments, reminders, notifications, automation, Event conversion, attachments, tags, arbitrary metadata JSON, and owner-authored manual ordering are excluded.
 
 ## 7. State Boundaries
 
-Task state is independent from:
+The canonical Task state vocabulary is:
 
-- Session lifecycle;
-- Germination lifecycle;
-- Growing Phase lifecycle; and
-- Plant Group state.
+- `open` — intended work not currently recorded as completed;
+- `completed` — intended work explicitly marked complete by the owner.
 
-No Task operation may automatically activate, complete, reopen, or reinterpret a Session or phase, or change Plant Group state.
+Permitted transitions are:
 
-The minimum mutable Task state model is architecture-blocked. This contract does not silently approve completion, reopening, correction, deletion, retention, or history behavior. Existing Sessions and existing Task records retain their current compatibility behavior until an approved resolution and later execution explicitly govern change.
+- creation into `open`;
+- `open` to `completed`; and
+- `completed` to `open`.
+
+Completing an open Task preserves identity, sets `completed_at` to the authoritative UTC instant of that explicit owner transition, and advances `updated_at`. Repeating completion against an already completed Task is not a new transition and must not replace its existing completion instant.
+
+Reopening is an explicit reverse state transition, not a correction. It preserves identity, changes state to `open`, clears the current `completed_at`, and advances `updated_at`. It does not undo or reinterpret Session or phase lifecycle.
+
+Correcting title, description, due data, valid context, or a known completion instant while state remains unchanged is an in-place correction under AR-GC-003-01. It preserves `created_at`, advances `updated_at`, and creates no replacement identity or revision chain.
+
+Hard deletion follows AR-GC-003-01 and is not a Task state.
+
+Task state remains independent from Session, Germination, Growing Phase, and Plant Group lifecycle. No Task operation may activate, complete, reopen, or reinterpret those entities or change structured evidence.
+
+Open Tasks project `open` records. Completed Tasks project `completed` records. No other value participates in either canonical state projection.
 
 ## 8. Persistence Boundaries
 
-Tasks require dedicated canonical Task persistence through the existing Task capability. Task records must not be stored in:
+Tasks use dedicated canonical persistence through the existing Task capability. Task records must not be stored in:
 
 - the Workspace shell;
 - Session snapshot or route state;
@@ -129,25 +145,31 @@ Tasks require dedicated canonical Task persistence through the existing Task cap
 - Calendar state;
 - Seed Vault records;
 - miscellaneous JSON; or
-- browser-only storage as the production authority.
+- browser-only storage as production authority.
 
-Calendar, summaries, and other derived surfaces must read canonical Task records rather than copy or persist them.
+Calendar, summaries, and derived surfaces read canonical Task records rather than copying or persisting them.
 
-This contract authorizes no schema or migration. Any future persistence change must preserve stable Task identity, Session ownership, owner isolation, existing Task compatibility, and the no-parallel-system rule, and must remain within a later authorized ICE.
+This contract does not prescribe schema or migration design. A bounded ICE may make only the minimum persistence changes required by these semantics while preserving identity, Session ownership, owner isolation, compatibility, and the no-parallel-system rule.
 
 ## 9. Derived Surfaces
 
 Task surfaces are read-only projections over canonical Tasks, never separate persistence or evidence systems.
 
-The architecture-approved projections are:
+Approved projections are:
 
-- Tasks associated with a Session;
-- Tasks associated with a valid Growing Phase context; and
-- Plant Group Tasks associated with a valid Plant Group context.
+- Open Tasks;
+- Completed Tasks;
+- Due Tasks;
+- Today;
+- Upcoming;
+- overdue Tasks;
+- Session Tasks;
+- Growing Phase Tasks; and
+- Plant Group Tasks.
 
-Open Tasks and Completed Tasks depend on an approved Task state model. Due Tasks, Today, and Upcoming additionally depend on approved due and local-time semantics. Those projections are architecture-blocked and must not be implemented under this contract as currently gated.
+State projections follow Section 7. Date-derived projections follow Section 6.1. No-due Tasks and invalid compatibility due values are excluded from date-derived projections.
 
-When authorized, projections must be deterministic for the same canonical records and approved time context. This contract prescribes no visual design, component structure, control behavior, or CSS.
+Projections must be deterministic for the same canonical records, approved clock, and time-zone context. This contract prescribes no visual design, component structure, controls, or CSS.
 
 ## 10. Privacy and Authorization
 
@@ -162,9 +184,9 @@ Implementation must preserve:
 - no sharing behavior;
 - Preview Studio non-persistence and write blocking;
 - demo, QA, scenario, and production-data isolation; and
-- authorization of every optional phase or Plant Group context through the owning Session.
+- authorization of optional phase or Plant Group context through the owning Session.
 
-Neither shell registration nor a derived surface may broaden Task access. Existing RLS, grants, credentials, ownership, and publication architecture remain authoritative; this contract invents none.
+Neither shell registration nor projections may broaden Task access. Existing RLS, grants, credentials, ownership, and publication architecture remain authoritative.
 
 ## 11. Explicit Non-Responsibilities
 
@@ -179,57 +201,83 @@ This contract does not implement or authorize:
 - sharing or public publication;
 - Session Reports or Reflection;
 - Session, phase, or Plant Group lifecycle mutation;
-- structured Germination or Growing evidence mutation;
-- Workspace-shell persistence; or
-- the architecture-blocked time and mutation behavior in Section 13.
+- structured Germination or Growing evidence mutation; or
+- Workspace-shell persistence.
 
 ## 12. Implementation Acceptance Criteria
 
-After the Section 13 architecture gate is closed and an implementation ICE is separately authorized, implementation must prove:
+The authorized bounded Task ICE must prove:
 
-1. Every Task retains one stable identity through approved edits and state changes.
+1. Every Task retains one stable identity through edits, corrections, completion, and reopening.
 2. Every Task belongs to exactly one canonical Session.
 3. Optional phase and Plant Group context is canonical, same-Session, and validated; cross-Session context is rejected.
-4. Canonical Tasks use the existing dedicated Task capability and are not duplicated in the shell, projections, or another persistence system.
-5. Approved create, edit, state-change, correction, reopening, and removal behavior persists and survives reopen without weakening validation.
-6. Task operations create no Event and mutate no Session, phase, Plant Group, Germination, or structured Growing evidence.
-7. Approved projections are deterministic and persist no duplicate records.
-8. Owner isolation, anonymous denial, and same-Session authorization hold for direct records and derived surfaces.
-9. Preview Studio blocks writes and remains non-persistent.
-10. Demo, QA, scenario, and production contexts remain isolated.
-11. Desktop and mobile use the same canonical Task, ownership, state, and persistence model.
-12. Existing Sessions and canonical Task records remain compatible without silent normalization or reinterpretation.
+4. Tasks evolve the existing dedicated capability and are not duplicated in the shell, projections, or another store.
+5. None, date-only, and instant due forms follow Section 6.1 and survive reopen.
+6. `open` and `completed` transitions, `completed_at`, correction, reopening, and hard deletion follow Section 7 and survive reopen.
+7. Compatibility behavior follows Section 13 without read-time rewriting or fabricated data.
+8. Task operations create no Event and mutate no lifecycle or structured evidence.
+9. Projections are deterministic and persist no duplicate records.
+10. Owner isolation, anonymous denial, and same-Session authorization hold for direct records and projections.
+11. Preview Studio blocks writes and remains non-persistent.
+12. Demo, QA, scenario, and production contexts remain isolated.
+13. Desktop and mobile use the same canonical Task model.
+14. Existing Sessions and valid existing Task identities remain compatible.
 
-Focused non-Docker regressions must cover identity, mapping, context validation, projections, lifecycle/evidence non-mutation, Preview Studio blocking, model parity, and compatibility where these can be exercised without a live database.
+Focused non-Docker regressions must cover canonical mapping, context validation, due forms, state transitions, compatibility classification, projections, non-mutation, Preview Studio blocking, model parity, and reopen behavior where they can run without a live database.
 
-Live database verification must separately prove canonical persistence, constraints, owner isolation, RLS, grants, cross-owner denial, and reopen behavior. Docker or Supabase unavailability may be documented as blocked verification; static or test-double coverage must not be represented as live RLS proof.
+Live database verification must separately prove persistence, constraints, owner isolation, RLS, grants, cross-owner denial, and reopen behavior. Static or test-double coverage must not be represented as live RLS proof.
 
 These criteria are proof obligations, not implementation or test-design prescriptions.
 
-## 13. Architecture-Blocked Decisions
+## 13. Existing Task Compatibility
 
-Before an implementation ICE may be authorized, an approved architecture resolution must define:
+The existing `grow_session_tasks` capability remains canonical. Compatibility distinguishes legacy absence from malformed non-null data and never rewrites stored values merely by reading them.
 
-1. **Task due and time semantics**
-   - whether the first Task slice supports date-only, instant, local civil time, or an approved combination;
-   - the authoritative time-zone context and daylight-saving behavior;
-   - parsing, comparison, display, and Today/Upcoming boundary semantics; and
-   - compatibility rules for existing Task due values.
+### 13.1 Identity, Ownership, and Context
 
-2. **Task completion, correction, deletion, retention, and provenance**
-   - the minimum Task state vocabulary and valid transitions;
-   - completion and `completed_at` semantics;
-   - whether and how completed Tasks may be corrected or reopened;
-   - deletion, soft-deletion, archival, and retention rules before and after phase or Session completion;
-   - required visible history or provenance for corrections and state changes; and
-   - compatibility rules for existing Task states and records.
+- A valid existing Task identity is preserved through adoption and later edits.
+- A missing or malformed identity is not replaced during read. The record fails safely through existing unavailable-state conventions until deliberately repaired through an authorized path.
+- Existing canonical Session and owner relationships remain authoritative.
+- Records without newer Growing Phase or Plant Group references remain valid Session-scoped Tasks. Missing narrower context is not inferred.
+- Invalid or cross-Session newer context is rejected and never substitutes for Session ownership.
 
-These decisions must remain consistent with Task lifecycle independence, owner privacy, historical review, and existing canonical Task compatibility. This contract does not resolve them.
+### 13.2 Existing State Values
+
+- Existing `upcoming` maps to canonical `open`.
+- Existing `open` remains canonical `open`.
+- Existing `completed` maps to canonical `completed`.
+- A completed record with valid `completed_at` preserves it.
+- A completed record with absent or null `completed_at` remains completed with completion time unknown. No timestamp is fabricated; its next explicit transition follows canonical rules.
+- An absent or null state follows the legacy default `open` without implying prior completion.
+- Any other non-null state is invalid. It is preserved, enters neither Open nor Completed projections, and requires explicit owner correction before canonical state mutation.
+- A completion timestamp attached to an open, absent-state, or invalid-state record does not independently prove completion. It is preserved for safe correction but does not control state.
+
+### 13.3 Existing Due Values
+
+- A valid `due_date` with no `due_time` maps to canonical date-only due.
+- A valid `due_date` with valid `due_time` remains a legacy local timed due. Because no IANA zone or resolved offset was recorded, it must not be represented as a canonical instant.
+- A legacy local timed due uses its stored date for Today, Upcoming, and overdue grouping and its stored time for within-date ordering.
+- On the next owner correction to a legacy local timed due, the owner must explicitly choose date-only, canonical instant with zone resolution, or no due value.
+- An absent or null legacy due date maps to no due value. No date or time is inferred.
+- A due time without a valid due date, or any malformed non-null due value, is invalid compatibility data. The raw value is preserved, excluded from date-derived projections, and requires explicit owner correction.
+
+### 13.4 Privacy and Non-Reinterpretation
+
+Existing authenticated-owner access, RLS, grants, Preview Studio blocking, and demo, QA, scenario, and production isolation remain unchanged.
+
+Compatibility creates no parallel Task, Event, evidence, or projection record; fabricates no completion history or due instant; and performs no automatic data rewrite. New and owner-corrected Tasks must satisfy Sections 6 and 7.
 
 ## 14. Recommended Execution Slice
 
-No implementation ICE is authorized while Section 13 remains unresolved.
+No Task-specific architecture blocker remains. One bounded implementation ICE is authorized.
 
-The next artifact should be a focused architecture resolution for shared Workspace time semantics and completed-record correction, deletion, retention, and visible provenance. After approval, IC-GC-003B must be updated only as necessary to incorporate those decisions and authorize one bounded Task ICE.
+The ICE must evolve the existing canonical private Task capability in place and implement only:
 
-That later ICE should evolve the existing canonical private Task capability, add only the smallest approved Task record and behavior, validate optional canonical context, preserve all security and compatibility boundaries, and implement only the projections enabled by the approved time and state semantics.
+- the smallest canonical Task record in Section 6;
+- the due forms and projections in Sections 6.1 and 9;
+- the state, completion, reopening, correction, and hard-deletion rules in Section 7;
+- optional validated same-Session Growing Phase and Plant Group context;
+- the compatibility rules in Section 13; and
+- existing privacy, authorization, Preview Studio, isolation, lifecycle, evidence, and responsive-model boundaries.
+
+It must not implement Events, Calendar persistence, reminders, notifications, recurrence, automation, or any other deferred workspace capability.
