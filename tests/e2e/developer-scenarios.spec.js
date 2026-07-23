@@ -4170,27 +4170,51 @@ test.describe("local Developer Scenarios", () => {
       const root = workspace.closest("[data-session-phase-foundation]");
       if (!(root instanceof HTMLElement)) throw new Error("Workspace Composition root is unavailable.");
       const controller = growCompanionActivityControllers.get(root);
+      const rawPhotos = [{
+        id: "capability-photos-1",
+        path: `${controller.session.userId}/${controller.sessionId}/canopy.jpg`,
+        url: "https://example.test/canopy.jpg",
+        filename: "canopy.jpg",
+      }];
+      const compatiblePhotos = normalizePersistedSessionImages(rawPhotos);
+      const canonicalPhotos = getPhotosComposition().mapSessionImagesToCanonicalPhotos(compatiblePhotos, {
+        sessionId: controller.sessionId,
+        ownerId: controller.session.userId,
+      });
       const before = JSON.stringify({
         tasks: controller.tasks,
         events: controller.events,
         notes: controller.notes,
+        rawPhotos,
+        canonicalPhotos,
       });
       const composition = getWorkspaceComposition().composeWorkspace({
         sessionId: controller.sessionId,
         tasks: controller.tasks,
         events: controller.events,
         notes: controller.notes,
+        photos: [
+          ...canonicalPhotos,
+          Object.freeze({ ...canonicalPhotos[0], id: "other-photo", sessionId: "other-session" }),
+        ],
       });
+      controller.photos = canonicalPhotos;
+      renderGrowCompanionActivityWorkspace(root, controller);
       return {
         taskIds: composition.tasks.map((record) => record.id),
         eventIds: composition.events.map((record) => record.id),
         noteIds: composition.notes.map((record) => record.id),
+        photoIds: composition.photos.map((record) => record.id),
+        photoSessionIds: composition.photos.map((record) => record.sessionId),
+        presentedPhotoCount: root.dataset.workspacePhotoCount,
         activityTypes: composition.activity.map((record) => record.type),
         temporalTypes: composition.temporalEntries.map((record) => record.sourceType),
         sourceUnchanged: before === JSON.stringify({
           tasks: controller.tasks,
           events: controller.events,
           notes: controller.notes,
+          rawPhotos,
+          canonicalPhotos,
         }),
         ownsPersistence: Object.keys(composition).some((key) => /store|table|persist|mutation/i.test(key)),
       };
@@ -4199,6 +4223,9 @@ test.describe("local Developer Scenarios", () => {
       taskIds: ["capability-tasks-1"],
       eventIds: ["capability-events-2"],
       noteIds: ["capability-notes-3"],
+      photoIds: ["capability-photos-1"],
+      photoSessionIds: ["00000000-0000-4000-8000-000000000040"],
+      presentedPhotoCount: "1",
       activityTypes: ["event"],
       temporalTypes: ["event", "task"],
       sourceUnchanged: true,
