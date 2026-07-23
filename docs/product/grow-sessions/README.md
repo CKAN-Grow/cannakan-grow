@@ -16,6 +16,7 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 
 - [Grow Companion Composition Specification](./grow-companion-composition-specification.md)
 - [CS-GC-003 — Growing Workspace Composition Specification](./growing-workspace-composition-specification.md)
+- [CS-GC-004 — Growing Workspace Notes Composition Specification](./growing-workspace-notes-composition-specification.md)
 
 ## Architecture Resolutions
 
@@ -28,3 +29,4 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [IC-GC-003B — Growing Workspace Tasks](../../foundation/implementation-contracts/IC-GC-003B-growing-workspace-tasks.md)
 - [IC-GC-003C — Growing Workspace Events](../../foundation/implementation-contracts/IC-GC-003C-growing-workspace-events.md)
 - [IC-GC-003D — Growing Workspace Temporal Projections](../../foundation/implementation-contracts/IC-GC-003D-growing-workspace-temporal-projections.md)
+- [IC-GC-004 — Growing Workspace Notes](../../foundation/implementation-contracts/IC-GC-004-growing-workspace-notes.md)
