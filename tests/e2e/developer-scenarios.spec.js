@@ -3380,6 +3380,341 @@ test.describe("local Developer Scenarios", () => {
     expect(backendMutations).toEqual([]);
   });
 
+
+  test("persists canonical Grow Context and Plant Groups without fabricating Germination evidence", async ({ page }) => {
+    await page.goto("/#home");
+    await page.waitForFunction(() => document.querySelector("main")?.childElementCount > 0);
+    const setup = await page.evaluate(() => {
+      const ownerId = String(appState.user?.id || crypto.randomUUID());
+      appState.user = { ...(appState.user || {}), id: ownerId };
+      appState.supabase = null;
+      const session = normalizeStoredSession({
+        id: crypto.randomUUID(), userId: ownerId, entryPath: "grow", entry_path: "grow",
+        date: "2026-07-23", time: "09:00", sessionName: "Growing Foundation Regression",
+        customSessionName: "Growing Foundation Regression", methodType: "", systemType: "",
+        sessionStatus: "active", partitions: [], createdAt: new Date().toISOString(),
+      });
+      saveSessions([session]);
+      history.replaceState(null, "", `#sessions/${session.id}`);
+      renderSessionDetail(session.id);
+      return {
+        id: session.id,
+        hasGrowingRecord: Boolean(getSessionGrowingPhase(getSessions()[0])),
+        lifecycle: getSessionPhaseLifecycle(session).map(({ id, status }) => ({ id, status })),
+      };
+    });
+    expect(setup.hasGrowingRecord).toBe(false);
+    expect(setup.lifecycle).toEqual([
+      { id: "germination", status: "omitted" },
+      { id: "grow", status: "current" },
+      { id: "reflection", status: "future" },
+    ]);
+
+    const foundation = page.locator("[data-growing-foundation]");
+    const form = foundation.locator("[data-growing-evidence-form]");
+    await expect(foundation).toBeVisible();
+    await expect(foundation.locator("[data-growing-plant-group-row]")).toHaveCount(0);
+    await expect(foundation.locator("[data-growing-summary-plant-count]")).toHaveText("0");
+    expect(await page.evaluate(() => Boolean(getSessionGrowingPhase(getSessions()[0])))).toBe(false);
+
+    await form.locator('select[name="environmentType"]').selectOption("Indoor");
+    await form.locator('select[name="growMethod"]').selectOption("Living Soil");
+    await form.getByRole("button", { name: "Save Growing Evidence" }).click();
+    await expect(form.locator("[data-growing-message]")).toContainText("saved");
+    const contextOnly = await page.evaluate(() => {
+      const phase = getSessionGrowingPhase(getSessions()[0]);
+      return { environment: phase.environmentType, method: phase.growMethod, groupCount: phase.plantGroups.length };
+    });
+    expect(contextOnly).toEqual({ environment: "Indoor", method: "Living Soil", groupCount: 0 });
+
+    await form.getByRole("button", { name: "Add Row" }).click();
+    await form.getByRole("button", { name: "Add Row" }).click();
+    const rows = form.locator("[data-growing-plant-group-row]");
+    await expect(rows).toHaveCount(2);
+    const sourceId = "11111111-1111-4111-8111-111111111111";
+    const varietyId = "22222222-2222-4222-8222-222222222222";
+    await rows.nth(0).locator('input[name="plant"]').fill("North Canopy");
+    await rows.nth(0).locator('input[name="source"]').fill("Canonical Source");
+    await rows.nth(0).locator('input[name="source"]').evaluate((input, id) => { input.dataset.canonicalId = id; }, sourceId);
+    await rows.nth(0).locator('input[name="variety"]').fill("Canonical Variety");
+    await rows.nth(0).locator('input[name="variety"]').evaluate((input, id) => { input.dataset.canonicalId = id; }, varietyId);
+    await rows.nth(0).locator('select[name="type"]').selectOption("Clone");
+    await rows.nth(0).locator('select[name="sex"]').selectOption("Unknown");
+    await rows.nth(0).locator('input[name="plantCount"]').fill("0");
+    expect(await rows.nth(0).locator('input[name="plantCount"]').evaluate((input) => input.checkValidity())).toBe(false);
+    await rows.nth(0).locator('input[name="plantCount"]').fill("3");
+    await rows.nth(0).locator('input[name="harvested"]').check();
+    await rows.nth(1).locator('input[name="plant"]').fill("South Canopy");
+    await rows.nth(1).locator('select[name="type"]').selectOption("Seedling");
+    await rows.nth(1).locator('select[name="sex"]').selectOption("Feminized");
+    await rows.nth(1).locator('input[name="plantCount"]').fill("2");
+    await expect(foundation.locator("[data-growing-summary-plant-count]")).toHaveText("5");
+    await expect(foundation.locator("[data-growing-summary-harvested-count]")).toHaveText("3");
+    await form.getByRole("button", { name: "Save Growing Evidence" }).click();
+    await expect(form.locator("[data-growing-message]")).toContainText("saved");
+
+    const firstSave = await page.evaluate(() => {
+      const session = getSessions()[0];
+      const phase = getSessionGrowingPhase(session);
+      const partitionSnapshot = JSON.stringify(session.partitions);
+      const reopened = normalizeStoredSession(JSON.parse(JSON.stringify(session)));
+      saveSessions([reopened]);
+      renderSessionDetail(reopened.id);
+      return {
+        phaseId: phase.id,
+        ids: phase.plantGroups.map((group) => group.id),
+        order: phase.plantGroups.map((group) => group.plant),
+        sourceId: phase.plantGroups[0].sourceId,
+        varietyId: phase.plantGroups[0].varietyId,
+        partitionsUnchanged: partitionSnapshot === JSON.stringify(reopened.partitions),
+        totals: getGrowingTotals(phase),
+      };
+    });
+    expect(firstSave.order).toEqual(["North Canopy", "South Canopy"]);
+    expect(firstSave.sourceId).toBe(sourceId);
+    expect(firstSave.varietyId).toBe(varietyId);
+    expect(firstSave.partitionsUnchanged).toBe(true);
+    expect(firstSave.totals).toEqual({ plantCount: 5, harvestedCount: 3 });
+
+    const reopenedRows = page.locator("[data-growing-evidence-form] [data-growing-plant-group-row]");
+    await expect(reopenedRows).toHaveCount(2);
+    await expect(reopenedRows.nth(0).locator('input[name="plant"]')).toHaveValue("North Canopy");
+    await reopenedRows.nth(0).locator('input[name="plant"]').fill("North Canopy Renamed");
+    await reopenedRows.nth(1).getByRole("button", { name: "Remove Row" }).click();
+    await page.locator("[data-growing-evidence-form]").getByRole("button", { name: "Save Growing Evidence" }).click();
+    const afterEdit = await page.evaluate(() => {
+      const phase = getSessionGrowingPhase(getSessions()[0]);
+      return { phaseId: phase.id, ids: phase.plantGroups.map((group) => group.id), labels: phase.plantGroups.map((group) => group.plant), totals: getGrowingTotals(phase) };
+    });
+    expect(afterEdit.phaseId).toBe(firstSave.phaseId);
+    expect(afterEdit.ids).toEqual([firstSave.ids[0]]);
+    expect(afterEdit.labels).toEqual(["North Canopy Renamed"]);
+    expect(afterEdit.totals).toEqual({ plantCount: 3, harvestedCount: 3 });
+
+    const lifecycleBoundary = await page.evaluate(() => {
+      const owned = getSessions()[0];
+      const otherOwnerEligibility = getGrowingWriteEligibility({ ...owned, userId: crypto.randomUUID() });
+      const base = { ...owned, entryPath: "seed", entry_path: "seed", sessionStatus: "completed", growingPhase: null, growing_phase: null, partitions: [{ id: 1, seedCount: 1, plantedCount: "1" }] };
+      const legacyComplete = getSessionLifecyclePresentation({ ...base, postGerminationDecision: "", post_germination_decision: "" });
+      const pending = getSessionLifecyclePresentation({ ...base, postGerminationDecision: "pending", post_germination_decision: "pending" });
+      const continuing = getSessionLifecyclePresentation({ ...base, postGerminationDecision: "grow", post_germination_decision: "grow" });
+      return {
+        legacyComplete: { complete: legacyComplete.isSessionComplete, grow: legacyComplete.lifecycle.find((phase) => phase.id === "grow").status },
+        pending: { complete: pending.isSessionComplete, current: pending.currentPhaseId, grow: pending.lifecycle.find((phase) => phase.id === "grow").status },
+        continuing: { complete: continuing.isSessionComplete, current: continuing.currentPhaseId, grow: continuing.lifecycle.find((phase) => phase.id === "grow").status },
+        otherOwnerCanWrite: otherOwnerEligibility.canWrite,
+      };
+    });
+    expect(lifecycleBoundary).toEqual({
+      legacyComplete: { complete: true, grow: "omitted" },
+      pending: { complete: false, current: "", grow: "future" },
+      continuing: { complete: false, current: "grow", grow: "current" },
+      otherOwnerCanWrite: false,
+    });
+    const seedContinuation = await page.evaluate(() => {
+      const ownerId = String(appState.user.id);
+      const session = normalizeStoredSession({
+        id: crypto.randomUUID(), userId: ownerId, entryPath: "seed", entry_path: "seed",
+        date: "2026-07-23", time: "10:00", sessionName: "Seed to Growing Regression",
+        methodType: "OTHER", systemType: "OTHER", sessionStatus: "completed",
+        postGerminationDecision: "grow", post_germination_decision: "grow",
+        partitions: [{ id: 1, seedCount: 4, plantedCount: "4", plantType: "seed" }],
+        createdAt: new Date().toISOString(), completedAt: new Date().toISOString(),
+      });
+      saveSessions([session]);
+      renderSessionDetail(session.id);
+      return { currentPhase: getSessionLifecyclePresentation(session).currentPhaseId, hasGrowingRecord: Boolean(getSessionGrowingPhase(session)) };
+    });
+    expect(seedContinuation).toEqual({ currentPhase: "grow", hasGrowingRecord: false });
+    const seedGrowingForm = page.locator("[data-growing-evidence-form]");
+    await seedGrowingForm.locator('select[name="environmentType"]').selectOption("Outdoor");
+    await seedGrowingForm.locator('select[name="growMethod"]').selectOption("Coco");
+    await seedGrowingForm.getByRole("button", { name: "Save Growing Evidence" }).click();
+    await expect(seedGrowingForm.locator("[data-growing-message]")).toContainText("saved");
+    const persistedSeedGrowing = await page.evaluate(() => {
+      const session = getSessions()[0];
+      const phase = getSessionGrowingPhase(session);
+      return { environment: phase.environmentType, method: phase.growMethod, groups: phase.plantGroups.length, seedCount: session.partitions[0].seedCount };
+    });
+    expect(persistedSeedGrowing).toEqual({ environment: "Outdoor", method: "Coco", groups: 0, seedCount: 4 });
+  });
+  test("executes canonical Growing cloud persistence through the production paths", async ({ page }) => {
+    await page.goto("/#home");
+    await page.waitForFunction(() => document.querySelector("main")?.childElementCount > 0);
+
+    const result = await page.evaluate(async () => {
+      const originalSupabase = appState.supabase;
+      const originalUser = appState.user;
+      const originalLocalQaBypass = isLocalDevQaBypassActive;
+      const originalSourceUsage = recordSourceDirectoryUsages;
+      const originalVarietyUsage = recordVarietyDirectoryUsages;
+      const phaseRows = [];
+      const groupRows = [];
+      const calls = [];
+      const identityCalls = { source: [], variety: [] };
+      const copy = (value) => JSON.parse(JSON.stringify(value));
+
+      const makeQuery = (table, operation, payload = null, options = {}) => {
+        const state = { table, operation, payload: copy(payload), options: copy(options), filters: [], orders: [], single: false, executed: null };
+        const query = {
+          select(columns = "*") { state.columns = columns; return query; },
+          eq(column, value) { state.filters.push({ kind: "eq", column, value }); return query; },
+          in(column, values) { state.filters.push({ kind: "in", column, values: [...values] }); return query; },
+          order(column, orderOptions = {}) { state.orders.push({ column, ascending: orderOptions.ascending !== false }); return query; },
+          single() { state.single = true; return execute(); },
+          then(resolve, reject) { return execute().then(resolve, reject); },
+        };
+        const execute = async () => {
+          if (state.executed) return state.executed;
+          const rows = table === GROWING_PHASE_TABLE ? phaseRows : groupRows;
+          calls.push(copy({ table, operation, payload: state.payload, options: state.options, filters: state.filters, orders: state.orders }));
+          let data = null;
+          let error = null;
+          if (operation === "select") {
+            data = rows.filter((row) => state.filters.every((filter) => filter.kind === "eq"
+              ? row[filter.column] === filter.value
+              : filter.values.includes(row[filter.column]))).map(copy);
+            state.orders.slice().reverse().forEach(({ column, ascending }) => {
+              data.sort((left, right) => (left[column] > right[column] ? 1 : left[column] < right[column] ? -1 : 0) * (ascending ? 1 : -1));
+            });
+          } else if (operation === "upsert") {
+            const incoming = Array.isArray(state.payload) ? state.payload : [state.payload];
+            const conflictColumns = String(state.options.onConflict || "id").split(",").map((value) => value.trim());
+            data = incoming.map((candidate) => {
+              const existingIndex = rows.findIndex((row) => conflictColumns.every((column) => row[column] === candidate[column]));
+              const existing = existingIndex >= 0 ? rows[existingIndex] : null;
+              const saved = { ...existing, ...copy(candidate), created_at: existing?.created_at || "2026-07-23T12:00:00.000Z", updated_at: "2026-07-23T12:00:00.000Z" };
+              if (existingIndex >= 0) rows.splice(existingIndex, 1, saved); else rows.push(saved);
+              return copy(saved);
+            });
+          } else if (operation === "delete") {
+            const removed = [];
+            for (let index = rows.length - 1; index >= 0; index -= 1) {
+              const matches = state.filters.every((filter) => filter.kind === "eq"
+                ? rows[index][filter.column] === filter.value
+                : filter.values.includes(rows[index][filter.column]));
+              if (matches) removed.push(...rows.splice(index, 1));
+            }
+            data = removed.map(copy);
+          }
+          state.executed = Promise.resolve({ data: state.single ? data?.[0] || null : data, error });
+          return state.executed;
+        };
+        return query;
+      };
+
+      const supabase = {
+        auth: { getUser: async () => ({ data: { user: appState.user }, error: null }) },
+        from(table) {
+          return {
+            select(columns = "*") { return makeQuery(table, "select").select(columns); },
+            upsert(payload, options = {}) { return makeQuery(table, "upsert", payload, options); },
+            delete() { return makeQuery(table, "delete"); },
+          };
+        },
+      };
+
+      try {
+        const ownerId = crypto.randomUUID();
+        const session = normalizeStoredSession({
+          id: crypto.randomUUID(), userId: ownerId, entryPath: "grow", entry_path: "grow",
+          date: "2026-07-23", time: "12:00", sessionName: "Cloud Growing Regression",
+          sessionStatus: "active", partitions: [], createdAt: "2026-07-23T12:00:00.000Z",
+        });
+        appState.user = { ...(appState.user || {}), id: ownerId };
+        appState.supabase = supabase;
+        isLocalDevQaBypassActive = () => false;
+        recordSourceDirectoryUsages = async (values) => { identityCalls.source.push(copy(values)); return []; };
+        recordVarietyDirectoryUsages = async (records) => { identityCalls.variety.push(copy(records)); return []; };
+        appState.sessions = [session];
+
+        const zeroGroup = await saveCanonicalGrowingEvidence(session, {
+          environmentType: "Greenhouse", growMethod: "Coco", plantGroups: [],
+        });
+        const phaseId = zeroGroup.id;
+        const firstId = crypto.randomUUID();
+        const secondId = crypto.randomUUID();
+        const sourceId = crypto.randomUUID();
+        const varietyId = crypto.randomUUID();
+        const firstDraft = {
+          environmentType: "Greenhouse", growMethod: "Coco",
+          plantGroups: [
+            { id: firstId, plant: "North", sourceId, source: "Canonical Source", varietyId, variety: "Canonical Variety", type: "Clone", sex: "Unknown", plantCount: 3, harvested: true },
+            { id: secondId, plant: "South", source: "Custom Source", variety: "Custom Variety", type: "Seedling", sex: "Feminized", plantCount: 2, harvested: false },
+          ],
+        };
+        await saveCanonicalGrowingEvidence(session, firstDraft);
+        const reloadedWithTwo = (await attachGrowingEvidenceToSessions([{ ...session, growingPhase: null, growing_phase: null }]))[0];
+        await saveCanonicalGrowingEvidence(session, {
+          ...firstDraft,
+          plantGroups: [{ ...firstDraft.plantGroups[0], plant: "North Renamed" }],
+        });
+        const reloadedFinal = (await attachGrowingEvidenceToSessions([{ ...session, growingPhase: null, growing_phase: null }]))[0];
+        const phaseUpsertsBeforeMalformed = calls.filter((call) => call.table === GROWING_PHASE_TABLE && call.operation === "upsert").length;
+        let malformedRejected = false;
+        try {
+          await saveCanonicalGrowingEvidence(session, {
+            environmentType: "Indoor", growMethod: "Soil",
+            plantGroups: [{ id: crypto.randomUUID(), plantCount: 0 }],
+          });
+        } catch {
+          malformedRejected = true;
+        }
+        const phaseUpsertsAfterMalformed = calls.filter((call) => call.table === GROWING_PHASE_TABLE && call.operation === "upsert").length;
+        return {
+          sessionId: session.id, phaseId, firstId, secondId, sourceId, varietyId,
+          phaseRows: copy(phaseRows), groupRows: copy(groupRows), calls: copy(calls), identityCalls: copy(identityCalls),
+          zeroGroupCount: zeroGroup.plantGroups.length,
+          reloadedWithTwo: copy(getSessionGrowingPhase(reloadedWithTwo)),
+          reloadedFinal: copy(getSessionGrowingPhase(reloadedFinal)),
+          reloadedFinalPartitions: copy(reloadedFinal.partitions || []),
+          malformedRejected, phaseUpsertsBeforeMalformed, phaseUpsertsAfterMalformed,
+        };
+      } finally {
+        appState.supabase = originalSupabase;
+        appState.user = originalUser;
+        isLocalDevQaBypassActive = originalLocalQaBypass;
+        recordSourceDirectoryUsages = originalSourceUsage;
+        recordVarietyDirectoryUsages = originalVarietyUsage;
+      }
+    });
+
+    expect(result.zeroGroupCount).toBe(0);
+    expect(result.phaseRows).toHaveLength(1);
+    expect(result.phaseRows[0]).toMatchObject({ id: result.phaseId, session_id: result.sessionId, environment_type: "Greenhouse", environment_other: "", grow_method: "Coco", grow_method_other: "" });
+    expect(result.phaseRows[0]).not.toHaveProperty("plant_count");
+    expect(result.phaseRows[0]).not.toHaveProperty("harvested_count");
+    const phaseUpserts = result.calls.filter((call) => call.table === "grow_session_growing_phases" && call.operation === "upsert");
+    expect(phaseUpserts.every((call) => call.options.onConflict === "session_id" && call.payload.session_id === result.sessionId)).toBe(true);
+    const groupUpserts = result.calls.filter((call) => call.table === "grow_session_plant_groups" && call.operation === "upsert");
+    expect(groupUpserts[0].payload.map((row) => row.id)).toEqual([result.firstId, result.secondId]);
+    expect(groupUpserts[0].payload[0]).toMatchObject({
+      growing_phase_id: result.phaseId, display_order: 0, plant_label: "North",
+      source_id: result.sourceId, source_name: "Canonical Source",
+      variety_id: result.varietyId, variety_name: "Canonical Variety",
+      plant_type: "Clone", sex: "Unknown", plant_count: 3, harvested: true,
+    });
+    expect(groupUpserts[0].payload[0]).not.toHaveProperty("plantCount");
+    expect(groupUpserts[0].payload[1]).toMatchObject({ id: result.secondId, display_order: 1, plant_label: "South", source_id: null, variety_id: null, plant_type: "Seedling", sex: "Feminized", plant_count: 2, harvested: false });
+    expect(result.calls.some((call) => call.table === "grow_session_plant_groups" && call.operation === "select" && call.filters.some((filter) => filter.column === "growing_phase_id" && filter.value === result.phaseId))).toBe(true);
+    expect(result.calls.some((call) => call.table === "grow_session_plant_groups" && call.operation === "delete" && call.filters[0].values.includes(result.secondId))).toBe(true);
+    expect(result.groupRows).toHaveLength(1);
+    expect(result.groupRows[0]).toMatchObject({ id: result.firstId, plant_label: "North Renamed", display_order: 0 });
+    expect(result.reloadedWithTwo.plantGroups.map((group) => group.id)).toEqual([result.firstId, result.secondId]);
+    expect(result.reloadedWithTwo.plantGroups.map((group) => group.plant)).toEqual(["North", "South"]);
+    expect(result.reloadedWithTwo.plantGroups[0]).toMatchObject({ sourceId: result.sourceId, varietyId: result.varietyId, plantCount: 3, harvested: true });
+    expect(result.reloadedFinal.plantGroups.map((group) => group.id)).toEqual([result.firstId]);
+    expect(result.reloadedFinal.plantGroups[0].plant).toBe("North Renamed");
+    expect(result.reloadedFinal.sessionId).toBe(result.sessionId);
+    expect(result.reloadedFinalPartitions).toEqual([]);
+    expect(result.identityCalls.source).toContainEqual(["Canonical Source", "Custom Source"]);
+    expect(result.identityCalls.variety).toContainEqual([
+      { varietyName: "Canonical Variety", sourceName: "Canonical Source" },
+      { varietyName: "Custom Variety", sourceName: "Custom Source" },
+    ]);
+    expect(result.malformedRejected).toBe(true);
+    expect(result.phaseUpsertsAfterMalformed).toBe(result.phaseUpsertsBeforeMalformed);
+  });
   test("keeps Session Entry writes blocked in Preview Studio", async ({ page }) => {
     const backendMutations = [];
     page.on("request", (request) => {
