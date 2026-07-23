@@ -3,6 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.grow_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  entry_path text,
   date date not null,
   time text not null,
   system_type text not null,
@@ -955,6 +956,27 @@ where coalesce(body, '') = ''
 
 create index if not exists announcements_status_publish_updated_idx
   on public.announcements (status, publish_at desc, updated_at desc, created_at desc);
+
+alter table public.grow_sessions
+  add column if not exists entry_path text;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.grow_sessions'::regclass
+      and conname = 'grow_sessions_entry_path_check'
+  ) then
+    alter table public.grow_sessions
+      add constraint grow_sessions_entry_path_check
+      check (entry_path is null or entry_path in ('seed', 'grow'));
+  end if;
+end;
+$$;
+
+comment on column public.grow_sessions.entry_path is
+  'Canonical Session entry path: seed begins with Germination; grow begins with Growing. Null preserves unclassified legacy Sessions.';
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;

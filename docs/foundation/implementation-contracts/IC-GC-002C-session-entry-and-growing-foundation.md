@@ -50,7 +50,7 @@ At contract creation:
 - Growing activation and setup timing, Growing taxonomies, optional context, phase-summary content, scheduling, notes, observations, images, hero content, and timeline behavior remain unresolved in the Composition Specification; and
 - the working tree contains pre-existing changes outside this deliverable.
 
-Existing implementation is a compatibility baseline, not architecture authority. This contract does not authorize application, schema, migration, test, asset, or runtime changes.
+Existing implementation is a compatibility baseline, not architecture authority. This contract authorizes only the nullable canonical Session entry discriminator defined in Section 5.4; it does not otherwise authorize application, schema, migration, test, asset, or runtime changes.
 
 ## 4. Scope
 
@@ -102,9 +102,20 @@ A Grow Session:
 - does not represent Germination as completed when Germination was not included; and
 - initializes only the Growing evidence and workspace authorized by this contract.
 
-The phase navigator and historical composition must distinguish a phase that was not included from a phase that was included and completed. Exact language and presentation for a non-included phase are **TBD — Requires Architecture Approval**.
+For a Grow Session, Germination is omitted. The phase navigator may present Germination as **Not included**, and Germination navigation is disabled. Omitted is distinct from completed. An omitted Germination phase cannot become current or viewed, cannot be activated or completed, and cannot create records, evidence, timestamps, milestones, results, summaries, or workspace content. This omitted-phase presentation is a deterministic projection of the Session entry path, not an evidence record.
 
 ### 5.3 Entry Selection Boundary
+
+One neutral Session Entry decision must appear once, before phase-specific setup:
+
+- **Seed Session** — Begin this Session with Germination.
+- **Grow Session** — Begin this Session with Growing.
+
+Neither option is recommended or visually preferred. No option is selected by default. The user must deliberately choose one entry path, and the Seed/Grow choice must not be repeated inside the phase-specific setup form.
+
+After selection, Seed Session continues into the existing Germination Method selection flow. Grow Session routes directly into the Growing phase shell.
+
+Before the first successful canonical Session creation, the user may change the selected entry path. After creation, Session Entry is immutable: Seed Session cannot become Grow Session, Grow Session cannot become Seed Session, and editing an existing Session must not expose or persist an entry-path change. An entry-path change must never clear, replace, reinterpret, or fabricate phase evidence. Any future conversion or correction workflow requires a separate architecture contract.
 
 Entry selection establishes the Session's starting phase only. It must not:
 
@@ -116,7 +127,19 @@ Entry selection establishes the Session's starting phase only. It must not:
 - bypass owner authorization, Preview Studio restrictions, or demo safeguards; or
 - create a parallel Session-entry persistence system.
 
-The exact entry-selection interaction, default choice, reversibility before the first evidence write, and behavior after evidence exists are **TBD — Requires Architecture Approval**.
+### 5.4 Entry Persistence, Legacy Compatibility, and Route State
+
+Session Entry is persisted on the canonical Session as one nullable discriminator:
+
+- `seed` — the Session begins with Germination;
+- `grow` — the Session begins with Growing;
+- `null` — the legacy Session was created before Session Entry metadata existed.
+
+The discriminator is not a second lifecycle authority. Entry path, canonical current phase, viewed phase, and phase lifecycle state remain independent.
+
+A legacy Session with `null` entry metadata retains its existing historical behavior and is not rewritten, backfilled, or semantically labeled as a Seed Session. Compatibility logic may preserve its existing Germination-first experience only through an explicit legacy compatibility boundary; it must not normalize `null` to `seed` or assert Germination entry as a new architectural fact.
+
+A direct internal route may carry the selected entry path into Session creation as presentation state only. Route state cannot create a Session by itself, bypass canonical validation or authorization, or change an existing Session's entry path. Malformed or absent route state must fail safely. Exact URL naming is an implementation detail.
 
 ## 6. Growing Initialization
 
@@ -305,10 +328,11 @@ Existing Sessions remain compatible:
 - existing Seed-origin Sessions retain their complete Germination records and lifecycle history;
 - existing Sessions must not be relabeled destructively or assigned fabricated entry evidence;
 - absent entry metadata must not be guessed from incomplete evidence;
+- a legacy Session with absent entry metadata retains its existing behavior through an explicit compatibility boundary and remains unclassified;
 - legacy compatibility must preserve Session identity, owner, privacy, phase evidence, routes, and current behavior; and
 - compatibility must not create a duplicate Session, phase record, chart, evidence store, or workspace.
 
-Exact legacy entry classification and compatibility mappings are **TBD — Requires Architecture Approval**. This contract does not authorize schema changes or migrations.
+No destructive legacy classification or backfill is authorized. Schema and migration changes are authorized only for the nullable canonical Session entry discriminator defined in Section 5.4.
 
 ## 15. Non-Goals
 
@@ -330,16 +354,20 @@ This contract does not define or authorize:
 - grow-stage inference or a canonical grow-stage model;
 - public sharing or Community projection;
 - new Task, Event, Notes, Photos, Documents, Calendar, or attachment systems;
-- database schemas, migrations, storage models, APIs, or exact UI controls.
+- database schemas, migrations, storage models, APIs, or exact UI controls beyond the nullable canonical Session entry discriminator and interaction boundaries approved in Section 5.
 
 ## 16. Acceptance Criteria
 
 An approved implementation satisfies this contract only when:
 
 - every Session begins through one deliberate approved entry path;
+- Session Entry is one neutral required choice with no default or duplicate selector;
 - Seed Session begins with Germination and preserves the IC-GC-002B Germination regression lock;
 - Grow Session begins with Growing without fabricating Germination evidence or a completed Germination record;
 - both entry paths produce one canonical user-owned Session rather than separate Session systems;
+- Session Entry is immutable after canonical Session creation;
+- omitted Germination is presented as not included, remains non-navigable, and never becomes phase evidence or completion;
+- the nullable entry discriminator preserves legacy Sessions without normalizing absent metadata to Seed entry;
 - Growing initializes independent timing, progress, completion state, evidence, summary, and workspace locations;
 - the editable Growing chart is the canonical Growing evidence surface;
 - Plant Groups replace Germination Partitions semantically and own identity, source, variety, type, sex, plant count, and harvest-state responsibilities;
@@ -376,9 +404,6 @@ For this documentation-only task, verification must confirm that only this contr
 
 The following decisions remain unresolved:
 
-- exact Session Entry interaction and default — **TBD — Requires Architecture Approval**;
-- entry-selection reversibility and evidence-lock boundary — **TBD — Requires Architecture Approval**;
-- non-included phase navigator language and presentation — **TBD — Requires Architecture Approval**;
 - Growing activation and setup timing — **TBD — Requires Architecture Approval**;
 - Plant Group identifiers, field names, data types, required status, and validation — **TBD — Requires Architecture Approval**;
 - canonical Type vocabulary — **TBD — Requires Architecture Approval**;
@@ -391,7 +416,6 @@ The following decisions remain unresolved:
 - observed-timing field contract and correction policy — **TBD — Requires Architecture Approval**;
 - Growing Summary fields, eligibility, calculations, empty states, and presentation — **TBD — Requires Architecture Approval**;
 - Growing Notes, Photos, and Documents evidence composition — **TBD — Requires Architecture Approval**;
-- legacy Session entry classification and compatibility mappings — **TBD — Requires Architecture Approval**;
 - exact automated regression fixtures — **TBD — Requires Architecture Approval**.
 
 Scheduling, Calendar behavior, reminders, notifications, timeline behavior, Growing hero content, grow-stage models, Harvest workflows, Reflection, Session Reports, GEE, knowledge distillation, Seed Vault synchronization, and AI interpretation require later implementation contracts.

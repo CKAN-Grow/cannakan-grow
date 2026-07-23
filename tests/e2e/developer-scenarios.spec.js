@@ -3015,6 +3015,395 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#detail-session-result-breakdown")).not.toContainText("Pending");
   });
 
+  test("presents one neutral entry decision and initializes Seed Session through Germination setup", async ({ page }) => {
+    await page.goto("/#home");
+    const initialSessionCount = await page.evaluate(() => getSessions().length);
+    await page.locator('a[href="#new"]').first().click();
+
+    const entryDecision = page.locator("[data-session-entry-decision]");
+    const methodSelection = page.locator("[data-session-method-selection]");
+    const entryChoices = entryDecision.locator("[data-session-entry-path]");
+    await expect(entryDecision).toBeVisible();
+    await expect(entryChoices).toHaveCount(2);
+    await expect(entryChoices.nth(0)).toContainText("Seed Session");
+    await expect(entryChoices.nth(1)).toContainText("Grow Session");
+    await expect(entryDecision).not.toContainText("Recommended");
+    await expect(methodSelection).toBeHidden();
+    await expect(page.locator("#session-form")).toHaveCount(0);
+
+    await entryChoices.nth(0).focus();
+    await entryChoices.nth(0).press("Enter");
+    await expect(entryDecision).toBeHidden();
+    await expect(methodSelection).toBeVisible();
+    await expect(methodSelection.locator("[data-system-type]")).toHaveCount(8);
+    await methodSelection.locator('[data-system-type="OTHER"]').click();
+
+    const form = page.locator("#session-form");
+    await expect(form).toBeVisible();
+    await expect(form).toHaveAttribute("data-entry-path", "seed");
+    await expect(form.locator('input[name="entryPath"]')).toHaveCount(0);
+    await expect(form.locator("[data-seed-entry-only]").first()).toBeVisible();
+    await expect(form.locator("[data-session-grow-entry-context]")).toBeHidden();
+    const skipNamePrompt = page.locator("[data-new-session-name-skip]");
+    if (await skipNamePrompt.isVisible()) await skipNamePrompt.click();
+    await form.locator('input[name="sessionName"]').fill("Seed Entry Persistence Regression");
+    const firstPartition = form.locator(".partition-row").first();
+    await firstPartition.locator('input[name^="source-"]').fill("Seedsman");
+    await firstPartition.locator('input[name^="seedVariety-"]').fill("Blue Dream");
+    await firstPartition.locator('select[name^="seedType-"]').selectOption("photoperiod");
+    await firstPartition.locator('select[name^="feminized-"]').selectOption("feminized");
+    await firstPartition.locator('input[name^="seedCount-"]').fill("3");
+    await form.locator("[data-new-session-save-button]").last().click();
+
+    await expect(form).toHaveAttribute("data-saved-session-id", /.+/);
+    const persistedSeed = await page.evaluate((beforeCount) => {
+      const sessionId = document.querySelector("#session-form")?.dataset.savedSessionId || "";
+      const sessions = getSessions();
+      const session = sessions.find((item) => item.id === sessionId);
+      return {
+        id: sessionId,
+        entryPath: session?.entryPath,
+        entry_path: session?.entry_path,
+        methodType: session?.methodType,
+        sessionStartedAt: session?.sessionStartedAt,
+        germinationStartedAt: session?.germinationStartedAt,
+        firstPlantedAt: session?.firstPlantedAt,
+        partitions: session?.partitions,
+        phases: getSessionPhaseLifecycle(session).map(({ id, status }) => ({ id, status })),
+        sessionCountDelta: sessions.length - beforeCount,
+        canonicalMatches: sessions.filter((item) => item.id === sessionId).length,
+      };
+    }, initialSessionCount);
+    expect(persistedSeed.entryPath).toBe("seed");
+    expect(persistedSeed.entry_path).toBe("seed");
+    expect(persistedSeed.methodType).toBe("OTHER");
+    expect(persistedSeed.sessionStartedAt).toEqual(expect.any(String));
+    expect(persistedSeed.sessionStartedAt).not.toBe("");
+    expect(persistedSeed.partitions).toHaveLength(1);
+    expect(persistedSeed.partitions[0]).toMatchObject({
+      source: "Seedsman",
+      seedVariety: "Blue Dream",
+      seedType: "photoperiod",
+      feminized: "feminized",
+      seedCount: 3,
+    });
+    expect(persistedSeed.phases).toEqual([
+      { id: "germination", status: "current" },
+      { id: "grow", status: "future" },
+      { id: "reflection", status: "future" },
+    ]);
+    expect(persistedSeed.sessionCountDelta).toBe(1);
+    expect(persistedSeed.canonicalMatches).toBe(1);
+
+    await page.goto(`/#sessions/${persistedSeed.id}`);
+    const reopenedSeed = await page.evaluate((sessionId) => {
+      const session = getSessions().find((item) => item.id === sessionId);
+      return {
+        entryPath: session?.entryPath,
+        entry_path: session?.entry_path,
+        methodType: session?.methodType,
+        sessionStartedAt: session?.sessionStartedAt,
+        germinationStartedAt: session?.germinationStartedAt,
+        firstPlantedAt: session?.firstPlantedAt,
+        partitions: session?.partitions,
+        currentPhase: getSessionPhaseLifecycle(session).find((phase) => phase.status === "current")?.id,
+      };
+    }, persistedSeed.id);
+    expect(reopenedSeed).toEqual({
+      entryPath: "seed",
+      entry_path: "seed",
+      methodType: "OTHER",
+      sessionStartedAt: persistedSeed.sessionStartedAt,
+      germinationStartedAt: persistedSeed.germinationStartedAt,
+      firstPlantedAt: persistedSeed.firstPlantedAt,
+      partitions: persistedSeed.partitions,
+      currentPhase: "germination",
+    });
+
+
+    const legacyCompatibility = await page.evaluate(() => {
+      const legacy = {
+        id: "legacy-entry-regression",
+        sessionStatus: "active",
+        partitions: [{ id: 1, seedCount: 1, plantedCount: "0" }],
+      };
+      const normalized = normalizeStoredSession(legacy);
+      return {
+        entryPath: getSessionEntryPath(normalized),
+        isLegacy: isLegacySessionEntry(normalized),
+        phases: getSessionPhaseLifecycle(normalized).map(({ id, status }) => ({ id, status })),
+      };
+    });
+    expect(legacyCompatibility).toEqual({
+      entryPath: "",
+      isLegacy: true,
+      phases: [
+        { id: "germination", status: "current" },
+        { id: "grow", status: "future" },
+        { id: "reflection", status: "future" },
+      ],
+    });
+  });
+
+  test("maps Session Entry metadata consistently in both cloud directions", async ({ page }) => {
+    await page.goto("/#home");
+    const result = await page.evaluate(() => {
+      const mapToCloud = (entryPath) => {
+        return mapSessionToRecord(
+          {
+            id: `mapping-${entryPath}`,
+            entryPath,
+            entry_path: entryPath,
+            date: "2026-07-23",
+            time: "12:00",
+            methodType: entryPath === "grow" ? "" : "OTHER",
+            unitId: "",
+            sessionName: `Mapping ${entryPath}`,
+            sessionStatus: "active",
+            partitions: [],
+            createdAt: "2026-07-23T12:00:00.000Z",
+          },
+          "mapping-owner",
+          { includeOwnerTimeColumns: false, includeTimerColumn: false, includeMockColumns: false, includeLifecycleColumns: false },
+        ).entry_path;
+      };
+
+      const mapFromCloud = (row) => {
+        const session = mapRowToSession({
+          id: `mapped-${String(row.entry_path ?? "legacy")}`,
+          ...row,
+        });
+        return {
+          entryPath: session.entryPath,
+          entry_path: session.entry_path,
+          state: classifySessionEntryMetadata(session).state,
+          isLegacy: isLegacySessionEntry(session),
+          isGrow: isGrowSessionEntry(session),
+          includesGermination: sessionIncludesGermination(session),
+        };
+      };
+
+      return {
+        toCloud: { seed: mapToCloud("seed"), grow: mapToCloud("grow"), malformed: mapToCloud("banana") },
+        seed: mapFromCloud({ entry_path: "seed" }),
+        grow: mapFromCloud({ entry_path: "grow" }),
+        absent: mapFromCloud({}),
+        nullValue: mapFromCloud({ entry_path: null }),
+        malformed: mapFromCloud({ entry_path: "banana" }),
+      };
+    });
+
+    expect(result).toEqual({
+      toCloud: { seed: "seed", grow: "grow", malformed: "banana" },
+      seed: { entryPath: "seed", entry_path: "seed", state: "valid", isLegacy: false, isGrow: false, includesGermination: true },
+      grow: { entryPath: "grow", entry_path: "grow", state: "valid", isLegacy: false, isGrow: true, includesGermination: false },
+      absent: { entryPath: null, entry_path: null, state: "legacy", isLegacy: true, isGrow: false, includesGermination: true },
+      nullValue: { entryPath: null, entry_path: null, state: "legacy", isLegacy: true, isGrow: false, includesGermination: true },
+      malformed: { entryPath: "banana", entry_path: "banana", state: "invalid", isLegacy: false, isGrow: false, includesGermination: false },
+    });
+  });
+
+  test("keeps malformed persisted entry metadata outside the legacy boundary and fails safely", async ({ page }) => {
+    await page.goto("/#home");
+    const result = await page.evaluate(async () => {
+      const malformed = {
+        id: "malformed-entry-metadata-regression",
+        entryPath: "banana",
+        entry_path: "banana",
+        sessionName: "Malformed Entry Metadata",
+        sessionStatus: "active",
+        partitions: [{ id: 1, seedCount: 4, plantedCount: "2" }],
+      };
+      saveSessions([malformed, ...getSessions().filter((session) => session.id !== malformed.id)]);
+      const normalized = getSessions().find((session) => session.id === malformed.id);
+      const lifecycle = getSessionPhaseLifecycle(normalized);
+      const storedBeforeRejectedUpdate = JSON.stringify(getSessions().find((session) => session.id === normalized.id));
+      const updateResult = await saveSessionUpdate({
+        ...normalized,
+        sessionName: "Must Not Rewrite",
+      });
+      const after = getSessions().find((session) => session.id === normalized.id);
+      return {
+        states: {
+          absent: classifySessionEntryMetadata({}).state,
+          nullValue: classifySessionEntryMetadata({ entry_path: null }).state,
+          seed: classifySessionEntryMetadata({ entry_path: "seed" }).state,
+          grow: classifySessionEntryMetadata({ entry_path: "grow" }).state,
+          malformed: classifySessionEntryMetadata(normalized).state,
+          conflicting: classifySessionEntryMetadata({ entryPath: null, entry_path: "banana" }).state,
+        },
+        malformedEntryPath: normalized.entryPath,
+        malformedStoredEntryPath: normalized.entry_path,
+        malformedIsLegacy: isLegacySessionEntry(normalized),
+        malformedIsGrow: isGrowSessionEntry(normalized),
+        includesGermination: sessionIncludesGermination(normalized),
+        lifecycle: lifecycle.map(({ id, status, eligible }) => ({ id, status, eligible })),
+        updateRejected: updateResult === null,
+        storedUnchanged: JSON.stringify(after) === storedBeforeRejectedUpdate,
+        storedAfterRejectedUpdate: {
+          entryPath: after?.entryPath,
+          entry_path: after?.entry_path,
+          sessionName: after?.sessionName,
+          partitions: after?.partitions,
+        },
+      };
+    });
+    expect(result).toEqual({
+      states: { absent: "legacy", nullValue: "legacy", seed: "valid", grow: "valid", malformed: "invalid", conflicting: "invalid" },
+      malformedEntryPath: "banana",
+      malformedStoredEntryPath: "banana",
+      malformedIsLegacy: false,
+      malformedIsGrow: false,
+      includesGermination: false,
+      lifecycle: [
+        { id: "germination", status: "omitted", eligible: false },
+        { id: "grow", status: "omitted", eligible: false },
+        { id: "reflection", status: "omitted", eligible: false },
+      ],
+      updateRejected: true,
+      storedUnchanged: true,
+      storedAfterRejectedUpdate: {
+        entryPath: "banana",
+        entry_path: "banana",
+        sessionName: "Malformed Entry Metadata",
+        partitions: expect.any(Array),
+      },
+    });
+  });
+
+  test("creates one immutable Grow Session without Germination evidence and preserves it on reopen", async ({ page }) => {
+    const backendMutations = [];
+    page.on("request", (request) => {
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method()) && /\/rest\/v1\/|\/storage\/v1\//.test(request.url())) {
+        backendMutations.push(request.url());
+      }
+    });
+
+    await page.goto("/#home");
+    const initialSessionCount = await page.evaluate(() => getSessions().length);
+    await page.locator('a[href="#new"]').first().click();
+    await expect(page.locator("[data-session-entry-decision] [data-session-entry-path]")).toHaveCount(2);
+    await expect(page.locator("[data-session-method-selection]")).toBeHidden();
+    await page.locator("[data-session-entry-path='grow']").click();
+    const form = page.locator("#session-form");
+    await expect(form).toBeVisible();
+    const skipNamePrompt = page.locator("[data-new-session-name-skip]");
+    if (await skipNamePrompt.isVisible()) await skipNamePrompt.click();
+
+    await expect(form).toHaveAttribute("data-entry-path", "grow");
+    await expect(form.locator('input[name="entryPath"]')).toHaveCount(0);
+    for (const seedOnlyElement of await form.locator("[data-seed-entry-only]").all()) {
+      await expect(seedOnlyElement).toBeHidden();
+    }
+    await expect(form.locator("[data-session-grow-entry-context]")).toBeVisible();
+    await form.locator('input[name="sessionName"]').fill("Direct Growing Regression");
+    await form.locator("[data-new-session-save-button]").last().click();
+
+    await expect(page).toHaveURL(/#sessions\/[^/]+$/);
+    const persisted = await page.evaluate((beforeCount) => {
+      const sessionId = window.location.hash.split("/").pop();
+      const sessions = getSessions();
+      const session = sessions.find((item) => item.id === sessionId);
+      const phases = getSessionPhaseLifecycle(session);
+      return {
+        id: sessionId,
+        entryPath: session?.entryPath,
+        status: session?.sessionStatus,
+        partitions: session?.partitions,
+        germinationStartedAt: session?.germinationStartedAt,
+        firstPlantedAt: session?.firstPlantedAt,
+        germinationCompletedAt: session?.germinationCompletedAt,
+        phases: phases.map(({ id, status }) => ({ id, status })),
+        sessionCountDelta: sessions.length - beforeCount,
+        canonicalMatches: sessions.filter((item) => item.id === sessionId).length,
+        methodSetupKeys: Object.keys(localStorage).filter((key) => key.includes(sessionId) && /method|setup/i.test(key)),
+      };
+    }, initialSessionCount);
+    expect(persisted).toEqual({
+      id: expect.any(String),
+      entryPath: "grow",
+      status: "active",
+      partitions: [],
+      germinationStartedAt: "",
+      firstPlantedAt: "",
+      germinationCompletedAt: undefined,
+      phases: [
+        { id: "germination", status: "omitted" },
+        { id: "grow", status: "current" },
+        { id: "reflection", status: "future" },
+      ],
+      sessionCountDelta: 1,
+      canonicalMatches: 1,
+      methodSetupKeys: [],
+    });
+
+    const foundation = page.locator("[data-session-phase-foundation]");
+    const navigator = foundation.locator("[data-session-phase-navigator]");
+    await expect(navigator.locator("[data-session-phase-nav='germination']")).toContainText("Not included");
+    await expect(navigator.locator("[data-session-phase-nav='germination']")).toHaveAttribute("aria-disabled", "true");
+    await expect(navigator.locator("[data-session-phase-nav='grow']")).toHaveAttribute("aria-current", "step");
+    await expect(foundation.locator("[data-session-current-phase='grow']")).toBeVisible();
+    await expect(foundation.locator("[data-session-phase-section='germination']")).toHaveCount(0);
+    await expect(foundation.locator(".session-workspace-content")).toBeHidden();
+
+    const immutableResult = await page.evaluate(async (sessionId) => {
+      const before = getSessions().find((item) => item.id === sessionId);
+      const result = await saveSessionUpdate({
+        ...before,
+        entryPath: "seed",
+        entry_path: "seed",
+        partitions: [{ id: 1, seedCount: 1, plantedCount: "0" }],
+      });
+      const after = getSessions().find((item) => item.id === sessionId);
+      return {
+        updateRejected: result === null,
+        entryPath: getSessionEntryPath(after),
+        partitions: after.partitions,
+      };
+    }, persisted.id);
+    expect(immutableResult).toEqual({
+      updateRejected: true,
+      entryPath: "grow",
+      partitions: [],
+    });
+
+    await page.reload();
+    const reopenedFoundation = page.locator("[data-session-phase-foundation]");
+    await expect(reopenedFoundation.locator("[data-session-phase-nav='germination']")).toContainText("Not included");
+    await expect(reopenedFoundation.locator("[data-session-phase-nav='grow']")).toHaveAttribute("aria-current", "step");
+
+    const countBeforeMalformedRoute = await page.evaluate(() => getSessions().length);
+    await page.goto("/#new/not-a-valid-entry");
+    await expect(page.locator("[data-session-entry-decision]")).toBeVisible();
+    await expect(page.locator("#session-form")).toHaveCount(0);
+    expect(await page.evaluate(() => getSessions().length)).toBe(countBeforeMalformedRoute);
+    expect(backendMutations).toEqual([]);
+  });
+
+  test("keeps Session Entry writes blocked in Preview Studio", async ({ page }) => {
+    const backendMutations = [];
+    page.on("request", (request) => {
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method()) && /\/rest\/v1\/|\/storage\/v1\//.test(request.url())) {
+        backendMutations.push(request.url());
+      }
+    });
+
+    await page.goto("/#home");
+    await useFullGrowDemo(page);
+    await closeScenarioPanel(page);
+    await page.locator('a[href="#new"]').first().click();
+    await page.locator("[data-session-entry-path='grow']").click();
+    const form = page.locator("#session-form");
+    const skipNamePrompt = page.locator("[data-new-session-name-skip]");
+    if (await skipNamePrompt.isVisible()) await skipNamePrompt.click();
+    await form.locator('input[name="sessionName"]').fill("Blocked Preview Entry");
+    await form.locator("[data-new-session-save-button]").last().click();
+
+    await expect(page).toHaveURL(/#new\/grow$/);
+    expect(await page.evaluate(() => getSessions().some((session) => session.sessionName === "Blocked Preview Entry"))).toBe(false);
+    expect(backendMutations).toEqual([]);
+  });
+
   test("keeps one Grow Companion through Germination, Growing, and Reflection without changing the germination record", async ({ page }) => {
     const consoleErrors = [];
     const backendMutations = [];

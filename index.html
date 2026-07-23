@@ -34,7 +34,7 @@
       document.documentElement.style.colorScheme = "dark";
     })();
   </script>
-  <link rel="stylesheet" href="/styles.css?v=20260722-grow-companion-capability-1">
+  <link rel="stylesheet" href="/styles.css?v=20260723-session-entry-1c">
   <script src="/supabase-config.js"></script>
 </head>
 <body>
@@ -630,6 +630,11 @@
       </section>
 
       <form id="session-form" class="session-form session-workspace-form" novalidate>
+        <section class="session-grow-entry-context session-glass-panel" data-session-grow-entry-context hidden>
+          <p class="eyebrow">Growing entry</p>
+          <h3>Start directly in Growing</h3>
+          <p>This Session will begin in Growing. Germination will be marked not included, not completed.</p>
+        </section>
         <section class="session-overview-panel session-workspace-overview">
           <section class="session-top-grid">
             <div class="session-chart-header" data-session-setup-fields>
@@ -655,7 +660,7 @@
                 <input type="hidden" name="time">
                 <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
               </label>
-              <label class="system-type-field">
+              <label class="system-type-field" data-seed-entry-only>
                 <span>Method Type</span>
                 <select name="systemType" required>
                   <option value="KAN">KAN ⭐ Recommended</option>
@@ -671,7 +676,7 @@
                 <small data-method-overview-helper>Choose the germination method for this session.</small>
               </label>
             </div>
-            <div class="hardware-overview-metrics" aria-label="Selected method overview">
+            <div class="hardware-overview-metrics" aria-label="Selected method overview" data-seed-entry-only>
               <article class="hardware-overview-metric hardware-overview-metric--partitions">
                 <span class="hardware-overview-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -716,7 +721,7 @@
           </section>
 
           <section class="system-layout-block hardware-method-card session-glass-panel" aria-labelledby="system-layout-title">
-            <div class="hardware-method-hero">
+            <div class="hardware-method-hero" data-seed-entry-only>
               <div class="hardware-method-copy">
                 <p id="system-layout-label" class="system-layout-label" data-hardware-method-eyebrow>Method</p>
                 <h3 id="system-layout-title" class="hardware-method-title" data-hardware-method-title>KAN System</h3>
@@ -747,14 +752,14 @@
                 <p class="hardware-session-label">Session Details</p>
                 <div class="hardware-session-fields" data-hardware-session-fields></div>
               </div>
-              <section id="session-engine-visual-timeline" class="session-engine-visual-timeline" aria-label="Session Timeline" hidden></section>
-              <div id="session-lifecycle-supplies-anchor" class="session-lifecycle-supplies-anchor"></div>
+              <section id="session-engine-visual-timeline" class="session-engine-visual-timeline" aria-label="Session Timeline" data-seed-entry-only hidden></section>
+              <div id="session-lifecycle-supplies-anchor" class="session-lifecycle-supplies-anchor" data-seed-entry-only></div>
             </div>
           </section>
 
         </section>
 
-        <section class="partitions-panel session-workspace-content">
+        <section class="partitions-panel session-workspace-content" data-seed-entry-only>
           <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
           <div id="partition-chart-shell" class="chart-shell session-glass-panel">
             <div class="partition-work-header session-workspace-panel-head">
@@ -1717,6 +1722,6 @@
   <script src="/src/grow-companion-contract.js?v=20260721-grow-companion-capability-1"></script>
   <script src="/profile-hero-catalog-data.js?v=20260720-profile-hero-metadata"></script>
   <script src="/profile-hero-catalog.js?v=20260720-profile-hero-metadata"></script>
-  <script src="/app.js?v=20260722-grow-companion-capability-1"></script>
+  <script src="/app.js?v=20260723-session-entry-1c"></script>
 </body>
 </html>

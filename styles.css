@@ -89616,3 +89616,26 @@ img.person-profile-avatar {
     transition: none;
   }
 }
+
+.session-form [data-seed-entry-only][hidden],
+.session-form[data-entry-path="grow"] [data-seed-entry-only],
+.session-form [data-session-grow-entry-context][hidden] {
+  display: none !important;
+}
+
+.session-grow-entry-context {
+  padding: clamp(18px, 2.4vw, 26px);
+}
+
+.session-grow-entry-context h3,
+.session-grow-entry-context p {
+  margin-bottom: 0;
+}
+
+.session-grow-entry-context p {
+  color: var(--muted, #aab5ac);
+}
+
+.session-phase-navigator-button.is-omitted {
+  opacity: 0.72;
+}
