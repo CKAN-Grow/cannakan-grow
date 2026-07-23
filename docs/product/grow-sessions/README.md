@@ -20,3 +20,4 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 ## Implementation Contracts
 
 - [IC-GC-003A — Growing Workspace Shell](../../foundation/implementation-contracts/IC-GC-003A-growing-workspace-shell.md)
+- [IC-GC-003B — Growing Workspace Tasks](../../foundation/implementation-contracts/IC-GC-003B-growing-workspace-tasks.md)
