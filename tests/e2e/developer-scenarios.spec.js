@@ -3823,6 +3823,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(currentGrowing).toContainText("Recent Activity");
     await expect(currentGrowing.getByRole("button", { name: "Add Task" })).toBeDisabled();
     await expect(currentGrowing.getByRole("button", { name: "Add Event" })).toBeDisabled();
+    await expect(currentGrowing.getByRole("button", { name: "Add Note" })).toBeDisabled();
     await expect(completedCompanion).toHaveCount(1);
     await expect(completedRecords).toHaveCount(1);
     await expect(completedRecords.locator("[data-session-phase-section='germination']")).toHaveCount(1);
@@ -3889,7 +3890,8 @@ test.describe("local Developer Scenarios", () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  test("Grow Companion owner can manage durable Tasks and Events through one activity timeline", async ({ page }) => {
+  test("Grow Companion owner can manage durable Tasks, Events, and Notes through one Workspace", async ({ page }) => {
+    test.setTimeout(60_000);
     const consoleErrors = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
@@ -3946,8 +3948,8 @@ test.describe("local Developer Scenarios", () => {
       };
       liveSession.growing_phase = liveSession.growingPhase;
       window.__growCompanionCapabilityLiveSession = liveSession;
-      window.__growCompanionCapabilityDb = { tasks: [], events: [], nextId: 1, failNext: "", delayNext: 0, attempts: [] };
-      const tableKey = (table) => table === "grow_session_tasks" ? "tasks" : "events";
+      window.__growCompanionCapabilityDb = { tasks: [], events: [], notes: [], nextId: 1, failNext: "", delayNext: 0, attempts: [] };
+      const tableKey = (table) => table === "grow_session_tasks" ? "tasks" : table === "grow_session_events" ? "events" : "notes";
       const clone = (value) => JSON.parse(JSON.stringify(value));
       appState.supabase = {
         from(table) {
@@ -4024,6 +4026,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(growing).toBeVisible();
     await expect(growing.getByRole("button", { name: "Add Task" })).toBeEnabled();
     await expect(growing.getByRole("button", { name: "Add Event" })).toBeEnabled();
+    await expect(growing.getByRole("button", { name: "Add Note" })).toBeEnabled();
     await expect(growing).toContainText("No open tasks");
     await expect(growing).toContainText("No activity yet");
 
@@ -4127,7 +4130,41 @@ test.describe("local Developer Scenarios", () => {
       growing: JSON.parse(JSON.stringify(window.__growCompanionCapabilityLiveSession.growingPhase)),
     }));
     expect(eventIsolationAfter).toEqual(eventIsolationBefore);
-    const temporal = growing.locator("[data-grow-companion-temporal]");
+    const notesPanel = growing.locator("[data-grow-companion-notes]");
+    await expect(notesPanel).toContainText("No notes yet");
+    await growing.getByRole("button", { name: "Add Note" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('textarea[name="narrative"]').fill("Canopy recovered after watering.");
+    await dialog.locator('select[name="context"]').selectOption("task:capability-tasks-1");
+    await dialog.getByRole("button", { name: "Add Note", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(notesPanel).toContainText("Canopy recovered after watering.");
+    const createdNote = await page.evaluate(() => window.__growCompanionCapabilityDb.notes[0]);
+    expect(createdNote).toMatchObject({
+      id: "capability-notes-3",
+      session_id: "00000000-0000-4000-8000-000000000040",
+      author_user_id: expect.any(String),
+      narrative: "Canopy recovered after watering.",
+      context_type: "task",
+      task_id: "capability-tasks-1",
+      plant_group_id: null,
+      event_id: null,
+    });
+    const noteAuthor = createdNote.author_user_id;
+    const noteCreatedAt = createdNote.created_at;
+    await notesPanel.getByRole("button", { name: "Edit" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('textarea[name="narrative"]').fill("Canopy recovered after measured watering.");
+    await page.waitForTimeout(10);
+    await dialog.getByRole("button", { name: "Save correction" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(notesPanel).toContainText("Canopy recovered after measured watering.");
+    const correctedNote = await page.evaluate(() => window.__growCompanionCapabilityDb.notes[0]);
+    expect(correctedNote.id).toBe("capability-notes-3");
+    expect(correctedNote.author_user_id).toBe(noteAuthor);
+    expect(correctedNote.created_at).toBe(noteCreatedAt);
+    expect(correctedNote.updated_at).not.toBe(noteCreatedAt);
+    await expect(growing.locator("[data-grow-companion-activity]")).not.toContainText("Canopy recovered after measured watering.");    const temporal = growing.locator("[data-grow-companion-temporal]");
     await expect(temporal.getByRole("heading", { name: "Timeline" })).toBeVisible();
     await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(2);
     await expect(temporal).toContainText("Check canopy moisture");
@@ -4150,6 +4187,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(2);
     expect(await page.evaluate(() => window.__growCompanionCapabilityDb.attempts.length)).toBe(projectionAttemptsBefore);
     expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => /temporal|calendar|timeline/i.test(key)))).toEqual([]);
+    await expect(temporal).not.toContainText("Canopy recovered after measured watering.");
 
     await growing.getByRole("button", { name: "Edit task: Check canopy moisture" }).click();
     dialog = page.locator(".grow-companion-record-dialog");
@@ -4209,10 +4247,66 @@ test.describe("local Developer Scenarios", () => {
     expect(persisted.tasks[0].id).toBe("capability-tasks-1");
     expect(persisted.events).toEqual([]);
 
+    const unavailableContextBaseline = await page.evaluate(() => JSON.parse(JSON.stringify(window.__growCompanionCapabilityDb.notes[0])));
     page.once("dialog", (confirmation) => confirmation.accept());
     await growing.getByRole("button", { name: "Delete task: Check canopy and soil moisture" }).click();
     await expect(growing.locator("[data-grow-companion-task-id]")).toHaveCount(0);
     expect(await page.evaluate(() => window.__growCompanionCapabilityDb.tasks)).toEqual([]);
+    await expect(notesPanel).toContainText("Task: Unavailable");
+
+    await notesPanel.getByRole("button", { name: "Edit" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    const retainedContext = dialog.locator('select[name="context"]');
+    await expect(retainedContext).toHaveValue("task:capability-tasks-1");
+    await expect(retainedContext.locator("option:checked")).toHaveText("Task: Unavailable (retained)");
+    await dialog.locator('textarea[name="narrative"]').fill("Canopy remained stable after the referenced Task was deleted.");
+    await dialog.getByRole("button", { name: "Save correction" }).click();
+    await expect(dialog).toHaveCount(0);
+    const retainedCorrection = await page.evaluate(() => window.__growCompanionCapabilityDb.notes[0]);
+    expect(retainedCorrection).toMatchObject({
+      id: unavailableContextBaseline.id,
+      session_id: unavailableContextBaseline.session_id,
+      author_user_id: unavailableContextBaseline.author_user_id,
+      created_at: unavailableContextBaseline.created_at,
+      narrative: "Canopy remained stable after the referenced Task was deleted.",
+      context_type: "task",
+      task_id: "capability-tasks-1",
+      plant_group_id: null,
+      event_id: null,
+    });
+    await expect(notesPanel).toContainText("Task: Unavailable");
+
+    await notesPanel.getByRole("button", { name: "Edit" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('select[name="context"]').selectOption("plant_group:00000000-0000-4000-8000-000000000042");
+    await dialog.getByRole("button", { name: "Save correction" }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.notes[0])).toMatchObject({
+      id: unavailableContextBaseline.id,
+      context_type: "plant_group",
+      plant_group_id: "00000000-0000-4000-8000-000000000042",
+      task_id: null,
+      event_id: null,
+    });
+
+    await notesPanel.getByRole("button", { name: "Edit" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await expect(dialog.locator('select[name="context"]')).toHaveValue("plant_group:00000000-0000-4000-8000-000000000042");
+    await dialog.locator('select[name="context"]').selectOption("session");
+    await dialog.getByRole("button", { name: "Save correction" }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.notes[0])).toMatchObject({
+      id: unavailableContextBaseline.id,
+      context_type: "session",
+      plant_group_id: null,
+      task_id: null,
+      event_id: null,
+    });
+
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await notesPanel.getByRole("button", { name: "Delete" }).click();
+    await expect(notesPanel).toContainText("No notes yet");
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.notes)).toEqual([]);
 
     for (const width of [390, 768, 1280]) {
       await page.setViewportSize({ width, height: 1000 });
