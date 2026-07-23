@@ -17,6 +17,10 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [Grow Companion Composition Specification](./grow-companion-composition-specification.md)
 - [CS-GC-003 — Growing Workspace Composition Specification](./growing-workspace-composition-specification.md)
 
+## Architecture Resolutions
+
+- [AR-GC-003-01 — Workspace Time, State, Correction & Retention Semantics](../../architecture/AR-GC-003-01-workspace-time-state-correction-and-retention-semantics.md)
+
 ## Implementation Contracts
 
 - [IC-GC-003A — Growing Workspace Shell](../../foundation/implementation-contracts/IC-GC-003A-growing-workspace-shell.md)
