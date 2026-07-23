@@ -4181,12 +4181,24 @@ test.describe("local Developer Scenarios", () => {
         sessionId: controller.sessionId,
         ownerId: controller.session.userId,
       });
+      const rawDocument = {
+        id: "capability-documents-1",
+        session_id: controller.sessionId,
+        owner_id: controller.session.userId,
+        structured_meaning: { kind: "cultivation-record", sections: [{ heading: "Canopy", value: "Even" }] },
+      };
+      const canonicalDocuments = getDocumentsComposition().normalizeDocumentRecords([rawDocument], {
+        sessionId: controller.sessionId,
+        ownerId: controller.session.userId,
+      });
       const before = JSON.stringify({
         tasks: controller.tasks,
         events: controller.events,
         notes: controller.notes,
         rawPhotos,
         canonicalPhotos,
+        rawDocument,
+        canonicalDocuments,
       });
       const composition = getWorkspaceComposition().composeWorkspace({
         sessionId: controller.sessionId,
@@ -4197,8 +4209,13 @@ test.describe("local Developer Scenarios", () => {
           ...canonicalPhotos,
           Object.freeze({ ...canonicalPhotos[0], id: "other-photo", sessionId: "other-session" }),
         ],
+        documents: [
+          ...canonicalDocuments,
+          Object.freeze({ ...canonicalDocuments[0], id: "other-document", sessionId: "other-session" }),
+        ],
       });
       controller.photos = canonicalPhotos;
+      controller.documents = canonicalDocuments;
       renderGrowCompanionActivityWorkspace(root, controller);
       return {
         taskIds: composition.tasks.map((record) => record.id),
@@ -4207,6 +4224,9 @@ test.describe("local Developer Scenarios", () => {
         photoIds: composition.photos.map((record) => record.id),
         photoSessionIds: composition.photos.map((record) => record.sessionId),
         presentedPhotoCount: root.dataset.workspacePhotoCount,
+        documentIds: composition.documents.map((record) => record.id),
+        documentSessionIds: composition.documents.map((record) => record.sessionId),
+        presentedDocumentCount: root.dataset.workspaceDocumentCount,
         activityTypes: composition.activity.map((record) => record.type),
         temporalTypes: composition.temporalEntries.map((record) => record.sourceType),
         sourceUnchanged: before === JSON.stringify({
@@ -4215,6 +4235,8 @@ test.describe("local Developer Scenarios", () => {
           notes: controller.notes,
           rawPhotos,
           canonicalPhotos,
+          rawDocument,
+          canonicalDocuments,
         }),
         ownsPersistence: Object.keys(composition).some((key) => /store|table|persist|mutation/i.test(key)),
       };
@@ -4227,6 +4249,9 @@ test.describe("local Developer Scenarios", () => {
       photoSessionIds: ["00000000-0000-4000-8000-000000000040"],
       presentedPhotoCount: "1",
       activityTypes: ["event"],
+      documentIds: ["capability-documents-1"],
+      documentSessionIds: ["00000000-0000-4000-8000-000000000040"],
+      presentedDocumentCount: "1",
       temporalTypes: ["event", "task"],
       sourceUnchanged: true,
       ownsPersistence: false,

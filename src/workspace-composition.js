@@ -11,7 +11,10 @@
   const photosContract = typeof module === "object" && module.exports
     ? require("./photos-composition.js")
     : root.PhotosComposition;
-  const contract = factory(taskEventContract, temporalProjection, notesContract, photosContract);
+  const documentsContract = typeof module === "object" && module.exports
+    ? require("./documents-composition.js")
+    : root.DocumentsComposition;
+  const contract = factory(taskEventContract, temporalProjection, notesContract, photosContract, documentsContract);
   if (typeof module === "object" && module.exports) module.exports = contract;
   root.WorkspaceComposition = contract;
 }(typeof globalThis !== "undefined" ? globalThis : this, function createWorkspaceComposition(
@@ -19,9 +22,10 @@
   temporalProjection,
   notesContract,
   photosContract,
+  documentsContract,
 ) {
-  if (!taskEventContract || !temporalProjection || !notesContract || !photosContract) {
-    throw new Error("Canonical Task, Event, Temporal Projection, Note, and Photo capabilities are required.");
+  if (!taskEventContract || !temporalProjection || !notesContract || !photosContract || !documentsContract) {
+    throw new Error("Canonical Task, Event, Temporal Projection, Note, Photo, and Document capabilities are required.");
   }
 
   function freezeList(records = []) {
@@ -45,6 +49,8 @@
     const photos = freezeList((Array.isArray(input.photos) ? input.photos : [])
       .filter((record) => belongsToSession(record, sessionId)));
     const temporalEntries = temporalProjection.projectTemporalRecords(tasks, events, { sessionId });
+    const documents = freezeList((Array.isArray(input.documents) ? input.documents : [])
+      .filter((record) => belongsToSession(record, sessionId)));
 
     return Object.freeze({
       sessionId,
@@ -53,6 +59,7 @@
       notes,
       photos,
       taskProjection: taskEventContract.projectTasks(tasks),
+      documents,
       activity: taskEventContract.buildActivityItems(tasks, events),
       temporalEntries,
     });
