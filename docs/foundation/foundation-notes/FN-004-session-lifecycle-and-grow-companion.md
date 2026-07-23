@@ -1,41 +1,37 @@
-# Foundation Note FN-004 — Session Lifecycle & Grow Companion
+# Foundation Note FN-004 — Session Context, Operational Intelligence & Evidence Readiness
 
 **Version:** Draft 1.0
 **Status:** Foundational Architecture
-**Domain:** Sessions / Seed Vault / Grow Companion / GEE
+**Domain:** Sessions / Session Context / Evidence Readiness / Seed Vault / Grow Companion / GEE
 **Last Updated:** July 2026
 
 ## Purpose
 
-This document establishes the canonical architecture for the Grow Session lifecycle and Grow Companion.
+This document establishes the canonical architecture for the Grow Session lifecycle, Grow Companion, Session Context, Operational Intelligence, and evidence readiness.
 
 Grow is the platform.
 
-Session is the canonical user-owned object.
+Session is the canonical user-owned object. There is one Session from start to finish.
 
-There is one Session from start to finish.
+Users create evidence through their actions, observations, decisions, and recorded outcomes.
 
-Grow Companion is the permanent operational hub inside that Session.
+Grow Companion is the permanent operational hub inside the Session. It captures, structures, organizes, preserves, and presents user-produced evidence while improving operational awareness and evidence readiness.
 
-Together they preserve Grow’s core philosophy:
+The Session Context Engine deterministically evaluates canonical Session records for operational state, workflow continuity, evidence readiness, and relevant operational attention. Its context serves the grower and GEE without becoming original evidence or GEE-level interpretation.
+
+GEE is Grow's canonical evidence interpretation engine. It governs evidence eligibility, normalization, lineage, confidence, interpretation, and knowledge distillation.
+
+The Seed Vault preserves inventory, genetics, ownership and acquisition information, and intentionally distilled knowledge.
+
+Together these responsibilities form one canonical evidence architecture and preserve Grow's core philosophy:
 
 > “Every grow should make the next grow better.”
-
-The Session is the complete story and historical record of one grow experience.
-
-Grow Companion guides the work through Germination, Growing, and Reflection.
-
-GEE interprets eligible canonical evidence and produces knowledge.
-
-The Seed Vault preserves inventory and distilled lessons.
-
-These responsibilities create a continuous improvement loop without creating parallel systems.
 
 ## Canonical Domain Model
 
 ### Grow
 
-Grow is the platform that connects Sessions, Grow Companion, GEE, the Seed Vault, Testing Programs, and other canonical domains.
+Grow is the platform that connects Sessions, Grow Companion, the Session Context Engine, GEE, the Seed Vault, Testing Programs, and other canonical domains.
 
 ### Session
 
@@ -45,40 +41,76 @@ A Session evolves across one complete lifecycle. Grow must not define separate G
 
 A Session contains:
 
-- Session Overview
+- Session identity, ownership, and privacy
 - Grow Companion
+- canonical user-produced evidence
+- distinguishable canonical system records
 - completed phase records
 - reports and canonical relationships
-- privacy and ownership context
 - the full lifecycle history
 
 ### Grow Companion
 
 Grow Companion is the permanent operational hub of every Session.
 
-It is not a separate Session, a lower-page feature card, a replacement for the Session, or a competing evidence engine.
+It is not a separate Session, a replacement for the Session, or a competing context, evidence, interpretation, or knowledge system.
 
-Grow Companion is the operational workflow engine responsible for:
+Grow Companion is responsible for:
 
-- lifecycle navigation
-- the current phase and current work
-- completed-phase access
-- future Tasks, Events, Calendar, Journal, Photos, and Milestones
-- future Testing Program guidance
-- future Reflection workflow
+- lifecycle guidance
+- current-phase workflow
+- access to completed-phase history
+- capturing user actions, observations, decisions, and recorded outcomes
+- structuring, organizing, preserving, and presenting user-produced evidence
+- improving evidence completeness, continuity, and quality
+- supporting Testing Program guidance and Reflection within the canonical Session
 
-Grow Companion remains in the same primary position while its active workspace changes with the current phase.
+Grow Companion does not independently create evidence. Users create evidence through activity performed or recorded through Grow Companion and other authorized Session capabilities.
 
+### Session Context Engine
+
+The Session Context Engine is the deterministic platform service responsible for:
+
+- summarizing canonical Session records
+- prioritizing relevant operational attention
+- classifying operational context
+- organizing context projections
+- evaluating operational Session state
+- evaluating workflow continuity
+- evaluating evidence readiness
+
+It turns canonical Session records into consistent context without inventing evidence, substituting derived state for original evidence, or interpreting evidence as knowledge.
+
+Platform surfaces and consumers, such as Grow Companion, Home, Reflection, notifications, reports, future APIs, and future AI capabilities, consume the Session Context Engine rather than calculating competing Session context independently.
+
+### Operational Intelligence
+
+Operational Intelligence is the deterministic understanding of current Session state, workflow continuity, evidence readiness, and relevant operational attention derived from canonical Session records.
+
+Operational Intelligence does not constitute biological diagnosis, predictive cultivation advice, generated evidence, inferred user observations, or GEE-level evidence interpretation.
+
+### Evidence Sources and Attribution
+
+Grow distinguishes four related but separate categories:
+
+1. **User-produced evidence** — actions, observations, decisions, and outcomes attributable to the user.
+2. **Canonical system records** — platform events or recorded state attributable to the system.
+3. **Deterministically derived context** — operational summaries, classifications, priorities, continuity evaluations, and readiness evaluations produced from canonical records.
+4. **GEE interpretation** — governed interpretation of eligible evidence with lineage and confidence.
+
+Automated system records may document platform events or derived state, but they must remain distinguishable from user-produced evidence and must never be represented as user observations.
+
+Original evidence remains attributable and traceable to its canonical source. Derived context and GEE interpretation must preserve that distinction.
 
 ## Core Philosophy
 
 Grow exists to help growers build knowledge, not simply record activities.
 
-Each completed Session should increase the value of the next Session.
+Users create evidence. Grow Companion helps them produce higher-quality evidence by capturing, structuring, organizing, preserving, and presenting it.
 
-The objective is not collecting data.
+GEE transforms eligible evidence into trusted interpretation and supports intentional knowledge distillation.
 
-The objective is improving future decisions.
+Each completed Session should increase the value of the next Session. The objective is not collecting data. The objective is improving future decisions.
 
 This creates the Grow knowledge loop:
 
@@ -88,182 +120,149 @@ Seed Vault
 → Germination
 → Growing
 → Reflection
+→ GEE Interpretation
+→ Intentional Knowledge Distillation
 → Seed Vault
 → Repeat
 ```
 
-Every completed grow enriches the grower’s personal knowledge library.
+A completed grow may enrich the grower's personal knowledge library only through intentional knowledge distillation.
+
+## Session Evidence Pipeline
+
+The canonical evidence flow is:
+
+```text
+User Activity
+↓
+Session Records
+↓
+Session Context
+↓
+Evidence Readiness
+↓
+GEE Interpretation
+↓
+Intentional Knowledge Distillation
+↓
+Seed Vault
+```
+
+User activity creates evidence within canonical Session records. Grow Companion captures, structures, organizes, preserves, and presents that evidence. The Session Context Engine evaluates operational state, workflow continuity, and evidence readiness. GEE interprets eligible evidence and governs downstream knowledge distillation. The Seed Vault preserves knowledge only after it is intentionally distilled.
+
+Reflection is structured subjective evidence within this same pipeline:
+
+```text
+Completed Session Evidence
+↓
+Grower Reflection
+↓
+GEE Interpretation
+↓
+Intentional Knowledge Distillation
+↓
+Seed Vault
+```
+
+Reflection does not create a parallel evidence path. It adds the grower's intentional review to the same canonical Session evidence interpreted by GEE.
+
+Every future platform capability must strengthen one or more stages of this pipeline rather than introduce an alternative evidence path.
+
+This is Grow's canonical evidence architecture.
 
 ## Architectural Principles
 
 ### Nothing Disappears
 
-No Session information is archived away into separate pages.
+Canonical Session history remains part of the Session.
 
-Completed phases become historical but remain immediately accessible.
+Completed phases become historical but remain accessible through authorized Session capabilities. Historical preservation must not depend on a particular page, card, chart, view, or navigation structure.
 
-Users should never lose access to:
-
-- KAN Seed Chart
-- Fair View
-- Reports
-- Images
-- Notes
-- Timeline
-- Analytics
-
-Historical information remains inside the Session.
-
-The Session becomes the complete story of that grow.
+The Session remains the complete story of one grow experience.
 
 ### Sessions Are Living Documents
 
 A Session evolves over time.
 
-It is never intended to become longer through endless forms.
+Its architecture distinguishes current work, completed history, and future work without prescribing how a particular interface presents those states.
 
-Instead:
+### Evidence Before Intelligence
 
-- Current work remains expanded.
-- Completed work becomes collapsed history.
-- Future work becomes available only when appropriate.
+Grow always improves evidence before expanding intelligence.
+
+Reliable interpretation depends upon reliable evidence.
+
+Future capabilities should first improve:
+
+- evidence completeness
+- evidence continuity, including chronological and workflow consistency
+- evidence quality, including internal reliability, clarity, and descriptive integrity
+
+Only then should they introduce more analytical behavior.
+
+### Context Never Creates Evidence
+
+Session Context may:
+
+- summarize
+- prioritize
+- classify
+- organize
+- evaluate operational state
+- evaluate workflow continuity
+- evaluate evidence readiness
+
+Session Context shall never invent, fabricate, substitute, or present derived interpretation as original evidence.
+
+Users create evidence through their activity. Canonical system records may record attributable platform events or derived state, but they remain distinguishable from user-produced evidence. Session Context derives operational understanding from those records; GEE interprets eligible evidence.
 
 ## Session Lifecycle
 
-The visible top-level phases are:
+The canonical top-level phases are:
 
 1. Germination
 2. Growing
 3. Reflection
 
-Use “Growing” rather than “Grow” for the middle visible phase so it cannot be confused with the Grow platform. Internal compatibility identifiers may remain stable where implementation history requires them.
+Use “Growing” rather than “Grow” for the middle phase so it cannot be confused with the Grow platform.
 
-Only one phase is current at a time.
-
-Every phase has one of three states:
+Only one phase is current at a time. Every phase has one of three canonical states:
 
 - future
 - current
 - complete
 
-The governing interaction pattern is:
+The lifecycle preserves a durable transition:
 
-> Work → Complete → Collapse → Preserve → Continue
+> Work → Complete → Preserve → Continue
 
-Do not make Vegetative, Flower, Harvest, or other cannabis-specific stages mandatory top-level phases.
-
-Those may later exist as optional milestones, templates, user-defined stages, or structured events inside Grow Companion so the architecture remains useful for cannabis, vegetables, flowers, and other seed-grown plants.
+Vegetative, Flower, Harvest, and other plant-specific stages are not mandatory top-level phases. They may exist as optional milestones, templates, user-defined stages, or structured events inside the canonical Session so the architecture remains useful across plant types and cultivation methods.
 
 ### 1. Germination
 
-Purpose:
+Germination represents the controlled work and evidence associated with successfully germinating seeds.
 
-Successfully germinate seeds under controlled conditions.
-
-Typical content:
-
-- Grow Companion germination status
-- KAN Seed Chart
-- Progress
-- Timeline
-- Fair View
-- Notes
-- Images
-- Reports
-- Community eligibility
-- Germination analytics
-
-When completed:
-
-The Germination phase becomes historical.
-
-It remains fully accessible inside the same Session.
-
-It is never removed, moved to a separate archive, or replaced by only a summary report.
-
-The original Germination experience remains reopenable.
+When completed, Germination becomes historical but remains part of the same Session. Its canonical records are not removed, relocated into a separate Session archive, or reduced to only a summary.
 
 ### 2. Growing
 
-Purpose:
+Growing represents post-germination work and evidence inside the same Session and Grow Companion.
 
-Guide the grower through post-germination work inside Grow Companion.
-
-Grow Companion remains the primary Session hub and changes its active workspace from Germination to Growing.
-
-Grow Companion is intentionally generic and not cannabis-specific.
-
-Future implementations may include:
-
-- Today
-- Upcoming Tasks
-- Tasks
-- Events
-- Calendar
-- Journal
-- Milestones
-- Environment
-- Photos
-- Growing Completion
-
-Different plant types may use different stages or milestones without changing the overall architecture.
+Different plant types may use different stages, milestones, tasks, events, observations, and environmental records without changing the overall Session architecture.
 
 ### 3. Reflection
 
-Purpose:
+Reflection is an intentional review of completed Session experience and a structured subjective evidence capability.
 
-Capture the grower’s distilled experience.
-
-Reflection is intentionally different from the Session Journal.
-
-The Journal records the full history.
-
-Reflection records what mattered most.
-
-Reflection includes:
-
-- Overall Experience
-- Would Grow Again?
-- Final Thoughts
-
-Reflection completes the knowledge loop and returns the learned experience to the Seed Vault.
-
-## Session Phase Navigator
-
-Grow Companion exposes the Session lifecycle through a persistent phase navigator.
-
-The navigator lives inside Grow Companion and always communicates:
-
-- where the grow currently is
-- where it has been
-- what comes next
-
-Behavioral principles:
-
-- The current phase is active and emphasized.
-- Completed phases remain expandable.
-- Future phases remain visible but unavailable until eligible.
-- Selecting a completed phase reopens its full original record.
-- Selecting the current phase returns focus to the current workspace.
-- Phase navigation never hides or destroys historical information.
+Its full evidence and knowledge boundary is defined in the dedicated Reflection section.
 
 ## Completed Phase Records
 
-Completed phases become historical records inside the same Session and Grow Companion composition.
+Completed phases become historical records inside the same Session.
 
-Completed phase records:
+They remain attributable, preserve their canonical evidence and relationships, and remain available to authorized Session capabilities. They do not become separate Sessions or report-only substitutes for the underlying records.
 
-- remain permanently accessible
-- preserve the complete original experience
-- do not move to separate archive pages
-- do not become report-only summaries
-- retain notes, images, evidence, analytics, and controls
-- may collapse by default when no longer current
-- remain expandable from the lifecycle navigator or phase summary
-
-Nothing disappears.
-
-Germination completion produces a completed Germination Record. Future Growing completion produces a completed Growing Record. Reflection completion completes the overall Session.
+Germination completion produces a completed Germination Record. Growing completion produces a completed Growing Record. Reflection completion completes the overall Session.
 
 ## Session Status vs Phase Status
 
@@ -271,10 +270,8 @@ Session status and phase status are separate concepts.
 
 ### Germination Completion
 
-- Germination has ended.
-- Canonical germination results exist.
-- Germination status becomes complete.
-- The Germination Record becomes historical.
+- Germination has ended and canonical germination results exist.
+- Germination status becomes complete and its record becomes historical.
 - Session status remains active or in progress.
 - Current phase becomes Growing.
 
@@ -287,92 +284,35 @@ Session status and phase status are separate concepts.
 
 ### Reflection Completion
 
-- Captures the grower’s concise lesson.
-- Completes the overall Session.
-- Links the distilled lesson into the related Seed Vault history.
+- The grower's structured subjective evidence is complete.
+- The overall Session becomes complete.
+- The Reflection becomes eligible for GEE interpretation and later intentional knowledge distillation.
 
-Compatibility adapters may translate legacy completion fields, but canonical Session status must remain distinct from phase completion.
+Backward compatibility is an architectural obligation, but compatibility mechanisms must not alter the canonical distinction between Session status and phase completion.
 
 ## Phase Capabilities
 
-Tasks, Events, Calendar, Journal, Photos, Milestones, and Testing Program guidance are capabilities of the active phase. They are not separate top-level platform systems, and not every capability must appear in every phase.
+Tasks, Events, Journal, Photos, Milestones, scheduling, notifications, Testing Program guidance, and Reflection are capabilities associated with canonical Session workflow. They do not create separate top-level platform systems, and not every capability must apply to every phase.
 
-Grow Companion reveals only the tools appropriate to the current phase. Germination may emphasize evidence, notes, images, and phase-relevant work. Growing may emphasize Tasks, Events, Calendar, Journal, Photos, Milestones, and Testing Program guidance. Reflection remains concise and focused on the final lesson.
+Grow Companion makes phase-appropriate capabilities available without changing the canonical Session, evidence, context, or GEE architecture.
 
 ## Tasks vs Events
 
-Grow Companion separates intended work from historical observations.
+Tasks represent things the grower intends to do. Events represent things that happened or were observed.
 
-### Tasks
+Tasks belong to planning and action. Events become historical observations and become eligible evidence only through the canonical GEE evidence boundary.
 
-Tasks represent things the grower intends to do.
-
-Examples:
-
-- Water
-- Feed
-- Check pH
-- Rotate
-- Transplant
-- Defoliate
-- Clean
-- Take a weekly photo
-
-Future task capabilities may include:
-
-- due date and time
-- reminders
-- recurrence
-- priority
-- completion
-- skipped state
-- rescheduling
-- snooze
-
-Tasks belong to planning and action.
-
-### Events
-
-Events represent things that happened or were observed.
-
-Examples:
-
-- Seed germinated
-- First true leaves appeared
-- Pest discovered
-- Nutrient deficiency observed
-- Temperature spike
-- Humidity issue
-- Power outage
-- Harvested
-
-Events become historical observations. They become canonical evidence only when GEE determines that they are eligible through an explicit evidence boundary.
-
-Events are not reminders.
-
-Tasks and Events may appear together on the same Calendar or Timeline, but they remain distinct domain concepts.
+Events are not reminders. Tasks and Events may contribute to common operational projections while remaining distinct domain concepts.
 
 ## Milestones
 
-Milestones are significant lifecycle achievements.
+Milestones are significant lifecycle achievements and anchors within the Session chronology.
 
-Examples:
-
-- Germinated
-- Transplanted
-- Flowering Started
-- Harvested
-- Grow Completed
-
-Milestones become anchors within the Session timeline.
-
-Milestones should remain configurable so Grow is not limited to a single plant type, cultivation method, or grow lifecycle.
+They remain configurable so Grow is not limited to a single plant type, cultivation method, or grow lifecycle.
 
 ## Journal
 
-The Grow Journal is private by default.
-
-Its purpose is to record the complete history of the grow.
+The Grow Journal is private by default and records the complete history of the grow.
 
 It may contain:
 
@@ -386,19 +326,53 @@ It may contain:
 - event history
 - milestone history
 
-The Journal belongs to the Session.
+The Journal belongs to the Session. The full Journal is not copied into the Seed Vault.
 
-The full Journal is not copied into the Seed Vault.
+## Evidence Readiness
+
+Evidence Readiness describes whether available Session evidence is prepared for responsible GEE interpretation. It has three architectural dimensions.
+
+### Evidence Completeness
+
+Required information exists.
+
+### Evidence Continuity
+
+The Session tells one coherent chronological story.
+
+Continuity includes consistency of chronology, sequencing, phase transitions, and workflow coherence. It may be weakened by missing timeline segments, missing phase transitions, or inconsistent chronology.
+
+### Evidence Quality
+
+Observations contain enough operational detail to improve future interpretation.
+
+Quality includes the internal reliability, clarity, consistency, and descriptive integrity of the available evidence.
+
+Completeness, continuity, and quality measure evidence. They do not measure cultivation success.
+
+### Evidence Confidence
+
+Evidence Confidence represents confidence in GEE's ability to interpret the available evidence responsibly.
+
+It is conceptually informed by:
+
+- Evidence Completeness
+- Evidence Continuity
+- Evidence Quality
+
+Evidence Confidence does not measure cultivation success, user credibility, source reputation, biological quality, or predicted outcomes. Those concepts require separate architecture.
+
+Evidence Confidence is an architectural concept supporting future capabilities. This Foundation Note does not define an algorithm, score, weight, threshold, or presentation system.
 
 ## Reflection
 
-Reflection is intentionally concise.
+Reflection is structured subjective evidence produced by the grower through an intentional review of completed Session experience.
 
 It answers:
 
 > “If you grow this variety again, what should you remember?”
 
-Canonical structure:
+Its canonical structure remains:
 
 ### Overall Experience
 
@@ -418,276 +392,142 @@ A structured 1–5 star variety-experience signal:
 
 One concise answer to the Reflection question.
 
-One canonical Reflection should eventually relate to:
+One canonical Reflection should eventually relate to the grower, Session, canonical variety, Vault item where applicable, source attribution, its structured answers, and completion timestamp.
 
-- grower
-- Session
-- canonical variety
-- Vault item where applicable
-- source attribution from the Session
-- overall experience
-- Would Grow Again rating
-- final thoughts
-- completion timestamp
+The same Reflection may be referenced from the completed Session and linked Seed Vault history without creating duplicate evidence records.
 
-The same Reflection is referenced from both the completed Session and the linked Seed Vault variety history. Grow must not create a separate Session Reflection and duplicate Vault note.
+Reflection is the bridge from completed operational experience into downstream GEE interpretation and intentional knowledge distillation. It may contribute meaning from the grower's perspective, but it does not automatically become trusted or canonical knowledge.
 
-The Reflection is the distilled lesson, not a duplicate of the full Session Journal. It remains private unless the owner explicitly changes visibility under future sharing rules.
+Reflection remains private unless the owner explicitly changes visibility under authorized sharing rules.
 
 ## Seed Vault Integration
 
-The Seed Vault stores inventory and accumulated personal knowledge.
+The Seed Vault stores:
+
+- inventory
+- genetics
+- ownership and acquisition information
+- intentionally distilled knowledge grounded in one or more completed Sessions
 
 It does not duplicate Session history.
 
-Each completed grow may link one canonical Reflection into the related variety history.
+Operational Session history and Reflection do not automatically become permanent knowledge. Knowledge enters the Vault intentionally through downstream capabilities governed by GEE, with canonical lineage back to supporting evidence.
 
-Example:
-
-> **Previous Grows**
->
-> ★★★★★
->
-> **Would Grow Again:** ★★★★★
->
-> “Excellent vigor. Reduce nutrients during early growth.”
-
-Multiple Reflections create a private personal history for each variety.
-
-Over time, the Seed Vault may summarize the grower’s own experience, such as:
-
-- number of completed grows
-- germination performance
-- average lifecycle duration
-- Would Grow Again history
-- recurring observations
-- useful lessons
-
-These summaries must remain grounded in canonical Session and GEE evidence.
-
-The Seed Vault receives the distilled lesson. It does not receive the full Grow Companion timeline or Journal.
+The Seed Vault does not receive the full Grow Companion chronology or Journal.
 
 ## GEE Responsibilities
 
-GEE remains the heart of Grow’s canonical evidence and knowledge architecture.
+GEE is Grow's canonical evidence interpretation engine.
 
-> Grow Companion records. GEE understands.
+> Users create evidence. Grow Companion captures and organizes it. GEE interprets eligible evidence and governs knowledge distillation.
 
-Grow Companion may capture:
+GEE governs and performs:
 
-- Tasks
-- Events
-- Notes
-- Photos
-- milestones
-- Reflection
-- program-guided observations
-
-GEE is responsible for:
-
-- canonical evidence
-- normalization
-- canonical calculations
-- reporting
-- analytics
-- eligibility
-- aggregation
-- recommendations
-- insights
+- evidence eligibility
+- evidence normalization
+- evidence lineage
+- evidence confidence
 - evidence interpretation
+- knowledge distillation
 
-Grow Companion must not create a competing evidence or analytics engine. GEE may later consume eligible post-germination observations through an explicit Evidence Adapter.
+GEE does not create or own original Session evidence. It does not replace or mutate original evidence without preserved lineage.
 
-Not every Task, Event, note, photo, milestone, or Reflection is automatically verified evidence. GEE determines eligibility, lineage, confidence, and interpretation.
+Grow Companion and the Session Context Engine must not create competing evidence, interpretation, analytics, or knowledge engines.
+
+Not every Task, Event, note, photo, milestone, system record, or Reflection is automatically verified evidence. GEE determines eligibility and preserves attribution and lineage throughout interpretation.
+
+Every future capability should strengthen one or more of:
+
+- evidence completeness
+- evidence continuity
+- evidence quality
+- evidence confidence
+- evidence interpretation
+- knowledge distillation
+
+This is the architectural filter for future capability planning.
 
 ## Objective and Subjective Evidence
 
-Objective evidence may include:
+Objective evidence may include germination count, tested count, germination rate, elapsed time, canonical completion data, and structured measured outcomes.
 
-- germination count
-- tested count
-- germination rate
-- elapsed time
-- canonical completion data
-- structured measured outcomes
+Subjective evidence may include Overall Experience, Would Grow Again, Final Thoughts, and future structured grower observations.
 
-Subjective evidence may include:
+Would Grow Again may become a Variety result through GEE aggregation, provided the result retains sample size, lineage, attribution, distribution, and confidence context.
 
-- Overall Experience
-- Would Grow Again
-- Final Thoughts
-- future structured grower observations
+A subjective rating must not be presented as equivalent to measured performance.
 
-Would Grow Again may become a Variety result through GEE aggregation, for example:
+For Source Reports, Would Grow Again may contribute indirectly through attributed variety outcomes. It must not be mislabeled as a direct rating of the Source unless Grow later establishes a separate Source-specific evidence boundary.
 
-> **Would Grow Again**
->
-> 4.6 / 5
->
-> Based on 243 completed Reflections
-
-GEE must preserve sample size, evidence lineage, source attribution, confidence context, and distribution where appropriate. A subjective rating must not be presented as equivalent to measured performance.
-
-For Source Reports, Would Grow Again may contribute indirectly through attributed variety outcomes. It must not be mislabeled as a direct rating of the Source unless Grow later asks a separate Source-specific question.
-
-## Session, GEE, and Seed Vault Responsibilities
+## Session, Context, GEE, and Seed Vault Responsibilities
 
 ### Session
 
-Stores the story: identity, ownership, privacy, complete lifecycle, completed records, and historical context.
+Stores the story: identity, ownership, privacy, complete lifecycle, completed records, original evidence, attributable system records, and historical context.
 
 ### Grow Companion
 
-Guides the work: lifecycle navigation, current-phase workflow, and access to completed phase records.
+Guides the work and captures, structures, organizes, preserves, and presents user-produced evidence.
+
+### Session Context Engine
+
+Produces deterministic operational context from canonical records by evaluating operational state, workflow continuity, evidence readiness, and relevant operational attention.
 
 ### GEE
 
-Interprets the evidence: normalization, eligibility, analytics, aggregation, reports, recommendations, and insights.
+Governs eligibility, normalization, lineage, confidence, interpretation, and knowledge distillation without creating or owning original evidence.
 
 ### Seed Vault
 
-Preserves the lesson: inventory, variety history, and the linked distilled Reflection.
+Preserves inventory, genetics, ownership and acquisition information, and intentionally distilled knowledge grounded in canonical evidence.
 
-These responsibilities must remain separate.
+These responsibilities remain separate.
 
 ## Testing Programs
 
-Testing Programs configure the existing Session and Grow Companion architecture. They do not create a second Session type, Task system, Event system, Calendar, timeline, or evidence engine.
+Testing Programs configure the existing Session and Grow Companion architecture. They do not create a second Session type, task system, event system, scheduling system, notification system, Reflection system, context engine, or evidence engine.
 
-Testing Programs may later provide:
-
-- program-created Tasks
-- required checkpoints and due windows
-- required observations
-- milestones
-- evidence requests
-- completion rules
-- participant progress
-- recognition outcomes
-
-All program guidance must use the same canonical Session, Grow Companion, Task, Event, Reflection, and GEE architecture.
+Program guidance must use the same canonical Session, Grow Companion, Task, Event, Reflection, Session Context, and GEE architecture.
 
 ## Privacy
 
-Grow Companion is private by default.
+Grow Companion and original Session evidence are private by default. Future sharing remains explicit and owner-controlled.
 
-Future sharing must remain explicit and owner-controlled.
+Tasks, events, journal entries, scheduling records, environment data, grow photos, and Reflection must not become public automatically.
 
-The following must not become public automatically:
+Knowledge distillation into the Seed Vault does not imply public visibility. Any future sharing capability must preserve ownership, attribution, provenance, and explicit owner control.
 
-- tasks
-- events
-- journal entries
-- calendar entries
-- environment data
-- grow photos
-- Reflection
+## Long-Term Platform Architecture
 
-Saving a Reflection to the Seed Vault does not imply public visibility.
+Grow's conceptual long-term architecture is:
 
-Public or social sharing must always require an explicit owner action and must respect Grow’s existing privacy and visibility architecture.
+```text
+User Activity
+↓
+Grow Companion
+↓
+Session Records
+↓
+Session Context
+↓
+Evidence Readiness
+↓
+GEE
+↓
+Intentional Knowledge Distillation
+↓
+Seed Vault
+```
 
-## Photos and Sharing
+Users produce evidence through canonical Session activity. Grow Companion captures, structures, organizes, preserves, and presents that evidence. Session Context deterministically organizes operational understanding and evaluates evidence readiness. GEE interprets eligible evidence and governs intentional knowledge distillation. The Seed Vault preserves the resulting knowledge without becoming Session history.
 
-Grow Companion may allow growers to capture meaningful progress photos.
-
-The goal is not to create an unrestricted public gallery.
-
-Future sharing may generate a clean external Share Card or selected social-ready summary containing approved information, such as:
-
-- variety
-- source
-- key milestones
-- germination result
-- grow duration
-- selected final photos
-- optional Reflection excerpt
-
-The grower controls what is included.
-
-No direct in-app public grow feed is required by this foundation.
-
-## Version 1 Boundary
-
-The architectural completion target for Version 1 includes:
-
-- Session lifecycle and composition
-- Grow Companion foundation
-- Tasks, Events, and activity history
-- Growing progress
-- Testing Program integration through Grow Companion
-- Reflection and Seed Vault linkage
-- a GEE-compatible subjective evidence boundary
-
-Advanced capabilities remain extensions of this architecture and may be deferred, including:
-
-- full Calendar
-- recurrence
-- reminders
-- notifications
-- AI recommendations
-- advanced environment tracking
-- advanced breeder and Source dashboards
-
-## Custom Scheduling and Notifications
-
-Future Grow Companion scheduling may support:
-
-- basic Upcoming Tasks
-- advanced Calendar views
-- custom tasks
-- recurring tasks
-- custom reminder times
-- snooze
-- rescheduling
-- grow templates
-- user-created notifications
-
-The default experience should remain simple.
-
-Advanced scheduling should be available progressively without overwhelming new users.
-
-Basic mode should prioritize:
-
-- Today
-- Upcoming Tasks
-- Quick Add
-
-Advanced mode may introduce:
-
-- full Calendar
-- templates
-- recurrence
-- filters
-- journal overlays
-- event history
+Future capabilities—including Reflection, reports, Community, Testing Programs, Grow Network, recommendations, and commercial intelligence—must integrate into this architecture instead of introducing parallel systems.
 
 ## Repeat
 
-The lifecycle intentionally ends where it began:
+Repeat means beginning the next grow with more trusted knowledge than the previous one.
 
-```text
-Seed Vault
-→ Start Session
-→ Germination
-→ Growing
-→ Reflection
-→ Seed Vault
-→ Repeat
-```
-
-Repeat is not merely restarting.
-
-It means beginning the next grow with more knowledge than the previous one.
-
-Each repetition increases:
-
-- knowledge
-- confidence
-- historical evidence
-- decision quality
-- personal recommendations
-- understanding of varieties and sources
+Each repetition may increase knowledge, confidence, historical evidence, decision quality, personal recommendations, and understanding of varieties and sources.
 
 The goal is continuous improvement, not continuous data collection.
 
@@ -695,17 +535,21 @@ The goal is continuous improvement, not continuous data collection.
 
 > “Every grow should make the next grow better.”
 
-> “Nothing disappears. Completed phases become accessible history.”
+> “Evidence before intelligence.”
 
-> “Grow Companion is the operational hub of the Session.”
+> “Users create evidence. Grow Companion captures, structures, organizes, and preserves it.”
+
+> “Context never creates evidence.”
+
+> “Nothing disappears. Completed phases remain accessible history.”
 
 > “The Session stores the story.”
 
-> “Grow Companion guides the work.”
+> “The Session Context Engine provides deterministic Operational Intelligence.”
 
-> “GEE interprets the evidence.”
+> “GEE interprets eligible evidence and governs knowledge distillation.”
 
-> “The Seed Vault preserves the lesson.”
+> “The Seed Vault preserves inventory and intentionally distilled knowledge.”
 
 > “Grow does not just help people grow plants. Grow helps people grow knowledge.”
 
@@ -713,12 +557,16 @@ The goal is continuous improvement, not continuous data collection.
 
 The Session is one continuous, user-owned lifecycle, not a germination-only record or a set of phase-specific Sessions.
 
-Grow Companion is the permanent operational hub inside that Session.
+Grow Companion is the permanent operational hub inside that Session. It captures, structures, organizes, preserves, and presents evidence created by users through their activity.
 
-Germination, Growing, and Reflection are phase workspaces. Completed phases remain permanently accessible records inside the same Session.
+Germination, Growing, and Reflection are canonical phases. Completed phases remain permanently accessible records inside the same Session.
 
-GEE remains the canonical evidence and interpretation layer.
+The Session Context Engine is the deterministic platform service for operational state, workflow continuity, evidence readiness, and relevant operational attention. It never creates evidence or substitutes derived context for original evidence.
+
+GEE remains the canonical evidence interpretation engine. It does not create or own original Session evidence.
 
 Testing Programs configure this architecture rather than creating a parallel workflow.
 
-> “Every new feature must extend the existing Session through Grow Companion or integrate with GEE, the Seed Vault, or another established canonical domain. It must not create a parallel system without an explicit foundational decision.”
+Backward compatibility is an architectural obligation, but implementation mechanisms require an approved Implementation Contract.
+
+> “Every new capability must strengthen the canonical Session Evidence Pipeline through Grow Companion, the Session Context Engine, GEE, the Seed Vault, or another established canonical domain. It must not create a parallel system without an explicit foundational decision.”
