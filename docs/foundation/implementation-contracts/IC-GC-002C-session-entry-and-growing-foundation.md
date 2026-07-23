@@ -60,7 +60,7 @@ This contract defines only:
 2. Seed Session entry;
 3. Grow Session entry;
 4. Growing initialization;
-5. Growing evidence ownership and the Plant Group model;
+5. Growing evidence ownership, canonical persistence, and the Plant Group model;
 6. reference timing and observed timing boundaries;
 7. the deterministic Growing Summary; and
 8. the Growing operational workspace and its capability ownership boundaries.
@@ -214,6 +214,38 @@ Growing maintains its own:
 - complete historical phase record.
 
 No later phase may infer, rename, overwrite, or recalculate Growing evidence. Deterministic projections may be recalculated from canonical evidence without mutating that evidence.
+
+### 7.1 Canonical Growing Persistence
+
+Approved Growing evidence uses one canonical relationship:
+
+```text
+Canonical Session
+→ zero or one Growing Phase Record
+→ zero or more Plant Group Records
+```
+
+A Growing Phase Record:
+
+- belongs to exactly one canonical Session and is unique per Session;
+- owns the approved Grow Context;
+- contains no Germination evidence; and
+- contains no deferred timing, harvest-event, workspace, Reflection, or GEE data.
+
+Opening, activating, or viewing Growing must not create a Growing Phase Record or Plant Group automatically. The Growing Phase Record is created only after the owner intentionally saves valid Growing evidence.
+
+Each Plant Group Record:
+
+- belongs to exactly one Growing Phase Record;
+- owns one approved Plant Group;
+- uses one immutable internal identifier independent from its editable label and display order; and
+- contains only the Plant Group evidence approved by this contract.
+
+Editing a label or reordering rows must not replace Plant Group identity. Deleting one Plant Group must not alter another Plant Group's identity.
+
+Growing evidence must not be stored in Germination Partitions, snapshot state, Session notes, Session images, Tasks, Events, Seed Vault records, an unrelated or miscellaneous Session field, or a local-only evidence store.
+
+Local, demo, scenario, and cloud representations must map losslessly to this same logical model, ownership, stable identity, and validation boundary. Their technical representation may differ, but no separate local evidence contract is authorized.
 
 ## 8. Editable Growing Chart and Plant Groups
 
@@ -409,6 +441,10 @@ Any future movement from observed Session evidence toward interpreted or preserv
 - No capability may duplicate or replace another capability's responsibility.
 - No parallel Session, phase, chart, Source, Variety, or evidence system is authorized.
 - Evidence belonging to one phase must never be inferred, renamed, overwritten, or recalculated as evidence by another phase.
+- Growing evidence has dedicated canonical persistence: each Session has at most one Growing Phase Record, and Plant Groups are its child evidence records.
+- Plant Group identity is stable and independent from its label, display order, and the identity of every other Plant Group.
+- Opening or viewing Growing does not create evidence.
+- Local and cloud behavior represent the same canonical Growing model without a parallel evidence contract.
 - Deterministic summaries are projections from canonical evidence and must not mutate, replace, or become a second entry surface for that evidence.
 - A phase omitted by the selected Session entry path has no fabricated evidence or completed phase record.
 - One Session and one Grow Companion persist across all included phases.
@@ -436,7 +472,9 @@ Existing Sessions remain compatible:
 - legacy compatibility must preserve Session identity, owner, privacy, phase evidence, routes, and current behavior; and
 - compatibility must not create a duplicate Session, phase record, chart, evidence store, or workspace.
 
-No destructive legacy classification or backfill is authorized. Schema and migration changes are authorized only for the nullable canonical Session entry discriminator defined in Section 5.4.
+Existing Sessions without Growing evidence remain valid, receive no backfill or rewrite, are not treated as containing recorded zero values, and create no Growing Phase Record or Plant Group automatically. Seed Session, Grow Session, and legacy compatibility behavior remain unchanged.
+
+No destructive legacy classification or backfill is authorized. A later approved ICE may add only the minimum schema and migration needed for the nullable canonical Session entry discriminator in Section 5.4 and the dedicated Growing persistence model in Section 7.1. Growing evidence inherits ownership through its canonical Session and remains private. Required constraints and ownership-preserving security may be added for these records, but unrelated RLS, grants, policies, ownership, publication behavior, or credentials must not change.
 
 ## 15. Non-Goals
 
@@ -457,7 +495,7 @@ This contract does not define or authorize:
 - grow-stage inference or a canonical grow-stage model;
 - public sharing or Community projection;
 - new Task, Event, Notes, Photos, Documents, Calendar, or attachment systems;
-- database schemas, migrations, storage models, APIs, or exact UI controls beyond the nullable canonical Session entry discriminator and interaction boundaries approved in Section 5.
+- database schemas, migrations, storage models, APIs, or exact UI controls beyond the nullable canonical Session entry discriminator, the minimum dedicated Growing persistence authorized by Section 7.1, and the interaction boundaries approved by this contract.
 
 ## 16. Acceptance Criteria
 
@@ -481,6 +519,10 @@ An approved implementation satisfies this contract only when:
 - Growing evidence is never inferred from Germination;
 - eligible expected Vegetative and Flowering timing may initialize from linked Seed Vault reference knowledge with provenance, remains editable Session context, never becomes observed evidence, and never writes back automatically;
 - reference knowledge never initializes, replaces, corrects, or overwrites observed Session evidence automatically, and observed evidence never overwrites Seed Vault knowledge automatically;
+- intentional save of valid Growing evidence creates at most one canonical Growing Phase Record for the Session and zero or more stable child Plant Group Records;
+- opening, activating, viewing, or reviewing Growing creates no Growing evidence automatically;
+- Growing evidence is never stored in Germination Partitions, snapshot state, Session notes, Session images, Tasks, Events, Seed Vault records, miscellaneous Session fields, or a local-only evidence store;
+- local, demo, scenario, and cloud representations map losslessly to the same canonical Growing model;
 - the Growing Summary appears above the chart and deterministically projects only Environment Type, Grow Method, Plant Count, Harvested Count, and available expected timing without duplicate entry or unsupported conclusions;
 - the Growing workspace is reserved below the chart as the ownership location for future Tasks, Events, Calendar, Notes, Photos, and Documents without implementing or duplicating those capabilities;
 - Reflection and all downstream interpretation and knowledge-writing behavior remain outside scope;
@@ -501,6 +543,9 @@ Before approval of an implementation, verification must demonstrate:
 - Plant Group evidence remains attributable and does not mutate Germination or Seed Vault records;
 - summary values reproduce deterministically from canonical Growing evidence;
 - workspace composition reuses canonical capability owners and creates no parallel systems;
+- dedicated Growing persistence maintains at most one Growing Phase Record per Session and stable child Plant Group identity;
+- existing Sessions without Growing evidence remain valid without backfill, fabricated zeros, or automatically created records;
+- local, demo, scenario, and cloud representations preserve the same logical Growing evidence and validation boundaries;
 - Preview Studio, demo, QA, scenario, authorization, RLS, privacy, and production-data protections remain intact;
 - existing Sessions remain compatible without fabricated classification or evidence; and
 - no pre-existing unrelated working-tree change was modified.
@@ -511,8 +556,7 @@ For this documentation-only task, verification must confirm that only this contr
 
 The following decisions remain unresolved:
 
-- stable Plant Group internal-identifier representation and persistence — **TBD — Requires Architecture Approval**;
-- Plant Group storage types, required status, and validation beyond the approved positive-whole-number rule — **TBD — Requires Architecture Approval**;
+- additional Plant Group required-field and validation rules beyond the approved vocabularies and positive-whole-number count rule — **TBD — Requires Architecture Approval**;
 - mixed-sex Plant Group representation — **TBD — Requires Architecture Approval**;
 - Plant Group split, merge, and count-correction behavior — **TBD — Requires Architecture Approval**;
 - Partial-harvest representation, Plant Group splitting, count effects, and evidence history — **TBD — Requires Architecture Approval**;
@@ -542,6 +586,7 @@ Implementation may begin only after architecture review confirms:
 - reference and observed timing boundaries are approved, and an implementation that includes expected timing uses an already approved storage, unit, range, and normalization convention;
 - the intended Growing Summary fields and deterministic rules are approved;
 - every workspace capability included in an implementation has a separately approved canonical owner and behavior contract;
+- the dedicated Growing Phase Record and Plant Group child-record persistence model is approved without assigning evidence to another information owner;
 - compatibility requires no destructive relabeling or fabricated legacy evidence;
 - security and Preview Studio boundaries require no unapproved change; and
 - every Architecture Gap required by the proposed implementation slice is resolved.
