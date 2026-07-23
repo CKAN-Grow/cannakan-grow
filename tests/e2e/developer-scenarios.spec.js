@@ -4067,16 +4067,66 @@ test.describe("local Developer Scenarios", () => {
     }));
     expect(duplicateSubmissionState).toEqual({ taskCount: 1, taskInsertAttempts: insertsBeforeDuplicateAttempt + 1 });
 
+    const eventIsolationBefore = await page.evaluate(() => ({
+      task: JSON.parse(JSON.stringify(window.__growCompanionCapabilityDb.tasks[0])),
+      lifecycle: getSessionLifecyclePresentation(window.__growCompanionCapabilityLiveSession),
+      germination: JSON.parse(JSON.stringify(window.__growCompanionCapabilityLiveSession.germination || window.__growCompanionCapabilityLiveSession.germinationRecord || null)),
+      growing: JSON.parse(JSON.stringify(window.__growCompanionCapabilityLiveSession.growingPhase)),
+    }));
     await growing.getByRole("button", { name: "Add Event" }).click();
     dialog = page.locator(".grow-companion-record-dialog");
     await dialog.locator('input[name="title"]').fill("Moved into final container");
     await dialog.locator('textarea[name="details"]').fill("Root ball remained intact.");
+    await dialog.locator('select[name="context"]').selectOption("group:00000000-0000-4000-8000-000000000042");
+    await dialog.locator('select[name="category"]').selectOption("transplant");
+    await dialog.locator('select[name="occurredKind"]').selectOption("instant");
     await dialog.locator('input[name="date"]').fill("2026-07-20");
     await dialog.locator('input[name="time"]').fill("13:15");
-    await dialog.locator('select[name="category"]').selectOption("transplant");
+    await dialog.locator('input[name="timezone"]').fill("America/New_York");
+    await dialog.locator('input[name="timezone"]').dispatchEvent("change");
     await dialog.getByRole("button", { name: "Add Event", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Moved into final container");
+    const createdEvent = await page.evaluate(() => window.__growCompanionCapabilityDb.events[0]);
+    expect(createdEvent).toMatchObject({
+      id: "capability-events-2",
+      session_id: "00000000-0000-4000-8000-000000000040",
+      user_id: expect.any(String),
+      growing_phase_id: "00000000-0000-4000-8000-000000000041",
+      plant_group_id: "00000000-0000-4000-8000-000000000042",
+      category: "transplant",
+      origin: "user",
+      occurred_kind: "instant",
+      occurred_date: null,
+      occurred_time: null,
+      occurred_at: "2026-07-20T17:15:00.000Z",
+      occurred_local_datetime: "2026-07-20 13:15",
+      occurred_timezone: "America/New_York",
+      occurred_utc_offset_minutes: -240,
+    });
+    const createdEventCreatedAt = createdEvent.created_at;
+    const createdEventUpdatedAt = createdEvent.updated_at;
+    await page.evaluate(() => renderSessionDetail("00000000-0000-4000-8000-000000000040"));
+    await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Moved into final container");
+    await growing.getByRole("button", { name: "Edit event: Moved into final container" }).click();
+    dialog = page.locator(".grow-companion-record-dialog");
+    await dialog.locator('input[name="title"]').fill("Final container move");
+    await page.waitForTimeout(10);
+    await dialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(dialog).toHaveCount(0);
+    const correctedEvent = await page.evaluate(() => window.__growCompanionCapabilityDb.events[0]);
+    expect(correctedEvent.id).toBe("capability-events-2");
+    expect(correctedEvent.created_at).toBe(createdEventCreatedAt);
+    expect(correctedEvent.updated_at).not.toBe(createdEventUpdatedAt);
+    expect(Number.isNaN(Date.parse(correctedEvent.updated_at))).toBe(false);
+    await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Final container move");
+    const eventIsolationAfter = await page.evaluate(() => ({
+      task: JSON.parse(JSON.stringify(window.__growCompanionCapabilityDb.tasks[0])),
+      lifecycle: getSessionLifecyclePresentation(window.__growCompanionCapabilityLiveSession),
+      germination: JSON.parse(JSON.stringify(window.__growCompanionCapabilityLiveSession.germination || window.__growCompanionCapabilityLiveSession.germinationRecord || null)),
+      growing: JSON.parse(JSON.stringify(window.__growCompanionCapabilityLiveSession.growingPhase)),
+    }));
+    expect(eventIsolationAfter).toEqual(eventIsolationBefore);
 
     await growing.getByRole("button", { name: "Edit task: Check canopy moisture" }).click();
     dialog = page.locator(".grow-companion-record-dialog");
@@ -4114,9 +4164,9 @@ test.describe("local Developer Scenarios", () => {
     await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Check canopy and soil moisture");
 
     page.once("dialog", (confirmation) => confirmation.accept());
-    await growing.getByRole("button", { name: "Delete event: Moved into final container" }).click();
+    await growing.getByRole("button", { name: "Delete event: Final container move" }).click();
     await expect(growing.locator("[data-grow-companion-activity-id]")).toHaveCount(1);
-    await expect(growing.locator("[data-grow-companion-activity]")).not.toContainText("Moved into final container");
+    await expect(growing.locator("[data-grow-companion-activity]")).not.toContainText("Final container move");
 
     const persisted = await page.evaluate(() => window.__growCompanionCapabilityDb);
     expect(persisted.tasks).toHaveLength(1);

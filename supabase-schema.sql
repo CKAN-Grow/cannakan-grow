@@ -4351,6 +4351,144 @@ comment on table public.grow_session_tasks is
 comment on column public.grow_session_tasks.due_kind is
   'Canonical due form: none, date, or instant. Null identifies read-compatible legacy due data.';
 
+-- Canonical Growing Workspace Events (IC-GC-003C).
+create table if not exists public.grow_session_events (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.grow_sessions(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  growing_phase_id uuid references public.grow_session_growing_phases(id),
+  plant_group_id uuid references public.grow_session_plant_groups(id) on delete set null,
+  title text,
+  details text not null default '',
+  occurred_kind text,
+  occurred_date date,
+  occurred_time time without time zone,
+  occurred_at timestamptz,
+  occurred_local_datetime timestamp without time zone,
+  occurred_timezone text,
+  occurred_utc_offset_minutes smallint,
+  category text,
+  origin text not null default 'user',
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint grow_session_events_title_check check (title is null or char_length(btrim(title)) between 1 and 160),
+  constraint grow_session_events_details_check check (char_length(details) <= 2000),
+  constraint grow_session_events_category_check check (category is null or category in (
+    'observation', 'maintenance', 'environment', 'treatment', 'transplant',
+    'harvest', 'issue', 'other', 'plant-health', 'nutrition'
+  )),
+  constraint grow_session_events_origin_check check (origin in ('user', 'system', 'testing_program')),
+  constraint grow_session_events_occurred_kind_check check (occurred_kind is null or occurred_kind in ('date', 'instant')),
+  constraint grow_session_events_occurred_shape_check check (
+    occurred_kind is null
+    or (
+      occurred_kind = 'date' and occurred_date is not null and occurred_time is null
+      and occurred_at is null and occurred_local_datetime is null
+      and occurred_timezone is null and occurred_utc_offset_minutes is null
+    )
+    or (
+      occurred_kind = 'instant' and occurred_date is null and occurred_time is null
+      and occurred_at is not null and occurred_local_datetime is not null
+      and nullif(btrim(occurred_timezone), '') is not null
+      and occurred_utc_offset_minutes between -840 and 840
+      and timezone(occurred_timezone, occurred_at) = occurred_local_datetime
+      and occurred_utc_offset_minutes = extract(
+        epoch from (occurred_local_datetime - timezone('UTC', occurred_at))
+      ) / 60
+    )
+  )
+);
+
+create index if not exists grow_session_events_session_date_idx
+  on public.grow_session_events (session_id, occurred_date, occurred_time, id);
+create index if not exists grow_session_events_owner_idx
+  on public.grow_session_events (user_id, session_id);
+create index if not exists grow_session_events_canonical_occurrence_idx
+  on public.grow_session_events (session_id, occurred_kind, occurred_date, occurred_at, id);
+
+drop trigger if exists grow_session_events_enforce_owner on public.grow_session_events;
+create trigger grow_session_events_enforce_owner
+before insert or update of session_id, user_id on public.grow_session_events
+for each row execute function public.enforce_grow_session_activity_owner();
+
+create or replace function public.enforce_grow_session_event_context()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if new.growing_phase_id is not null and not exists (
+    select 1 from public.grow_session_growing_phases phase
+    where phase.id = new.growing_phase_id and phase.session_id = new.session_id
+  ) then raise exception 'Event Growing phase must belong to its Session.'; end if;
+  if new.plant_group_id is not null and (
+    new.growing_phase_id is null or not exists (
+      select 1 from public.grow_session_plant_groups plant_group
+      join public.grow_session_growing_phases phase on phase.id = plant_group.growing_phase_id
+      where plant_group.id = new.plant_group_id and phase.id = new.growing_phase_id
+        and phase.session_id = new.session_id
+    )
+  ) then raise exception 'Event Plant Group must belong to its Session and Growing phase.'; end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_grow_session_event_context() from public, anon, authenticated, service_role;
+drop trigger if exists grow_session_events_enforce_context on public.grow_session_events;
+create trigger grow_session_events_enforce_context
+before insert or update of session_id, growing_phase_id, plant_group_id on public.grow_session_events
+for each row execute function public.enforce_grow_session_event_context();
+
+create or replace function public.enforce_grow_session_event_canonical_write()
+returns trigger language plpgsql set search_path = pg_catalog, public as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.origin <> 'user' then raise exception 'New Events must be user-created.'; end if;
+    if new.category not in ('observation','maintenance','environment','treatment','transplant','harvest','issue','other') then raise exception 'New Events require a canonical Event type.'; end if;
+    if new.occurred_kind not in ('date','instant') then raise exception 'New Events require a canonical occurrence.'; end if;
+  else
+    if new.created_at is distinct from old.created_at then raise exception 'Event created_at is immutable.'; end if;
+    if new.origin is distinct from old.origin then raise exception 'Event origin provenance cannot be relabelled.'; end if;
+    if new.category is distinct from old.category and new.category not in ('observation','maintenance','environment','treatment','transplant','harvest','issue','other') then raise exception 'Corrected Events require a canonical Event type.'; end if;
+    if old.occurred_kind is null and new.occurred_kind is null
+       and (new.occurred_date, new.occurred_time, new.occurred_at, new.occurred_local_datetime, new.occurred_timezone, new.occurred_utc_offset_minutes)
+           is distinct from
+           (old.occurred_date, old.occurred_time, old.occurred_at, old.occurred_local_datetime, old.occurred_timezone, old.occurred_utc_offset_minutes)
+    then raise exception 'Corrected Event occurrence requires a canonical occurrence type.'; end if;
+  end if;
+  if new.category = 'other' and nullif(btrim(coalesce(new.title, '')), '') is null
+     and nullif(btrim(coalesce(new.details, '')), '') is null
+  then raise exception 'Other Events require a title or details.'; end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_grow_session_event_canonical_write() from public, anon, authenticated, service_role;
+drop trigger if exists grow_session_events_enforce_canonical_write on public.grow_session_events;
+create trigger grow_session_events_enforce_canonical_write
+before insert or update on public.grow_session_events
+for each row execute function public.enforce_grow_session_event_canonical_write();
+
+drop trigger if exists grow_session_events_set_updated_at on public.grow_session_events;
+create trigger grow_session_events_set_updated_at
+before update on public.grow_session_events
+for each row execute function public.set_grow_session_activity_updated_at();
+
+alter table public.grow_session_events enable row level security;
+drop policy if exists "Owners can read their Session events" on public.grow_session_events;
+create policy "Owners can read their Session events" on public.grow_session_events for select to authenticated
+using (auth.uid() = user_id and exists (select 1 from public.grow_sessions session_row where session_row.id = grow_session_events.session_id and session_row.user_id = auth.uid()));
+drop policy if exists "Owners can create their Session events" on public.grow_session_events;
+create policy "Owners can create their Session events" on public.grow_session_events for insert to authenticated
+with check (auth.uid() = user_id and exists (select 1 from public.grow_sessions session_row where session_row.id = grow_session_events.session_id and session_row.user_id = auth.uid()));
+drop policy if exists "Owners can update their Session events" on public.grow_session_events;
+create policy "Owners can update their Session events" on public.grow_session_events for update to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id and exists (select 1 from public.grow_sessions session_row where session_row.id = grow_session_events.session_id and session_row.user_id = auth.uid()));
+drop policy if exists "Owners can delete their Session events" on public.grow_session_events;
+create policy "Owners can delete their Session events" on public.grow_session_events for delete to authenticated
+using (auth.uid() = user_id);
+
+revoke all on public.grow_session_events from public, anon, authenticated, service_role;
+grant select, insert, update, delete on public.grow_session_events to authenticated;
+
+comment on table public.grow_session_events is 'Owner-private canonical Growing Workspace Events scoped to one Grow Session.';
+comment on column public.grow_session_events.occurred_kind is 'Canonical occurrence form: date or instant. Null identifies read-compatible legacy occurrence data.';
 notify pgrst, 'reload schema';
 
 -- End of Cannakan Grow Supabase schema.
