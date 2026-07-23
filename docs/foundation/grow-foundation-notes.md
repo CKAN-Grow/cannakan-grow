@@ -22,6 +22,7 @@ Foundation Notes allow Grow to preserve strong ideas without interrupting the cu
 | FN-002 | [Product Language & Ownership](./foundation-notes/FN-002-product-language-and-ownership.md) | Validated | Navigation, UX, Grow Profile, Grow Sessions, Grow Seed Vault |
 | FN-003 | [Canonical Entities & Representation](./foundation-notes/FN-003-canonical-entities-and-representation.md) | Validated | Grow Network, Sources, Breeders, Organizations, Testing Programs |
 | FN-004 | [Session Context, Operational Intelligence & Evidence Readiness](./foundation-notes/FN-004-session-lifecycle-and-grow-companion.md) | Foundational Architecture | Sessions, Session Context, Evidence Readiness, Grow Companion, GEE, Seed Vault |
+| FN-GC-004 | [Growing Workspace Notes Foundation](./foundation-notes/FN-GC-004-growing-workspace-notes-foundation.md) | Foundational Architecture | Grow Sessions, Growing Workspace, Notes, Authorship, Evidence |
 
 ## Reusable Foundation Note template
 
