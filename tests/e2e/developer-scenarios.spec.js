@@ -4164,7 +4164,47 @@ test.describe("local Developer Scenarios", () => {
     expect(correctedNote.author_user_id).toBe(noteAuthor);
     expect(correctedNote.created_at).toBe(noteCreatedAt);
     expect(correctedNote.updated_at).not.toBe(noteCreatedAt);
-    await expect(growing.locator("[data-grow-companion-activity]")).not.toContainText("Canopy recovered after measured watering.");    const temporal = growing.locator("[data-grow-companion-temporal]");
+    await expect(growing.locator("[data-grow-companion-activity]")).not.toContainText("Canopy recovered after measured watering.");
+    await expect(growing.locator("xpath=ancestor::*[@data-session-phase-foundation][1]")).toHaveAttribute("data-workspace-composition", "canonical");
+    const composedWorkspace = await growing.evaluate((workspace) => {
+      const root = workspace.closest("[data-session-phase-foundation]");
+      if (!(root instanceof HTMLElement)) throw new Error("Workspace Composition root is unavailable.");
+      const controller = growCompanionActivityControllers.get(root);
+      const before = JSON.stringify({
+        tasks: controller.tasks,
+        events: controller.events,
+        notes: controller.notes,
+      });
+      const composition = getWorkspaceComposition().composeWorkspace({
+        sessionId: controller.sessionId,
+        tasks: controller.tasks,
+        events: controller.events,
+        notes: controller.notes,
+      });
+      return {
+        taskIds: composition.tasks.map((record) => record.id),
+        eventIds: composition.events.map((record) => record.id),
+        noteIds: composition.notes.map((record) => record.id),
+        activityTypes: composition.activity.map((record) => record.type),
+        temporalTypes: composition.temporalEntries.map((record) => record.sourceType),
+        sourceUnchanged: before === JSON.stringify({
+          tasks: controller.tasks,
+          events: controller.events,
+          notes: controller.notes,
+        }),
+        ownsPersistence: Object.keys(composition).some((key) => /store|table|persist|mutation/i.test(key)),
+      };
+    });
+    expect(composedWorkspace).toEqual({
+      taskIds: ["capability-tasks-1"],
+      eventIds: ["capability-events-2"],
+      noteIds: ["capability-notes-3"],
+      activityTypes: ["event"],
+      temporalTypes: ["event", "task"],
+      sourceUnchanged: true,
+      ownsPersistence: false,
+    });
+    const temporal = growing.locator("[data-grow-companion-temporal]");
     await expect(temporal.getByRole("heading", { name: "Timeline" })).toBeVisible();
     await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(2);
     await expect(temporal).toContainText("Check canopy moisture");

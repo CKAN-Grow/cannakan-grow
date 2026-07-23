@@ -126,7 +126,9 @@ for (const forbidden of ["localStorage", "sessionStorage", "indexedDB", ".from("
   assert.ok(!moduleSource.includes(forbidden), `projection module must remain unaware of ${forbidden}`);
 }
 const appSource = fs.readFileSync(path.resolve(__dirname, "../app.js"), "utf8");
-assert.ok(appSource.includes("projectTemporalRecords(controller.tasks, controller.events"));
+const compositionSource = fs.readFileSync(path.resolve(__dirname, "../src/workspace-composition.js"), "utf8");
+assert.ok(compositionSource.includes("temporalProjection.projectTemporalRecords(tasks, events"));
+assert.ok(appSource.includes("const entries = composition.temporalEntries;"));
 assert.ok(appSource.includes("createTimelineView(entries, adapterOptions)"));
 assert.ok(appSource.includes("createCalendarView(entries, adapterOptions)"));
 assert.ok(appSource.includes("function updateSessionLifecycleTimeline("), "Session lifecycle timeline remains independently owned");

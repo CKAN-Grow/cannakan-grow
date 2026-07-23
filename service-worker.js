@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v41-workspace-notes";
+const CACHE_NAME = "cannakan-grow-shell-v42-workspace-composition";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -7,6 +7,7 @@ const APP_SHELL_ASSETS = [
   "/src/grow-companion-contract.js",
   "/src/growing-workspace-temporal-projection.js",
   "/src/growing-workspace-notes.js",
+  "/src/workspace-composition.js",
   "/profile-hero-catalog-data.js",
   "/profile-hero-catalog.js",
   "/assets/images/profile-heroes/catalog.json",
