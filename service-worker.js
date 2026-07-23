@@ -5,6 +5,7 @@ const APP_SHELL_ASSETS = [
   "/styles.css",
   "/app.js",
   "/src/grow-companion-contract.js",
+  "/src/growing-workspace-temporal-projection.js",
   "/profile-hero-catalog-data.js",
   "/profile-hero-catalog.js",
   "/assets/images/profile-heroes/catalog.json",

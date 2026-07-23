@@ -4127,6 +4127,29 @@ test.describe("local Developer Scenarios", () => {
       growing: JSON.parse(JSON.stringify(window.__growCompanionCapabilityLiveSession.growingPhase)),
     }));
     expect(eventIsolationAfter).toEqual(eventIsolationBefore);
+    const temporal = growing.locator("[data-grow-companion-temporal]");
+    await expect(temporal.getByRole("heading", { name: "Timeline" })).toBeVisible();
+    await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(2);
+    await expect(temporal).toContainText("Check canopy moisture");
+    await expect(temporal).toContainText("Final container move");
+    await expect(temporal.locator("[data-grow-companion-action^='edit-'], [data-grow-companion-action^='delete-'], [data-grow-companion-action^='complete-']")).toHaveCount(0);
+    const projectionAttemptsBefore = await page.evaluate(() => window.__growCompanionCapabilityDb.attempts.length);
+    await temporal.locator("[data-grow-companion-temporal-filter]").selectOption("task");
+    await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(1);
+    await expect(temporal).toContainText("Check canopy moisture");
+    await expect(temporal).not.toContainText("Final container move");
+    await temporal.getByRole("button", { name: "Calendar" }).click();
+    await expect(temporal.getByRole("heading", { name: "Calendar" })).toBeVisible();
+    await temporal.locator("[data-grow-companion-temporal-filter]").selectOption("all");
+    await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(2);
+    const temporalMonth = await temporal.locator(".session-grow-companion-temporal-heading > div > p").last().textContent();
+    await temporal.getByRole("button", { name: "Next month" }).click();
+    await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(0);
+    await temporal.getByRole("button", { name: "Previous month" }).click();
+    await expect(temporal.locator(".session-grow-companion-temporal-heading > div > p").last()).toHaveText(temporalMonth);
+    await expect(temporal.locator("[data-temporal-entry-key]")).toHaveCount(2);
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.attempts.length)).toBe(projectionAttemptsBefore);
+    expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => /temporal|calendar|timeline/i.test(key)))).toEqual([]);
 
     await growing.getByRole("button", { name: "Edit task: Check canopy moisture" }).click();
     dialog = page.locator(".grow-companion-record-dialog");

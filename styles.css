@@ -89791,3 +89791,66 @@ img.person-profile-avatar {
 .session-phase-navigator-button.is-omitted {
   opacity: 0.72;
 }
+/* IC-GC-003D: read-only Growing Workspace temporal projection. */
+.session-workspace-shell--detail .session-grow-companion-temporal {
+  grid-column: 1 / -1;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-heading :is(h4, p) {
+  margin: 0;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-controls .button {
+  min-height: 38px;
+  padding: 7px 10px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-controls label {
+  display: grid;
+  gap: 3px;
+  color: rgba(214, 225, 210, 0.72);
+  font-size: 0.68rem;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-controls select {
+  min-height: 38px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-list--temporal .session-grow-companion-item {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-group {
+  margin-top: 14px;
+}
+
+.session-workspace-shell--detail .session-grow-companion-temporal-group > h5 {
+  margin: 0 0 8px;
+  color: rgba(226, 237, 222, 0.72);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 700px) {
+  .session-workspace-shell--detail .session-grow-companion-temporal-heading {
+    display: grid;
+  }
+
+  .session-workspace-shell--detail .session-grow-companion-temporal-controls {
+    justify-content: flex-start;
+  }
+}
