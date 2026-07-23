@@ -24,6 +24,7 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 
 - [AR-GC-003-01 — Workspace Time, State, Correction & Retention Semantics](../../architecture/AR-GC-003-01-workspace-time-state-correction-and-retention-semantics.md)
 - [AR-GC-003-02 — Growing Workspace Event Semantics & Vocabulary](../../architecture/AR-GC-003-02-growing-workspace-event-semantics-and-vocabulary.md)
+- [AR-GC-006-01 — Initial Photos Context Contract](../../architecture/AR-GC-006-01-initial-photos-context-contract.md)
 
 ## Implementation Contracts
 
