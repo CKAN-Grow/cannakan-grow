@@ -19,6 +19,7 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [CS-GC-004 — Growing Workspace Notes Composition Specification](./growing-workspace-notes-composition-specification.md)
 - [CS-GC-005 — Workspace Composition Specification](./workspace-composition-specification.md)
 - [CS-GC-006 — Photos Composition Specification](./photos-composition-specification.md)
+- [CS-GC-007 — Documents Composition Specification](./documents-composition-specification.md)
 
 ## Architecture Resolutions
 
