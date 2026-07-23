@@ -87,10 +87,43 @@ A Seed Session:
 - includes Germination as its entry phase;
 - begins with Germination as the canonical current phase;
 - uses the complete protected Germination composition governed by IC-GC-002B;
-- may continue into Growing within the same Session through an approved lifecycle transition; and
-- preserves completed Germination in full when Growing becomes current.
+- may end as a complete canonical Session after Germination;
+- may instead continue into Growing within the same Session through an explicit lifecycle decision; and
+- preserves completed Germination in full whether the Session ends or Growing becomes current.
 
 Seed Session entry must not create a second Session when the lifecycle advances to Growing.
+
+#### Germination Completion Decision
+
+Completing Germination does not automatically activate Growing. After Germination is completed, the user makes one explicit lifecycle decision. Neither outcome is preselected.
+
+**Complete Session** ends the canonical Session after Germination:
+
+- Session lifecycle state is Completed;
+- Germination lifecycle state is Completed;
+- Growing is Not included;
+- no Growing Phase Record exists;
+- no Plant Group exists; and
+- no Growing evidence is fabricated.
+
+**Continue to Growing** continues the same canonical Session:
+
+- Session lifecycle state remains Current;
+- Germination lifecycle state is Completed;
+- Growing becomes the canonical current phase;
+- no Plant Group is created automatically; and
+- Growing evidence exists only after an intentional valid save.
+
+Growing is optional for a Seed Session. Germination completion, Session completion, and Growing activation are separate actions. The system must not:
+
+- activate Growing automatically;
+- require Growing before Session completion;
+- preselect continuation;
+- create Growing persistence from Germination completion;
+- infer Plant Groups or plant counts from Germination evidence; or
+- reinterpret a completed Germination-only Session as an active Growing Session.
+
+A completed Germination-only Session is complete and valid. It retains all Germination history and evidence, remains available for full historical review, remains eligible for existing Germination evidence and analytics behavior, and requires no downstream phase record.
 
 ### 5.2 Grow Session
 
@@ -135,7 +168,7 @@ Session Entry is persisted on the canonical Session as one nullable discriminato
 - `grow` — the Session begins with Growing;
 - `null` — the legacy Session was created before Session Entry metadata existed.
 
-The discriminator is not a second lifecycle authority. Entry path, canonical current phase, viewed phase, and phase lifecycle state remain independent.
+The discriminator is not a second lifecycle authority. Entry path, canonical current phase, viewed phase, phase lifecycle state, and Session lifecycle state remain independent.
 
 A legacy Session with `null` entry metadata retains its existing historical behavior and is not rewritten, backfilled, or semantically labeled as a Seed Session. Compatibility logic may preserve its existing Germination-first experience only through an explicit legacy compatibility boundary; it must not normalize `null` to `seed` or assert Germination entry as a new architectural fact.
 
@@ -145,10 +178,10 @@ A direct internal route may carry the selected entry path into Session creation 
 
 Growing is an independent operational phase within the same Session and persistent Grow Companion.
 
-Growing begins with one Growing-owned setup step followed by one editable Growing evidence chart. The same setup applies when:
+When Growing is included, it begins with one Growing-owned setup step followed by one editable Growing evidence chart. The same setup applies when:
 
 - a Grow Session begins directly in Growing; or
-- a Seed Session enters Growing after Germination.
+- a Seed Session explicitly continues into Growing after Germination.
 
 Growing initialization must establish:
 
@@ -415,6 +448,8 @@ Capability-specific forms, storage, scheduling behavior, calendar behavior, remi
 Reflection is outside this contract.
 
 For purposes of responsibility separation, Reflection owns the future structured subjective evidence produced during intentional final Session review. It does not automatically own trusted or canonical knowledge and must not rewrite Growing evidence.
+Completing Germination must not automatically create or activate Reflection evidence. This contract does not decide Reflection eligibility, requirement, or activation.
+
 
 This contract does not define or authorize:
 
@@ -449,6 +484,10 @@ Any future movement from observed Session evidence toward interpreted or preserv
 - A phase omitted by the selected Session entry path has no fabricated evidence or completed phase record.
 - One Session and one Grow Companion persist across all included phases.
 
+- Germination completion does not automatically activate Growing.
+- A Seed Session may complete after Germination with Growing not included and no downstream evidence.
+- Continuing to Growing preserves the same canonical Session and creates no Growing evidence until intentional valid save.
+- Current phase, viewed phase, phase lifecycle state, and Session lifecycle state remain independent.
 ## 14. Security, Privacy, and Compatibility
 
 This contract changes no existing authorization, ownership, RLS, privacy, sharing, Preview Studio, demo, QA, scenario, or production-data boundary.
@@ -473,6 +512,8 @@ Existing Sessions remain compatible:
 - compatibility must not create a duplicate Session, phase record, chart, evidence store, or workspace.
 
 Existing Sessions without Growing evidence remain valid, receive no backfill or rewrite, are not treated as containing recorded zero values, and create no Growing Phase Record or Plant Group automatically. Seed Session, Grow Session, and legacy compatibility behavior remain unchanged.
+
+Existing completed Germination-only Sessions remain valid and unchanged. They must not be backfilled, reactivated, marked incomplete, assigned a Growing Phase Record, or treated as containing fabricated downstream evidence. Existing Sessions already continuing into Growing also remain unchanged.
 
 No destructive legacy classification or backfill is authorized. A later approved ICE may add only the minimum schema and migration needed for the nullable canonical Session entry discriminator in Section 5.4 and the dedicated Growing persistence model in Section 7.1. Growing evidence inherits ownership through its canonical Session and remains private. Required constraints and ownership-preserving security may be added for these records, but unrelated RLS, grants, policies, ownership, publication behavior, or credentials must not change.
 
@@ -516,6 +557,14 @@ An approved implementation satisfies this contract only when:
 - Source and Variety reuse their canonical systems without duplication;
 - Number of Plants is an explicit positive whole number and is never inferred from Germination counts;
 - Harvested means the entire current Plant Group is harvested and does not implement partial-harvest behavior;
+- a Seed Session may complete after Germination with Growing presented as not included;
+- Growing is optional for a Seed Session;
+- Germination completion does not activate Growing, create Growing persistence, or preselect continuation automatically;
+- completing a Germination-only Session creates no Growing evidence or downstream phase record;
+- continuing to Growing uses the same canonical Session and preserves completed Germination unchanged;
+- continuing creates no Plant Group automatically, and Growing persistence begins only after intentional valid save;
+- existing completed Germination-only Sessions remain valid, reviewable, and eligible for existing Germination evidence and analytics behavior; and
+- Reflection eligibility, requirement, and activation remain deferred;
 - Growing evidence is never inferred from Germination;
 - eligible expected Vegetative and Flowering timing may initialize from linked Seed Vault reference knowledge with provenance, remains editable Session context, never becomes observed evidence, and never writes back automatically;
 - reference knowledge never initializes, replaces, corrects, or overwrites observed Session evidence automatically, and observed evidence never overwrites Seed Vault knowledge automatically;
@@ -563,6 +612,8 @@ The following decisions remain unresolved:
 - harvest dates, harvest events, and Harvest workflows — **TBD — Requires Architecture Approval**;
 - expected-timing storage, units, permitted ranges, and normalization — **TBD — Requires Architecture Approval**;
 - reference-timing comparison, conflict, and correction behavior — **TBD — Requires Architecture Approval**;
+Growing optionality, the explicit post-Germination lifecycle decision, and Germination-only Session completion are resolved by Section 5.1 and are not Architecture Gaps.
+
 - observed-timing field contract and correction policy — **TBD — Requires Architecture Approval**;
 - actual Vegetative and Flowering timing, milestones, and timeline behavior — **TBD — Requires Architecture Approval**;
 - advanced Growing Summary fields, calculations, empty states, and presentation beyond Section 10 — **TBD — Requires Architecture Approval**;
@@ -590,5 +641,6 @@ Implementation may begin only after architecture review confirms:
 - compatibility requires no destructive relabeling or fabricated legacy evidence;
 - security and Preview Studio boundaries require no unapproved change; and
 - every Architecture Gap required by the proposed implementation slice is resolved.
+- Germination completion remains separate from the explicit decision to complete the Session or continue into Growing;
 
 Approval of IC-GC-002C authorizes only the Session Entry and Growing foundation defined in Section 4. It does not implicitly approve any later capability or unresolved implementation detail.
