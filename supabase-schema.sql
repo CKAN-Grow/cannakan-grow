@@ -4150,6 +4150,207 @@ comment on table public.grow_session_growing_phases is 'One canonical Growing ph
 comment on table public.grow_session_plant_groups is 'Canonical Plant Group evidence owned by a Growing phase record.';
 comment on column public.grow_sessions.post_germination_decision is 'Explicit post-Germination lifecycle decision; null preserves legacy compatibility.';
 
+-- Canonical Growing Workspace Tasks (IC-GC-003B).
+create table if not exists public.grow_session_tasks (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null references public.grow_sessions(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  growing_phase_id uuid references public.grow_session_growing_phases(id),
+  plant_group_id uuid references public.grow_session_plant_groups(id) on delete set null,
+  title text not null,
+  details text not null default '',
+  due_kind text,
+  due_date date,
+  due_time time without time zone,
+  due_at timestamptz,
+  due_local_datetime timestamp without time zone,
+  due_timezone text,
+  due_utc_offset_minutes smallint,
+  status text not null default 'open',
+  origin text not null default 'user',
+  completed_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint grow_session_tasks_title_check check (char_length(btrim(title)) between 1 and 160),
+  constraint grow_session_tasks_details_check check (char_length(details) <= 2000),
+  constraint grow_session_tasks_status_check check (status in ('open', 'completed', 'upcoming')),
+  constraint grow_session_tasks_origin_check check (origin in ('user', 'system', 'testing_program')),
+  constraint grow_session_tasks_due_kind_check check (due_kind is null or due_kind in ('none', 'date', 'instant')),
+  constraint grow_session_tasks_due_shape_check check (
+    due_kind is null
+    or (
+      due_kind = 'none'
+      and due_date is null and due_time is null and due_at is null
+      and due_local_datetime is null and due_timezone is null and due_utc_offset_minutes is null
+    )
+    or (
+      due_kind = 'date'
+      and due_date is not null and due_time is null and due_at is null
+      and due_local_datetime is null and due_timezone is null and due_utc_offset_minutes is null
+    )
+    or (
+      due_kind = 'instant'
+      and due_date is null and due_time is null and due_at is not null
+      and due_local_datetime is not null and nullif(btrim(due_timezone), '') is not null
+      and due_utc_offset_minutes between -840 and 840
+      and timezone(due_timezone, due_at) = due_local_datetime
+      and due_utc_offset_minutes = extract(
+        epoch from (due_local_datetime - timezone('UTC', due_at))
+      ) / 60
+    )
+  )
+);
+
+create index if not exists grow_session_tasks_session_due_idx
+  on public.grow_session_tasks (session_id, status, due_date, due_time, id);
+create index if not exists grow_session_tasks_owner_idx
+  on public.grow_session_tasks (user_id, session_id);
+create index if not exists grow_session_tasks_canonical_due_idx
+  on public.grow_session_tasks (session_id, status, due_kind, due_date, due_at, id);
+
+create or replace function public.enforce_grow_session_activity_owner()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $
+declare
+  parent_owner_id uuid;
+begin
+  select sessions.user_id
+    into parent_owner_id
+    from public.grow_sessions sessions
+   where sessions.id = new.session_id;
+
+  if parent_owner_id is null then
+    raise exception 'Grow Companion activity requires an existing Session.';
+  end if;
+  if new.user_id is distinct from parent_owner_id then
+    raise exception 'Grow Companion activity owner must match its Session owner.';
+  end if;
+  return new;
+end;
+$;
+
+revoke all on function public.enforce_grow_session_activity_owner() from public, anon, authenticated, service_role;
+
+drop trigger if exists grow_session_tasks_enforce_owner on public.grow_session_tasks;
+create trigger grow_session_tasks_enforce_owner
+before insert or update of session_id, user_id on public.grow_session_tasks
+for each row execute function public.enforce_grow_session_activity_owner();
+
+create or replace function public.enforce_grow_session_task_context()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $
+begin
+  if new.growing_phase_id is not null
+     and not exists (
+       select 1
+         from public.grow_session_growing_phases growing_phase
+        where growing_phase.id = new.growing_phase_id
+          and growing_phase.session_id = new.session_id
+     ) then
+    raise exception 'Task Growing phase must belong to its Session.';
+  end if;
+
+  if new.plant_group_id is not null then
+    if new.growing_phase_id is null then
+      raise exception 'Task Plant Group context requires Growing phase context.';
+    end if;
+    if not exists (
+      select 1
+        from public.grow_session_plant_groups plant_group
+        join public.grow_session_growing_phases growing_phase
+          on growing_phase.id = plant_group.growing_phase_id
+       where plant_group.id = new.plant_group_id
+         and growing_phase.id = new.growing_phase_id
+         and growing_phase.session_id = new.session_id
+    ) then
+      raise exception 'Task Plant Group must belong to its Session and Growing phase.';
+    end if;
+  end if;
+
+  return new;
+end;
+$;
+
+revoke all on function public.enforce_grow_session_task_context() from public, anon, authenticated, service_role;
+
+drop trigger if exists grow_session_tasks_enforce_context on public.grow_session_tasks;
+create trigger grow_session_tasks_enforce_context
+before insert or update of session_id, growing_phase_id, plant_group_id
+on public.grow_session_tasks
+for each row execute function public.enforce_grow_session_task_context();
+
+create or replace function public.set_grow_session_activity_updated_at()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$;
+
+revoke all on function public.set_grow_session_activity_updated_at() from public, anon, authenticated, service_role;
+
+drop trigger if exists grow_session_tasks_set_updated_at on public.grow_session_tasks;
+create trigger grow_session_tasks_set_updated_at
+before update on public.grow_session_tasks
+for each row execute function public.set_grow_session_activity_updated_at();
+
+alter table public.grow_session_tasks enable row level security;
+
+drop policy if exists "Owners can read their Session tasks" on public.grow_session_tasks;
+create policy "Owners can read their Session tasks"
+on public.grow_session_tasks for select to authenticated
+using (
+  auth.uid() = user_id
+  and exists (
+    select 1 from public.grow_sessions session_row
+    where session_row.id = grow_session_tasks.session_id and session_row.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Owners can create their Session tasks" on public.grow_session_tasks;
+create policy "Owners can create their Session tasks"
+on public.grow_session_tasks for insert to authenticated
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1 from public.grow_sessions session_row
+    where session_row.id = grow_session_tasks.session_id and session_row.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Owners can update their Session tasks" on public.grow_session_tasks;
+create policy "Owners can update their Session tasks"
+on public.grow_session_tasks for update to authenticated
+using (auth.uid() = user_id)
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1 from public.grow_sessions session_row
+    where session_row.id = grow_session_tasks.session_id and session_row.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Owners can delete their Session tasks" on public.grow_session_tasks;
+create policy "Owners can delete their Session tasks"
+on public.grow_session_tasks for delete to authenticated
+using (auth.uid() = user_id);
+
+revoke all on public.grow_session_tasks from public, anon, authenticated, service_role;
+grant select, insert, update, delete on public.grow_session_tasks to authenticated;
+
+comment on table public.grow_session_tasks is
+  'Owner-private canonical Growing Workspace Tasks scoped to one Grow Session.';
+comment on column public.grow_session_tasks.due_kind is
+  'Canonical due form: none, date, or instant. Null identifies read-compatible legacy due data.';
+
 notify pgrst, 'reload schema';
 
 -- End of Cannakan Grow Supabase schema.

@@ -3819,7 +3819,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(completedGermination.locator("[data-session-phase-summary='germination']")).toContainText(/\d+%/);
     await expect(currentGrowing).toBeVisible();
     await expect(currentGrowing.getByRole("heading", { name: "Growing", exact: true })).toBeVisible();
-    await expect(currentGrowing).toContainText("Upcoming Tasks");
+    await expect(currentGrowing).toContainText("Open Tasks");
     await expect(currentGrowing).toContainText("Recent Activity");
     await expect(currentGrowing.getByRole("button", { name: "Add Task" })).toBeDisabled();
     await expect(currentGrowing.getByRole("button", { name: "Add Event" })).toBeDisabled();
@@ -3906,7 +3906,7 @@ test.describe("local Developer Scenarios", () => {
       appState.user = { ...(appState.user || {}), id: ownerId };
       const liveSession = {
         ...source,
-        id: "grow-companion-capability-owner-session",
+        id: "00000000-0000-4000-8000-000000000040",
         userId: ownerId,
         devModeOnly: false,
         dev_mode_only: false,
@@ -3928,7 +3928,23 @@ test.describe("local Developer Scenarios", () => {
         is_deleted: false,
         deletedAt: "",
         deleted_at: "",
+        growingPhase: {
+          id: "00000000-0000-4000-8000-000000000041",
+          sessionId: "00000000-0000-4000-8000-000000000040",
+          environmentType: "Indoor",
+          growMethod: "Soil",
+          plantGroups: [{
+            id: "00000000-0000-4000-8000-000000000042",
+            growingPhaseId: "00000000-0000-4000-8000-000000000041",
+            plantLabel: "Canopy Group",
+            plantCount: 2,
+            type: "Photoperiod",
+            sex: "Female",
+            harvested: false,
+          }],
+        },
       };
+      liveSession.growing_phase = liveSession.growingPhase;
       window.__growCompanionCapabilityLiveSession = liveSession;
       window.__growCompanionCapabilityDb = { tasks: [], events: [], nextId: 1, failNext: "", delayNext: 0, attempts: [] };
       const tableKey = (table) => table === "grow_session_tasks" ? "tasks" : "events";
@@ -4000,20 +4016,21 @@ test.describe("local Developer Scenarios", () => {
     expect(setup).toEqual({ sessionCount: 1, found: true, softDeleted: false, currentPhase: "grow", rendered: true });
     await page.evaluate(() => {
       saveSessions([window.__growCompanionCapabilityLiveSession]);
-      history.replaceState(null, "", "#sessions/grow-companion-capability-owner-session");
-      renderSessionDetail("grow-companion-capability-owner-session");
+      history.replaceState(null, "", "#sessions/00000000-0000-4000-8000-000000000040");
+      renderSessionDetail("00000000-0000-4000-8000-000000000040");
     });
 
     const growing = page.locator("[data-session-current-phase-workspace][data-session-current-phase='grow']");
     await expect(growing).toBeVisible();
     await expect(growing.getByRole("button", { name: "Add Task" })).toBeEnabled();
     await expect(growing.getByRole("button", { name: "Add Event" })).toBeEnabled();
-    await expect(growing).toContainText("No upcoming tasks");
+    await expect(growing).toContainText("No open tasks");
     await expect(growing).toContainText("No activity yet");
 
     await growing.getByRole("button", { name: "Add Task" }).click();
     let dialog = page.locator(".grow-companion-record-dialog");
     await dialog.locator('input[name="title"]').fill("Failed task must roll back");
+    await dialog.locator('select[name="dueKind"]').selectOption("date");
     await dialog.locator('input[name="date"]').fill("2026-07-21");
     await page.evaluate(() => { window.__growCompanionCapabilityDb.failNext = "insert"; });
     await dialog.getByRole("button", { name: "Add Task", exact: true }).click();
@@ -4028,8 +4045,12 @@ test.describe("local Developer Scenarios", () => {
     await expect(dialog).toBeVisible();
     await dialog.locator('input[name="title"]').fill("Check canopy moisture");
     await dialog.locator('textarea[name="details"]').fill("Review the top layer before watering.");
+    await dialog.locator('select[name="context"]').selectOption("group:00000000-0000-4000-8000-000000000042");
+    await dialog.locator('select[name="dueKind"]').selectOption("instant");
     await dialog.locator('input[name="date"]').fill("2026-07-21");
     await dialog.locator('input[name="time"]').fill("09:30");
+    await dialog.locator('input[name="timezone"]').fill("America/New_York");
+    await dialog.locator('input[name="timezone"]').dispatchEvent("change");
     const insertsBeforeDuplicateAttempt = await page.evaluate(() => window.__growCompanionCapabilityDb.attempts.filter((attempt) => attempt.operation === "insert" && attempt.table === "grow_session_tasks").length);
     await page.evaluate(() => { window.__growCompanionCapabilityDb.delayNext = 75; });
     await dialog.locator("form").evaluate((form) => {
@@ -4070,9 +4091,20 @@ test.describe("local Developer Scenarios", () => {
     await dialog.getByRole("button", { name: "Cancel" }).click();
 
     await growing.getByRole("button", { name: "Complete task: Check canopy moisture" }).click();
-    await expect(growing.locator("[data-grow-companion-upcoming]")).toContainText("No upcoming tasks");
+    await expect(growing.locator("[data-grow-companion-upcoming]")).toContainText("No open tasks");
     await expect(growing.locator("[data-grow-companion-activity]")).toContainText("Task completed");
     await expect(growing.locator("[data-grow-companion-activity-id]")).toHaveCount(2);
+    const firstCompletion = await page.evaluate(() => window.__growCompanionCapabilityDb.tasks[0].completed_at);
+    expect(Number.isNaN(Date.parse(firstCompletion))).toBe(false);
+
+    await growing.getByRole("button", { name: "Reopen task: Check canopy moisture" }).click();
+    await expect(growing.locator("[data-grow-companion-upcoming]")).toContainText("Check canopy moisture");
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.tasks[0].completed_at)).toBeNull();
+    await page.waitForTimeout(10);
+    await growing.getByRole("button", { name: "Complete task: Check canopy moisture" }).click();
+    const secondCompletion = await page.evaluate(() => window.__growCompanionCapabilityDb.tasks[0].completed_at);
+    expect(Number.isNaN(Date.parse(secondCompletion))).toBe(false);
+    expect(secondCompletion).not.toBe(firstCompletion);
 
     await growing.getByRole("button", { name: "Edit task: Check canopy moisture" }).click();
     dialog = page.locator(".grow-companion-record-dialog");
@@ -4089,12 +4121,25 @@ test.describe("local Developer Scenarios", () => {
     const persisted = await page.evaluate(() => window.__growCompanionCapabilityDb);
     expect(persisted.tasks).toHaveLength(1);
     expect(persisted.tasks[0]).toMatchObject({
-      session_id: "grow-companion-capability-owner-session",
+      session_id: "00000000-0000-4000-8000-000000000040",
       title: "Check canopy and soil moisture",
       status: "completed",
       origin: "user",
+      due_kind: "instant",
+      due_at: "2026-07-21T13:30:00.000Z",
+      due_local_datetime: "2026-07-21 09:30",
+      due_timezone: "America/New_York",
+      due_utc_offset_minutes: -240,
+      growing_phase_id: "00000000-0000-4000-8000-000000000041",
+      plant_group_id: "00000000-0000-4000-8000-000000000042",
     });
+    expect(persisted.tasks[0].id).toBe("capability-tasks-1");
     expect(persisted.events).toEqual([]);
+
+    page.once("dialog", (confirmation) => confirmation.accept());
+    await growing.getByRole("button", { name: "Delete task: Check canopy and soil moisture" }).click();
+    await expect(growing.locator("[data-grow-companion-task-id]")).toHaveCount(0);
+    expect(await page.evaluate(() => window.__growCompanionCapabilityDb.tasks)).toEqual([]);
 
     for (const width of [390, 768, 1280]) {
       await page.setViewportSize({ width, height: 1000 });
