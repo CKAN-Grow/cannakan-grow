@@ -31,3 +31,4 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [IC-GC-003C — Growing Workspace Events](../../foundation/implementation-contracts/IC-GC-003C-growing-workspace-events.md)
 - [IC-GC-003D — Growing Workspace Temporal Projections](../../foundation/implementation-contracts/IC-GC-003D-growing-workspace-temporal-projections.md)
 - [IC-GC-004 — Growing Workspace Notes](../../foundation/implementation-contracts/IC-GC-004-growing-workspace-notes.md)
+- [IC-GC-005 — Workspace Composition](../../foundation/implementation-contracts/IC-GC-005-workspace-composition.md)
