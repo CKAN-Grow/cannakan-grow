@@ -49854,6 +49854,81 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   gap: 6px;
 }
 
+.session-workspace-shell--detail .session-identity-image-frame {
+  position: relative;
+  width: clamp(88px, 10vw, 124px);
+  aspect-ratio: 4 / 3;
+  flex: 0 0 auto;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 18px;
+  background: rgba(10, 15, 11, 0.82);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.session-workspace-shell--detail .session-identity-image-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(7, 12, 9, 0.2));
+}
+
+.session-workspace-shell--detail .session-identity-image-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.session-workspace-shell--detail .session-identity-image-frame[data-session-identity-image-kind="fallback"] img {
+  opacity: 0.68;
+  filter: saturate(0.72);
+}
+
+.session-workspace-shell--detail .session-identity-copy {
+  min-width: 0;
+  max-width: min(100%, 780px);
+}
+
+.session-workspace-shell--detail .session-identity-copy h2 {
+  max-width: 100%;
+  font-size: clamp(1.65rem, 3.2vw, 2.6rem);
+  line-height: 1.04;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.session-workspace-shell--detail .session-identity-varieties,
+.session-workspace-shell--detail .session-identity-phase {
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.session-workspace-shell--detail .session-identity-varieties {
+  color: #dfe8dc;
+  font-size: clamp(0.94rem, 1.4vw, 1.08rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.session-workspace-shell--detail .session-identity-phase {
+  width: fit-content;
+  padding: 5px 10px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.08);
+  color: #b8ef84;
+  font-size: 0.76rem;
+  font-weight: 820;
+  letter-spacing: 0.035em;
+  line-height: 1.25;
+}
+
 .session-workspace-header .app-section-header-main .section-title-icon {
   width: 64px;
   height: 64px;
@@ -50014,12 +50089,39 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
     margin-left: 0;
   }
 
+  .session-workspace-shell--detail .session-workspace-header .app-section-header-main {
+    align-items: flex-start;
+  }
+
+  .session-workspace-shell--detail .session-identity-image-frame {
+    width: 96px;
+  }
+
   .session-workspace-shell--detail .detail-header {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
+  .session-workspace-shell--detail .session-workspace-header .app-section-header-main {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .session-workspace-shell--detail .session-identity-image-frame {
+    width: 76px;
+    border-radius: 14px;
+  }
+
+  .session-workspace-shell--detail .session-identity-copy h2 {
+    font-size: clamp(1.4rem, 8vw, 2rem);
+  }
+
+  .session-workspace-shell--detail .session-identity-phase {
+    white-space: normal;
+  }
+
   .session-workspace-shell--detail .session-workspace-header .inline-actions {
     display: grid;
     grid-template-columns: 1fr;

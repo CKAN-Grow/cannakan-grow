@@ -3015,6 +3015,145 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#detail-session-result-breakdown")).not.toContainText("Pending");
   });
 
+  test("renders canonical Session Identity without stale state at 390px, 768px, and 1280px", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+    await page.goto("/#home");
+    await page.evaluate(() => {
+      const longName = "Northern Terrace Continuous Cultivation Session With A Deliberately Long Canonical Name";
+      const base = {
+        userId: "founder-local-user",
+        date: "2026-07-24",
+        time: "09:30",
+        systemType: "KAN",
+        unitId: "A",
+        sessionStatus: "soaking",
+        createdAt: "2026-07-24T13:30:00.000Z",
+        updatedAt: "2026-07-24T13:30:00.000Z",
+      };
+      appState.varietyDirectoryEntries = [{
+        id: "identity-variety-blue-dream",
+        name: "Blue Dream",
+        normalizedName: "blue dream",
+        aliases: [],
+        varietyImageUrl: "/assets/images/my-sessions-hero-bg.png",
+      }];
+      appState.varietyDirectoryLoaded = true;
+      appState.sessions = [
+        {
+          ...base,
+          id: "identity-single",
+          entryPath: "seed",
+          sessionName: "Blue Dream Germination",
+          partitions: [{ id: 1, seedVariety: "Blue Dream", source: "Canonical Source", seedCount: 4 }],
+          sessionImages: [{ id: "identity-session-photo", url: "/assets/images/seed-report-hero-bg.png", filename: "Blue Dream canopy" }],
+        },
+        {
+          ...base,
+          id: "identity-variety-image",
+          entryPath: "seed",
+          sessionName: "Blue Dream Image Fallback",
+          partitions: [{ id: 1, seedVariety: "Blue Dream", source: "Canonical Source", seedCount: 4 }],
+          sessionImages: [],
+        },
+        {
+          ...base,
+          id: "identity-multi",
+          entryPath: "seed",
+          sessionName: "Four Variety Trial",
+          partitions: [
+            { id: 1, seedVariety: "Blue Dream" },
+            { id: 2, seedVariety: "Northern Lights" },
+            { id: 3, seedVariety: "Wedding Cake" },
+            { id: 4, seedVariety: "Lemon Auto" },
+          ],
+          sessionImages: [],
+        },
+        {
+          ...base,
+          id: "identity-missing-name",
+          entryPath: "seed",
+          sessionName: "",
+          partitions: [],
+          sessionImages: [],
+        },
+        {
+          ...base,
+          id: "identity-growing",
+          entryPath: "grow",
+          sessionName: longName,
+          partitions: [{ id: 1, seedVariety: "A Very Long Canonical Variety Name That Must Remain Readable On Narrow Screens" }],
+          sessionImages: [],
+        },
+        {
+          ...base,
+          id: "identity-reflection",
+          entryPath: "grow",
+          sessionName: "Completed Reflection Session",
+          sessionStatus: "completed",
+          growingPhaseStatus: "completed",
+          reflectionPhaseStatus: "completed",
+          completedAt: "2026-07-24T14:30:00.000Z",
+          partitions: [{ id: 1, seedVariety: "Blue Dream" }],
+          sessionImages: [],
+        },
+      ];
+    });
+
+    const openIdentity = async (id) => {
+      await page.evaluate((sessionId) => {
+        window.location.hash = `#sessions/${sessionId}`;
+      }, id);
+      await expect(page.locator(".session-workspace-shell--detail")).toBeVisible();
+    };
+
+    await openIdentity("identity-single");
+    await expect(page.locator("#detail-title")).toHaveText("Blue Dream Germination");
+    await expect(page.locator("#detail-session-identity-varieties")).toHaveText("Blue Dream");
+    await expect(page.locator("#detail-session-identity-phase")).toHaveText("Seed Session — Germination");
+    await expect(page.locator("#detail-session-identity-image-frame")).toHaveAttribute("data-session-identity-image-kind", "session");
+    await expect(page.locator("#detail-session-identity-image")).toHaveAttribute("alt", "Session image for Blue Dream Germination");
+
+    await openIdentity("identity-variety-image");
+    await expect(page.locator("#detail-session-identity-image-frame")).toHaveAttribute("data-session-identity-image-kind", "variety");
+    await expect(page.locator("#detail-session-identity-image")).toHaveAttribute("alt", "Representative image for Blue Dream");
+
+    await openIdentity("identity-multi");
+    await expect(page.locator("#detail-title")).toHaveText("Four Variety Trial");
+    await expect(page.locator("#detail-session-identity-varieties")).toHaveText("Blue Dream +3 more varieties");
+    await expect(page.locator("#detail-session-identity-image-frame")).toHaveAttribute("data-session-identity-image-kind", "fallback");
+    await expect(page.locator("#detail-session-identity-image")).toHaveAttribute("alt", "");
+
+    await openIdentity("identity-missing-name");
+    await expect(page.locator("#detail-title")).toHaveText("2026-07-24 at 09:30");
+    await expect(page.locator("#detail-session-identity-varieties")).toHaveText("Variety not recorded");
+
+    await openIdentity("identity-reflection");
+    await expect(page.locator("#detail-session-identity-phase")).toHaveText("Completed Session — Reflection");
+
+    await openIdentity("identity-growing");
+    await expect(page.locator("#detail-session-identity-phase")).toHaveText("Grow Session — Growing");
+    for (const width of [390, 768, 1280]) {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await expect(page.locator("#detail-title")).toBeVisible();
+      await expect(page.locator("#detail-session-identity-varieties")).toBeVisible();
+      const layout = await page.evaluate(() => ({
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        titleWidth: document.querySelector("#detail-title")?.getBoundingClientRect().width || 0,
+        headerWidth: document.querySelector(".session-workspace-header")?.getBoundingClientRect().width || 0,
+      }));
+      expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+      expect(layout.titleWidth).toBeLessThanOrEqual(layout.headerWidth);
+    }
+
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("presents one neutral entry decision and initializes Seed Session through Germination setup", async ({ page }) => {
     await page.goto("/#home");
     const initialSessionCount = await page.evaluate(() => getSessions().length);
