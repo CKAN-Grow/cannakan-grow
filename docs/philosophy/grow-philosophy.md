@@ -1,6 +1,77 @@
 # Grow Philosophy
 
+## Truth is the foundation of trust.
+
 ## Why Grow Exists
+
+## Truth
+
+Everything Grow communicates must be worthy of that trust.
+
+## Grow communicates only recorded facts and deterministic facts.
+
+Grow communicates only:
+
+- recorded facts; or
+- deterministic facts derived from recorded facts through canonical platform rules.
+
+Grow never:
+
+- fabricates information;
+- invents missing information;
+- communicates assumptions as facts;
+- exaggerates certainty;
+- implies knowledge it does not possess;
+- presents interpretation, recommendation, or speculation as fact.
+
+When information is not supported by evidence, Grow communicates that the information is unknown or unavailable.
+
+Unknown is a valid state.
+
+Grow never claims to know more than it knows.
+
+No layer of Grow may communicate information with greater certainty than the supporting canonical evidence.
+
+This principle governs every capability, every recommendation, every report, every notification, every AI feature, and every future product.
+
+Truth is not one feature of Grow.
+
+Truth is the foundation upon which Grow is built.
+
+---
+
+## Honest Value
+
+Every capability must create honest value.
+
+A capability belongs in Grow only if it materially helps a grower:
+
+- understand;
+- decide;
+- record; or
+- learn.
+
+Grow does not add features because they are:
+
+- fashionable;
+- technically possible;
+- visually impressive;
+- commercially persuasive; or
+- capable of making Grow appear more intelligent.
+
+Complexity must earn its place.
+
+Every capability should justify its existence by improving the grower's understanding of their grow.
+
+Features that do not create honest value do not belong in Grow.
+
+---
+
+> **Grow communicates only recorded facts and deterministic facts derived from those recorded facts.**
+>
+> **Grow never claims to know more than it knows.**
+>
+> **Every capability must create honest value.**
 
 Growing is a continuous process of observation, learning, and decision making.
 
