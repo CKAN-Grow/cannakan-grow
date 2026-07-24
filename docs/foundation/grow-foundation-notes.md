@@ -26,6 +26,7 @@ Foundation Notes allow Grow to preserve strong ideas without interrupting the cu
 | FN-GC-005 | [Workspace Foundation](./foundation-notes/FN-GC-005-workspace-foundation.md) | Foundational Architecture | Workspace, Coordination, Canonical Capabilities, Composition |
 | FN-GC-006 | [Photos Foundation](./foundation-notes/FN-GC-006-photos-foundation.md) | Foundational Architecture | Photos, Identity, Privacy, Chronology, Workspace, Evidence |
 | FN-GC-007 | [Documents Foundation](./foundation-notes/FN-GC-007-documents-foundation.md) | Foundational Architecture | Documents, Identity, Privacy, Chronology, Workspace, Representation |
+| FN-GC-008 | [Grow Companion Foundation](./foundation-notes/FN-GC-008-grow-companion-foundation.md) | Foundational Architecture | Grow Companion, Sessions, Continuous Working Context |
 
 ## Reusable Foundation Note template
 
