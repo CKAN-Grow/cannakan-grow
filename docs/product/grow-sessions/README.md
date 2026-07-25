@@ -40,3 +40,4 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [IC-GC-005 — Workspace Composition](../../foundation/implementation-contracts/IC-GC-005-workspace-composition.md)
 - [IC-GC-006 — Photos Composition](../../foundation/implementation-contracts/IC-GC-006-photos-composition.md)
 - [IC-GC-007 — Documents Composition](../../foundation/implementation-contracts/IC-GC-007-documents-composition.md)
+- [IC-SC-001 — Session Conditions Implementation Contract](../../foundation/implementation-contracts/IC-SC-001-session-conditions.md)
