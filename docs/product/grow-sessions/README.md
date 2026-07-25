@@ -21,6 +21,7 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [CS-GC-006 — Photos Composition Specification](./photos-composition-specification.md)
 - [CS-GC-007 — Documents Composition Specification](./documents-composition-specification.md)
 - [CS-SC-001 — Session Conditions Composition](./session-conditions-composition-specification.md)
+- [CS-SC-001A — Initial Session Conditions Dimensions and Existing Truth](./session-conditions-initial-dimensions-composition-specification.md)
 
 ## Architecture Resolutions
 
