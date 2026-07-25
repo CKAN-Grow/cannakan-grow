@@ -70,12 +70,17 @@ applicable:
 
 - Session identity;
 - Session Conditions;
+- canonical Current Conditions;
 - condition applicability;
 - Session chronology;
 - condition provenance;
 - correction state;
 - Session lifecycle state; and
 - viewer authorization.
+
+The Canonical Platform uses canonical Session Conditions, applicability, and
+chronology to derive Current Conditions. Product Composition consumes that
+canonical projection and does not apply those derivation rules itself.
 
 The composition must not treat the following as canonical inputs:
 
@@ -109,51 +114,53 @@ truth.
 
 ## 6. Composition Scope
 
-The product must support condition understanding at the level established by
-canonical applicability.
+The first production slice authorizes only:
 
-This may include:
-
-### 6.1 Session-wide understanding
+### 6.1 Session-wide applicability
 
 Conditions that apply broadly across the Session.
 
-### 6.2 Period-relevant understanding
+### 6.2 Period applicability
 
-Conditions that apply during a bounded phase or period.
+Conditions that apply during a bounded period within Session chronology.
 
-### 6.3 Record-relevant understanding
+Record-level applicability is not authorized.
 
-Conditions required to interpret a particular task, event, note, observation,
-measurement, evidence item, outcome, or reflection.
+Products may compose Session-wide or period-applicable conditions while a
+person views a Task, Event, Note, Observation, Measurement, Evidence item,
+Outcome, or Reflection. That composition does not create a direct canonical
+relationship between the condition and the viewed record.
 
-The composition must not invent a narrower or broader scope than canonical
-truth establishes.
+Any direct record-level applicability requires separate architectural
+authorization.
 
 ## 7. Current Conditions
 
-The product may compose **Current Conditions**.
+The Canonical Platform derives **Current Conditions** as a deterministic
+canonical projection.
 
-Current Conditions are a deterministic product understanding of the canonical
-conditions applicable at a defined point in Session chronology.
+Canonical applicability and Session chronology determine which canonical
+conditions apply at the defined point.
 
 They are not a separately owned record.
 
-The composition may:
+Product Composition consumes and organizes the canonical Current Conditions
+projection. It may:
 
 - organize currently applicable conditions;
-- distinguish broad and narrower applicability;
+- distinguish Session-wide and period applicability;
 - communicate missing or unresolved conditions; and
-- provide canonical inputs to Session Orientation.
+- compose canonical Current Conditions for Session Orientation.
 
-It may not:
+Product Composition may not:
 
+- derive Current Conditions;
 - select current conditions from retrieval order alone;
 - treat the most recently displayed value as current;
 - infer current conditions from presentation state; or
 - maintain a competing current-condition store.
 
-Equivalent canonical inputs must produce equivalent Current Conditions.
+Presentation may not derive or persist Current Conditions.
 
 ## 8. Historical Conditions
 
@@ -400,9 +407,8 @@ meaning.
 Given the same:
 
 - Session;
-- canonical Session Conditions;
-- applicability;
-- chronology;
+- canonical Current Conditions;
+- canonical historical conditions;
 - lifecycle state; and
 - viewer authorization;
 
@@ -429,8 +435,7 @@ Products and presentation may hold temporary interaction state.
 
 Temporary state must not become a competing source of condition truth.
 
-The following are prohibited unless explicitly authorized by the
-Implementation Contract as canonical platform records:
+The following are prohibited:
 
 - product-owned Current Conditions;
 - presentation-owned condition history;
@@ -468,7 +473,9 @@ Session Orientation may consume conditions but cannot own or redefine them.
 
 ### INV-CS-SC-007 — Current Conditions are deterministic
 
-Current Conditions are derived from canonical applicability and chronology.
+The Canonical Platform derives Current Conditions from canonical applicability
+and chronology. Product Composition only consumes and organizes the canonical
+projection.
 
 ### INV-CS-SC-008 — Historical truth is preserved
 
@@ -510,14 +517,11 @@ Replacing presentation must not alter product or canonical meaning.
 This specification intentionally defers:
 
 - exact condition taxonomy;
-- exact applicability model;
 - required and optional condition values;
 - canonical structures;
-- declaration commands;
-- change commands;
-- correction mechanics;
 - inheritance;
 - copying;
+- record-level applicability;
 - deletion;
 - availability;
 - storage;
@@ -532,28 +536,34 @@ This specification intentionally defers:
 - automation; and
 - AI behavior.
 
-These require the Session Conditions Implementation Contract or separate
-architectural authorization.
+These remain outside the first production slice unless separately authorized
+by architecture. Their deferral does not allow the Implementation Contract to
+make canonical architectural decisions.
 
 ## 24. Implementation Contract Requirements
 
-The Session Conditions Implementation Contract must define:
+The Session Conditions Implementation Contract may authorize implementation
+only of the architecture already established by FN-005 and this Composition
+Specification. It must preserve:
 
-1. the canonical condition structures;
-2. the supported applicability model;
-3. declaration operations;
-4. operational-change operations;
-5. correction operations;
-6. provenance requirements;
-7. validation and normalization boundaries;
-8. Current Conditions derivation;
-9. current and historical retrieval;
-10. ownership and access enforcement;
-11. failure and rollback behavior;
-12. duplicate-submission protection;
-13. canonical-to-product adapters;
-14. presentation-state boundaries; and
-15. safeguards preserving FN-004 authority.
+1. canonical Session Conditions ownership and provenance;
+2. Session-wide and period applicability only;
+3. separate declaration, operational-change, and correction behavior;
+4. one canonical validation and normalization boundary;
+5. Canonical Platform ownership of Current Conditions derivation;
+6. Product Composition consumption of the canonical Current Conditions
+   projection;
+7. current and historical retrieval without duplicate authority;
+8. ownership and access enforcement;
+9. failure, rollback, and duplicate-submission safeguards;
+10. canonical-to-product adapter boundaries;
+11. presentation-state boundaries; and
+12. FN-004 authority.
+
+The Implementation Contract may implement these decisions. It may not
+determine canonical structures, applicability semantics, derivation ownership,
+or canonical authority. If implementation requires unresolved canonical
+architecture, work must stop pending separate architectural authorization.
 
 The Implementation Contract must not redefine FN-005 or this Composition
 Specification.
@@ -564,8 +574,10 @@ This Composition Specification may be approved when the following are
 accepted:
 
 - Products compose but do not own Session Conditions.
-- Current Conditions are deterministic and non-authoritative as a separate
-  record.
+- The Canonical Platform derives Current Conditions; Product Composition only
+  consumes and organizes the canonical projection.
+- Only Session-wide and period applicability are authorized.
+- Record-level applicability requires separate architectural authorization.
 - Historical conditions remain interpretable.
 - Corrections and operational changes remain distinct.
 - Missing conditions remain honest.
