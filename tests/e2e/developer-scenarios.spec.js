@@ -3015,7 +3015,7 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#detail-session-result-breakdown")).not.toContainText("Pending");
   });
 
-  test("renders canonical Session Identity without stale state at 390px, 768px, and 1280px", async ({ page }) => {
+    test("renders canonical Session Identity and Orientation without stale state at 390px, 768px, and 1280px", async ({ page }) => {
     const consoleErrors = [];
     page.on("console", (message) => {
       if (message.type() === "error") consoleErrors.push(message.text());
@@ -3086,6 +3086,8 @@ test.describe("local Developer Scenarios", () => {
           id: "identity-growing",
           entryPath: "grow",
           sessionName: longName,
+          date: "2026-07-17",
+          time: "09:30",
           partitions: [{ id: 1, seedVariety: "A Very Long Canonical Variety Name That Must Remain Readable On Narrow Screens" }],
           sessionImages: [],
         },
@@ -3104,11 +3106,36 @@ test.describe("local Developer Scenarios", () => {
       ];
     });
 
+    const readCanonicalOrientation = async (sessionId) => page.evaluate((id) => {
+      const session = appState.sessions.find((candidate) => candidate.id === id);
+      const engineState = buildSessionEngineState(session);
+      const progressPercentage = engineState.progressPercentage;
+      return {
+        dayLabel: formatSessionCommandCenterDayLabel(session),
+        stageLabel: getSessionLifecyclePresentation(session).currentPhaseLabel,
+        progressLabel: `${progressPercentage}%`,
+        progressPercentage,
+      };
+    }, sessionId);
+
     const openIdentity = async (id) => {
       await page.evaluate((sessionId) => {
         window.location.hash = `#sessions/${sessionId}`;
       }, id);
       await expect(page.locator(".session-workspace-shell--detail")).toBeVisible();
+    };
+
+    const expectOrientation = async (sessionId) => {
+      const canonical = await readCanonicalOrientation(sessionId);
+      await expect(page.locator("#detail-session-orientation")).toBeVisible();
+      await expect(page.locator("#detail-session-orientation-day")).toHaveText(canonical.dayLabel);
+      await expect(page.locator("#detail-session-orientation-stage")).toHaveText(canonical.stageLabel);
+      await expect(page.locator("#detail-session-orientation-progress")).toHaveText(canonical.progressLabel);
+      await expect(page.locator("#detail-session-orientation-progressbar")).toHaveAttribute(
+        "aria-valuenow",
+        String(canonical.progressPercentage),
+      );
+      return canonical;
     };
 
     await openIdentity("identity-single");
@@ -3117,38 +3144,105 @@ test.describe("local Developer Scenarios", () => {
     await expect(page.locator("#detail-session-identity-phase")).toHaveText("Seed Session — Germination");
     await expect(page.locator("#detail-session-identity-image-frame")).toHaveAttribute("data-session-identity-image-kind", "session");
     await expect(page.locator("#detail-session-identity-image")).toHaveAttribute("alt", "Session image for Blue Dream Germination");
+    const singleOrientation = await expectOrientation("identity-single");
+
+    await test.step("preserves canonical Stage Progress without presentation normalization", async () => {
+      await page.evaluate(() => {
+        const originalBuildSessionEngineState = buildSessionEngineState;
+        window.__sessionOrientationOriginalBuildSessionEngineState = originalBuildSessionEngineState;
+        window.buildSessionEngineState = (...args) => {
+          const canonicalState = originalBuildSessionEngineState(...args);
+          return canonicalState
+            ? {
+                ...canonicalState,
+                progressPercentage: 137.5,
+              }
+            : canonicalState;
+        };
+
+        const session = appState.sessions.find((candidate) => candidate.id === "identity-single");
+        syncSessionOrientationPresentation(getSessionDetailElements(document), session);
+      });
+
+      await expect(page.locator("#detail-session-orientation-progress")).toHaveText("137.5%");
+      await expect(page.locator("#detail-session-orientation-progressbar")).toHaveAttribute("aria-valuenow", "137.5");
+      await expect(page.locator("#detail-session-orientation-progressbar")).toHaveAttribute("aria-valuetext", "137.5%");
+
+      await page.evaluate(() => {
+        window.buildSessionEngineState = window.__sessionOrientationOriginalBuildSessionEngineState;
+        delete window.__sessionOrientationOriginalBuildSessionEngineState;
+
+        const session = appState.sessions.find((candidate) => candidate.id === "identity-single");
+        syncSessionOrientationPresentation(getSessionDetailElements(document), session);
+      });
+
+      await expectOrientation("identity-single");
+    });
 
     await openIdentity("identity-variety-image");
     await expect(page.locator("#detail-session-identity-image-frame")).toHaveAttribute("data-session-identity-image-kind", "variety");
     await expect(page.locator("#detail-session-identity-image")).toHaveAttribute("alt", "Representative image for Blue Dream");
+    await expectOrientation("identity-variety-image");
 
     await openIdentity("identity-multi");
     await expect(page.locator("#detail-title")).toHaveText("Four Variety Trial");
     await expect(page.locator("#detail-session-identity-varieties")).toHaveText("Blue Dream +3 more varieties");
     await expect(page.locator("#detail-session-identity-image-frame")).toHaveAttribute("data-session-identity-image-kind", "fallback");
     await expect(page.locator("#detail-session-identity-image")).toHaveAttribute("alt", "");
+    await expectOrientation("identity-multi");
 
     await openIdentity("identity-missing-name");
     await expect(page.locator("#detail-title")).toHaveText("2026-07-24 at 09:30");
     await expect(page.locator("#detail-session-identity-varieties")).toHaveText("Variety not recorded");
+    await expectOrientation("identity-missing-name");
 
     await openIdentity("identity-reflection");
     await expect(page.locator("#detail-session-identity-phase")).toHaveText("Completed Session — Reflection");
+    await expectOrientation("identity-reflection");
 
     await openIdentity("identity-growing");
     await expect(page.locator("#detail-session-identity-phase")).toHaveText("Grow Session — Growing");
+    const growingOrientation = await expectOrientation("identity-growing");
+    expect(growingOrientation.dayLabel).not.toBe(singleOrientation.dayLabel);
+    expect(growingOrientation.stageLabel).not.toBe(singleOrientation.stageLabel);
+
+    await openIdentity("identity-single");
+    await expectOrientation("identity-single");
+
+    const orientation = page.locator("#detail-session-orientation");
+    for (const excluded of [
+      "Overall Session Progress",
+      "Health",
+      "Confidence",
+      "Objective",
+      "Priority",
+      "Recommendation",
+      "Task",
+      "Event",
+      "Timeline",
+      "Calendar",
+      "Notes",
+      "Reports",
+      "Analytics",
+    ]) {
+      await expect(orientation).not.toContainText(excluded);
+    }
+
     for (const width of [390, 768, 1280]) {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       await expect(page.locator("#detail-title")).toBeVisible();
       await expect(page.locator("#detail-session-identity-varieties")).toBeVisible();
+      await expect(orientation).toBeVisible();
       const layout = await page.evaluate(() => ({
         viewportWidth: window.innerWidth,
         documentWidth: document.documentElement.scrollWidth,
         titleWidth: document.querySelector("#detail-title")?.getBoundingClientRect().width || 0,
         headerWidth: document.querySelector(".session-workspace-header")?.getBoundingClientRect().width || 0,
+        orientationWidth: document.querySelector("#detail-session-orientation")?.getBoundingClientRect().width || 0,
       }));
       expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
       expect(layout.titleWidth).toBeLessThanOrEqual(layout.headerWidth);
+      expect(layout.orientationWidth).toBeLessThanOrEqual(layout.viewportWidth);
     }
 
     expect(consoleErrors).toEqual([]);
