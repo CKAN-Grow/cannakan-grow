@@ -20,3 +20,4 @@ A Foundation Note is not a casual idea or ordinary backlog item. It records a co
 - [FN-002 — Product Language & Ownership](./foundation-notes/FN-002-product-language-and-ownership.md)
 - [FN-003 — Canonical Entities & Representation](./foundation-notes/FN-003-canonical-entities-and-representation.md)
 - [FN-004 — Session Context, Operational Intelligence & Evidence Readiness](./foundation-notes/FN-004-session-lifecycle-and-grow-companion.md)
+- [FN-005 — Canonical Session Conditions](./foundation-notes/FN-005-canonical-session-conditions.md)
