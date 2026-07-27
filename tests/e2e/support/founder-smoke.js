@@ -52,6 +52,12 @@ const FOUNDER_ROUTES = Object.freeze([
     ctas: [/Explore Top Sources|How Rankings Work/i],
   },
   {
+    name: "Grow Network",
+    hash: "#network",
+    expectedText: /Grow Network|Connections|Discover Growers|Sign In/i,
+    ctas: [/Discover Growers|Try Again|Sign In/i],
+  },
+  {
     name: "Profile",
     hash: "#profile",
     expectedText: /Profile|Public Profile|Edit Profile|Profile Settings|Member Profile|Analytics Dashboard|Display Name|Sign In/i,
