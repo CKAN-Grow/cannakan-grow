@@ -23,3 +23,4 @@ A Foundation Note is not a casual idea or ordinary backlog item. It records a co
 - [FN-005 — Canonical Session Conditions](./foundation-notes/FN-005-canonical-session-conditions.md)
 - [FN-006 — Canonical Phase Commencement and Lifecycle Chronology](./foundation-notes/FN-006-canonical-phase-commencement-and-lifecycle-chronology.md)
 - [FN-007 — Intentional Transition from Germination to Growing](./foundation-notes/FN-007-intentional-transition-from-germination-to-growing.md)
+- [FN-008 — Germination Setup Evidence and Inventory Boundaries](./foundation-notes/FN-008-germination-setup-evidence-and-inventory-boundaries.md)
