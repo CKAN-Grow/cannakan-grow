@@ -27,6 +27,7 @@
     "qa:developer-scenarios": "node ./scripts/developer-scenarios-regression-check.mjs",
     "qa:grow-identity": "node ./scripts/grow-identity-phase1-regression-check.mjs",
     "qa:session-conditions-commencement": "node ./scripts/session-conditions-growing-commencement-regression-check.mjs",
+    "qa:session-conditions": "node ./scripts/session-conditions-canonical-slice-regression-check.mjs",
     "qa:grow-network": "node ./scripts/grow-network-foundation-regression-check.mjs",
     "qa:semantic-colors": "node ./scripts/semantic-color-system-regression-check.js",
     "qa:single-seed-position-methods": "node ./scripts/single-seed-position-method-regression-check.js",

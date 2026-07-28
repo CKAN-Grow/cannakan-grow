@@ -4230,6 +4230,8 @@ select coalesce(
       const phaseRows = [];
       const groupRows = [];
       const calls = [];
+      const rpcCalls = [];
+      const conditionState = { authority: "legacy", revision: 0, growMethod: null, environmentType: null };
       const identityCalls = { source: [], variety: [] };
       const copy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -4282,8 +4284,81 @@ select coalesce(
         return query;
       };
 
+      const buildConditionProjection = (sessionId) => ({
+        session_id: sessionId,
+        authority: conditionState.authority,
+        authority_source: conditionState.authority === "conditions" ? "legacy_migration" : null,
+        canonical_revision: conditionState.revision,
+        growing_commencement_status: "authoritative",
+        growing_commenced_at: "2026-07-23T12:00:00.000Z",
+        defined_at: "2026-07-23T12:00:00.000Z",
+        conditions: [
+          { dimension: "grow_method", status: conditionState.growMethod ? "known" : "absent", value: conditionState.growMethod?.value || null, other_text: conditionState.growMethod?.otherText || "", period_id: conditionState.growMethod ? crypto.randomUUID() : null },
+          { dimension: "environment_type", status: conditionState.environmentType ? "known" : "absent", value: conditionState.environmentType?.value || null, other_text: conditionState.environmentType?.otherText || "", period_id: conditionState.environmentType ? crypto.randomUUID() : null },
+        ],
+      });
+
+      const preservedCanonicalProjection = normalizeSessionConditionProjection({
+        session_id: crypto.randomUUID(),
+        authority: "conditions",
+        authority_source: "future_growing_entry",
+        canonical_revision: 2,
+        growing_commencement_status: "authoritative",
+        growing_commenced_at: "2026-07-23T12:00:00.000Z",
+        defined_at: "2026-07-24T12:00:00.000Z",
+        conditions: [
+          { dimension: "grow_method", status: "known", value: "Living Soil", other_text: "", period_id: crypto.randomUUID() },
+          { dimension: "environment_type", status: "known", value: "Other", other_text: "  Protected   tunnel  ", period_id: crypto.randomUUID() },
+        ],
+      });
+      let invalidCanonicalProjectionRejected = false;
+      try {
+        normalizeSessionConditionProjection({
+          session_id: crypto.randomUUID(),
+          authority: "conditions",
+          authority_source: "future_growing_entry",
+          canonical_revision: 2,
+          growing_commencement_status: "authoritative",
+          growing_commenced_at: "2026-07-23T12:00:00.000Z",
+          defined_at: "2026-07-24T12:00:00.000Z",
+          conditions: [
+            { dimension: "grow_method", status: "known", value: " soil ", other_text: "", period_id: crypto.randomUUID() },
+            { dimension: "environment_type", status: "known", value: "Indoor", other_text: "", period_id: crypto.randomUUID() },
+          ],
+        });
+      } catch {
+        invalidCanonicalProjectionRejected = true;
+      }
+
       const supabase = {
         auth: { getUser: async () => ({ data: { user: appState.user }, error: null }) },
+        async rpc(name, input) {
+          rpcCalls.push(copy({ name, input }));
+          if (name === "get_canonical_session_conditions") {
+            return { data: buildConditionProjection(input.p_session_id), error: null };
+          }
+          if (name === "migrate_session_conditions") {
+            const phase = phaseRows.find((row) => row.session_id === input.p_session_id);
+            conditionState.authority = "conditions";
+            conditionState.revision = 1;
+            conditionState.growMethod = { value: phase.grow_method, otherText: phase.grow_method_other };
+            conditionState.environmentType = { value: phase.environment_type, otherText: phase.environment_other };
+            return { data: { authority: "conditions", canonical_revision: 1 }, error: null };
+          }
+          if (name === "declare_session_condition" || name === "change_session_condition") {
+            const key = input.p_dimension === "grow_method" ? "growMethod" : "environmentType";
+            conditionState[key] = { value: input.p_value, otherText: input.p_other_text };
+            conditionState.revision += 1;
+            return {
+              data: {
+                canonical_revision: conditionState.revision,
+                period: { id: crypto.randomUUID(), canonical_value: input.p_value, other_text: input.p_other_text },
+              },
+              error: null,
+            };
+          }
+          return { data: null, error: new Error(`Unexpected RPC ${name}`) };
+        },
         from(table) {
           return {
             select(columns = "*") { return makeQuery(table, "select").select(columns); },
@@ -4329,6 +4404,12 @@ select coalesce(
           plantGroups: [{ ...firstDraft.plantGroups[0], plant: "North Renamed" }],
         });
         const reloadedFinal = (await attachGrowingEvidenceToSessions([{ ...session, growingPhase: null, growing_phase: null }]))[0];
+        const canonicalChanged = await saveCanonicalGrowingEvidence(session, {
+          ...firstDraft,
+          environmentType: "Indoor",
+          growMethod: "Soil",
+          plantGroups: [{ ...firstDraft.plantGroups[0], plant: "North Renamed" }],
+        });
         const phaseUpsertsBeforeMalformed = calls.filter((call) => call.table === GROWING_PHASE_TABLE && call.operation === "upsert").length;
         let malformedRejected = false;
         try {
@@ -4342,7 +4423,9 @@ select coalesce(
         const phaseUpsertsAfterMalformed = calls.filter((call) => call.table === GROWING_PHASE_TABLE && call.operation === "upsert").length;
         return {
           sessionId: session.id, phaseId, firstId, secondId, sourceId, varietyId,
-          phaseRows: copy(phaseRows), groupRows: copy(groupRows), calls: copy(calls), identityCalls: copy(identityCalls),
+          phaseRows: copy(phaseRows), groupRows: copy(groupRows), calls: copy(calls), rpcCalls: copy(rpcCalls), identityCalls: copy(identityCalls),
+          canonicalChanged: copy(canonicalChanged),
+          preservedCanonicalProjection: copy(preservedCanonicalProjection), invalidCanonicalProjectionRejected,
           zeroGroupCount: zeroGroup.plantGroups.length,
           reloadedWithTwo: copy(getSessionGrowingPhase(reloadedWithTwo)),
           reloadedFinal: copy(getSessionGrowingPhase(reloadedFinal)),
@@ -4365,6 +4448,13 @@ select coalesce(
     expect(result.phaseRows[0]).not.toHaveProperty("harvested_count");
     const phaseUpserts = result.calls.filter((call) => call.table === "grow_session_growing_phases" && call.operation === "upsert");
     expect(phaseUpserts.every((call) => call.options.onConflict === "session_id" && call.payload.session_id === result.sessionId)).toBe(true);
+    expect(phaseUpserts.slice(1).every((call) => !Object.hasOwn(call.payload, "environment_type") && !Object.hasOwn(call.payload, "grow_method"))).toBe(true);
+    expect(result.rpcCalls.filter((call) => call.name === "migrate_session_conditions")).toHaveLength(1);
+    expect(result.rpcCalls.filter((call) => call.name === "change_session_condition").map((call) => call.input.p_dimension)).toEqual(["grow_method", "environment_type"]);
+    expect(result.canonicalChanged).toMatchObject({ growMethod: "Soil", environmentType: "Indoor" });
+    expect(result.preservedCanonicalProjection.conditions[0].value).toBe("Living Soil");
+    expect(result.preservedCanonicalProjection.conditions[1].otherText).toBe("  Protected   tunnel  ");
+    expect(result.invalidCanonicalProjectionRejected).toBe(true);
     const groupUpserts = result.calls.filter((call) => call.table === "grow_session_plant_groups" && call.operation === "upsert");
     expect(groupUpserts[0].payload.map((row) => row.id)).toEqual([result.firstId, result.secondId]);
     expect(groupUpserts[0].payload[0]).toMatchObject({
