@@ -20,6 +20,7 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [CS-GC-005 — Workspace Composition Specification](./workspace-composition-specification.md)
 - [CS-GC-006 — Photos Composition Specification](./photos-composition-specification.md)
 - [CS-GC-007 — Documents Composition Specification](./documents-composition-specification.md)
+- [CS-GC-008 — Grow Companion Workspace Composition and Coordination](./grow-companion-workspace-composition-and-coordination-specification.md)
 - [CS-SC-001 — Session Conditions Composition](./session-conditions-composition-specification.md)
 - [CS-SC-001A — Initial Session Conditions Dimensions and Existing Truth](./session-conditions-initial-dimensions-composition-specification.md)
 - [CS-SC-001B — Canonical Growing Commencement and Legacy Chronology](./session-conditions-growing-commencement-and-legacy-chronology-composition-specification.md)
