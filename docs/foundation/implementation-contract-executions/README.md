@@ -37,3 +37,7 @@ Each artifact filename uses:
 `ICE-<authorized-capability-identifier>-<descriptive-slug>.md`
 
 The ICE identifier must be the identifier explicitly authorized by the governing Implementation Contract. The descriptive slug uses lowercase kebab case and identifies the approved execution.
+
+## Artifacts
+
+- [ICE-SC-002 — Session Conditions First Canonical Production Slice](./ICE-SC-002-session-conditions-first-canonical-production-slice.md)
