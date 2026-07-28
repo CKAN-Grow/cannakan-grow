@@ -1,6 +1,35 @@
 const { test, expect } = require("@playwright/test");
+const { execFileSync } = require("child_process");
 const { PNG } = require("pngjs");
 const { enableFounderLocalQa } = require("./support/founder-smoke");
+
+const ICE_LOCAL_DB_CONTAINER = "supabase_db_Cannakan_Grow_App";
+
+function escapeIceSqlLiteral(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
+}
+
+function runIceLocalSql(sql) {
+  return String(execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      ICE_LOCAL_DB_CONTAINER,
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-q",
+      "-A",
+      "-t",
+    ],
+    { input: sql, encoding: "utf8", maxBuffer: 20 * 1024 * 1024 },
+  ) || "").trim();
+}
 
 const STORAGE_KEY = "grow_developer_scenarios_v1";
 const LEGACY_STORAGE_KEYS = ["cannakan-grow-sample-seed-version", "cannakanGrowMockDataEnabled", "cannakanMockGalleryLikes", "cannakanMockGalleryLikes:legacy-user", "cannakanSeedAgeAnalyticsMockData"];
@@ -3547,6 +3576,8 @@ test.describe("local Developer Scenarios", () => {
         firstPlantedAt: session?.firstPlantedAt,
         germinationCompletedAt: session?.germinationCompletedAt,
         phases: phases.map(({ id, status }) => ({ id, status })),
+        commencement: getCanonicalGrowingCommencement(session),
+        conditionsCommencement: getSessionConditionsGrowingCommencement(session),
         sessionCountDelta: sessions.length - beforeCount,
         canonicalMatches: sessions.filter((item) => item.id === sessionId).length,
         methodSetupKeys: Object.keys(localStorage).filter((key) => key.includes(sessionId) && /method|setup/i.test(key)),
@@ -3565,9 +3596,71 @@ test.describe("local Developer Scenarios", () => {
         { id: "grow", status: "current" },
         { id: "reflection", status: "future" },
       ],
+      commencement: {
+        status: "authoritative",
+        sessionId: expect.any(String),
+        commencedAt: expect.any(String),
+        entryPath: "grow",
+        operationId: expect.any(String),
+      },
+      conditionsCommencement: {
+        status: "authoritative",
+        periodStart: expect.any(String),
+      },
       sessionCountDelta: 1,
       canonicalMatches: 1,
       methodSetupKeys: [],
+    });
+
+    const retryResult = await page.evaluate(async (sessionId) => {
+      const session = getSessions().find((item) => item.id === sessionId);
+      const commencement = getCanonicalGrowingCommencement(session);
+      const retried = await enterCanonicalGrowing(session, {
+        entryPath: "grow",
+        operationId: commencement.operationId,
+        operationAt: commencement.commencedAt,
+      });
+      const after = getSessions();
+      return {
+        sameOperation: getCanonicalGrowingCommencement(retried).operationId === commencement.operationId,
+        sameCommencement: getCanonicalGrowingCommencement(retried).commencedAt === commencement.commencedAt,
+        canonicalMatches: after.filter((item) => item.id === sessionId).length,
+      };
+    }, persisted.id);
+    expect(retryResult).toEqual({
+      sameOperation: true,
+      sameCommencement: true,
+      canonicalMatches: 1,
+    });
+
+    const retrievalFailure = await page.evaluate(async (sessionId) => {
+      const previousSupabase = appState.supabase;
+      const previousUser = appState.user;
+      appState.supabase = {
+        rpc: async () => ({
+          data: null,
+          error: { code: "ICE_RETRIEVAL_FAILURE", message: "Simulated retrieval failure." },
+        }),
+      };
+      appState.user = previousUser || { id: "local-developer" };
+      try {
+        await attachCanonicalGrowingCommencementsToSessions([
+          getSessions().find((item) => item.id === sessionId),
+        ]);
+        return { threw: false, code: "" };
+      } catch (error) {
+        return {
+          threw: true,
+          code: String(error?.code || ""),
+        };
+      } finally {
+        appState.supabase = previousSupabase;
+        appState.user = previousUser;
+      }
+    }, persisted.id);
+    expect(retrievalFailure).toEqual({
+      threw: true,
+      code: "ICE_RETRIEVAL_FAILURE",
     });
 
     const foundation = page.locator("[data-session-phase-foundation]");
@@ -3604,6 +3697,10 @@ test.describe("local Developer Scenarios", () => {
     const reopenedFoundation = page.locator("[data-session-phase-foundation]");
     await expect(reopenedFoundation.locator("[data-session-phase-nav='germination']")).toContainText("Not included");
     await expect(reopenedFoundation.locator("[data-session-phase-nav='grow']")).toHaveAttribute("aria-current", "step");
+    expect(await page.evaluate((sessionId) => {
+      const session = getSessions().find((item) => item.id === sessionId);
+      return getCanonicalGrowingCommencement(session);
+    }, persisted.id)).toEqual(persisted.commencement);
 
     const countBeforeMalformedRoute = await page.evaluate(() => getSessions().length);
     await page.goto("/#new/not-a-valid-entry");
@@ -3612,6 +3709,355 @@ test.describe("local Developer Scenarios", () => {
     expect(await page.evaluate(() => getSessions().length)).toBe(countBeforeMalformedRoute);
     expect(backendMutations).toEqual([]);
   });
+
+  for (const actorRole of ["user", "admin"]) {
+  test(`retries committed direct Growing after client reconstruction through the production boundary (${actorRole})`, async ({ page }) => {
+    test.setTimeout(90000);
+    const ownerId = actorRole === "admin"
+      ? "72000000-0000-4000-8000-000000000002"
+      : "72000000-0000-4000-8000-000000000001";
+    const ownerEmail = `direct-growing-retry-${actorRole}@example.test`;
+    const founderTimestampInput = {
+      date: "2026-07-01",
+      time: "10:15",
+    };
+    const runtimeBootStorageKey = "__iceSc001RuntimeBootCount";
+    const rpcRequests = [];
+    let loseNextSuccessfulResponse = true;
+
+    const cleanFixture = () => {
+      runIceLocalSql(`
+delete from public.grow_sessions where user_id = ${escapeIceSqlLiteral(ownerId)}::uuid;
+delete from auth.users where id = ${escapeIceSqlLiteral(ownerId)}::uuid;
+`);
+    };
+    const runAuthenticatedJson = (statement) => {
+      const output = runIceLocalSql(`
+begin;
+set local role authenticated;
+set local "request.jwt.claims" = ${escapeIceSqlLiteral(JSON.stringify({ sub: ownerId, role: "authenticated" }))};
+${statement}
+commit;
+`);
+      return JSON.parse(output);
+    };
+    const invokeCanonicalGrowing = (args = {}) => runAuthenticatedJson(`
+select public.enter_canonical_growing(
+  ${escapeIceSqlLiteral(args.p_session_id)}::uuid,
+  ${escapeIceSqlLiteral(args.p_operation_id)}::uuid,
+  ${escapeIceSqlLiteral(args.p_entry_path)},
+  ${args.p_expected_updated_at ? `${escapeIceSqlLiteral(args.p_expected_updated_at)}::timestamptz` : "null"},
+  ${args.p_session_record ? `${escapeIceSqlLiteral(JSON.stringify(args.p_session_record))}::jsonb` : "null"}
+)::text;
+`);
+    const readCanonicalState = () => JSON.parse(runIceLocalSql(`
+select jsonb_build_object(
+  'session_count',
+  (select count(*) from public.grow_sessions where user_id = ${escapeIceSqlLiteral(ownerId)}::uuid),
+  'chronology_count',
+  (
+    select count(*)
+    from public.grow_session_phase_commencements commencement
+    join public.grow_sessions session_row on session_row.id = commencement.session_id
+    where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid
+  ),
+  'session',
+  (
+    select to_jsonb(session_row)
+    from public.grow_sessions session_row
+    where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid
+    limit 1
+  ),
+  'commencement',
+  (
+    select to_jsonb(commencement)
+    from public.grow_session_phase_commencements commencement
+    join public.grow_sessions session_row on session_row.id = commencement.session_id
+    where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid
+    limit 1
+  )
+)::text;
+`));
+
+    cleanFixture();
+    runIceLocalSql(`
+insert into auth.users (id, email, created_at, updated_at)
+values (
+  ${escapeIceSqlLiteral(ownerId)}::uuid,
+  ${escapeIceSqlLiteral(ownerEmail)},
+  now(),
+  now()
+);
+`);
+
+    await page.exposeFunction("__iceSc001ProductionBoundary", async (request = {}) => {
+      if (request.kind === "list-sessions") {
+        return {
+          data: runAuthenticatedJson(`
+select coalesce(
+  jsonb_agg(to_jsonb(session_row) order by session_row.created_at desc),
+  '[]'::jsonb
+)::text
+from public.grow_sessions session_row
+where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid;
+`),
+          error: null,
+        };
+      }
+      if (request.kind !== "rpc") {
+        return { data: null, error: { code: "ICE_TEST_BOUNDARY", message: "Unsupported test boundary request." } };
+      }
+      const args = JSON.parse(JSON.stringify(request.args || {}));
+      rpcRequests.push({ name: request.name, args });
+      try {
+        if (request.name === "enter_canonical_growing") {
+          const data = invokeCanonicalGrowing(args);
+          if (loseNextSuccessfulResponse) {
+            loseNextSuccessfulResponse = false;
+            return { data: null, error: null, lost: true };
+          }
+          return { data, error: null, lost: false };
+        }
+        if (request.name === "get_canonical_growing_commencement") {
+          const data = runAuthenticatedJson(`
+select coalesce(
+  (
+    select to_jsonb(commencement)
+    from public.get_canonical_growing_commencement(
+      ${escapeIceSqlLiteral(args.p_session_id)}::uuid
+    ) commencement
+  ),
+  '{}'::jsonb
+)::text;
+`);
+          return { data, error: null, lost: false };
+        }
+        return { data: null, error: { code: "ICE_TEST_BOUNDARY", message: `Unsupported RPC: ${request.name}` }, lost: false };
+      } catch (error) {
+        return {
+          data: null,
+          error: {
+            code: "ICE_CANONICAL_RPC_ERROR",
+            message: String(error?.stderr || error?.message || error),
+          },
+          lost: false,
+        };
+      }
+    });
+
+    const installProductionBoundary = async () => {
+      await page.evaluate(({ id, email, role }) => {
+        const user = {
+          id,
+          email,
+          app_metadata: { provider: "email", role },
+          user_metadata: { name: "Direct Growing Retry Owner" },
+          aud: "authenticated",
+          role: "authenticated",
+        };
+        const makeQuery = (table) => {
+          const query = {
+            select() { return query; },
+            eq() { return query; },
+            in() { return query; },
+            order() { return query; },
+            then(resolve, reject) {
+              const request = table === "grow_sessions"
+                ? window.__iceSc001ProductionBoundary({ kind: "list-sessions" })
+                : Promise.resolve({ data: [], error: null });
+              return request.then(resolve, reject);
+            },
+          };
+          return query;
+        };
+        appState.user = user;
+        appState.authSession = { user, access_token: "ice-sc-001-test", token_type: "bearer" };
+        appState.authReady = true;
+        appState.userRole = role;
+        appState.isAdmin = role === "admin";
+        appState.profile = { ...(appState.profile || {}), id, email, role };
+        appState.supabase = {
+          auth: {
+            getUser: async () => ({ data: { user }, error: null }),
+          },
+          from: makeQuery,
+          rpc: async (name, args = {}) => {
+            const response = await window.__iceSc001ProductionBoundary({ kind: "rpc", name, args });
+            if (response.lost) {
+              return {
+                data: null,
+                error: {
+                  code: "ICE_COMMITTED_RESPONSE_LOSS",
+                  message: "Simulated loss after canonical commit.",
+                },
+              };
+            }
+            return { data: response.data, error: response.error };
+          },
+        };
+        isSupabaseConfigured = () => true;
+        isLocalDevQaBypassActive = () => false;
+      }, { id: ownerId, email: ownerEmail, role: actorRole });
+    };
+    const openDirectGrowingForm = async (sessionName) => {
+      await page.locator('a[href="#new"]').first().click();
+      await expect(page.locator("[data-session-entry-decision]")).toBeVisible();
+      await page.locator("[data-session-entry-path='grow']").click();
+      const form = page.locator("#session-form");
+      await expect(form).toBeVisible();
+      const skipNamePrompt = page.locator("[data-new-session-name-skip]");
+      if (await skipNamePrompt.isVisible()) await skipNamePrompt.click();
+      await form.locator('input[name="sessionName"]').fill(sessionName);
+      return form;
+    };
+    const submitDirectGrowing = async (form) => {
+      await form.locator("[data-new-session-save-button]").last().click();
+    };
+
+    try {
+      await page.addInitScript((storageKey) => {
+        const nextBootSequence = Number(sessionStorage.getItem(storageKey) || "0") + 1;
+        sessionStorage.setItem(storageKey, String(nextBootSequence));
+        globalThis.__iceSc001RuntimeBootSequence = nextBootSequence;
+      }, runtimeBootStorageKey);
+      await page.goto("/#home");
+      await page.waitForFunction(() => document.querySelector("main")?.childElementCount > 0);
+      await page.evaluate((id) => {
+        localStorage.removeItem(getDirectGrowingOperationStorageKey(id));
+      }, ownerId);
+      await installProductionBoundary();
+
+      const initialForm = await openDirectGrowingForm("Committed Response Loss");
+      if (actorRole === "admin") {
+        await initialForm.evaluate((form, timestampInput) => {
+          form.elements.date.value = timestampInput.date;
+          initializeTimeFormatField(form, timestampInput.time);
+        }, founderTimestampInput);
+      }
+      await submitDirectGrowing(initialForm);
+      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing").length).toBe(1);
+      await expect(page).toHaveURL(/#new/);
+      const committedAfterLoss = readCanonicalState();
+      expect(committedAfterLoss.session_count).toBe(1);
+      expect(committedAfterLoss.chronology_count).toBe(1);
+      expect(committedAfterLoss.commencement.commenced_at).toBeTruthy();
+      const pendingBeforeReconstruction = await page.evaluate((id) => readDirectGrowingOperation(id), ownerId);
+      expect(pendingBeforeReconstruction).toMatchObject({
+        ownerId,
+        sessionId: committedAfterLoss.session.id,
+        operationId: committedAfterLoss.commencement.operation_id,
+        operationAt: expect.any(String),
+      });
+      const runtimeBeforeReconstruction = await page.evaluate(() => {
+        const sentinel = crypto.randomUUID();
+        globalThis.__iceSc001RuntimeSentinel = sentinel;
+        return {
+          sentinel,
+          bootSequence: globalThis.__iceSc001RuntimeBootSequence,
+          timeOrigin: performance.timeOrigin,
+        };
+      });
+      expect(runtimeBeforeReconstruction.bootSequence).toBe(1);
+
+      await page.goto("/#home");
+      await page.waitForFunction(() => document.querySelector("main")?.childElementCount > 0);
+      expect(await page.evaluate(() => globalThis.__iceSc001RuntimeSentinel || null)).toBe(runtimeBeforeReconstruction.sentinel);
+
+      const reloadResponse = await page.reload({ waitUntil: "domcontentloaded" });
+      expect(reloadResponse).not.toBeNull();
+      expect(reloadResponse.ok()).toBe(true);
+      await page.waitForFunction(() => document.querySelector("main")?.childElementCount > 0);
+      const reconstructedMemory = await page.evaluate(() => ({
+        operationIds: canonicalGrowingOperationIds.size,
+        operationTimes: canonicalGrowingOperationTimes.size,
+        hasSessionForm: Boolean(document.querySelector("#session-form")),
+        runtimeSentinel: globalThis.__iceSc001RuntimeSentinel || null,
+        bootSequence: globalThis.__iceSc001RuntimeBootSequence,
+        timeOrigin: performance.timeOrigin,
+        appInitialized: typeof appState === "object" && typeof safeBootstrapApp === "function",
+      }));
+      expect(reconstructedMemory).toMatchObject({
+        operationIds: 0,
+        operationTimes: 0,
+        hasSessionForm: false,
+        runtimeSentinel: null,
+        bootSequence: runtimeBeforeReconstruction.bootSequence + 1,
+        appInitialized: true,
+      });
+      expect(reconstructedMemory.timeOrigin).not.toBe(runtimeBeforeReconstruction.timeOrigin);
+      expect(await page.evaluate((id) => readDirectGrowingOperation(id), ownerId)).toEqual(pendingBeforeReconstruction);
+
+      await installProductionBoundary();
+      expect(await page.evaluate((id) => readDirectGrowingOperation(id), ownerId)).toEqual(pendingBeforeReconstruction);
+
+      const retryForm = await openDirectGrowingForm("Different Fingerprint");
+      if (actorRole === "admin") {
+        expect(await retryForm.evaluate((form) => ({
+          date: form.elements.date.value,
+          time: form.elements.time.value,
+        }))).toEqual(founderTimestampInput);
+      }
+      await submitDirectGrowing(retryForm);
+      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing").length).toBe(2);
+      await expect(page).toHaveURL(/#new/);
+      expect(await page.evaluate((id) => readDirectGrowingOperation(id), ownerId)).toEqual(pendingBeforeReconstruction);
+
+      await retryForm.locator('input[name="sessionName"]').fill("Committed Response Loss");
+      await submitDirectGrowing(retryForm);
+      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing").length).toBe(3);
+      await expect(page).toHaveURL(new RegExp(`#sessions/${committedAfterLoss.session.id}$`));
+
+      const browserResult = await page.evaluate((sessionId) => {
+        const session = getSessions().find((candidate) => candidate.id === sessionId);
+        return {
+          sessionId: session?.id || "",
+          commencement: getCanonicalGrowingCommencement(session),
+          pendingOperation: readDirectGrowingOperation(appState.user?.id || ""),
+        };
+      }, committedAfterLoss.session.id);
+      const finalCanonicalState = readCanonicalState();
+      const entryRequests = rpcRequests.filter((request) => request.name === "enter_canonical_growing");
+      const fingerprintRecord = (request) => {
+        const record = JSON.parse(JSON.stringify(request.args.p_session_record || {}));
+        delete record.user_id;
+        delete record.created_at;
+        delete record.updated_at;
+        return record;
+      };
+
+      expect(entryRequests[0].args.p_session_id).toBe(entryRequests[2].args.p_session_id);
+      expect(entryRequests[0].args.p_operation_id).toBe(entryRequests[2].args.p_operation_id);
+      expect(fingerprintRecord(entryRequests[0])).toEqual(fingerprintRecord(entryRequests[2]));
+      expect(fingerprintRecord(entryRequests[1])).not.toEqual(fingerprintRecord(entryRequests[0]));
+      expect(entryRequests[1].args.p_operation_id).toBe(entryRequests[0].args.p_operation_id);
+      expect(browserResult).toEqual({
+        sessionId: committedAfterLoss.session.id,
+        commencement: {
+          status: "authoritative",
+          sessionId: committedAfterLoss.session.id,
+          commencedAt: new Date(committedAfterLoss.commencement.commenced_at).toISOString(),
+          entryPath: "grow",
+          operationId: committedAfterLoss.commencement.operation_id,
+        },
+        pendingOperation: null,
+      });
+      expect(finalCanonicalState.session_count).toBe(1);
+      expect(finalCanonicalState.chronology_count).toBe(1);
+      expect(finalCanonicalState.session.id).toBe(committedAfterLoss.session.id);
+      expect(finalCanonicalState.commencement.commenced_at).toBe(committedAfterLoss.commencement.commenced_at);
+      expect(finalCanonicalState.commencement.operation_id).toBe(committedAfterLoss.commencement.operation_id);
+    } finally {
+      await page.evaluate((id) => {
+        try {
+          localStorage.removeItem(getDirectGrowingOperationStorageKey(id));
+          sessionStorage.removeItem("__iceSc001RuntimeBootCount");
+          delete globalThis.__iceSc001RuntimeSentinel;
+        } catch {}
+      }, ownerId).catch(() => {});
+      cleanFixture();
+    }
+  });
+  }
 
 
   test("persists canonical Grow Context and Plant Groups without fabricating Germination evidence", async ({ page }) => {

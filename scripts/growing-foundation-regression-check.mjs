@@ -8,7 +8,8 @@ const schemaSnapshot = fs.readFileSync(new URL("../supabase-schema.sql", import.
 const index = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 assert.match(index, /src\/growing-foundation\.js[^]*app\.js/, "Growing module must load before app.js.");
-assert.match(app, /attachGrowingEvidenceToSessions\(sessions\)/);
+assert.match(app, /attachCanonicalGrowingCommencementsToSessions\(sessions\)/);
+assert.match(app, /attachGrowingEvidenceToSessions\(sessionsWithCommencement\)/);
 assert.match(app, /post_germination_decision/);
 assert.match(app, /POST_GERMINATION_DECISION/);
 assert.match(app, /renderPostGerminationDecisionMarkup/);
