@@ -25,6 +25,7 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [CS-SC-001 — Session Conditions Composition](./session-conditions-composition-specification.md)
 - [CS-SC-001A — Initial Session Conditions Dimensions and Existing Truth](./session-conditions-initial-dimensions-composition-specification.md)
 - [CS-SC-001B — Canonical Growing Commencement and Legacy Chronology](./session-conditions-growing-commencement-and-legacy-chronology-composition-specification.md)
+- [CS-SC-001C — Current Conditions Operations and Forward-Only Legacy Declaration Composition Specification](./session-conditions-current-conditions-operations-and-forward-only-legacy-declaration-composition-specification.md)
 
 ## Architecture Resolutions
 
