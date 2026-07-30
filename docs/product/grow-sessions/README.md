@@ -46,3 +46,4 @@ Grow Sessions specifications must follow the [Grow Foundation](../../foundation/
 - [IC-GC-007 — Documents Composition](../../foundation/implementation-contracts/IC-GC-007-documents-composition.md)
 - [IC-SC-001 — Session Conditions Implementation Contract](../../foundation/implementation-contracts/IC-SC-001-session-conditions.md)
 - [IC-SC-001B — Canonical Growing Commencement and Legacy Chronology](../../foundation/implementation-contracts/IC-SC-001B-canonical-growing-commencement-and-legacy-chronology.md)
+- [IC-SC-001C — Current Conditions Operations and Forward-Only Legacy Declaration](../../foundation/implementation-contracts/IC-SC-001C-current-conditions-operations-and-forward-only-legacy-declaration.md)
