@@ -6,7 +6,7 @@
 **Executes:** [IC-GI-001 — Grow Identity Layer Phase 1 Implementation Contract](../implementation-contracts/IC-GI-001-grow-identity-layer-phase-1.md)
 **Capability:** Grow Identity Layer Phase 1
 **Layer:** Implementation Contract Execution
-**Execution authority:** None; this proposed artifact is unapproved and non-executable
+**Execution authority:** None; this approved governing artifact remains unexecuted and requires separate explicit execution authorization.
 
 ## 1. Purpose and Recovery Objective
 
