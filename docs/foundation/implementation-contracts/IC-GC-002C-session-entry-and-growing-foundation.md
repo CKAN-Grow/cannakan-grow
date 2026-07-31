@@ -1,43 +1,39 @@
 # IC-GC-002C — Session Entry & Growing Foundation
 
-**Status:** Draft — Requires Architecture Approval
+**Status:** Approved — Architecture Audit Passed; Implementation Contract Governance Complete; Implementation Not Authorized
 
 **Scope:** Session Entry / Seed Session / Grow Session / Growing initialization / Growing evidence ownership / Growing Summary / Growing workspace
 
 ## 1. Purpose
 
-This contract defines the canonical architecture for entering one user-owned Session and initializing its Growing phase.
+This draft assembles bounded implementation-contract meaning for entering one user-owned Session and initializing its Growing phase. It does not itself establish Product Composition or Presentation authority.
 
-It establishes two approved Session entry paths, the minimum structural responsibilities of Growing, the ownership boundary of Growing evidence, the Plant Group model, reference-versus-observed timing, the Growing Summary, and the Growing workspace.
+If approved, it would carry forward the two authorized Session entry paths and the bounded upstream meanings for Growing evidence ownership and Plant Group containment. Detailed condition and Plant Group field sets, entry Presentation, Summary composition, and workspace placement recorded below are non-governing proposals retained for traceability; each requires separate Product authority before it may become an implementation requirement.
 
 This is an implementation contract only. It does not implement application behavior, approve a database representation, or authorize later lifecycle capabilities.
 
 ## 2. Foundation Authority
 
-This contract derives authority from:
+This draft contract inherits only authority established upstream. The controlling authority is:
 
-1. [FN-001 — Growing Conditions](../foundation-notes/FN-001-growing-conditions.md)
-2. [FN-003 — Canonical Entities & Representation](../foundation-notes/FN-003-canonical-entities-and-representation.md)
-3. [FN-004 — Session Context, Operational Intelligence & Evidence Readiness](../foundation-notes/FN-004-session-lifecycle-and-grow-companion.md)
-4. [Grow Companion Composition Specification](../../product/grow-sessions/grow-companion-composition-specification.md)
-5. [IC-GC-002A — Session Context Foundation](./IC-GC-002A-session-context-foundation.md)
-6. [IC-GC-002B — Grow Companion Structural Foundation](./IC-GC-002B-grow-companion-structural-foundation.md)
+1. [FN-001 — Growing Conditions](../foundation-notes/FN-001-growing-conditions.md), for the future Growing-conditions concept only; it does not approve a detailed vocabulary or implementation definition;
+2. [FN-003 — Canonical Entities & Representation](../foundation-notes/FN-003-canonical-entities-and-representation.md), for canonical ownership, durable provenance, and prohibition of parallel identity or evidence models;
+3. [FN-004 — Session Context, Operational Intelligence & Evidence Readiness](../foundation-notes/FN-004-session-lifecycle-and-grow-companion.md), for one continuous Session, canonical lifecycle phases, completed-phase durability, Session Context, and evidence ownership;
+4. [FN-005 — Canonical Session Conditions](../foundation-notes/FN-005-canonical-session-conditions.md), for canonical Session Conditions truth and the non-authority of Product and Presentation;
+5. [FN-006 — Canonical Phase Commencement and Lifecycle Chronology](../foundation-notes/FN-006-canonical-phase-commencement-and-lifecycle-chronology.md), for one durable canonical commencement instant owned by Session Lifecycle;
+6. [FN-007 — Intentional Transition from Germination to Growing](../foundation-notes/FN-007-intentional-transition-from-germination-to-growing.md), for the distinct authorized Begin Growing transition and the bounded correction to FN-004's former automatic-transition rule;
+7. the Architecture-Reviewed and founder-approved **Product Authority Addendum — Growing Phase and Plant Group Security Boundaries**, as controlling approved Product authority only for its bounded Product meanings, ownership, containment, operation, and security boundaries; and
+8. applicable approved Session Conditions authority, including the bounded approved current-conditions authority, for canonical Current Conditions and valid authority-switch behavior.
 
-If authorities conflict, precedence is:
+The following repository documents are cited dependencies, not approved controlling authority for this contract:
 
-```text
-Foundation Notes
-↓
-Grow Companion Composition Specification
-↓
-Implementation Contract
-↓
-Implementation
-```
+- [Grow Companion Composition Specification](../../product/grow-sessions/grow-companion-composition-specification.md) remains **Draft — Requires Architecture Approval**;
+- [IC-GC-002A — Session Context Foundation](./IC-GC-002A-session-context-foundation.md) remains **Draft — Requires Architecture Approval**; and
+- [IC-GC-002B — Grow Companion Structural Foundation](./IC-GC-002B-grow-companion-structural-foundation.md) remains **Draft — Requires Architecture Approval**.
 
-Higher-level architecture always prevails. This contract must not silently resolve a decision that remains outside its approved scope.
+Higher-order approved Foundation authority prevails over approved bounded Product authority, which prevails over an approved Implementation Contract, which prevails over implementation. Draft or unapproved dependencies may provide traceable context but cannot supply missing authority.
 
-FN-001 establishes Growing Conditions as optional Session-level context and does not by itself authorize a final taxonomy or schema. The approved resolution recorded in this contract establishes only the bounded Grow Context vocabularies in Section 6.1. FN-003 requires canonical ownership, durable provenance, and no parallel models. FN-004 establishes one continuous Session, Growing as a canonical phase, phase-owned evidence, and the boundary between user evidence, deterministic context, Reflection, GEE, and Seed Vault knowledge. The Composition Specification governs Grow Companion composition. IC-GC-002A retains ownership of deterministic Session Context and evidence-readiness projections. IC-GC-002B supplies the persistent shell, independent current/viewed/lifecycle states, historical review, and Germination regression lock inherited by this contract.
+This contract does not independently establish Product meaning, approve a cited draft, or convert historical implementation evidence into authority. Repository presence, technical operation, migrations, policies, grants, or committed code do not cure an authority gap. Normative Product requirements retained here are limited to approved upstream authority. Detailed taxonomy, entry Presentation, Summary composition, and workspace placement are individually classified below as non-governing proposals and remain deferred pending separate Product authority.
 
 ## 3. Repository Baseline
 
@@ -45,27 +41,29 @@ At contract creation:
 
 - the canonical repository architecture recognizes Germination, Growing, and Reflection as phases of one Session;
 - Germination is the protected reference composition;
-- the persistent Grow Companion shell and phase-state foundation are governed by IC-GC-002B;
+- the persistent Grow Companion shell and phase-state foundation are described by draft IC-GC-002B and are not governing authority for this contract;
 - the existing Growing workspace partially composes Capability 1 Tasks, Events, Upcoming Tasks, and Recent Activity;
-- this contract resolves the bounded Growing initialization, Grow Context vocabularies, Plant Group evidence, phase-summary content, and workspace ownership required for the next implementation slice, while scheduling, notes, observations, images, hero content, and timeline behavior remain deferred; and
+- this draft preserves approved bounded Growing lifecycle, evidence-ownership, containment, and security meanings while retaining proposed Grow Context vocabularies, Plant Group field detail, phase-summary content, and workspace placement only as non-governing traceability; those proposed details cannot enter an implementation slice without separate Product authority, and scheduling, notes, observations, images, hero content, and timeline behavior remain deferred; and
 - the working tree contains pre-existing changes outside this deliverable.
 
-Existing implementation is a compatibility baseline, not architecture authority. This documentation task authorizes no application, schema, migration, test, asset, or runtime change. A later ICE may implement only the bounded Session Entry and Growing foundation approved by this contract.
+Existing implementation is a compatibility baseline, not architecture authority. This documentation task authorizes no application, schema, migration, test, asset, or runtime change. A later ICE may implement only normative meanings that have complete upstream authority and are approved through this contract; the non-governing Product and Presentation proposals identified here remain excluded until separately authorized.
+
+P1 exists in repository history through commit 24ca7895fe1dc840135aa8234ac41d2204822ec7 and migration supabase/migrations/20260723120000_growing_phase_and_plant_groups.sql. P1 was committed without established execution authority. Its repository presence and technical operation do not create architectural, Product, approval, acceptance, correction, or execution authority. The historical authority gap remains explicit and is neither cured nor rewritten by this targeted correction. P1 remains without established present-day acceptance.
 
 ## 4. Scope
 
 This contract defines only:
 
-1. Session Entry;
+1. Session Entry lifecycle meaning, excluding any precise Product or Presentation mechanism;
 2. Seed Session entry;
 3. Grow Session entry;
 4. Growing initialization;
 5. Growing evidence ownership, canonical persistence, and the Plant Group model;
-6. reference timing and observed timing boundaries;
-7. the deterministic Growing Summary; and
-8. the Growing operational workspace and its capability ownership boundaries.
+6. timing Product and Presentation deferral boundaries;
+7. non-governing proposed Growing Summary material retained for traceability and deferred to separate Product authority; and
+8. non-governing proposed Growing workspace placement and composition retained for traceability and deferred to separate Product authority.
 
-The implementation must reuse one canonical Session, the IC-GC-002B Grow Companion shell and phase model, canonical information owners, and existing security and compatibility boundaries.
+Any later authorized implementation must reuse one canonical Session, canonical information owners, and existing security and compatibility boundaries. Use of the Grow Companion shell or phase model described by draft IC-GC-002B requires that dependency to obtain its own applicable approval; this contract does not elevate it.
 
 ## 5. Canonical Session Entry Model
 
@@ -86,7 +84,7 @@ A Seed Session:
 
 - includes Germination as its entry phase;
 - begins with Germination as the canonical current phase;
-- uses the complete protected Germination composition governed by IC-GC-002B;
+- recognizes IC-GC-002B only as non-governing draft composition evidence;
 - may end as a complete canonical Session after Germination;
 - may instead continue into Growing within the same Session through an explicit lifecycle decision; and
 - preserves completed Germination in full whether the Session ends or Growing becomes current.
@@ -110,7 +108,9 @@ Completing Germination does not automatically activate Growing. After Germinatio
 
 - Session lifecycle state remains Current;
 - Germination lifecycle state is Completed;
-- Growing becomes the canonical current phase;
+- a distinct authorized Begin Growing transition makes Growing the canonical current phase;
+- that transition establishes exactly one canonical Growing commencement instant;
+- current-phase state and canonical commencement become durable as one indivisible lifecycle outcome;
 - no Plant Group is created automatically; and
 - Growing evidence exists only after an intentional valid save.
 
@@ -125,32 +125,33 @@ Growing is optional for a Seed Session. Germination completion, Session completi
 
 A completed Germination-only Session is complete and valid. It retains all Germination history and evidence, remains available for full historical review, remains eligible for existing Germination evidence and analytics behavior, and requires no downstream phase record.
 
+Completed Germination remains durable, reviewable, and non-reactivated whether Growing begins immediately, later, or not at all where another outcome is authorized. Opening or viewing Growing, presenting or entering draft Product state, or creating evidence does not perform the Begin Growing transition or establish canonical commencement.
+
 ### 5.2 Grow Session
 
 A Grow Session:
 
 - includes Growing as its entry phase;
-- begins with Growing as the canonical current phase;
+- begins with Growing as the canonical current phase through the authorized direct-Growing Session-entry action;
+- establishes exactly one canonical Growing commencement instant when canonical Session creation and direct Growing entry succeed as one domain action;
+- makes lifecycle state and canonical commencement durable as one indivisible outcome;
 - does not fabricate a Germination phase record, result, duration, completion event, or Germination evidence;
 - does not represent Germination as completed when Germination was not included; and
-- initializes only the Growing evidence and workspace authorized by this contract.
+- initializes only lifecycle state and Growing evidence authorized by this contract.
 
 For a Grow Session, Germination is omitted. The phase navigator may present Germination as **Not included**, and Germination navigation is disabled. Omitted is distinct from completed. An omitted Germination phase cannot become current or viewed, cannot be activated or completed, and cannot create records, evidence, timestamps, milestones, results, summaries, or workspace content. This omitted-phase presentation is a deterministic projection of the Session entry path, not an evidence record.
 
+Canonical Growing commencement must not be inferred from Session or phase record creation or update times, Growing evidence, Tasks, Events, Notes, Photos, Documents, migrations, or any other proxy. Where legacy evidence does not establish Foundation-authoritative commencement, chronology remains honestly unresolved; this contract authorizes no estimation, reconstruction, backdating, or substitute timestamp.
+
 ### 5.3 Entry Selection Boundary
 
-One neutral Session Entry decision must appear once, before phase-specific setup:
+Session Entry must remain an intentional lifecycle decision between the authorized Seed entry and direct-Growing entry paths. Neither path may be inferred, defaulted, or established by merely opening, viewing, or presenting an interface.
 
-- **Seed Session** — Begin this Session with Germination.
-- **Grow Session** — Begin this Session with Growing.
+The precise Product flow and Presentation mechanism—including labels, control type, selector or modal use, ordering, visual emphasis, repetition, and routing into phase-specific setup—are not established by this IC. Any such mechanism requires separate Product and Presentation authority before it may become an implementation requirement.
 
-Neither option is recommended or visually preferred. No option is selected by default. The user must deliberately choose one entry path, and the Seed/Grow choice must not be repeated inside the phase-specific setup form.
+Only a successful authorized lifecycle action establishes canonical Session Entry. Draft or Presentation state cannot create evidence, mutate an existing Session's entry meaning, or clear, replace, reinterpret, or fabricate phase evidence. This IC establishes no entry-path conversion or correction workflow; any future conversion or correction requires separate authority.
 
-After selection, Seed Session continues into the existing Germination Method selection flow. Grow Session routes directly into the Growing phase shell.
-
-Before the first successful canonical Session creation, the user may change the selected entry path. After creation, Session Entry is immutable: Seed Session cannot become Grow Session, Grow Session cannot become Seed Session, and editing an existing Session must not expose or persist an entry-path change. An entry-path change must never clear, replace, reinterpret, or fabricate phase evidence. Any future conversion or correction workflow requires a separate architecture contract.
-
-Entry selection establishes the Session's starting phase only. It must not:
+The authorized lifecycle decision establishes the Session's starting phase only. It must not:
 
 - choose a future Reflection path;
 - create evidence;
@@ -178,35 +179,36 @@ A direct internal route may carry the selected entry path into Session creation 
 
 Growing is an independent operational phase within the same Session and persistent Grow Companion.
 
-When Growing is included, it begins with one Growing-owned setup step followed by one editable Growing evidence chart. The same setup applies when:
+When Growing is included, this IC establishes no particular setup step, chart, table, row or entry model, collection interaction, calculation, or Presentation mechanism for capturing Growing evidence. The precise Product composition and interaction model remain deferred to separately approved Product composition authority for both authorized Growing entry paths:
 
 - a Grow Session begins directly in Growing; or
 - a Seed Session explicitly continues into Growing after Germination.
 
 Growing initialization must establish:
 
-- the included Growing phase record;
+- the included Growing lifecycle phase without creating a competing lifecycle identity;
 - Growing as the canonical current phase when entered directly or activated through lifecycle transition;
+- exactly one canonical Growing commencement instant owned by Session Lifecycle as part of the same indivisible lifecycle outcome;
 - independent Growing timing, progress, and completion state;
-- Grow Context owned by the Growing phase;
-- an initially valid Growing evidence surface that does not fabricate evidence;
-- the Growing Summary projection location above the chart; and
-- the reserved Growing workspace location below the chart.
+- canonical Session Conditions consumption and any retained legacy Growing compatibility fields without creating competing conditions truth;
+- the rule that Growing evidence is created only through authorized owner action and is never fabricated.
 
 For a Seed Session, Growing initialization must preserve completed Germination in full and must not rename or copy Germination evidence into Growing. For a Grow Session, initialization must not create a placeholder Germination record.
 
-Growing setup must never infer values from Germination. Initialization distinguishes user-entered or observed evidence from optional reference knowledge, plans, estimates, deterministic context, and system state. Missing Growing evidence remains missing; it must not be filled from Germination or Seed Vault reference values.
+Growing initialization must never infer values from Germination. Initialization distinguishes user-entered or observed evidence from optional reference knowledge, plans, estimates, deterministic context, and system state. Missing Growing evidence remains missing; it must not be filled from Germination or Seed Vault reference values.
 
 ### 6.1 Grow Context
 
-Growing owns two distinct context fields:
+The Session owns two canonical Session Conditions dimensions used during Growing:
 
 - **Environment Type** — where the plants are grown;
 - **Grow Method** — the cultivation medium or system.
 
-Both fields remain independent from Germination Method and must not reuse or rename Germination evidence.
+Canonical Session Conditions truth is owned by the Session and Canonical Platform. Growing Product composition and Presentation are consumers; they do not own, duplicate, override, or redefine that truth. Both dimensions remain independent from Germination Method and must not reuse or rename Germination evidence.
 
-The initial approved Environment Type vocabulary is:
+Retained Growing Phase fields for Environment Type, Grow Method, and permitted Other text are legacy or compatibility representations only within their separately authorized authority-switch boundary. Before a valid per-Session authority switch, they retain only the legacy authority expressly preserved by Session Conditions governance. After a valid switch, canonical Session Conditions are solely authoritative and the retained fields cannot compete with, override, or duplicate them. Unrelated canonical Growing evidence remains Growing-owned and must be preserved.
+
+The following Environment Type vocabulary is a non-governing draft retained for traceability and compatibility analysis. It is not approved, canonical, or implementation-required and cannot govern implementation without separate Product authority:
 
 - Indoor;
 - Outdoor;
@@ -215,7 +217,7 @@ The initial approved Environment Type vocabulary is:
 - Mixed;
 - Other.
 
-The initial approved Grow Method vocabulary is:
+The following Grow Method vocabulary is a non-governing draft retained for traceability and compatibility analysis. It is not approved, canonical, or implementation-required and cannot govern implementation without separate Product authority:
 
 - Soil;
 - Living Soil;
@@ -230,7 +232,7 @@ The initial approved Grow Method vocabulary is:
 - Container;
 - Other.
 
-For either vocabulary, **Other** may retain attributable user-authored Session text. User-authored text must not automatically create a new global canonical term.
+The accompanying **Other** handling is likewise a non-governing proposal: if separately authorized, user-authored text would remain attributable Session Conditions text rather than automatically creating a global canonical term. This IC does not approve that detailed behavior.
 
 ## 7. Growing Evidence Model
 
@@ -261,7 +263,8 @@ Canonical Session
 A Growing Phase Record:
 
 - belongs to exactly one canonical Session and is unique per Session;
-- owns the approved Grow Context;
+- owns canonical Growing evidence unrelated to Session Conditions;
+- may retain separately governed legacy or compatibility condition fields but does not own or override canonical Session Conditions truth;
 - contains no Germination evidence; and
 - contains no deferred timing, harvest-event, workspace, Reflection, or GEE data.
 
@@ -271,33 +274,32 @@ Each Plant Group Record:
 
 - belongs to exactly one Growing Phase Record;
 - owns one approved Plant Group;
-- uses one immutable internal identifier independent from its editable label and display order; and
+- uses one immutable internal identifier independent from any separately authorized label or ordering representation; and
 - contains only the Plant Group evidence approved by this contract.
 
-Editing a label or reordering rows must not replace Plant Group identity. Deleting one Plant Group must not alter another Plant Group's identity.
+Any separately authorized label or ordering change must not replace Plant Group identity. Deleting one Plant Group must not alter another Plant Group's identity.
+
+Each Plant Group belongs to exactly one Growing Phase context and therefore exactly one owning Grow Session. An authorized owner may delete a Plant Group only within that owning Session. A Plant Group cannot cross Session, owner, or containment boundaries. Deleting a Plant Group must not delete, invalidate, replace, or alter the identity of the canonical Growing Phase, must not delete or invalidate Session lifecycle evidence, and must not alter any other Plant Group's identity.
 
 Growing evidence must not be stored in Germination Partitions, snapshot state, Session notes, Session images, Tasks, Events, Seed Vault records, an unrelated or miscellaneous Session field, or a local-only evidence store.
 
 Local, demo, scenario, and cloud representations must map losslessly to this same logical model, ownership, stable identity, and validation boundary. Their technical representation may differ, but no separate local evidence contract is authorized.
 
-## 8. Editable Growing Chart and Plant Groups
+## 8. Plant Groups and Deferred Product Composition
 
-Growing owns one editable chart as the canonical evidence surface for the phase. Opening or activating Growing must not fabricate chart rows.
+Precise Product composition, interaction model, and Presentation for capturing or managing Growing evidence are not established by approved controlling authority and are not implementation requirements of this IC.
 
-The chart follows the established flexible-row interaction principles of Germination Other Method:
+This IC requires no setup step, chart, table, row or entry model; no add, edit, or remove interaction; and no aggregation, summation, deterministic total, calculated count, or equivalent collection-management or calculation behavior. All such details remain deferred to separately approved Product composition authority.
 
-- rows are directly editable by the owner;
-- rows may be added;
-- rows may be removed; and
-- totals are deterministic projections of eligible row evidence.
+Any later separately authorized composition must not fabricate Plant Group records, reuse, rename, or mutate Germination records, Germination Partitions, or Germination-specific evidence semantics, or create a duplicate Growing evidence-entry surface.
 
-This inheritance governs interaction principles only. The Growing chart must not reuse, rename, or mutate Germination records, Germination Partitions, or Germination-specific evidence semantics. No duplicate Growing evidence-entry surface is authorized.
+A Plant Group represents one or more plants within the Session that share the recorded characteristics of the group at that time. Grouping organizes attributable Growing evidence; it does not assert that the plants are biologically identical.
 
-Each Growing chart row represents one **Plant Group**, not a Germination Partition. A Plant Group represents one or more plants within the Session that share the recorded characteristics of the group at that time. Grouping organizes attributable Growing evidence; it does not assert that the plants are biologically identical.
+Plant Group deletion is owner-scoped CRUD, not deletion of canonical Growing-phase evidence. Deleting a Plant Group must preserve the canonical Growing Phase identity, durable Session lifecycle evidence, completed-phase history, and every other Plant Group identity.
 
 ### 8.1 Plant Group Fields
 
-The approved user-facing chart fields are:
+The following user-facing field set is a non-governing draft retained for traceability and compatibility analysis. It is not approved, canonical, or implementation-required; every field and its Product or Presentation behavior require separate authority:
 
 - **Plant**;
 - **Source**;
@@ -309,19 +311,19 @@ The approved user-facing chart fields are:
 
 #### Plant
 
-**Plant** is the user-facing row or group label. The permanent internal Plant Group identifier must remain stable and independent from that editable label. The identifier's representation and persistence remain deferred.
+This draft proposes **Plant** as a user-facing Plant Group label distinct from the stable internal Plant Group identity required by approved containment authority. The label, representation, and persistence detail are non-governing and remain deferred.
 
 #### Source
 
-Source must use the existing canonical Source identity system. The chart must not automatically create duplicate canonical Source records. Unknown or unresolved values may follow existing repository identity conventions while retaining attribution and without being promoted automatically into a global canonical term.
+This draft proposes that a future **Source** field reference the existing canonical Source identity system without creating duplicate Source records. Unknown-value handling, attribution, and promotion behavior are non-governing proposals and require separate Product authority.
 
 #### Variety
 
-Variety must use the existing canonical Variety and Seed Vault identity systems. The chart must not automatically create duplicate canonical Variety records. Unknown or unresolved values may follow existing repository identity conventions while retaining attribution and without being promoted automatically into a global canonical term.
+This draft proposes that a future **Variety** field reference the existing canonical Variety and Seed Vault identity systems without creating duplicate Variety records. Unknown-value handling, attribution, and promotion behavior are non-governing proposals and require separate Product authority.
 
 #### Type
 
-Type describes how the plants entered the Growing phase. Its initial approved vocabulary is:
+This draft proposes **Type** to describe how plants entered the Growing phase. The following vocabulary is non-governing, not approved, and not implementation-required:
 
 - Seed;
 - Seedling;
@@ -330,11 +332,11 @@ Type describes how the plants entered the Growing phase. Its initial approved vo
 - Established Plant;
 - Other.
 
-Type must not fabricate or imply Germination evidence.
+If a Type field is separately authorized later, it cannot fabricate or imply Germination evidence. This IC does not authorize the field or vocabulary.
 
 #### Sex
 
-The initial approved Sex vocabulary is:
+The following **Sex** vocabulary is a non-governing draft, not approved, and not implementation-required:
 
 - Unknown;
 - Feminized;
@@ -343,105 +345,37 @@ The initial approved Sex vocabulary is:
 - Regular;
 - Other.
 
-Unknown remains a valid state. Sex must not be inferred automatically.
+The proposed Unknown handling and prohibition on inference are retained only as non-governing draft detail pending separate Product authority.
 
 #### Number of Plants
 
-Number of Plants is a positive whole-number count owned by the Plant Group and explicitly entered or confirmed as Growing evidence. It must never be inferred from seeds started, germinated seeds, Germination Partitions, or Germination completion totals.
-
-For a Seed Session entering Growing, Germination counts may be presented only as orientation; the user must explicitly enter or confirm the plants entering Growing. For a Grow Session, the chart begins without Germination evidence.
+This draft proposes **Number of Plants** as a positive whole-number count attributable to a Plant Group and explicitly entered or confirmed as Growing evidence rather than inferred from Germination. The field, validation rule, orientation behavior, and entry interaction are non-governing and require separate Product authority.
 
 #### Harvested
 
-Harvested is a checkbox representing full harvest of the entire current Plant Group row. It must not silently represent partial harvest or define a Harvest workflow.
+This draft proposes **Harvested** as a checkbox representing full harvest of the entire current Plant Group rather than partial harvest or a Harvest workflow. The field and its Presentation behavior are non-governing and require separate Product authority.
 
-Partial-harvest interaction, Plant Group splitting or merging, lineage presentation, count-correction behavior, harvest dates, harvest events, yield capture, and post-harvest processing remain deferred. A future data model must not prevent partial-harvest lineage, but this contract does not define its implementation.
+Partial-harvest interaction, Plant Group splitting or merging, lineage presentation, count-correction behavior, harvest dates, harvest events, yield capture, and post-harvest processing remain deferred. This IC establishes no implementation requirement for them.
 
-## 9. Reference Timing and Observed Timing
+## 9. Timing Product and Presentation Boundary
 
-Growing distinguishes:
+This IC establishes no **Expected Vegetative Time**, **Expected Flowering Time**, or semantically equivalent expected-duration field. It establishes no units, precision, defaults, validation, correction, calculation, storage, or Presentation behavior for such fields. Precise timing Product composition and Presentation remain deferred to separately approved Product composition authority.
 
-- **Reference timing** — non-observed knowledge presented for orientation and potentially sourced from canonical Seed Vault knowledge;
-- **Observed timing** — attributable Session evidence recording what actually occurred during Growing.
+This IC establishes no Seed Vault initialization, copying, reuse, inheritance, prepopulation, synchronization, adjustment, or correction behavior for any expected-time or expected-duration value, and it establishes no replacement relationship between Grow Session evidence and Seed Vault records. Any such relationship requires separate Product authority.
 
-Growing may own Session reference fields for:
-
-- **Expected Vegetative Time**;
-- **Expected Flowering Time**.
-
-When a selected Variety is linked to a Seed Vault entry containing either value, Grow may initialize the corresponding Session reference field from that entry. Missing values remain empty, and Grow must not fabricate timing estimates.
-
-Reference timing:
-
-- remains owned by Seed Vault as the canonical knowledge source;
-- retains source and provenance when represented on the Session;
-- may be adjusted by the owner for that Session without altering the Seed Vault source;
-- is not observed Session evidence;
-- must be distinguishable from user-authored plans, deterministic estimates, observations, and outcomes; and
-- must not initialize observed dates or durations automatically.
-
-Reference knowledge must never initialize, replace, correct, or overwrite observed Session evidence automatically. Session reference changes must never overwrite or silently update Seed Vault knowledge.
-
-Observed timing:
-
-- is owned by the Growing phase record;
-- is created through attributable Session activity;
-- remains distinct from estimates, plans, and reference values; and
-- may inform deterministic summaries without being overwritten by them.
-
-Observed evidence must never overwrite or silently update Seed Vault knowledge. Any future owner-confirmed knowledge update or synchronization requires a separate approved contract.
-
-Exact storage, units, range representation, and normalization for expected timing remain implementation-blocking when no approved repository convention exists. An implementation must report that gap rather than invent a permanent timing contract. Actual vegetative and flowering duration calculations, timing comparisons, conflict handling, observed-timing fields, and correction policy remain deferred.
+Independently of those deferred details, attributable observed Growing evidence must remain distinct from plans, estimates, reference knowledge, deterministic context, and system state. This boundary does not define an observed-timing field contract, duration calculation, comparison, or correction model.
 
 ## 10. Growing Summary
 
-Growing owns a phase summary located above the Growing chart within Grow Companion and derived deterministically from canonical Growing evidence.
+Growing Summary composition, placement, fields, calculations, empty states, and Presentation behavior are not established by approved controlling Product authority. Prior draft or implementation detail is non-governing evidence only. No Summary is an implementation requirement of this IC; separate Product authority is required before any Summary composition may be implemented.
 
-The Growing Summary:
-
-- presents only attributable Growing evidence and approved deterministic calculations;
-- introduces no duplicate data entry or separate evidence store;
-- remains a projection rather than an evidence-entry surface or authoritative record;
-- must not replace the editable chart, workspace, or complete Growing record;
-- must distinguish missing evidence from zero, failure, or a negative outcome;
-- must not import Germination evidence as Growing evidence;
-- must not perform GEE interpretation, diagnosis, prediction, recommendation, or knowledge distillation; and
-- must remain reproducible from the same eligible canonical inputs and approved rules.
-
-The next bounded implementation slice may display only values supported by implemented evidence:
-
-- Environment Type;
-- Grow Method;
-- Plant Count;
-- Harvested Count;
-- available expected timing.
-
-It must not create a Growing Success percentage, fabricated actual timing, or unsupported estimates. Advanced summary fields, eligibility, calculations, empty states, and presentation remain deferred.
-
-Session-level identity, overview, ownership, lifecycle, and other Session-wide information remain outside the Grow Companion phase composition and must not be duplicated into the Growing Summary as a second authority.
+Any later separately authorized Summary must preserve existing canonical truth boundaries: it cannot become an evidence-entry surface or authoritative record, create a duplicate evidence or Session Conditions model, mutate canonical evidence, fabricate missing evidence, import Germination evidence as Growing evidence, or perform GEE interpretation, diagnosis, prediction, recommendation, or knowledge distillation. Environment Type and Grow Method, if later authorized for display, remain projections of canonical Session Conditions or explicitly identified legacy compatibility state rather than a second conditions authority.
 
 ## 11. Growing Workspace
 
-The composition area below the Growing chart is the reserved phase location for future Growing operational capabilities:
+Growing workspace placement and Presentation composition are not established by approved controlling Product authority. The previously described below-chart placement and possible Tasks, Events, Calendar, Notes, Photos, and Documents composition are non-governing draft detail retained for traceability only. No placement or module composition is an implementation requirement of this IC; separate Product authority is required first.
 
-- Tasks;
-- Events;
-- Calendar;
-- Notes;
-- Photos;
-- Documents.
-
-This contract establishes location and phase-composition ownership only. The next bounded implementation slice must not implement or redefine these capabilities.
-
-- Tasks and Events must reuse the canonical private records governed by Capability 1.
-- Calendar must be a future projection of canonical scheduling information and must not become a parallel calendar, Task, or Event system.
-- Notes must reuse or extend the canonical Session evidence model under a separately approved contract.
-- Photos must preserve canonical image ownership, privacy, attribution, and evidence boundaries under a separately approved contract.
-- Documents require a separately approved evidence, ownership, privacy, and security contract before implementation.
-
-The workspace must not become a collection of unrelated utilities, a second Grow Companion, or an evidence store. Each composed module retains one canonical information owner.
-
-Capability-specific forms, storage, scheduling behavior, calendar behavior, reminders, attachments, document handling, limits, sharing, and notifications remain outside this contract.
+Any later separately authorized composition must reuse each capability's canonical information owner, preserve applicable ownership, privacy, attribution, security, and evidence boundaries, and avoid a parallel utility, calendar, Task, Event, Grow Companion, or evidence system. This truth-preservation boundary does not approve a workspace, placement, module list, form, storage behavior, scheduling behavior, reminder, attachment, document behavior, limit, sharing behavior, or notification.
 
 ## 12. Reflection and Downstream Boundary
 
@@ -478,20 +412,31 @@ Any future movement from observed Session evidence toward interpreted or preserv
 - Evidence belonging to one phase must never be inferred, renamed, overwritten, or recalculated as evidence by another phase.
 - Growing evidence has dedicated canonical persistence: each Session has at most one Growing Phase Record, and Plant Groups are its child evidence records.
 - Plant Group identity is stable and independent from its label, display order, and the identity of every other Plant Group.
+- A Plant Group belongs to one Session and Growing context; owner-scoped deletion preserves the canonical Growing Phase, Session lifecycle evidence, and all other Plant Group identities.
 - Opening or viewing Growing does not create evidence.
 - Local and cloud behavior represent the same canonical Growing model without a parallel evidence contract.
-- Deterministic summaries are projections from canonical evidence and must not mutate, replace, or become a second entry surface for that evidence.
+- Any separately authorized deterministic summary remains a projection from canonical evidence and must not mutate, replace, or become a second entry surface for that evidence.
 - A phase omitted by the selected Session entry path has no fabricated evidence or completed phase record.
 - One Session and one Grow Companion persist across all included phases.
 
 - Germination completion does not automatically activate Growing.
 - A Seed Session may complete after Germination with Growing not included and no downstream evidence.
-- Continuing to Growing preserves the same canonical Session and creates no Growing evidence until intentional valid save.
+- Continuing to Growing requires the authorized Begin Growing transition, preserves the same canonical Session and completed Germination, establishes one durable canonical commencement instant with current-phase state, and creates no Growing evidence until intentional valid save.
+- Direct-Growing Session creation and Growing entry are one authorized domain action that establishes the same state-and-chronology integrity.
+- Canonical commencement is never inferred from evidence, record timestamps, activity timestamps, migrations, or other proxies; unresolved legacy chronology remains unresolved.
+- Canonical Session Conditions own Grow Method and Environment Type truth; legacy Growing fields, Product composition, Presentation, and unrelated Growing evidence cannot compete with that authority.
 - Current phase, viewed phase, phase lifecycle state, and Session lifecycle state remain independent.
 ## 14. Security, Privacy, and Compatibility
 
-This contract changes no existing authorization, ownership, RLS, privacy, sharing, Preview Studio, demo, QA, scenario, or production-data boundary.
+This draft records a prospective Product boundary. It changes no current authorization, ownership, RLS, privacy, sharing, Preview Studio, demo, QA, scenario, or production-data state; accepts no current implementation state; and authorizes no correction.
 
+- Canonical Growing-phase evidence belongs to exactly one Grow Session, and access derives from canonical Session ownership.
+- Ordinary owner-facing Product behavior may create, read, and update canonical Growing-phase evidence but may not delete it.
+- Lifecycle transitions and later lifecycle states must preserve durable Growing-phase evidence.
+- Plant Groups are owner-scoped to one Session and may be created, read, updated, and deleted only within that containment boundary.
+- Knowledge of a row identifier does not confer access, and client-supplied ownership claims are not authority.
+- Anonymous users receive no Product-authorized access to private Growing-phase or Plant-Group evidence.
+- Cross-owner and cross-Session access are not authorized.
 - Session Entry and Growing remain owner-authorized.
 - Entry selection and viewed-phase state introduce no new write path outside approved Session operations.
 - Preview Studio continues blocking writes.
@@ -500,7 +445,57 @@ This contract changes no existing authorization, ownership, RLS, privacy, sharin
 - Structural or workspace navigation must not create unauthorized backend mutations.
 - Plant Group, timing, summary, and workspace information must not expose another owner's private evidence.
 - Existing Tasks and Events retain Capability 1 ownership and authenticated-owner-only access.
-- No public visibility, sharing, grant, RLS, service-credential, or anonymous-access change is authorized.
+- No public visibility, sharing, grant, RLS, service-credential, or anonymous-access change is executed by this contract.
+
+### 14.1 Prospective Resource Reconciliation
+
+The founder-approved Product Authority Addendum classifies exactly 11 resources as supported within its prospective governing boundary:
+
+1. policy|public.grow_session_growing_phases|Owners can insert Growing phase evidence
+2. policy|public.grow_session_growing_phases|Owners can read Growing phase evidence
+3. policy|public.grow_session_growing_phases|Owners can update Growing phase evidence
+4. policy|public.grow_session_plant_groups|Owners can delete Plant Group evidence
+5. policy|public.grow_session_plant_groups|Owners can insert Plant Group evidence
+6. policy|public.grow_session_plant_groups|Owners can read Plant Group evidence
+7. policy|public.grow_session_plant_groups|Owners can update Plant Group evidence
+8. relation_privilege|public.grow_session_growing_phases|anon
+9. relation_privilege|public.grow_session_plant_groups|anon
+10. table|public.grow_session_growing_phases
+11. table|public.grow_session_plant_groups
+
+Exactly six resources remain correction resources outside the approved intended state:
+
+1. function|public.set_growing_evidence_updated_at()
+2. relation_privilege|public.grow_session_growing_phases|authenticated
+3. relation_privilege|public.grow_session_plant_groups|authenticated
+4. relation_privilege|public.grow_session_growing_phases|service_role
+5. relation_privilege|public.grow_session_plant_groups|service_role
+6. policy|public.grow_session_growing_phases|Owners can delete Growing phase evidence
+
+The reconciliation is exactly 11 supported plus 6 correction resources, for 17 unique identifiers, with zero duplicates and zero out-of-scope identifiers. The supported subset is prospective Product authority only and is not acceptance of current implementation. No correction resource is approved in its current state. The Growing Phase delete policy remains the sixth required correction without becoming a seventh finding.
+
+All five identified over-broad security outcomes remain **NARROW THROUGH SEPARATELY AUTHORIZED CORRECTION**: the trigger-function execution boundary, both authenticated relation-privilege outcomes, and both service-role relation-privilege outcomes.
+
+### 14.2 Authenticated Direct-Privilege Boundary
+
+| Relation | Maximum ordinary authenticated Product operations |
+| --- | --- |
+| public.grow_session_growing_phases | Owner-scoped SELECT, INSERT, UPDATE |
+| public.grow_session_plant_groups | Owner-scoped SELECT, INSERT, UPDATE, DELETE |
+
+Ordinary Product authorization excludes TRIGGER, TRUNCATE, REFERENCES, Growing Phase deletion, anonymous access to private evidence, cross-owner access, and identifier-only access. TRUNCATE is not constrained by RLS and is not authorized for ordinary authenticated Product use. If controlling authority is narrower, the narrower boundary controls.
+
+### 14.3 Direct Grants, Effective Access, and Service Role
+
+Direct grants and effective access are distinct. Effective capability may arise through inheritance, ownership, elevated role attributes, superuser behavior, or RLS bypass; absence of a direct privilege record does not prove absence of effective capability. Infrastructure capability is not owner-facing Product permission.
+
+Existing service-role capability is not ordinary Product authority. Any retained service-role capability requires separate evidence-supported infrastructure or security authority. Database or Supabase defaults, ownership, elevation, and present technical behavior do not create Product approval.
+
+### 14.4 Trigger-Function Boundary
+
+The timestamp-maintenance function may maintain update metadata through legitimate attached-trigger behavior, and that attached-trigger behavior must remain available. Ordinary Product roles do not require direct invocation. Default PUBLIC execution is not Product approval, and the execution boundary must be no broader than separately justified authority.
+
+Exact grants, revocations, SQL, migration mechanics, and correction execution belong to a later separately authorized security-correction artifact. This contract contains no corrective SQL, prepares no migration, authorizes no correction execution, calculates or approves no fingerprint, and does not replace the approved snapshot.
 
 Existing Sessions remain compatible:
 
@@ -535,28 +530,33 @@ This contract does not define or authorize:
 - a Growing hero;
 - grow-stage inference or a canonical grow-stage model;
 - public sharing or Community projection;
+- present-day acceptance of P1 or any current correction resource;
+- security-correction preparation or execution;
+- fingerprint calculation, approval, or snapshot replacement;
 - new Task, Event, Notes, Photos, Documents, Calendar, or attachment systems;
-- database schemas, migrations, storage models, APIs, or exact UI controls beyond the nullable canonical Session entry discriminator, the minimum dedicated Growing persistence authorized by Section 7.1, and the interaction boundaries approved by this contract.
+- database schemas, migrations, storage models, APIs, or exact UI controls beyond the nullable canonical Session entry discriminator and the minimum dedicated Growing persistence authorized by Section 7.1. Non-governing Product and Presentation detail in Sections 5.3, 6.1, 8.1, 9, 10, and 11 cannot become an implementation requirement without separate authority.
 
 ## 16. Acceptance Criteria
 
 An approved implementation satisfies this contract only when:
 
-- every Session begins through one deliberate approved entry path;
-- Session Entry is one neutral required choice with no default or duplicate selector;
-- Seed Session begins with Germination and preserves the IC-GC-002B Germination regression lock;
+- every Session enters only through one deliberate authorized lifecycle path;
+- this IC authorizes no precise entry-selection Product or Presentation mechanism, and any later authorized mechanism preserves deliberate, non-inferred lifecycle intent;
+- Seed Session begins with Germination and preserves independently approved Germination lifecycle truth;
 - Grow Session begins with Growing without fabricating Germination evidence or a completed Germination record;
 - both entry paths produce one canonical user-owned Session rather than separate Session systems;
 - Session Entry is immutable after canonical Session creation;
 - omitted Germination is presented as not included, remains non-navigable, and never becomes phase evidence or completion;
 - the nullable entry discriminator preserves legacy Sessions without normalizing absent metadata to Seed entry;
-- Growing initializes through a Growing-owned setup before one canonical editable Plant Group chart, for both direct Grow entry and Seed Sessions advancing from Germination;
-- Grow Context records one Environment Type and one Grow Method using the Section 6.1 vocabularies, with user-entered `Other` text remaining Session evidence rather than creating global canonical values;
-- the one editable Growing chart is the canonical Growing evidence surface, supports adding, editing, and removing rows with deterministic totals, and creates no fabricated Plant Groups;
-- each Plant Group records Plant, Source, Variety, Type, Sex, Number of Plants, and Harvested according to Section 8, while Plant labels remain distinct from stable internal identity;
-- Source and Variety reuse their canonical systems without duplication;
-- Number of Plants is an explicit positive whole number and is never inferred from Germination counts;
-- Harvested means the entire current Plant Group is harvested and does not implement partial-harvest behavior;
+- this IC requires no particular Growing setup step, chart, table, row or entry model, collection interaction, aggregation, calculated total, or Presentation mechanism; precise Product composition remains deferred to separately approved Product composition authority for both authorized Growing entry paths;
+- each authorized Growing entry establishes exactly one canonical commencement instant with current-phase state as one indivisible lifecycle outcome;
+- canonical commencement remains durable and is never inferred from record, evidence, activity, or migration timestamps;
+- unresolved legacy chronology remains honestly unresolved;
+- canonical Session Conditions remain authoritative for Environment Type and Grow Method, while Section 6.1's detailed vocabularies and `Other` behavior remain non-governing and cannot become implementation requirements without separate Product authority;
+- retained Growing Phase condition fields remain legacy or compatibility representations and never compete with canonical Session Conditions after a valid authority switch;
+- any later separately authorized Product composition preserves Plant Group identity and evidence ownership without fabricating records or importing Germination semantics;
+- no detailed Plant Group field set or vocabulary in Section 8.1 becomes an implementation requirement without separate Product authority, while any separately authorized label remains distinct from stable Plant Group identity;
+- owner-scoped Plant Group deletion preserves the canonical Growing Phase, Session lifecycle evidence, and every other Plant Group identity;
 - a Seed Session may complete after Germination with Growing presented as not included;
 - Growing is optional for a Seed Session;
 - Germination completion does not activate Growing, create Growing persistence, or preselect continuation automatically;
@@ -566,16 +566,17 @@ An approved implementation satisfies this contract only when:
 - existing completed Germination-only Sessions remain valid, reviewable, and eligible for existing Germination evidence and analytics behavior; and
 - Reflection eligibility, requirement, and activation remain deferred;
 - Growing evidence is never inferred from Germination;
-- eligible expected Vegetative and Flowering timing may initialize from linked Seed Vault reference knowledge with provenance, remains editable Session context, never becomes observed evidence, and never writes back automatically;
-- reference knowledge never initializes, replaces, corrects, or overwrites observed Session evidence automatically, and observed evidence never overwrites Seed Vault knowledge automatically;
+- this IC establishes no expected Vegetative or Flowering time or duration fields and no Seed Vault initialization, copying, reuse, inheritance, prepopulation, synchronization, adjustment, or correction behavior for such values; all such Product and Presentation composition remains deferred;
+- attributable observed Growing evidence remains distinct from plans, estimates, reference knowledge, deterministic context, and system state without establishing a timing field or calculation model;
 - intentional save of valid Growing evidence creates at most one canonical Growing Phase Record for the Session and zero or more stable child Plant Group Records;
 - opening, activating, viewing, or reviewing Growing creates no Growing evidence automatically;
 - Growing evidence is never stored in Germination Partitions, snapshot state, Session notes, Session images, Tasks, Events, Seed Vault records, miscellaneous Session fields, or a local-only evidence store;
 - local, demo, scenario, and cloud representations map losslessly to the same canonical Growing model;
-- the Growing Summary appears above the chart and deterministically projects only Environment Type, Grow Method, Plant Count, Harvested Count, and available expected timing without duplicate entry or unsupported conclusions;
-- the Growing workspace is reserved below the chart as the ownership location for future Tasks, Events, Calendar, Notes, Photos, and Documents without implementing or duplicating those capabilities;
+- no Growing Summary composition, placement, field list, calculation, or Presentation behavior becomes an implementation requirement without separate Product authority, and any later authorized Summary preserves canonical truth without duplicate entry or unsupported conclusions;
+- no Growing workspace placement, module list, or Presentation composition becomes an implementation requirement without separate Product authority, and any later authorized composition preserves canonical capability ownership without duplication;
 - Reflection and all downstream interpretation and knowledge-writing behavior remain outside scope;
 - existing security, privacy, ownership, Preview Studio, demo, and compatibility boundaries remain unchanged; and
+- the exact prospective security boundary reconciles 11 supported and 6 correction resources as 17 unique identifiers, preserves all five NARROW outcomes, prohibits ordinary Growing Phase deletion, and accepts no current correction resource; and
 - no future capability or unresolved taxonomy, persistence, workflow, or calculation rule is silently implemented.
 
 ## 17. Verification Requirements
@@ -589,13 +590,20 @@ Before approval of an implementation, verification must demonstrate:
 - Grow Session creates no Germination evidence or false Germination completion;
 - Seed Session retains complete Germination behavior and history;
 - Growing timing, progress, completion, and evidence remain independent;
+- each authorized Growing entry establishes one canonical commencement instant atomically with current-phase state, preserves completed phases, and never uses a proxy timestamp;
+- unresolved legacy commencement remains unresolved;
+- canonical Session Conditions remain authoritative for Grow Method and Environment Type after valid cutover, with legacy fields unable to compete and unrelated Growing evidence preserved;
 - Plant Group evidence remains attributable and does not mutate Germination or Seed Vault records;
-- summary values reproduce deterministically from canonical Growing evidence;
-- workspace composition reuses canonical capability owners and creates no parallel systems;
+- Plant Group deletion is owner-scoped and preserves the canonical Growing Phase, Session lifecycle evidence, and other Plant Group identities;
+- any separately authorized summary reproduces deterministically from eligible canonical inputs without becoming a second authority;
+- any separately authorized workspace composition reuses canonical capability owners and creates no parallel systems;
 - dedicated Growing persistence maintains at most one Growing Phase Record per Session and stable child Plant Group identity;
 - existing Sessions without Growing evidence remain valid without backfill, fabricated zeros, or automatically created records;
 - local, demo, scenario, and cloud representations preserve the same logical Growing evidence and validation boundaries;
 - Preview Studio, demo, QA, scenario, authorization, RLS, privacy, and production-data protections remain intact;
+- the authenticated direct-privilege matrix, anonymous boundary, identifier-independent ownership checks, direct-grant/effective-access distinction, service-role infrastructure boundary, trigger-function boundary, five NARROW outcomes, and sixth Growing Phase delete correction are present;
+- the exact resource reconciliation remains 11 supported plus 6 correction resources, 17 unique identifiers, zero duplicates, and zero out-of-scope identifiers;
+- no current correction resource, current implementation conformance, corrective SQL, migration, execution authority, fingerprint, or snapshot replacement is approved;
 - existing Sessions remain compatible without fabricated classification or evidence; and
 - no pre-existing unrelated working-tree change was modified.
 
@@ -605,42 +613,33 @@ For this documentation-only task, verification must confirm that only this contr
 
 The following decisions remain unresolved:
 
-- additional Plant Group required-field and validation rules beyond the approved vocabularies and positive-whole-number count rule — **TBD — Requires Architecture Approval**;
+- the Plant Group field set, required-field and validation rules, and detailed Type, Sex, count, harvest, or other vocabularies — **TBD — Requires Architecture Approval**;
 - mixed-sex Plant Group representation — **TBD — Requires Architecture Approval**;
 - Plant Group split, merge, and count-correction behavior — **TBD — Requires Architecture Approval**;
 - Partial-harvest representation, Plant Group splitting, count effects, and evidence history — **TBD — Requires Architecture Approval**;
 - harvest dates, harvest events, and Harvest workflows — **TBD — Requires Architecture Approval**;
-- expected-timing storage, units, permitted ranges, and normalization — **TBD — Requires Architecture Approval**;
-- reference-timing comparison, conflict, and correction behavior — **TBD — Requires Architecture Approval**;
+- any expected Vegetative or Flowering time or duration fields and associated storage, units, defaults, validation, normalization, calculation, correction, or Presentation — **TBD — Requires Architecture Approval**;
+- any Seed Vault initialization, copying, inheritance, reuse, synchronization, adjustment, or correction relationship for such values — **TBD — Requires Architecture Approval**;
 Growing optionality, the explicit post-Germination lifecycle decision, and Germination-only Session completion are resolved by Section 5.1 and are not Architecture Gaps.
 
 - observed-timing field contract and correction policy — **TBD — Requires Architecture Approval**;
 - actual Vegetative and Flowering timing, milestones, and timeline behavior — **TBD — Requires Architecture Approval**;
-- advanced Growing Summary fields, calculations, empty states, and presentation beyond Section 10 — **TBD — Requires Architecture Approval**;
+- Growing Summary composition, placement, fields, calculations, empty states, and presentation — **TBD — Requires Architecture Approval**;
 - Plant Group lineage and historical split or merge representation — **TBD — Requires Architecture Approval**;
-- implementation and composition of Tasks, Events, Calendar, Notes, Photos, and Documents in the Growing workspace — **TBD — Requires Architecture Approval**;
+- Growing workspace placement and any composition of Tasks, Events, Calendar, Notes, Photos, or Documents — **TBD — Requires Architecture Approval**;
 - Growing Notes, Photos, and Documents evidence composition — **TBD — Requires Architecture Approval**;
 - exact automated regression fixtures — **TBD — Requires Architecture Approval**.
 
-Scheduling, Calendar behavior, reminders, notifications, timeline behavior, Growing hero content, grow-stage models, Harvest workflows, Reflection, Session Reports, GEE, knowledge distillation, Seed Vault synchronization, and AI interpretation require later implementation contracts.
+Scheduling, Calendar behavior, reminders, notifications, timeline behavior, Growing hero content, grow-stage models, Harvest workflows, Reflection, Session Reports, GEE, knowledge distillation, Seed Vault synchronization, AI interpretation, Summary composition, and workspace composition require separate Product authority before any applicable implementation contract.
 
-## 19. Approval Gate
+## 19. Governance Status and Next Stage
 
-Implementation may begin only after architecture review confirms:
+IC-GC-002C passed its strict read-only conformance review, which returned **PASS — IC-GC-002C CONFORMS TO CONTROLLING AUTHORITY** for the artifact at SHA-256 `f763bc490f64e15a69b4baad49f20e6fb1b550c85e8734c50b279945c4fec226`.
 
-- this contract is approved;
-- FN-001, FN-003, FN-004, the Composition Specification, IC-GC-002A, and IC-GC-002B remain authoritative and consistent;
-- Seed Session and Grow Session are approved entry paths into the same canonical Session;
-- omitted-phase behavior is approved without fabricated evidence;
-- Growing initialization and independent phase-state ownership are approved;
-- Plant Group ownership fields and every implementation-required vocabulary are approved;
-- reference and observed timing boundaries are approved, and an implementation that includes expected timing uses an already approved storage, unit, range, and normalization convention;
-- the intended Growing Summary fields and deterministic rules are approved;
-- every workspace capability included in an implementation has a separately approved canonical owner and behavior contract;
-- the dedicated Growing Phase Record and Plant Group child-record persistence model is approved without assigning evidence to another information owner;
-- compatibility requires no destructive relabeling or fabricated legacy evidence;
-- security and Preview Studio boundaries require no unapproved change; and
-- every Architecture Gap required by the proposed implementation slice is resolved.
-- Germination completion remains separate from the explicit decision to complete the Session or continue into Growing;
+The founder subsequently approved that conformance-review result and authorized IC-GC-002C to proceed to the Architecture Approval stage. That founder decision did not itself grant Architecture Approval or authorize repository changes, P1 acceptance, correction, implementation, migration, deployment, or Git action.
 
-Approval of IC-GC-002C authorizes only the Session Entry and Growing foundation defined in Section 4. It does not implicitly approve any later capability or unresolved implementation detail.
+The formal read-only Architecture Approval determination returned **APPROVED — IC-GC-002C ARCHITECTURE APPROVAL GRANTED** for the same artifact. The subsequent evidence normalization returned **CORRECTED — ARCHITECTURE APPROVAL REPORT EVIDENCE NORMALIZED** and corrected only the report's description of the founder decision; it changed no approval result, repository measurement, preservation result, boundary, exclusion, or authorized next action.
+
+Repository adoption records this approval in this contract and its single central-registry entry. Implementation Contract governance for this exact artifact is complete. Repository adoption does not accept P1, perform present-day implementation disposition, accept any of the six correction resources, elevate a draft dependency, or authorize implementation, correction, migration, security-fingerprint action, deployment, staging, commit, or push.
+
+The next separately governed stage is present-day implementation disposition. It remains pending and unauthorized. All six correction resources remain unaccepted and separately governed.

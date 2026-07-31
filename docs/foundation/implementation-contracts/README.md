@@ -32,7 +32,7 @@ became attributable.
 | --- | --- | --- |
 | [`IC-GC-002A`](./IC-GC-002A-session-context-foundation.md) | Grow Companion Capability 2A: Session Context Foundation | Draft — Requires Architecture Approval |
 | [`IC-GC-002B`](./IC-GC-002B-grow-companion-structural-foundation.md) | Grow Companion Structural Foundation | Draft — Requires Architecture Approval |
-| [`IC-GC-002C`](./IC-GC-002C-session-entry-and-growing-foundation.md) | Session Entry & Growing Foundation | Draft — Requires Architecture Approval |
+| [`IC-GC-002C`](./IC-GC-002C-session-entry-and-growing-foundation.md) | Session Entry & Growing Foundation | Approved — Architecture Audit Passed; Implementation Contract Governance Complete; Implementation Not Authorized |
 | [`IC-GC-003A`](./IC-GC-003A-growing-workspace-shell.md) | Growing Workspace Shell | Draft — Requires Architecture Approval |
 | [`IC-GC-003B`](./IC-GC-003B-growing-workspace-tasks.md) | Growing Workspace Tasks | Implementation Ready — Bounded Task ICE Authorized |
 | [`IC-GC-003C`](./IC-GC-003C-growing-workspace-events.md) | Growing Workspace Events | Implementation Ready — Bounded Event ICE Authorized |
