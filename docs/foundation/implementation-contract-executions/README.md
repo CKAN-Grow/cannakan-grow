@@ -40,5 +40,6 @@ The ICE identifier must be the identifier explicitly authorized by the governing
 
 ## Artifacts
 
+- [ICE-GI-001-1 — Grow Identity Layer Phase 1 Present-Day Conformance Recovery](./ICE-GI-001-1-grow-identity-layer-phase-1-present-day-conformance.md) — Approved — Architecture and Execution-Readiness Audit Passed; Founder Approved; Execution Not Authorized
 - [ICE-SC-002 — Session Conditions First Canonical Production Slice](./ICE-SC-002-session-conditions-first-canonical-production-slice.md)
 - [ICE-SC-003 — Current Conditions Operations and Forward-Only Legacy Declaration](./ICE-SC-003-current-conditions-operations-and-forward-only-legacy-declaration.md)
