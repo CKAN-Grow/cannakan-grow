@@ -41,6 +41,7 @@ became attributable.
 | [`IC-GC-005`](./IC-GC-005-workspace-composition.md) | Workspace Composition | Draft — Requires Read-Only Implementation Contract Audit |
 | [`IC-GC-006`](./IC-GC-006-photos-composition.md) | Photos Composition | Draft — Requires Read-Only Implementation Contract Audit |
 | [`IC-GC-007`](./IC-GC-007-documents-composition.md) | Documents Composition | Draft — Requires Read-Only Implementation Contract Audit |
+| [`IC-GI-001`](./IC-GI-001-grow-identity-layer-phase-1.md) | Grow Identity Layer Phase 1 Implementation Contract | Approved — Architecture Audit Passed; Implementation Contract Governance Complete; Implementation Not Authorized |
 | [`IC-SC-001`](./IC-SC-001-session-conditions.md) | Session Conditions Implementation Contract | Draft — Requires Read-Only Implementation Contract Audit |
 | [`IC-SC-001B`](./IC-SC-001B-canonical-growing-commencement-and-legacy-chronology.md) | Canonical Growing Commencement and Legacy Chronology | Draft — Requires Read-Only Architecture Audit |
 | [`IC-SC-001C`](./IC-SC-001C-current-conditions-operations-and-forward-only-legacy-declaration.md) | Current Conditions Operations and Forward-Only Legacy Declaration | Approved — Architecture Audit Passed; Implementation Contract Governance Complete; Implementation Not Authorized |
