@@ -247,6 +247,228 @@ separate repository action and occurs only when explicitly authorized.
 Git history is governance evidence. It is not architectural authority by
 itself.
 
+## Implementation Contract Repository Integration
+
+Implementation Contracts remain the sole authority for their own identifier,
+title, status, scope, prerequisites, implementation boundary, exclusions, and
+next authorized stage.
+
+A registry or index provides repository discoverability and integration
+evidence only. It does not approve an Implementation Contract, alter its
+status, reinterpret or supersede its contents, expand or narrow its scope,
+authorize implementation, or authorize deployment.
+
+When an index conflicts with an Implementation Contract, the contract governs
+and the index must be corrected through a bounded repository task.
+
+### Complete Central Registry
+
+After this governance model is approved and Git-closed, Grow shall maintain one
+complete tracked Implementation Contract registry at:
+
+`docs/foundation/implementation-contracts/README.md`
+
+The registry is the complete artifact-type discoverability surface for tracked
+Implementation Contracts.
+
+It is repository-integration evidence. It is not canonical Foundation truth,
+Product authority, implementation authority, or deployment authority.
+
+Every tracked Implementation Contract shall appear exactly once in the complete
+central registry.
+
+A tracked Implementation Contract shall not rely solely on directory placement,
+Git history, or a capability-specific index for hierarchy-wide discoverability.
+
+### Supplemental Capability References
+
+Tracked Product, Platform, Foundation, or other capability-specific indexes may
+also reference Implementation Contracts relevant to their own hierarchy.
+
+Those references are supplemental. They may provide capability-local
+discoverability, but they do not replace the complete central registry,
+transfer ownership of the contract, or create duplicate contract authority.
+
+Every supplemental reference must resolve to the same canonical Implementation
+Contract artifact.
+
+A capability-specific index must not claim complete registry coverage unless
+separate governing authority establishes that responsibility.
+
+Multiple resolving references are permitted when they serve distinct
+discoverability purposes. Multiple authorities for one Implementation Contract
+are prohibited.
+
+### Platform, Foundation, Shared, and Cross-Product Capabilities
+
+An Implementation Contract governing a Platform-owned, Foundation-hosted,
+shared, or cross-Product capability must not be placed beneath an unrelated
+Product index merely because no capability-specific index exists.
+
+The complete central registry provides hierarchy-wide discoverability for:
+
+- Platform-owned capabilities;
+- Foundation-hosted contracts;
+- shared capabilities;
+- cross-Product capabilities; and
+- capabilities without a dedicated tracked index.
+
+This preserves capability ownership and prevents a shared capability from being
+misclassified beneath a consuming Product.
+
+### Registry Entry Requirements
+
+Every central-registry entry must contain:
+
+- the exact Implementation Contract identifier;
+- the exact Implementation Contract title;
+- one resolving relative link; and
+- the exact current document status.
+
+The Implementation Contract remains the source of truth.
+
+Registry status language must mirror the contract exactly and must not be
+paraphrased.
+
+When an Implementation Contract status changes, its central-registry entry must
+be updated in the same bounded status-normalization or governance-integration
+task.
+
+A capability-specific index may omit status. When it includes status, that
+status must also mirror the contract exactly.
+
+### Registry Ordering
+
+The complete central registry shall use deterministic natural ascending order
+by the full Implementation Contract identifier.
+
+The ordering must correctly preserve identifier families and suffixes,
+including:
+
+- `IC-GC-002A` before `IC-GC-002B`;
+- `IC-GI-001` according to its complete identifier; and
+- `IC-SC-001` before `IC-SC-001B` and `IC-SC-001C`.
+
+Registry order must not be determined by commit date, approval date, Product
+preference, migration order, or document status.
+
+### New Implementation Contract Integration
+
+After the complete central registry has been established and Git-closed, every
+newly authored Implementation Contract must add exactly one central-registry
+entry in the same bounded authoring task.
+
+The contract and its central-registry entry form one attributable
+repository-integration boundary.
+
+A required supplemental capability reference may be included in the same task
+only when its attribution is exact.
+
+Authoring stops when the shared registry cannot be updated safely.
+
+Directory presence alone does not make an Implementation Contract
+repository-integrated.
+
+An Implementation Contract may be repository-integrated while still proposed.
+Repository integration is not governance approval.
+
+### Initial Registry Establishment
+
+The first creation of:
+
+`docs/foundation/implementation-contracts/README.md`
+
+may occur only after this governance addition:
+
+1. passes its required read-only Governance Audit;
+2. receives founder approval;
+3. completes required governance-status normalization; and
+4. is committed through an attribution-safe Git milestone.
+
+The initial registry-establishment task must:
+
+- inventory all tracked Implementation Contracts at its exact repository
+  baseline;
+- include every tracked Implementation Contract exactly once;
+- use exact identifiers, titles, resolving links, and current statuses;
+- preserve all Implementation Contract contents;
+- preserve existing capability-specific references;
+- repair no unrelated contract or index debt;
+- create no new Implementation Contract; and
+- authorize no implementation or deployment.
+
+Initial registry establishment is a separate governed task from authoring a new
+Implementation Contract.
+
+### Historical Integration Debt
+
+The complete central registry did not previously exist.
+
+Earlier capability-specific indexing and unindexed Implementation Contracts
+remain historical fact.
+
+An Implementation Contract is not invalid solely because earlier repository
+practice omitted a complete registry.
+
+Missing discoverability is repository-integration debt. It is not proof of
+invalid architecture or invalid contract meaning.
+
+The initial registry establishes current complete discoverability
+prospectively. It must not claim historical registry coverage.
+
+Git history remains authoritative for when each Implementation Contract and
+each index relationship became attributable.
+
+### Prospective Effect
+
+**Section status:** Approved — Governance Audit Passed; Founder Approved;
+Registry Establishment Requires Separate Authorization
+
+The bounded attribution-safe Git commit that records this approved section is
+the governance-closure event. After that commit, this section is operational
+repository governance.
+
+The surrounding Grow Architecture Governance artifact retains its existing
+document-level status. This bounded approval does not audit, approve, or
+normalize any other section.
+
+The complete central registry does not yet exist. Its initial creation requires
+a separate explicitly authorized bounded repository task.
+
+Until that separate authorization is recorded, registry creation and
+IC-GI-001 authoring remain unauthorized.
+
+### Existing Capability Indexes
+
+This decision does not itself:
+
+- remove an existing capability-specific contract reference;
+- add a missing historical capability reference;
+- normalize an existing capability index;
+- correct an existing Implementation Contract status;
+- reopen an existing Implementation Contract; or
+- repair unrelated repository debt.
+
+Those actions require separately authorized bounded tasks.
+
+### Governance Meaning
+
+Once approved and Git-closed, this model establishes:
+
+- one complete central Implementation Contract registry;
+- optional supplemental capability references;
+- one canonical contract artifact per Implementation Contract;
+- deterministic registry ordering;
+- exact status mirroring;
+- a discoverability fallback for Platform, Foundation, shared, and
+  cross-Product capabilities;
+- attribution-safe integration for future contracts; and
+- truthful treatment of historical integration debt.
+
+It does not establish new Platform truth, new Foundation truth, new Product
+authority, Implementation Contract approval, implementation authority,
+migration authority, deployment authority, or production completion.
+
 ## Historical Authority
 
 Approved and attributable Git milestones preserve the historical sequence by
