@@ -357,9 +357,23 @@ Additional gates may be required by the governing artifacts or later evidence.
 Listing a gate does not establish eligibility for it. Completion of one gate
 does not complete, imply, or authorize another.
 
-The exact next gate after repository adoption is only:
+The founder adopted the exact Grow Roadmap Alignment Gate vocabulary,
+meanings, enforcement behavior, and post-installation next gate. The
+separately authorized coordinated two-file Git closure created root
+`AGENTS.md`, installed that gate verbatim, and repository-adopted the new file
+and this directly corresponding procedural closure. The installation gate is
+complete through that commit. ICE-GI-001-1B remains non-operative, and no
+corrective-design, recovery-design, connected-access, implementation,
+execution, verification, security, fingerprint, migration, deployment, or
+production authority was granted or exercised.
 
-`Separately authorized installation of the permanent Grow Roadmap Alignment Gate in AGENTS.md`
+The exact single next gate is:
+
+`Separate founder authorization for bounded Position 1 corrective-or-recovery design, limited exclusively to invariants 6, 12, 13, 17, 18, 20, 28, 31, 34, 36, 46, and 47.`
+
+That next gate remains separately unauthorized and unbegun. Recording it does
+not begin design, select a correction, authorize execution, remove a hold, or
+make a later gate eligible.
 
 ## 14. Fail-Closed Stop Conditions
 
@@ -437,7 +451,12 @@ approval-state-normalized, repository-adopted, and non-operative. Those
 completed gates grant no corrective-design or execution authority. The only
 next eligible gate is:
 
-`Separately authorized installation of the permanent Grow Roadmap Alignment Gate in AGENTS.md`
+`Separate founder authorization for bounded Position 1 corrective-or-recovery design, limited exclusively to invariants 6, 12, 13, 17, 18, 20, 28, 31, 34, 36, 46, and 47.`
+
+The permanent Grow Roadmap Alignment Gate installation is complete through
+the founder-authorized coordinated two-file Git closure. The recorded next
+gate remains separately unauthorized and unbegun. ICE-GI-001-1B remains
+non-operative and grants no corrective-design or execution authority.
 
 ## 17. Decision History
 
@@ -449,3 +468,4 @@ next eligible gate is:
 | 2026-08-04 | The founder explicitly approved the exact audited substantive bytes represented by SHA-256 `350c1d158f735ff5564f74bc33051ed31ecd107ffe8fb973625a5f284b3c1fae`. | Completes founder approval for only those exact substantive bytes. Repository adoption, operative reliance, corrective design, implementation, connected access, execution, verification, acceptance, security, fingerprint, deployment, production, and later-position work remain separately governed and unauthorized. |
 | 2026-08-04 | Separately authorized approval-state normalization updated only present status metadata and directly corresponding procedural checkpoint statements. | Records completed audit and founder approval without substantive change. ICE-GI-001-1B remains unstaged, not repository-adopted, non-operative, and grants no corrective-design or execution authority. The single next gate is separately authorized repository adoption and attribution-safe Git closure. |
 | 2026-08-04 | Separately authorized repository adoption normalized only adoption-state metadata and directly corresponding procedural checkpoint statements, then Git-closed this exact artifact through one attribution-safe commit containing no other path. | Completes repository adoption without making ICE-GI-001-1B operative and without granting corrective-design, implementation, connected-access, execution, verification, security, fingerprint, deployment, production, or later-recovery authority. The single next gate is separately authorized installation of the permanent Grow Roadmap Alignment Gate in `AGENTS.md`. |
+| 2026-08-04 | The founder adopted the exact permanent Grow Roadmap Alignment Gate vocabulary, meanings, enforcement behavior, and post-installation next gate, then separately authorized creation of root `AGENTS.md`, verbatim installation of that gate, and coordinated two-file Git closure with this procedural update. | Completes installation, tracking, and repository adoption of the permanent gate without making ICE-GI-001-1B operative or granting corrective-design, recovery-design, connected-access, implementation, execution, verification, security, fingerprint, migration, deployment, production, or later-gate authority. The exact single next gate is separate founder authorization for bounded Position 1 corrective-or-recovery design limited exclusively to invariants 6, 12, 13, 17, 18, 20, 28, 31, 34, 36, 46, and 47; it remains unauthorized and unbegun. |
