@@ -4334,7 +4334,7 @@ select coalesce(
         auth: { getUser: async () => ({ data: { user: appState.user }, error: null }) },
         async rpc(name, input) {
           rpcCalls.push(copy({ name, input }));
-          if (name === "get_canonical_session_conditions") {
+          if (name === "get_current_session_conditions_v1") {
             return { data: buildConditionProjection(input.p_session_id), error: null };
           }
           if (name === "migrate_session_conditions") {
@@ -4345,7 +4345,7 @@ select coalesce(
             conditionState.environmentType = { value: phase.environment_type, otherText: phase.environment_other };
             return { data: { authority: "conditions", canonical_revision: 1 }, error: null };
           }
-          if (name === "declare_session_condition" || name === "change_session_condition") {
+          if (name === "declare_session_condition") {
             const key = input.p_dimension === "grow_method" ? "growMethod" : "environmentType";
             conditionState[key] = { value: input.p_value, otherText: input.p_other_text };
             conditionState.revision += 1;
@@ -4353,6 +4353,29 @@ select coalesce(
               data: {
                 canonical_revision: conditionState.revision,
                 period: { id: crypto.randomUUID(), canonical_value: input.p_value, other_text: input.p_other_text },
+              },
+              error: null,
+            };
+          }
+          if (name === "change_current_session_conditions") {
+            const changes = input.p_changes || {};
+            const method = changes.grow_method;
+            const environment = changes.environment_type;
+            const changed = [];
+            if (method && (conditionState.growMethod?.value !== method.value || conditionState.growMethod?.otherText !== method.other_text)) {
+              conditionState.growMethod = { value: method.value, otherText: method.other_text };
+              changed.push("grow_method");
+            }
+            if (environment && (conditionState.environmentType?.value !== environment.value || conditionState.environmentType?.otherText !== environment.other_text)) {
+              conditionState.environmentType = { value: environment.value, otherText: environment.other_text };
+              changed.push("environment_type");
+            }
+            if (changed.length) conditionState.revision += 1;
+            return {
+              data: {
+                status: changed.length ? "success" : "no_change",
+                canonical_revision: conditionState.revision,
+                changed_dimensions: changed,
               },
               error: null,
             };
@@ -4450,7 +4473,12 @@ select coalesce(
     expect(phaseUpserts.every((call) => call.options.onConflict === "session_id" && call.payload.session_id === result.sessionId)).toBe(true);
     expect(phaseUpserts.slice(1).every((call) => !Object.hasOwn(call.payload, "environment_type") && !Object.hasOwn(call.payload, "grow_method"))).toBe(true);
     expect(result.rpcCalls.filter((call) => call.name === "migrate_session_conditions")).toHaveLength(1);
-    expect(result.rpcCalls.filter((call) => call.name === "change_session_condition").map((call) => call.input.p_dimension)).toEqual(["grow_method", "environment_type"]);
+    const compositeChanges = result.rpcCalls.filter((call) => call.name === "change_current_session_conditions");
+    expect(compositeChanges.length).toBeGreaterThanOrEqual(1);
+    expect(compositeChanges.at(-1).input.p_changes).toEqual({
+      grow_method: { value: "Soil", other_text: "" },
+      environment_type: { value: "Indoor", other_text: "" },
+    });
     expect(result.canonicalChanged).toMatchObject({ growMethod: "Soil", environmentType: "Indoor" });
     expect(result.preservedCanonicalProjection.conditions[0].value).toBe("Living Soil");
     expect(result.preservedCanonicalProjection.conditions[1].otherText).toBe("  Protected   tunnel  ");

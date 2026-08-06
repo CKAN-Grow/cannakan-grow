@@ -15,7 +15,7 @@ function normalizeSessionConditionProjection(value = null) {
   if (!Array.isArray(value.conditions)) {
     throw new Error("Canonical Session Conditions retrieval returned invalid conditions.");
   }
-  const allowedStatuses = new Set(["known", "not_applicable", "absent", "unknown", "unresolved"]);
+  const allowedStatuses = new Set(["known", "not_applicable", "absent", "unknown", "unresolved", "unavailable"]);
   const conditions = value.conditions.map((condition) => {
     const dimension = condition?.dimension;
     const status = condition?.status;
@@ -116,7 +116,7 @@ function composeGrowingPhaseConditionProjection(phase = null, conditions = null,
 async function fetchCanonicalSessionConditions(sessionId = "", at = null) {
   const normalizedSessionId = normalizeGrowingUuid(sessionId);
   if (!normalizedSessionId) throw new Error("Canonical Session Conditions require a valid Session.");
-  const { data, error } = await appState.supabase.rpc("get_canonical_session_conditions", {
+  const { data, error } = await appState.supabase.rpc("get_current_session_conditions_v1", {
     p_session_id: normalizedSessionId,
     p_at: at,
   });
@@ -183,55 +183,97 @@ function retireSessionConditionOperation(operation = null) {
   localStorage.removeItem(getSessionConditionOperationStorageKey(operation.sessionId, operation.dimension));
 }
 
-async function persistCanonicalSessionCondition(conditions = null, dimension = "", value = "", otherText = "") {
+function getCompositeSessionConditionOperationStorageKey(sessionId = "") {
+  return `${SESSION_CONDITION_OPERATION_STORAGE_KEY}:${appState.user?.id || "anonymous"}:${sessionId}:current_change`;
+}
+
+function getOrCreateCompositeSessionConditionOperation(sessionId = "", input = {}) {
+  const fingerprint = JSON.stringify(input);
+  const storageKey = getCompositeSessionConditionOperationStorageKey(sessionId);
+  const raw = localStorage.getItem(storageKey);
+  if (raw) {
+    let existing;
+    try { existing = JSON.parse(raw); } catch { throw new Error("Stored Session Conditions operation is invalid."); }
+    if (
+      normalizeGrowingUuid(existing?.sessionId) !== normalizeGrowingUuid(sessionId)
+      || !normalizeGrowingUuid(existing?.operationId)
+      || existing?.kind !== "current_change"
+      || existing?.fingerprint !== fingerprint
+    ) throw new Error("A different Session Conditions operation is already awaiting reconciliation.");
+    return existing;
+  }
+  const operation = {
+    sessionId,
+    kind: "current_change",
+    operationId: crypto.randomUUID(),
+    fingerprint,
+    input,
+  };
+  localStorage.setItem(storageKey, JSON.stringify(operation));
+  return operation;
+}
+
+function retireCompositeSessionConditionOperation(operation = null) {
+  if (!operation?.sessionId) return;
+  localStorage.removeItem(getCompositeSessionConditionOperationStorageKey(operation.sessionId));
+}
+
+async function persistCanonicalSessionConditions(conditions = null, growMethod = "", growMethodOther = "", environmentType = "", environmentOther = "") {
   const normalizedConditions = normalizeSessionConditionProjection(conditions);
-  const current = getSessionConditionProjection(normalizedConditions, dimension);
+  const normalizedMethod = normalizeGrowingChoice(growMethod, GROWING_METHODS);
+  const normalizedEnvironment = normalizeGrowingChoice(environmentType, GROWING_ENVIRONMENT_TYPES);
+  const methodOther = normalizedMethod === "Other" ? normalizeGrowingText(growMethodOther) : "";
+  const environmentOtherValue = normalizedEnvironment === "Other" ? normalizeGrowingText(environmentOther) : "";
+  if (!normalizedConditions?.sessionId || !normalizedMethod || !normalizedEnvironment) {
+    throw new Error("Canonical Session Conditions require approved values for both dimensions.");
+  }
+  const operationInput = {
+    changes: {
+      grow_method: { value: normalizedMethod, other_text: methodOther },
+      environment_type: { value: normalizedEnvironment, other_text: environmentOtherValue },
+    },
+    expectedRevision: normalizedConditions.canonicalRevision,
+  };
+  const operation = getOrCreateCompositeSessionConditionOperation(normalizedConditions.sessionId, operationInput);
+  const { data, error } = await appState.supabase.rpc("change_current_session_conditions", {
+    p_session_id: normalizedConditions.sessionId,
+    p_operation_id: operation.operationId,
+    p_changes: operationInput.changes,
+    p_expected_revision: operationInput.expectedRevision,
+  });
+  if (error) throw error;
+  if (!data || !["success", "no_change"].includes(data.status) || !Number.isInteger(Number(data.canonical_revision))) {
+    throw new Error("Canonical composite Session Conditions mutation returned an invalid result.");
+  }
+  retireCompositeSessionConditionOperation(operation);
+  return Number(data.canonical_revision);
+}
+
+async function declareCanonicalSessionCondition(conditions = null, dimension = "", value = "", otherText = "") {
+  const normalizedConditions = normalizeSessionConditionProjection(conditions);
   const allowed = dimension === SESSION_CONDITION_DIMENSIONS.GROW_METHOD
     ? GROWING_METHODS
     : GROWING_ENVIRONMENT_TYPES;
   const normalizedValue = normalizeGrowingChoice(value, allowed);
   const normalizedOther = normalizedValue === "Other" ? normalizeGrowingText(otherText) : "";
-  if (!normalizedConditions?.sessionId || !normalizedValue) {
-    throw new Error("Canonical Session Conditions require an approved value and Session.");
-  }
-
-  const pending = readPendingSessionConditionOperation(normalizedConditions.sessionId, dimension);
-  if (
-    !pending
-    && current?.status === "known"
-    && current.value === normalizedValue
-    && current.otherText === normalizedOther
-  ) {
-    return normalizedConditions.canonicalRevision;
-  }
-
-  const kind = pending?.kind || (current?.status === "known" ? "operational_change" : "declaration");
-  const operationInput = pending?.input || {
-    kind,
+  if (!normalizedConditions?.sessionId || !normalizedValue) throw new Error("Canonical Session Conditions require an approved value and Session.");
+  const operationInput = {
+    kind: "declaration",
     value: normalizedValue,
     otherText: normalizedOther,
     expectedRevision: normalizedConditions.canonicalRevision,
-    effectiveAt: kind === "operational_change" ? new Date().toISOString() : "",
   };
-  const operation = getOrCreateSessionConditionOperation(
-    normalizedConditions.sessionId,
-    dimension,
-    operationInput,
-  );
-  const rpcName = kind === "declaration" ? "declare_session_condition" : "change_session_condition";
-  const { data, error } = await appState.supabase.rpc(rpcName, {
+  const operation = getOrCreateSessionConditionOperation(normalizedConditions.sessionId, dimension, operationInput);
+  const { data, error } = await appState.supabase.rpc("declare_session_condition", {
     p_session_id: normalizedConditions.sessionId,
     p_operation_id: operation.operationId,
     p_dimension: dimension,
     p_value: operationInput.value,
     p_other_text: operationInput.otherText,
     p_expected_revision: operationInput.expectedRevision,
-    ...(kind === "operational_change" ? { p_effective_at: operationInput.effectiveAt } : {}),
   });
   if (error) throw error;
-  if (!data?.period || !Number.isInteger(Number(data.canonical_revision))) {
-    throw new Error("Canonical Session Conditions mutation returned an invalid result.");
-  }
+  if (!data || !Number.isInteger(Number(data.canonical_revision))) throw new Error("Canonical Session Conditions declaration returned an invalid result.");
   retireSessionConditionOperation(operation);
   return Number(data.canonical_revision);
 }
@@ -413,19 +455,35 @@ async function saveCanonicalGrowingEvidence(session = null, draft = {}) {
   await getAuthenticatedSupabaseUser("Please sign in to save Growing evidence.");
   let sessionConditions = await fetchCanonicalSessionConditions(session.id);
   if (sessionConditions.authority === "conditions") {
-    let canonicalRevision = await persistCanonicalSessionCondition(
-      sessionConditions,
-      SESSION_CONDITION_DIMENSIONS.GROW_METHOD,
-      normalized.growMethod,
-      normalized.growMethodOther,
-    );
-    sessionConditions = { ...sessionConditions, canonicalRevision };
-    canonicalRevision = await persistCanonicalSessionCondition(
-      sessionConditions,
-      SESSION_CONDITION_DIMENSIONS.ENVIRONMENT_TYPE,
-      normalized.environmentType,
-      normalized.environmentOther,
-    );
+    const methodProjection = getSessionConditionProjection(sessionConditions, SESSION_CONDITION_DIMENSIONS.GROW_METHOD);
+    const environmentProjection = getSessionConditionProjection(sessionConditions, SESSION_CONDITION_DIMENSIONS.ENVIRONMENT_TYPE);
+    let canonicalRevision = sessionConditions.canonicalRevision;
+    if (methodProjection?.status === "known" && environmentProjection?.status === "known") {
+      canonicalRevision = await persistCanonicalSessionConditions(
+        sessionConditions,
+        normalized.growMethod,
+        normalized.growMethodOther,
+        normalized.environmentType,
+        normalized.environmentOther,
+      );
+    } else {
+      if (methodProjection?.status !== "known") {
+        canonicalRevision = await declareCanonicalSessionCondition(
+          { ...sessionConditions, canonicalRevision },
+          SESSION_CONDITION_DIMENSIONS.GROW_METHOD,
+          normalized.growMethod,
+          normalized.growMethodOther,
+        );
+      }
+      if (environmentProjection?.status !== "known") {
+        canonicalRevision = await declareCanonicalSessionCondition(
+          { ...sessionConditions, canonicalRevision },
+          SESSION_CONDITION_DIMENSIONS.ENVIRONMENT_TYPE,
+          normalized.environmentType,
+          normalized.environmentOther,
+        );
+      }
+    }
     sessionConditions = { ...sessionConditions, canonicalRevision };
   }
 
