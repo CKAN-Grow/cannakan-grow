@@ -3,7 +3,7 @@
 **Identifier:** ICE-GI-001-1C
 **Title:** Grow Identity Hosted Develop Position 1 Target-Bound Classification Governance Addendum
 **Layer:** Implementation Contract Execution — Subordinate Execution-Governance Addendum
-**Status:** Founder Approved — Repository Adoption Required; Not Repository Adopted; Non-Operative; No Connected Inspection, Classification, Treatment, or Execution Authority
+**Status:** Founder Approved and Repository Adopted — Repository Adoption PASS and Closed; Non-Operative; No Connected Inspection, Classification, Treatment, or Execution Authority
 **Subordinate to:** [ICE-GI-001-1B — Grow Identity Hosted Develop Position 1 Recovery Authority and Target Boundary Addendum](./ICE-GI-001-1B-grow-identity-hosted-develop-position-1-recovery-authority-and-target-boundary-addendum.md)
 **Governing recovery artifact:** [ICE-GI-001-1 — Grow Identity Layer Phase 1 Present-Day Conformance Recovery](./ICE-GI-001-1-grow-identity-layer-phase-1-present-day-conformance.md)
 **Governing contract:** [IC-GI-001 — Grow Identity Layer Phase 1 Implementation Contract](../implementation-contracts/IC-GI-001-grow-identity-layer-phase-1.md)
@@ -12,8 +12,9 @@
 
 ## 1. Document Identity and Governance State
 
-ICE-GI-001-1C is a proposed subordinate execution-governance addendum for the
-founder-approved Position 1 target-bound classification-governance design.
+ICE-GI-001-1C is a founder-approved and repository-adopted subordinate
+execution-governance addendum for the Position 1 target-bound
+classification-governance design.
 
 The complete design was prepared procedurally under the result:
 
@@ -30,15 +31,18 @@ The founder individually approved:
 - `CG-07`; and
 - `CG-08`.
 
-The resulting procedural status is:
+The resulting repository status is:
 
-`FOUNDER APPROVED — PENDING SEPARATELY AUTHORIZED REPOSITORY ADOPTION`
+`FOUNDER APPROVED AND REPOSITORY ADOPTED — REPOSITORY ADOPTION PASS AND CLOSED; NON-OPERATIVE; NO CONNECTED INSPECTION, CLASSIFICATION, TREATMENT, OR EXECUTION AUTHORITY`
 
-Those dispositions approve the classification-governance design. They do not
-by themselves approve this artifact's exact repository bytes, repository-adopt
-the design, make it operative, authenticate or inspect a connected target,
-freeze a classification universe, classify a unit, treat evidence, perform a
-correction, or grant execution authority.
+The founder dispositions approved the classification-governance design. The
+historical attribution-safe adoption commit
+`c659605e35195738a70dbff72b98e6654e6daa4a` repository-adopted this artifact
+and closed repository adoption with PASS. Adoption granted governance status
+only. It did not make the artifact operative, authenticate or inspect a
+connected target, freeze a classification universe, classify a unit, treat
+evidence, perform a correction, remove a hold, independently enable a later
+operational action, or grant execution authority.
 
 The authenticated pre-normalization source was 47,666 bytes with SHA-256
 `bfbd31ce1cfb6a6ac5101cccf64ffe11d575774a061d20ecf44c610c8f4ae0f3`.
@@ -51,13 +55,12 @@ The audit's non-blocking clarification remains preserved: the no-gate-collapse
 rule keeps target authentication, read-only qualification, evidence
 acquisition, and universe freezing separate. No correction was required.
 
-This bounded clerical edit records those completed events and completes
-approval-state normalization only. The resulting normalized bytes are not
-represented as separately audited or separately founder-approved. Repository
-adoption has not occurred, and this artifact remains ineligible for reliance
-until separately repository-adopted through an attribution-safe Git closure.
+The bounded clerical normalization recorded those completed events. The
+resulting normalized artifact was repository-adopted through historical
+adoption commit `c659605e35195738a70dbff72b98e6654e6daa4a`; repository adoption
+is PASS and closed.
 
-Even after repository adoption, this artifact remains non-operative. It does
+This artifact remains non-operative after repository adoption. It does
 not itself authorize connected qualification, evidence acquisition,
 classification, treatment, implementation, migration work, execution,
 verification, acceptance, security or fingerprint work, deployment, or
@@ -212,10 +215,11 @@ The four classifications remain:
 
 This reconciliation remains non-operative. The authenticated pre-normalization
 source completed its separately required audit and exact-byte founder approval,
-and this bounded clerical edit completes approval-state normalization only.
-Repository adoption has not occurred. The resulting normalized bytes are not
-represented as separately audited or separately founder-approved. This
-normalization authorizes no connected access or classification.
+and the bounded clerical edit completed approval-state normalization. The
+resulting normalized artifact was repository-adopted with PASS and closed at
+historical adoption commit `c659605e35195738a70dbff72b98e6654e6daa4a`.
+Adoption authorizes no connected access or classification, removes no hold,
+and independently enables no later operational action.
 
 ## 5. Correction-Unit and Protected-Surface Map
 
@@ -444,13 +448,13 @@ The following are prohibited as stable identifiers:
 | --- | --- | --- | --- |
 | Adopted contracts and ICE artifacts | Existing adopted authority | Meaning, required outcomes, privacy, ownership, treatments, dependencies, holds, and exclusions | Actual target-bound facts |
 | Committed migrations and client source | Derived from committed evidence | Possible technical causes, literal defaults, object definitions, and consumer behavior | Per-unit causality, owner intent, connected state, or Product authority |
-| Authenticated connected snapshot | Founder-approved governance pending repository adoption | Current value, absence, relationship, catalog, constraint, ledger, and snapshot facts | Historical cause without corroboration |
-| Structurally valid `identity_provenance` entries | Founder-approved governance pending repository adoption | Supplementary field attribution | Truth when malformed, contradictory, or unsupported by the governing operation |
-| Referential evidence | Founder-approved governance pending repository adoption | Owner and key existence, collisions, and required relationship validity | Semantic truth outside the governed relation |
-| Authenticated immutable audit or historical evidence, when legitimately available | Founder-approved governance pending repository adoption | Positive causal evidence for owner action or fallback assignment | Facts outside its authenticated scope |
-| Migration ledger | Founder-approved governance pending repository adoption | Migration identity and application chronology | Which particular value a migration changed |
-| Snapshot-complete anti-join or absence observation | Founder-approved governance pending repository adoption | Technical absence within that snapshot | Historical cause or unavailable external evidence |
-| Digests and counts | Founder-approved governance pending repository adoption | Integrity, reconciliation, and pseudonymous correlation | Truth, provenance, ownership, causality, or meaning |
+| Authenticated connected snapshot | Repository-adopted governance; connected use still separately unauthorized | Current value, absence, relationship, catalog, constraint, ledger, and snapshot facts | Historical cause without corroboration |
+| Structurally valid `identity_provenance` entries | Repository-adopted governance; connected use still separately unauthorized | Supplementary field attribution | Truth when malformed, contradictory, or unsupported by the governing operation |
+| Referential evidence | Repository-adopted governance; connected use still separately unauthorized | Owner and key existence, collisions, and required relationship validity | Semantic truth outside the governed relation |
+| Authenticated immutable audit or historical evidence, when legitimately available | Repository-adopted governance; connected use still separately unauthorized | Positive causal evidence for owner action or fallback assignment | Facts outside its authenticated scope |
+| Migration ledger | Repository-adopted governance; connected use still separately unauthorized | Migration identity and application chronology | Which particular value a migration changed |
+| Snapshot-complete anti-join or absence observation | Repository-adopted governance; connected use still separately unauthorized | Technical absence within that snapshot | Historical cause or unavailable external evidence |
+| Digests and counts | Repository-adopted governance; connected use still separately unauthorized | Integrity, reconciliation, and pseudonymous correlation | Truth, provenance, ownership, causality, or meaning |
 
 Evidence is authoritative only within its authenticated and integrity-verified
 scope. Evidence that fails those requirements is not permitted evidence.
@@ -704,7 +708,8 @@ The gate sequence is:
    bounded clerical edit; the resulting normalized bytes are not represented
    as separately audited or separately founder-approved;
 8. separately authorized repository adoption and attribution-safe Git closure
-   — not authorized;
+   — complete with PASS at historical adoption commit
+   `c659605e35195738a70dbff72b98e6654e6daa4a`;
 9. separately authorized target-authentication and read-only
    connected-inspection qualification — not authorized;
 10. separately authorized target-bound evidence acquisition and universe
@@ -713,20 +718,22 @@ The gate sequence is:
 12. founder review and disposition of the complete classification result —
     not authorized;
 13. any further treatment or recovery design — not authorized;
-14. any later repository adoption, implementation, migration authoring,
-    execution authorization, verification, acceptance, or closure — not
-    authorized; and
+14. any later repository adoption beyond this completed artifact,
+    implementation, migration authoring, execution authorization,
+    verification, acceptance, or closure — not authorized; and
 15. separately governed security or fingerprint work where applicable — not
     authorized.
 
 No gate authorizes, completes, implies, or collapses another.
 
-After successful repository adoption of this artifact, the exact single next
-gate will be:
+Repository adoption granted governance status only. It authorized no
+operational activity, removed no hold, and did not independently enable a later
+operational action. The exact single next action is:
 
-`Separately authorized target-authentication and read-only connected-inspection qualification.`
+`Gate 1: repository-align the successful 20260807100000 restoration.`
 
-Recording that later gate does not authorize it.
+No additional prerequisite precedes Gate 1. Recording it does not authorize,
+prepare, or execute Gate 1.
 
 ## 17. Founder-Decision Register
 
@@ -741,13 +748,16 @@ Recording that later gate does not authorize it.
 | `CG-07` | Procedural records are minimized and omit unnecessary raw protected values and secrets. | Reconciliation remains possible without unnecessary evidence exposure. |
 | `CG-08` | Governance adoption precedes connected qualification; acquisition, classification, founder review, and treatment remain separate gates. | Design cannot become connected or execution authority. |
 
-All eight rules are founder-approved procedurally. They become
-repository-adopted governing authority only after the separate lifecycle in
-Section 16 is completed.
+All eight rules are founder-approved and repository-adopted governing authority
+through historical adoption commit
+`c659605e35195738a70dbff72b98e6654e6daa4a`. Their adoption grants no operative
+authority.
 
 ## 18. Artifact Status Lifecycle
 
-The lifecycle states are distinct:
+The lifecycle states are distinct. States 1 through 4 are completed historical
+states and do not describe the artifact's current repository-adopted status;
+the current state is State 5.
 
 1. **Procedural design approval**
 
@@ -784,13 +794,15 @@ The lifecycle states are distinct:
 
 5. **Repository-adopted artifact**
 
-   Only a later separately authorized attribution-safe Git closure may set:
+   Historical adoption commit
+   `c659605e35195738a70dbff72b98e6654e6daa4a` set:
 
    `Founder Approved and Repository Adopted — Non-Operative; No Connected Inspection, Classification, Treatment, or Execution Authority`
 
-Repository adoption makes the approved classification governance available as
-governing authority. It does not make it operative and does not authorize the
-next gate.
+Repository adoption is PASS and closed. It makes the approved classification
+governance available as governing authority. It does not make the artifact
+operative, authorize operational activity, remove a hold, or independently
+enable a later operational action.
 
 ## 19. Recovery, Deferred Work, and Preservation
 
@@ -846,8 +858,9 @@ The following remain unchanged:
 | 2026-08-04 | A separately authorized read-only governance action prepared the complete Position 1 classification-governance design. | Produced a non-operative design for founder review without repository or connected mutation. |
 | 2026-08-04 | The founder individually approved `CG-01` through `CG-08`. | Established `FOUNDER APPROVED — PENDING SEPARATELY AUTHORIZED REPOSITORY ADOPTION`. Connected inspection, classification, treatment, execution, and repository adoption remained unauthorized. |
 | 2026-08-04 | The founder separately authorized preparation of a complete repository-adoption draft. | Produces this non-operative proposed artifact and bounded adoption design for founder review only. No file creation, repository adoption, connected access, classification, treatment, or execution is authorized. |
-| 2026-08-08 | The founder approved the authenticated local checkpoint at HEAD `3b2156284055c904b8390161c5f3735015ba9ac0` and its five-migration inventory for reconciliation within this ICE-GI-001-1C proposal. | Authoring authorization only. No audit, exact-byte approval, normalization, adoption, staging, commit, remote contact, connected inspection, SQL execution, migration execution, classification, implementation, verification, or production activity was authorized. The reconciliation remains non-operative unless and until all separately required audit, approval, normalization, and repository-adoption steps are completed. |
-| 2026-08-08 | The authenticated 47,666-byte pre-normalization source with SHA-256 `bfbd31ce1cfb6a6ac5101cccf64ffe11d575774a061d20ecf44c610c8f4ae0f3` completed Architecture and Execution-Governance Audit with `PASS WITH NON-BLOCKING CLARIFICATIONS`, no blocking defect, and no required correction; the founder then approved those exact audited source bytes. This bounded clerical edit records those events and completes approval-state normalization only. | The non-blocking clarification preserves the no-gate-collapse separation of target authentication, read-only qualification, evidence acquisition, and universe freezing. The resulting normalized bytes are not represented as separately audited or separately founder-approved. Repository adoption remains separately required, the document remains non-operative, and no connected access, classification, implementation, migration, SQL, or production authority is granted. |
+| 2026-08-08 | The founder approved the authenticated local checkpoint at HEAD `3b2156284055c904b8390161c5f3735015ba9ac0` and its five-migration inventory for reconciliation within this ICE-GI-001-1C proposal. | At that checkpoint, authoring authorization only applied. No audit, exact-byte approval, normalization, adoption, staging, commit, remote contact, connected inspection, SQL execution, migration execution, classification, implementation, verification, or production activity was authorized. The later lifecycle steps were completed through the adoption commit recorded below. |
+| 2026-08-08 | The authenticated 47,666-byte pre-normalization source with SHA-256 `bfbd31ce1cfb6a6ac5101cccf64ffe11d575774a061d20ecf44c610c8f4ae0f3` completed Architecture and Execution-Governance Audit with `PASS WITH NON-BLOCKING CLARIFICATIONS`, no blocking defect, and no required correction; the founder then approved those exact audited source bytes. This bounded clerical edit records those events and completes approval-state normalization only. | The non-blocking clarification preserves the no-gate-collapse separation of target authentication, read-only qualification, evidence acquisition, and universe freezing. At that checkpoint, repository adoption was still separately required; it was later closed by the adoption commit in the next entry. The document remained non-operative, and no connected access, classification, implementation, migration, SQL, or production authority was granted. |
+| 2026-08-08 | Attribution-safe Git closure at commit `c659605e35195738a70dbff72b98e6654e6daa4a` repository-adopted the normalized artifact. | Repository adoption is PASS and closed. It granted governance status only, authorized no operational activity, removed no hold, and did not independently enable a later operational action. |
 
 ## 21. Non-Authorization and Success Boundary
 
@@ -867,14 +880,16 @@ This artifact does not:
 - authorize deployment or production activity; or
 - alter canonical Grow Identity meaning.
 
-Approval-state normalization succeeds only when the normalized proposal:
+Repository-adoption closure at historical commit
+`c659605e35195738a70dbff72b98e6654e6daa4a` preserved these boundaries:
 
 - preserves every approved classification-governance component;
 - preserves `CG-01` through `CG-08`;
 - remains subordinate to the existing governing chain;
 - grants no connected, classification, treatment, or execution authority;
-- remains non-operative and not repository-adopted;
+- remains non-operative while repository-adopted;
 - introduces no sensitive identifier or value; and
-- advances only to separately authorized repository adoption.
+- grants governance status only, authorizes no operational activity, removes no
+  hold, and does not independently enable a later operational action.
 
 No authority state implies another.

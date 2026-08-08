@@ -31,8 +31,17 @@ Enforce these rules:
 12. This gate does not itself authorize corrective design, recovery execution, connected qualification or access, implementation, migration, verification, acceptance, security or fingerprint work, deployment, production activity, or any other substantive action.
 13. If an action’s classification changes while work is in progress, stop before further mutation and obtain the authority required by the new classification.
 
-At the checkpoint created by repository adoption of this gate, the exact single next gate is:
+The bounded Position 1 corrective-or-recovery design for invariants 6, 12, 13,
+17, 18, 20, 28, 31, 34, 36, 46, and 47 is complete and repository-adopted in
+`ICE-GI-001-1B`. Repository adoption of `ICE-GI-001-1C` is PASS and closed at
+historical adoption commit `c659605e35195738a70dbff72b98e6654e6daa4a`.
+Neither completed workstream may be reopened. Existing holds and operational-
+authorization boundaries remain unchanged.
 
-`Separate founder authorization for bounded Position 1 corrective-or-recovery design, limited exclusively to invariants 6, 12, 13, 17, 18, 20, 28, 31, 34, 36, 46, and 47.`
+At this checkpoint, the exact single next action is:
 
-Recording that next gate does not grant the authorization, begin the design, select a correction, authorize execution, remove a hold, or make any later gate eligible.
+`Gate 1: repository-align the successful 20260807100000 restoration.`
+
+No additional prerequisite precedes Gate 1. Recording this next action does
+not authorize, prepare, or execute Gate 1, remove a hold, or make any later
+action eligible.
