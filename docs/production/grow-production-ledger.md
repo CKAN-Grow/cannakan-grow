@@ -51,6 +51,7 @@ status.
 | CS-001.1 | Session Identity | Product Capability | `COMMITTED` | Git Commit `33ab720` | None |
 | CS-001.2 | Session Orientation | Product Capability | `INTERRUPTED` | Owner-Confirmed Record | Resubmit the frozen Engineering Commission |
 | GPSC-002 | Truth; Honest Value | Product Standard | `INTERRUPTED` | Owner-Confirmed Record | Resubmit the frozen commission |
+| 20260807100000_session_conditions_canonical_restoration.sql | Seven-function Session Conditions canonical restoration; successfully applied and verified in production; production stable after restoration | Production Restoration | `IMPLEMENTED` | Owner-Confirmed Record; Repository File `supabase/migrations/20260807100000_session_conditions_canonical_restoration.sql` (SHA-256 `2821e5da9f2a014927ac7f03bf598caed47c61c79a25cbb608c74217e7c0fc65`) | None |
 
 ### CS-001.2 Interruption Record
 
