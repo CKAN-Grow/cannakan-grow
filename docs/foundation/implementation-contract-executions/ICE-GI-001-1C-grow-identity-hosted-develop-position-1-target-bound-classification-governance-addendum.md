@@ -188,6 +188,18 @@ The committed migration inventory added after adoption of ICE-GI-001-1B is:
 | `supabase/migrations/20260806120000_session_conditions_current_operations.sql` | `d26b282b5674f259394b2909a0b2a163be07ae58` | `2bdc55ade87babdd597d4507e84f5d9257f54fe4d7f280d346fc07521ab599e3` |
 | `supabase/migrations/20260807100000_session_conditions_canonical_restoration.sql` | `3b2156284055c904b8390161c5f3735015ba9ac0` | `2821e5da9f2a014927ac7f03bf598caed47c61c79a25cbb608c74217e7c0fc65` |
 
+Under founder-authorized Gate 2,
+`supabase/migrations/20260806100000_growing_session_base_prerequisite_recovery.sql`
+is classified as obsolete, abandoned, and permanently non-executable. Its
+authenticated pre-disposition identity was 27,517 bytes, SHA-256
+`17183ed27828ea6baceac5e269dd059649ef056015d07a62d421c771f1db4357`, and
+Git blob `3584be024129cd4d96ec5ad1ad25cf7e01207cd6`. Gate 2 deleted it from
+the active Supabase migration directory; Git history preserves its identity.
+It was not executed, repaired, rewritten, relocated, archived, reused, or
+replaced. Timestamp `20260806100000` must never be reused. The successful
+`20260807100000` restoration remains unchanged. Gate 2 grants no database or
+connected-system authority.
+
 These identities establish committed local repository evidence only.
 ICE-GI-001-1B's historical remote `main`, remote `develop`, and
 connected-target evidence remain unchanged and were not revalidated. The
@@ -199,10 +211,12 @@ that historical remote evidence.
 accepted conformance, connected application, hosted-`develop` state, or
 execution authority.
 
-The other four migrations are later committed repository evidence only. Their
-local presence removes no Position 1, Position 2, Position 5, `ICE-SC-003`,
-migration-history, security, or production hold. No listed migration's local
-presence establishes application to hosted `develop` or production.
+The Gate 2 target is preserved only by this historical inventory and Git
+history. The remaining three migrations are later committed repository evidence
+only. Their local presence removes no Position 1, Position 2, Position 5,
+`ICE-SC-003`, migration-history, security, or production hold. No listed
+migration's local presence establishes application to hosted `develop` or
+production.
 
 The existing formal gate, production exclusion, target boundary, four
 classifications, correction units, and predecessor ordering remain unchanged.

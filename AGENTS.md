@@ -46,10 +46,20 @@ at SHA-256
 The Grow Production Ledger records the restoration as `IMPLEMENTED`, with
 production stable after restoration and `Next Action` set to `None`.
 
-At this checkpoint, the exact single established next action is:
+Gate 2, disposition of
+`supabase/migrations/20260806100000_growing_session_base_prerequisite_recovery.sql`,
+is founder-authorized, complete, and closed. The migration is classified as
+obsolete, abandoned, and permanently non-executable and was deleted from the
+active Supabase migration directory. Its SQL must never be executed, repaired,
+rewritten, relocated, archived, reused, or replaced, and timestamp
+`20260806100000` must never be reused. Git history preserves its prior identity.
+The successful `20260807100000` restoration remains unchanged.
 
-`None.`
+At this checkpoint:
 
-Recording Gate 1 closure does not authorize connected access, SQL or migration
-execution, restoration work, implementation, verification, deployment, or
-production activity; remove a hold; or make any later action eligible.
+`Next action: None.`
+
+Recording Gate 1 and Gate 2 closure does not authorize connected access, SQL
+or migration execution, restoration work, implementation, verification,
+deployment, or production activity; remove a hold; or make any later action
+eligible.
