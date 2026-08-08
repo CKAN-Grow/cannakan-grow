@@ -38,10 +38,18 @@ historical adoption commit `c659605e35195738a70dbff72b98e6654e6daa4a`.
 Neither completed workstream may be reopened. Existing holds and operational-
 authorization boundaries remain unchanged.
 
-At this checkpoint, the exact single next action is:
+Gate 1, `Repository-align the successful 20260807100000 restoration`, is
+complete and closed. The exact successful restoration is represented by
+`supabase/migrations/20260807100000_session_conditions_canonical_restoration.sql`
+at SHA-256
+`2821e5da9f2a014927ac7f03bf598caed47c61c79a25cbb608c74217e7c0fc65`.
+The Grow Production Ledger records the restoration as `IMPLEMENTED`, with
+production stable after restoration and `Next Action` set to `None`.
 
-`Gate 1: repository-align the successful 20260807100000 restoration.`
+At this checkpoint, the exact single established next action is:
 
-No additional prerequisite precedes Gate 1. Recording this next action does
-not authorize, prepare, or execute Gate 1, remove a hold, or make any later
-action eligible.
+`None.`
+
+Recording Gate 1 closure does not authorize connected access, SQL or migration
+execution, restoration work, implementation, verification, deployment, or
+production activity; remove a hold; or make any later action eligible.
