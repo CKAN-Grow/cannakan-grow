@@ -57,9 +57,14 @@ The successful `20260807100000` restoration remains unchanged.
 
 At this checkpoint:
 
-`Next action: None.`
+`Current Conditions: published and closed.`
+
+`Next Grow capability: Germination Setup, Evidence & Inventory.`
+
+`Next authorized action: bounded founder-reviewable frontend implementation for
+Germination Setup, Evidence & Inventory.`
 
 Recording Gate 1 and Gate 2 closure does not authorize connected access, SQL
-or migration execution, restoration work, implementation, verification,
-deployment, or production activity; remove a hold; or make any later action
-eligible.
+or migration execution, restoration work, deployment, or production activity;
+remove a hold; or make any later action beyond the bounded Germination Setup
+frontend implementation eligible.
