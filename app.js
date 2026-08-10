@@ -2225,10 +2225,12 @@ async function enterCanonicalGrowing(session = null, options = {}) {
       sessionConditions,
       session_conditions: sessionConditions,
     };
-    const existing = getSessions().some((candidate) => candidate.id === saved.id);
-    saveSessions(existing
-      ? getSessions().map((candidate) => candidate.id === saved.id ? saved : candidate)
-      : [saved, ...getSessions()]);
+    if (options.previewOnly !== true) {
+      const existing = getSessions().some((candidate) => candidate.id === saved.id);
+      saveSessions(existing
+        ? getSessions().map((candidate) => candidate.id === saved.id ? saved : candidate)
+        : [saved, ...getSessions()]);
+    }
     return saved;
   }
 
@@ -6586,6 +6588,84 @@ function tagDeveloperScenarioRecord(record = {}, id = "") {
   };
 }
 
+function attachDeveloperSessionConditionsFixture(session = null, index = 0, commencedAt = "", options = {}) {
+  if (!session?.id || !commencedAt) return session;
+  const suffix = String(index + 1).padStart(12, "0");
+  const growMethods = ["Living Soil", "Coco", "Rockwool", "Soil"];
+  const environmentTypes = ["Indoor", "Greenhouse", "Outdoor", "Protected Outdoor"];
+  const growMethod = growMethods[index % growMethods.length];
+  const environmentType = environmentTypes[index % environmentTypes.length];
+  const methodPeriodId = `91000000-0000-4000-8000-${suffix}`;
+  const environmentPeriodId = `92000000-0000-4000-8000-${suffix}`;
+  const operationId = `90000000-0000-4000-8000-${suffix}`;
+  const periods = [
+    {
+      id: methodPeriodId, session_id: session.id, dimension: "grow_method",
+      canonical_value: growMethod, other_text: "", effective_start: commencedAt,
+      effective_end: null, source_kind: "initial_declaration", revision: options.corrected === true ? 2 : 1,
+    },
+    {
+      id: environmentPeriodId, session_id: session.id, dimension: "environment_type",
+      canonical_value: environmentType, other_text: "", effective_start: commencedAt,
+      effective_end: null, source_kind: "initial_declaration", revision: 1,
+    },
+  ];
+  const corrections = options.corrected === true ? [{
+    id: `93000000-0000-4000-8000-${suffix}`,
+    session_id: session.id,
+    condition_period_id: methodPeriodId,
+    correction_note: "Verified against the original Growing record.",
+    corrected_at: "2026-07-16T15:30:00.000Z",
+    revision: 2,
+  }] : [];
+  const conditions = {
+    session_id: session.id,
+    authority: "conditions",
+    authority_source: "begin_growing",
+    canonical_revision: 2 + corrections.length,
+    growing_commencement_status: "authoritative",
+    growing_commenced_at: commencedAt,
+    defined_at: commencedAt,
+    earlier_conditions_status: null,
+    conditions: periods.map((period) => ({
+      dimension: period.dimension,
+      status: "known",
+      value: period.canonical_value,
+      other_text: period.other_text,
+      period_id: period.id,
+      effective_start: period.effective_start,
+      effective_end: period.effective_end,
+      period_revision: period.revision,
+      source_kind: period.source_kind,
+    })),
+  };
+  session.postGerminationDecision = "grow";
+  session.post_germination_decision = "grow";
+  session.growingCommencement = {
+    status: "authoritative", sessionId: session.id, commencedAt, entryPath: "seed", operationId,
+  };
+  session.growing_commencement = session.growingCommencement;
+  session.sessionConditions = conditions;
+  session.session_conditions = conditions;
+  session.sessionConditionHistory = {
+    session_id: session.id,
+    authority: "conditions",
+    authority_source: "begin_growing",
+    earlier_conditions_status: null,
+    canonical_revision: conditions.canonical_revision,
+    periods,
+    corrections,
+  };
+  session.session_condition_history = session.sessionConditionHistory;
+  if (options.historical === true) {
+    session.growingPhaseStatus = "completed";
+    session.growing_phase_status = "completed";
+    session.growingCompletedAt = options.growingCompletedAt || "2026-07-16T18:00:00.000Z";
+    session.growing_completed_at = session.growingCompletedAt;
+  }
+  return session;
+}
+
 function buildScenarioRankRows(sessions = [], keyGetter = () => "") {
   const groups = new Map();
   sessions.forEach((session) => {
@@ -6854,6 +6934,12 @@ function buildFullGrowDemoGraph() {
     session.isReadyToComplete = ready;
     session.documentationLevel = method === "KAN" ? "complete" : index % 3 === 0 ? "detailed" : "standard";
     session.durationDays = durationDays;
+    if (session.postGerminationDecision === "grow") {
+      attachDeveloperSessionConditionsFixture(session, index, `${completedDate}T19:45:00.000Z`, {
+        corrected: index === 0,
+        historical: index === 0,
+      });
+    }
     return tagDeveloperScenarioRecord(session, session.id);
   };
   const completedPlans = [
@@ -7269,13 +7355,39 @@ function buildDeveloperSessionScenarioFixtures() {
   }, `scenario-session-${ready ? "ready" : "active"}-${index + 1}`);
   const active = base.slice(0, 3).map((session, index) => asActive(session, index));
   const ready = [asActive(base[3], 0, true)];
+  const decision = tagDeveloperScenarioRecord({
+    ...ready[0],
+    id: "scenario-session-decision-1",
+    userId: DEV_QA_BYPASS_USER_ID,
+    user_id: DEV_QA_BYPASS_USER_ID,
+    entryPath: SESSION_ENTRY_PATH.SEED,
+    entry_path: SESSION_ENTRY_PATH.SEED,
+    sessionStatus: "completed",
+    session_status: "completed",
+    completedAt: "2026-07-15T12:00:00.000Z",
+    completed_at: "2026-07-15T12:00:00.000Z",
+    updatedAt: "2026-07-15T12:00:00.000Z",
+    updated_at: "2026-07-15T12:00:00.000Z",
+    postGerminationDecision: "pending",
+    post_germination_decision: "pending",
+    sessionConditions: null,
+    session_conditions: null,
+    growingCommencement: null,
+    growing_commencement: null,
+  }, "scenario-session-decision-1");
+  const completed = base.slice(0, 6).map((session, index) => attachDeveloperSessionConditionsFixture(
+    { ...session },
+    index,
+    String(session.completedAt || session.completed_at || session.updatedAt || session.updated_at || "2026-07-15T12:00:00.000Z"),
+    { corrected: index === 0, historical: index === 0 },
+  ));
   return {
     none: [],
     "one-active": active.slice(0, 1),
     "multiple-active": active,
     ready,
-    completed: base.slice(0, 6),
-    mixed: [...active.slice(0, 2), ...ready, ...base.slice(0, 4)],
+    completed,
+    mixed: [...active.slice(0, 2), ...ready, decision, ...completed.slice(0, 4)],
   };
 }
 
@@ -94550,6 +94662,7 @@ function getGrowCompanionWriteEligibility(session = null) {
 
 function renderSessionGrowingPhaseBodyMarkup(session = null) {
   return `
+    ${renderSessionCurrentConditionsMarkup(session)}
     ${renderGrowingFoundationMarkup(session)}
     <div class="session-phase-foundation-intro">
       <div>
@@ -95370,6 +95483,7 @@ async function handleGrowCompanionActivityAction(root = null, action = "", recor
 
 function renderSessionGrowingRecordFoundationMarkup(session = null) {
   return `
+    ${renderSessionCurrentConditionsMarkup(session, { readOnly: true })}
     ${renderGrowingFoundationMarkup(session, { readOnly: true })}
     <div class="session-phase-locked-state" role="note">
       <span class="session-phase-lock-icon" aria-hidden="true">${renderAppIconSvgMarkup("lock", { className: "session-phase-lock-svg" })}</span>
@@ -95429,11 +95543,11 @@ function renderSessionCompleteWorkspaceMarkup() {
 function renderPostGerminationDecisionMarkup() {
   return `<section class="post-germination-decision" aria-labelledby="post-germination-decision-title">
     <p class="eyebrow">Germination complete</p><h3 id="post-germination-decision-title">What comes next?</h3>
-    <p>Complete this Session after Germination, or continue the same Session into Growing. Neither choice creates Growing evidence.</p>
+    <p>Complete this Session after Germination, or continue the same Session into Growing. Continuing starts the Growing phase with the conditions selected below.</p>
     ${renderBeginGrowingInitialConditionsMarkup("post-germination")}
     <div class="post-germination-decision-actions">
       <button type="button" class="button button-secondary" data-post-germination-decision="complete">Complete Session</button>
-      <button type="button" class="button button-primary" data-post-germination-decision="grow">Continue to Growing</button>
+      <button type="button" class="button button-primary" data-post-germination-decision="grow" disabled aria-disabled="true">Continue to Growing</button>
     </div><p class="form-message" data-post-germination-message role="status" aria-live="polite"></p>
   </section>`;
 }
@@ -95630,6 +95744,7 @@ function syncSessionPhaseFoundation(scope = app, session = null) {
   const expansion = getSessionPhaseExpansion(session, lifecycle);
   composeSessionCurrentPhaseWorkspace(root, session, lifecycle);
   initializeBeginGrowingInitialConditions(root);
+  initializeSessionCurrentConditions(root, session);
   initializeGrowCompanionActivity(root, session);
   const navigator = root.querySelector("[data-session-phase-navigator]");
   if (navigator && !navigator.querySelector("[data-session-phase-nav]")) {
@@ -95672,6 +95787,7 @@ function bindSessionPhaseFoundation(root = null, session = null) {
     }
     const decisionButton = event.target instanceof Element ? event.target.closest("[data-post-germination-decision]") : null;
     if (decisionButton instanceof HTMLButtonElement) {
+      if (decisionButton.disabled) return;
       const decision = normalizePostGerminationDecision(decisionButton.dataset.postGerminationDecision);
       if (![POST_GERMINATION_DECISION.COMPLETE, POST_GERMINATION_DECISION.GROW].includes(decision)) return;
       const message = root.querySelector("[data-post-germination-message]");
@@ -95691,17 +95807,21 @@ function bindSessionPhaseFoundation(root = null, session = null) {
       decisionActions.querySelectorAll("button").forEach((button) => { button.disabled = true; });
       if (message) message.textContent = "Saving lifecycle decision…";
       const previous = getPostGerminationDecision(session);
+      const previewOnly = isDeveloperScenarioModuleActive("sessions") || isDeveloperScenarioRecord(session);
       const saveDecision = async () => {
         if (decision === POST_GERMINATION_DECISION.GROW) {
           return enterCanonicalGrowing(session, {
             entryPath: SESSION_ENTRY_PATH.SEED,
-            operationId: getCanonicalGrowingOperationId(
-              session.id,
-              SESSION_ENTRY_PATH.SEED,
-              initialConditions,
-            ),
+            operationId: previewOnly
+              ? crypto.randomUUID()
+              : getCanonicalGrowingOperationId(
+                session.id,
+                SESSION_ENTRY_PATH.SEED,
+                initialConditions,
+              ),
             expectedUpdatedAt: session.updatedAt || session.updated_at || "",
             initialConditions,
+            previewOnly,
           });
         }
         session.postGerminationDecision = decision;
@@ -95714,16 +95834,23 @@ function bindSessionPhaseFoundation(root = null, session = null) {
           if (message) message.textContent = "Could not save the lifecycle decision.";
           delete root.dataset.beginGrowingPending;
           decisionActions.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+          syncBeginGrowingInitialConditionsState(root.querySelector("[data-begin-growing-initial-conditions]"));
           return;
         }
-        if (decision === POST_GERMINATION_DECISION.GROW) retireCanonicalGrowingOperation(saved);
+        if (decision === POST_GERMINATION_DECISION.GROW && !previewOnly) retireCanonicalGrowingOperation(saved);
         Object.assign(session, saved);
-        safeRender();
+        if (previewOnly) {
+          delete root.dataset.sessionCurrentPhase;
+          syncSessionDetailHeaderMeta(getSessionDetailElements(app), session);
+        } else {
+          safeRender();
+        }
       }).catch((error) => {
         console.error("Failed to enter Growing", error);
         if (message) message.textContent = "Could not save the lifecycle decision.";
         delete root.dataset.beginGrowingPending;
         decisionActions.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+        syncBeginGrowingInitialConditionsState(root.querySelector("[data-begin-growing-initial-conditions]"));
       });
       return;
     }

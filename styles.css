@@ -24757,7 +24757,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .growing-summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
   margin-top: 0.9rem;
 }
@@ -24811,6 +24811,10 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   gap: 0.35rem;
   min-width: 0;
+}
+
+.growing-context-grid label[hidden] {
+  display: none;
 }
 
 .growing-context-grid input,
@@ -89635,14 +89639,345 @@ img.person-profile-avatar {
   gap: 12px;
 }
 
-.session-workspace-shell--detail .session-phase-foundation-grid > section {
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.016);
-}
+  .session-workspace-shell--detail .session-phase-foundation-grid > section {
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.016);
+  }
 
-/* Grow Companion Capability 1: Session-owned tasks, events, and activity. */
+  /* Current Conditions product integration */
+  .session-workspace-shell--detail .session-current-conditions {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: clamp(16px, 2vw, 22px);
+    border: 1px solid rgba(148, 209, 89, 0.2);
+    border-radius: 20px;
+    background:
+      radial-gradient(circle at 88% 8%, rgba(148, 209, 89, 0.09), transparent 34%),
+      linear-gradient(145deg, rgba(17, 30, 21, 0.94), rgba(7, 14, 10, 0.96));
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+  }
+
+  .session-workspace-shell--detail .session-current-conditions-heading > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .session-workspace-shell--detail .session-current-conditions-heading :is(.eyebrow, h4, p) {
+    margin: 0;
+  }
+
+  .session-workspace-shell--detail .session-current-conditions-heading h4 {
+    color: #f1f8ee;
+    font-size: clamp(1.06rem, 2vw, 1.26rem);
+  }
+
+  .session-workspace-shell--detail .session-current-conditions-heading p:last-child {
+    max-width: 60ch;
+    color: rgba(218, 229, 214, 0.66);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .session-current-conditions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .session-current-condition-card {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.075);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .session-current-condition-card > span {
+    color: rgba(210, 224, 205, 0.58);
+    font-size: 0.65rem;
+    font-weight: 760;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .session-current-condition-card > strong {
+    overflow-wrap: anywhere;
+    color: #eef7ea;
+    font-size: 1rem;
+  }
+
+  .session-current-condition-card > small {
+    color: rgba(206, 220, 201, 0.55);
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+
+  .session-current-conditions-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .session-current-conditions-actions .button {
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 0.72rem;
+  }
+
+  .session-current-conditions-feedback {
+    min-height: 1.15em;
+    margin: -3px 0 0;
+    color: #b9e28f;
+    font-size: 0.75rem;
+  }
+
+  .session-current-conditions-empty {
+    display: grid;
+    gap: 4px;
+    padding: 14px;
+    border: 1px dashed rgba(255, 255, 255, 0.11);
+    border-radius: 14px;
+  }
+
+  .session-current-conditions-empty :is(strong, p) { margin: 0; }
+  .session-current-conditions-empty p { color: rgba(210, 224, 205, 0.62); font-size: 0.78rem; }
+
+  .session-conditions-dialog {
+    width: min(650px, calc(100vw - 28px));
+  }
+
+  .session-conditions-dialog-shell,
+  .session-conditions-form {
+    display: grid;
+    gap: 18px;
+  }
+
+  .session-conditions-dialog-shell {
+    padding: clamp(18px, 3vw, 28px);
+  }
+
+  .session-conditions-dialog-shell > header,
+  .session-conditions-form > div:first-child {
+    display: grid;
+    gap: 5px;
+  }
+
+  .session-conditions-dialog-shell > header :is(.eyebrow, h2),
+  .session-conditions-form :is(p, h3) {
+    margin: 0;
+  }
+
+  .session-conditions-dialog [data-session-conditions-dialog-body] {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .session-conditions-dialog .session-current-conditions-grid {
+    min-width: 0;
+  }
+
+  .session-conditions-form > div:first-child > p,
+  .session-conditions-dialog-loading,
+  .session-condition-history-empty {
+    color: rgba(215, 228, 211, 0.68);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .session-conditions-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .session-conditions-form label {
+    display: grid;
+    gap: 6px;
+    color: rgba(232, 241, 228, 0.88);
+    font-size: 0.75rem;
+    font-weight: 680;
+  }
+
+  .session-conditions-form label[hidden] {
+    display: none;
+  }
+
+  .session-conditions-form :is(input, select, textarea) {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    color: #f2f7ef;
+    background: rgba(2, 6, 4, 0.62);
+  }
+
+  .post-germination-decision .growing-context-grid select,
+  .session-conditions-form select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 42px;
+    background-color: rgba(2, 6, 4, 0.62);
+    cursor: pointer;
+  }
+
+  .post-germination-decision .growing-context-grid label:has(> select),
+  .session-conditions-form label:has(> select) {
+    position: relative;
+  }
+
+  .post-germination-decision .growing-context-grid label:has(> select)::after,
+  .session-conditions-form label:has(> select)::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    bottom: 18px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #94d159;
+    border-bottom: 2px solid #94d159;
+    pointer-events: none;
+    transform: rotate(45deg);
+  }
+
+  .post-germination-decision .growing-context-grid label:has(> select:disabled)::after,
+  .session-conditions-form label:has(> select:disabled)::after {
+    opacity: 0.58;
+  }
+
+  .post-germination-decision .growing-context-grid select:disabled,
+  .session-conditions-form select:disabled {
+    cursor: not-allowed;
+  }
+
+  .session-conditions-form :is(input, select, textarea):focus-visible {
+    outline: 2px solid rgba(148, 209, 89, 0.78);
+    outline-offset: 2px;
+  }
+
+  .session-conditions-form-note,
+  .session-conditions-correction-record-field { grid-column: 1 / -1; }
+  .session-conditions-form textarea { min-height: 104px; resize: vertical; }
+
+  .session-conditions-correction-target {
+    display: grid;
+    gap: 5px;
+    padding: 14px 16px;
+    border: 1px solid rgba(148, 209, 89, 0.18);
+    border-radius: 14px;
+    background: rgba(148, 209, 89, 0.045);
+  }
+
+  .session-conditions-correction-target :is(h3, p) { margin: 0; }
+  .session-conditions-correction-target h3 { font-size: 0.98rem; }
+  .session-conditions-correction-target > p:not(.eyebrow),
+  .session-conditions-correction-target small {
+    color: rgba(215, 228, 211, 0.68);
+    line-height: 1.45;
+  }
+
+  .session-conditions-review {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid rgba(148, 209, 89, 0.16);
+    border-radius: 14px;
+    background: rgba(148, 209, 89, 0.045);
+  }
+
+  .session-conditions-review [data-session-conditions-review-values] {
+    display: grid;
+    gap: 8px;
+  }
+
+  .session-conditions-review [data-session-conditions-review-values] p {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .session-conditions-review [data-session-conditions-review-values] span {
+    color: rgba(215, 228, 211, 0.62);
+  }
+
+  .session-conditions-correction-notice {
+    padding: 11px 13px;
+    border-left: 3px solid rgba(148, 209, 89, 0.72);
+    color: rgba(227, 238, 223, 0.82);
+    background: rgba(148, 209, 89, 0.05);
+  }
+
+  .session-conditions-form .form-message {
+    min-height: 1.25em;
+    color: #f1c69f;
+  }
+
+  .session-conditions-form footer,
+  .session-conditions-dialog [data-session-conditions-dialog-body] > footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .session-condition-history-list {
+    display: grid;
+    gap: 10px;
+    max-height: min(56vh, 520px);
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    list-style: none;
+  }
+
+  .session-condition-history-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 14px;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.022);
+  }
+
+  .session-condition-history-item > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .session-condition-history-item > div > span,
+  .session-condition-history-item small {
+    color: rgba(211, 224, 206, 0.58);
+    font-size: 0.7rem;
+  }
+
+  .session-condition-corrected-marker {
+    align-self: start;
+    padding: 5px 8px;
+    border-radius: 999px;
+    color: #b9e28f;
+    background: rgba(148, 209, 89, 0.08);
+    font-size: 0.64rem;
+    font-weight: 760;
+    text-transform: uppercase;
+  }
+
+  .session-condition-history-item details {
+    grid-column: 1 / -1;
+    color: rgba(215, 228, 211, 0.68);
+    font-size: 0.74rem;
+  }
+
+  .session-condition-history-item details p { margin: 7px 0 0; }
+
+  /* Grow Companion Capability 1: Session-owned tasks, events, and activity. */
 .session-workspace-shell--detail .session-grow-companion-activity-grid > section {
   align-content: start;
   min-width: 0;
@@ -89934,9 +90269,32 @@ img.person-profile-avatar {
   }
 
   .session-workspace-shell--detail .session-phase-foundation-grid,
-  .session-workspace-shell--detail .session-reflection-foundation-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+    .session-workspace-shell--detail .session-reflection-foundation-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .session-current-conditions-grid,
+    .session-conditions-form-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .session-workspace-shell--detail .session-current-conditions-actions .button {
+      flex: 1 1 calc(50% - 4px);
+      min-width: 0;
+    }
+
+    .session-conditions-form-note { grid-column: auto; }
+
+    .session-conditions-form footer,
+    .session-conditions-dialog [data-session-conditions-dialog-body] > footer {
+      align-items: stretch;
+      flex-direction: column-reverse;
+    }
+
+    .session-conditions-form footer .button,
+    .session-conditions-dialog [data-session-conditions-dialog-body] > footer .button {
+      width: 100%;
+    }
 
   .session-workspace-shell--detail .session-grow-companion-item {
     grid-template-columns: minmax(0, 1fr);

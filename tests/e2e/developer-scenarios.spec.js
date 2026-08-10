@@ -228,6 +228,110 @@ test.describe("local Developer Scenarios", () => {
     await enableFounderLocalQa(page);
   });
 
+  test("connects Current Conditions across active and historical Session states", async ({ page }) => {
+    await page.goto("/#home");
+    await useMixAndMatch(page);
+    await page.locator("select[data-developer-scenario-module='sessions']").selectOption("mixed");
+
+    await page.goto("/#sessions/scenario-session-active-1");
+    await expect(page.locator("[data-session-current-conditions]")).toHaveCount(0);
+    await expect(page.locator("[data-session-current-phase-workspace]")).toHaveAttribute("data-session-current-phase", "germination");
+
+    await page.goto("/#sessions/scenario-session-decision-1");
+    const decisionWorkspace = page.locator("[data-session-current-phase-workspace]");
+    await expect(decisionWorkspace).toHaveAttribute("data-session-current-phase", "decision");
+    await expect(decisionWorkspace.locator("[data-session-current-conditions]")).toHaveCount(0);
+    const continueToGrowing = decisionWorkspace.getByRole("button", { name: "Continue to Growing", exact: true });
+    await expect(continueToGrowing).toBeDisabled();
+    await decisionWorkspace.locator('[data-begin-growing-condition="grow_method"]').selectOption("Coco");
+    await expect(continueToGrowing).toBeDisabled();
+    await decisionWorkspace.locator('[data-begin-growing-condition="environment_type"]').selectOption("Other");
+    await expect(continueToGrowing).toBeDisabled();
+    await decisionWorkspace.locator('[data-begin-growing-other="environment_type"]').fill("Covered terrace");
+    await expect(continueToGrowing).toBeEnabled();
+    await decisionWorkspace.locator('[data-begin-growing-condition="environment_type"]').selectOption("Greenhouse");
+    await expect(continueToGrowing).toBeEnabled();
+    await continueToGrowing.click();
+    await expect(page.locator("[data-session-current-phase-workspace]")).toHaveAttribute("data-session-current-phase", "grow");
+    await expect(page.locator("#detail-session-identity-phase")).toHaveText("Seed Session — Growing");
+    await expect(page.locator("#detail-session-orientation-stage")).toHaveText("Growing");
+    await expect(page.locator('[data-session-summary-card="current-phase"] p')).toHaveText("Growing");
+    await expect(page.locator('[data-session-phase-nav="grow"]')).toHaveAttribute("aria-current", "step");
+    await expect(page.locator("[data-session-current-phase-heading]")).toContainText("Growing");
+    await expect(page.locator("main")).not.toContainText("Next step");
+    await expect(page.locator('[data-session-condition-dimension="grow_method"]')).toContainText("Coco");
+    await expect(page.locator('[data-session-condition-dimension="environment_type"]')).toContainText("Greenhouse");
+
+    await page.goto("/#sessions/scenario-session-completed-2");
+    const currentConditions = page.locator("[data-session-current-conditions]");
+    await expect(currentConditions).toBeVisible();
+    await expect(currentConditions.locator('[data-session-condition-dimension="grow_method"]')).toContainText("Coco");
+    await expect(currentConditions.locator('[data-session-condition-dimension="environment_type"]')).toContainText("Greenhouse");
+
+    await currentConditions.getByRole("button", { name: "Change Conditions" }).click();
+    const changeDialog = page.locator("[data-session-conditions-dialog]");
+    await expect(changeDialog).toBeVisible();
+    await expect(changeDialog.locator("[data-session-conditions-form-message]")).toHaveText("No changes to save");
+    await expect(changeDialog.getByRole("button", { name: "Review changes" })).toBeDisabled();
+    await changeDialog.locator('select[name="growMethod"]').selectOption("Soil");
+    await expect(changeDialog.locator("[data-session-conditions-form-message]")).toHaveText("");
+    await changeDialog.getByRole("button", { name: "Review changes" }).click();
+    await expect(changeDialog.locator("[data-session-conditions-review]")).toContainText("Effective now");
+    await expect(changeDialog.locator("[data-session-conditions-review-values]")).toContainText("Soil");
+    await changeDialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(changeDialog).toHaveCount(0);
+    await expect(currentConditions.locator('[data-session-condition-dimension="grow_method"]')).toContainText("Soil");
+    await expect(currentConditions.locator('[data-session-condition-dimension="environment_type"]')).toContainText("Greenhouse");
+
+    await currentConditions.getByRole("button", { name: "Correct a Record" }).click();
+    const correctionDialog = page.locator("[data-session-conditions-dialog]");
+    const recordSelect = correctionDialog.locator('select[name="record"]');
+    const methodRecords = recordSelect.locator('option[data-dimension="grow_method"]');
+    await expect(methodRecords).toHaveCount(2);
+    await expect(methodRecords.filter({ hasText: "Current record" })).toContainText("Soil");
+    await expect(methodRecords.filter({ hasText: "Historical record" })).toContainText("Coco");
+    const environmentRecord = recordSelect.locator('option[data-dimension="environment_type"][data-current-record="true"]');
+    await recordSelect.selectOption(await environmentRecord.getAttribute("value"));
+    await expect(correctionDialog.locator("[data-session-conditions-correction-target]")).toContainText("Environment Type · Greenhouse");
+    await expect(correctionDialog.locator("[data-session-conditions-correction-target]")).toContainText("Current record · Applying since");
+    await expect(correctionDialog.getByText("Record to correct", { exact: true })).toBeVisible();
+    await expect(correctionDialog.locator("[data-session-conditions-correction-target]")).toContainText("Selected record");
+    await expect(correctionDialog.locator("[data-session-conditions-correction-target]")).not.toContainText(/canonical|revision|version|period id|record id/i);
+    const saveCorrection = correctionDialog.getByRole("button", { name: "Save correction" });
+    await expect(saveCorrection).toBeDisabled();
+    await correctionDialog.locator('select[name="value"]').selectOption("Other");
+    await expect(saveCorrection).toBeDisabled();
+    await correctionDialog.locator('input[name="otherText"]').fill("Verified indoor enclosure");
+    await expect(saveCorrection).toBeEnabled();
+    await correctionDialog.locator('select[name="value"]').selectOption("Indoor");
+    await expect(saveCorrection).toBeEnabled();
+    await correctionDialog.locator('textarea[name="correctionNote"]').fill("Verified fixture correction");
+    await expect(correctionDialog).toContainText("This record will be marked Corrected.");
+    await saveCorrection.click();
+    await expect(correctionDialog).toHaveCount(0);
+    await expect(currentConditions.locator('[data-session-condition-dimension="environment_type"]')).toContainText("Indoor");
+
+    await currentConditions.getByRole("button", { name: "Condition History" }).click();
+    const historyDialog = page.locator("[data-session-conditions-dialog]");
+    await expect(historyDialog).toContainText("Condition History");
+    await expect(historyDialog).toContainText("Corrected");
+    await expect(historyDialog).toContainText("Verified fixture correction");
+    await historyDialog.getByRole("button", { name: "Done" }).click();
+
+    await page.goto("/#sessions/scenario-session-active-1");
+    await expect(page.locator("[data-session-current-conditions]")).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("Verified fixture correction");
+
+    await page.goto("/#sessions/scenario-session-completed-1");
+    await page.locator('[data-session-phase-nav="grow"]').click();
+    const historicalConditions = page.locator('[data-session-phase-section="grow"] [data-session-current-conditions]');
+    await expect(historicalConditions).toBeVisible();
+    await expect(historicalConditions.getByRole("button", { name: "Change Conditions" })).toHaveCount(0);
+    await expect(historicalConditions.getByRole("button", { name: "View Conditions" })).toBeVisible();
+    await expect(historicalConditions.getByRole("button", { name: "Condition History" })).toBeVisible();
+    await expect(historicalConditions.getByRole("button", { name: "Correct a Record" })).toBeVisible();
+  });
+
   test("authorizes local environments and only resolved hosted Founders", async ({ page }) => {
     await page.goto("/#home");
     const access = await page.evaluate(() => {
@@ -4761,6 +4865,32 @@ select coalesce(
           "Indoor",
           "",
         );
+        const fullDimensionChangeRpc = copy(
+          rpcCalls.filter((call) => call.name === "change_current_session_conditions").at(-1),
+        );
+        const conditionRpcCountBeforeNoChange = rpcCalls.filter(
+          (call) => call.name === "change_current_session_conditions",
+        ).length;
+        const noChangeResult = await changeCanonicalCurrentConditions(
+          currentConditions,
+          "Soil",
+          "",
+          "Indoor",
+          "",
+        );
+        const conditionRpcCountAfterNoChange = rpcCalls.filter(
+          (call) => call.name === "change_current_session_conditions",
+        ).length;
+        const oneDimensionChangeResult = await changeCanonicalCurrentConditions(
+          currentConditions,
+          "Coco",
+          "",
+          "Indoor",
+          "",
+        );
+        const oneDimensionChangeRpc = copy(
+          rpcCalls.filter((call) => call.name === "change_current_session_conditions").at(-1),
+        );
         const phaseUpsertsBeforeMalformed = calls.filter((call) => call.table === GROWING_PHASE_TABLE && call.operation === "upsert").length;
         let malformedRejected = false;
         try {
@@ -4777,6 +4907,9 @@ select coalesce(
           phaseRows: copy(phaseRows), groupRows: copy(groupRows), calls: copy(calls), rpcCalls: copy(rpcCalls), identityCalls: copy(identityCalls),
           canonicalChanged: copy(canonicalChanged),
           correctionResult: copy(correctionResult), historyResult: copy(historyResult), forwardResult: copy(forwardResult),
+          fullDimensionChangeRpc, noChangeResult: copy(noChangeResult),
+          conditionRpcCountBeforeNoChange, conditionRpcCountAfterNoChange,
+          oneDimensionChangeResult: copy(oneDimensionChangeResult), oneDimensionChangeRpc,
           preservedCanonicalProjection: copy(preservedCanonicalProjection), invalidCanonicalProjectionRejected,
           zeroGroupCount: zeroGroup.plantGroups.length,
           reloadedWithTwo: copy(getSessionGrowingPhase(reloadedWithTwo)),
@@ -4804,9 +4937,15 @@ select coalesce(
     expect(result.rpcCalls.filter((call) => call.name === "migrate_session_conditions")).toHaveLength(1);
     const compositeChanges = result.rpcCalls.filter((call) => call.name === "change_current_session_conditions");
     expect(compositeChanges.length).toBeGreaterThanOrEqual(1);
-    expect(compositeChanges.at(-1).input.p_changes).toEqual({
+    expect(result.fullDimensionChangeRpc.input.p_changes).toEqual({
       grow_method: { value: "Soil", other_text: "" },
       environment_type: { value: "Indoor", other_text: "" },
+    });
+    expect(result.noChangeResult).toMatchObject({ status: "no_change", changed_dimensions: [] });
+    expect(result.conditionRpcCountAfterNoChange).toBe(result.conditionRpcCountBeforeNoChange);
+    expect(result.oneDimensionChangeResult).toMatchObject({ status: "success", changed_dimensions: ["grow_method"] });
+    expect(result.oneDimensionChangeRpc.input.p_changes).toEqual({
+      grow_method: { value: "Coco", other_text: "" },
     });
     expect(result.canonicalChanged).toMatchObject({ growMethod: "Soil", environmentType: "Indoor" });
     expect(result.correctionResult).toMatchObject({
