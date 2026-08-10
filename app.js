@@ -1787,6 +1787,7 @@ const GROWING_COMMENCEMENT_STATUS = Object.freeze({
   UNRESOLVED: "unresolved",
 });
 const DIRECT_GROWING_OPERATION_STORAGE_KEY = "cannakanGrowDirectGrowingOperationV1";
+const CANONICAL_GROWING_OPERATION_STORAGE_KEY = "cannakanCanonicalGrowingOperationV1";
 const canonicalGrowingOperationIds = new Map();
 const canonicalGrowingOperationTimes = new Map();
 
@@ -1922,6 +1923,14 @@ function normalizeDirectGrowingOperation(value = null, ownerId = appState.user?.
   const sessionTime = String(value.sessionTime || "").trim();
   const hasSessionTimestampInput = Boolean(sessionDate || sessionTime);
   const parsedSessionStart = hasSessionTimestampInput ? parseSessionStartDateTime(sessionDate, sessionTime) : null;
+  let initialConditions = null;
+  if (value.initialConditions) {
+    try {
+      initialConditions = normalizeBeginGrowingInitialConditions(value.initialConditions);
+    } catch {
+      return null;
+    }
+  }
   if (
     !normalizedOwnerId
     || storedOwnerId !== normalizedOwnerId
@@ -1939,6 +1948,7 @@ function normalizeDirectGrowingOperation(value = null, ownerId = appState.user?.
     operationAt: operationAt.toISOString(),
     sessionDate,
     sessionTime,
+    initialConditions,
   };
 }
 
@@ -1976,6 +1986,7 @@ function persistDirectGrowingOperation(operation = null) {
     || persisted.operationAt !== normalized.operationAt
     || persisted.sessionDate !== normalized.sessionDate
     || persisted.sessionTime !== normalized.sessionTime
+    || JSON.stringify(persisted.initialConditions) !== JSON.stringify(normalized.initialConditions)
   ) {
     throw new Error("Direct Growing retry state could not be preserved.");
   }
@@ -2031,12 +2042,100 @@ function retireDirectGrowingOperation(session = null) {
   localStorage.removeItem(getDirectGrowingOperationStorageKey(ownerId));
 }
 
-function getCanonicalGrowingOperationId(sessionId = "", entryPath = "") {
-  const key = `${String(sessionId || "").trim()}:${normalizeSessionEntryPath(entryPath)}`;
-  if (!canonicalGrowingOperationIds.has(key)) {
-    canonicalGrowingOperationIds.set(key, crypto.randomUUID());
+function getCanonicalGrowingOperationStorageKey(sessionId = "", entryPath = "") {
+  const ownerId = String(appState.user?.id || "").trim();
+  const normalizedSessionId = String(sessionId || "").trim();
+  const normalizedEntryPath = normalizeSessionEntryPath(entryPath);
+  if (!ownerId || !isUuidLike(normalizedSessionId) || !normalizedEntryPath) {
+    throw new Error("Canonical Growing retry state requires owner, Session, and entry identities.");
   }
-  return canonicalGrowingOperationIds.get(key);
+  return `${CANONICAL_GROWING_OPERATION_STORAGE_KEY}:${encodeURIComponent(ownerId)}:${normalizedSessionId}:${normalizedEntryPath}`;
+}
+
+function bindDirectGrowingOperationInitialConditions(operation = null, initialConditions = {}) {
+  const ownerId = String(operation?.ownerId || appState.user?.id || "").trim();
+  const normalized = normalizeDirectGrowingOperation(operation, ownerId);
+  const normalizedConditions = normalizeBeginGrowingInitialConditions(initialConditions);
+  if (!normalized) {
+    throw new Error("Direct Growing retry state is invalid.");
+  }
+  if (normalized.initialConditions) {
+    if (JSON.stringify(normalized.initialConditions) !== JSON.stringify(normalizedConditions)) {
+      throw new Error("A different direct Growing operation is already awaiting reconciliation.");
+    }
+    return normalized;
+  }
+  return persistDirectGrowingOperation({
+    ...normalized,
+    initialConditions: normalizedConditions,
+  });
+}
+
+function getCanonicalGrowingOperationId(sessionId = "", entryPath = "", initialConditions = {}) {
+  const ownerId = String(appState.user?.id || "").trim();
+  const normalizedSessionId = String(sessionId || "").trim();
+  const normalizedEntryPath = normalizeSessionEntryPath(entryPath);
+  const normalizedConditions = normalizeBeginGrowingInitialConditions(initialConditions);
+  const fingerprint = JSON.stringify(normalizedConditions);
+  const key = `${normalizedSessionId}:${normalizedEntryPath}`;
+  const storageKey = getCanonicalGrowingOperationStorageKey(normalizedSessionId, normalizedEntryPath);
+  const storedValue = localStorage.getItem(storageKey);
+  if (storedValue) {
+    let stored;
+    try {
+      stored = JSON.parse(storedValue);
+    } catch {
+      throw new Error("Stored canonical Growing retry state is invalid.");
+    }
+    if (
+      String(stored?.ownerId || "").trim() !== ownerId
+      || String(stored?.sessionId || "").trim() !== normalizedSessionId
+      || normalizeSessionEntryPath(stored?.entryPath) !== normalizedEntryPath
+      || !isUuidLike(stored?.operationId)
+      || stored?.fingerprint !== fingerprint
+    ) {
+      throw new Error("A different canonical Growing operation is already awaiting reconciliation.");
+    }
+    canonicalGrowingOperationIds.set(key, stored.operationId);
+    return stored.operationId;
+  }
+  const operationId = crypto.randomUUID();
+  localStorage.setItem(storageKey, JSON.stringify({
+    ownerId,
+    sessionId: normalizedSessionId,
+    entryPath: normalizedEntryPath,
+    operationId,
+    fingerprint,
+  }));
+  canonicalGrowingOperationIds.set(key, operationId);
+  return operationId;
+}
+
+function retireCanonicalGrowingOperation(session = null) {
+  const commencement = getCanonicalGrowingCommencement(session);
+  const sessionId = String(session?.id || "").trim();
+  const entryPath = commencement.entryPath;
+  if (
+    commencement.status !== GROWING_COMMENCEMENT_STATUS.AUTHORITATIVE
+    || !sessionId
+    || !entryPath
+  ) return;
+  const key = `${sessionId}:${entryPath}`;
+  const storageKey = getCanonicalGrowingOperationStorageKey(sessionId, entryPath);
+  const storedValue = localStorage.getItem(storageKey);
+  if (storedValue) {
+    let stored;
+    try {
+      stored = JSON.parse(storedValue);
+    } catch {
+      throw new Error("Stored canonical Growing retry state is invalid.");
+    }
+    if (stored?.operationId !== commencement.operationId) {
+      throw new Error("Canonical Growing retry state does not match the atomic result.");
+    }
+    localStorage.removeItem(storageKey);
+  }
+  canonicalGrowingOperationIds.delete(key);
 }
 
 function getCanonicalGrowingOperationAt(operationId = "") {
@@ -2050,8 +2149,9 @@ function getCanonicalGrowingOperationAt(operationId = "") {
 
 async function enterCanonicalGrowing(session = null, options = {}) {
   const entryPath = normalizeSessionEntryPath(options.entryPath || getSessionEntryPath(session));
+  const initialConditions = normalizeBeginGrowingInitialConditions(options.initialConditions);
   const operationId = String(
-    options.operationId || getCanonicalGrowingOperationId(session?.id, entryPath),
+    options.operationId || getCanonicalGrowingOperationId(session?.id, entryPath, initialConditions),
   ).trim();
   if (!session?.id || !operationId || ![SESSION_ENTRY_PATH.SEED, SESSION_ENTRY_PATH.GROW].includes(entryPath)) {
     throw new Error("Canonical Growing entry requires valid Session, operation, and entry identities.");
@@ -2061,13 +2161,28 @@ async function enterCanonicalGrowing(session = null, options = {}) {
     const stored = getSessions().find((candidate) => candidate.id === session.id) || null;
     const existingCommencement = getCanonicalGrowingCommencement(stored);
     if (existingCommencement.status === GROWING_COMMENCEMENT_STATUS.AUTHORITATIVE) {
+      const existingConditions = normalizeSessionConditionProjection(
+        stored?.sessionConditions || stored?.session_conditions,
+      );
+      const existingMethod = getSessionConditionProjection(
+        existingConditions,
+        SESSION_CONDITION_DIMENSIONS.GROW_METHOD,
+      );
+      const existingEnvironment = getSessionConditionProjection(
+        existingConditions,
+        SESSION_CONDITION_DIMENSIONS.ENVIRONMENT_TYPE,
+      );
       if (
         existingCommencement.operationId === operationId
         && existingCommencement.entryPath === entryPath
+        && existingMethod?.value === initialConditions.grow_method.value
+        && existingMethod?.otherText === initialConditions.grow_method.other_text
+        && existingEnvironment?.value === initialConditions.environment_type.value
+        && existingEnvironment?.otherText === initialConditions.environment_type.other_text
       ) {
         return stored;
       }
-      throw new Error("Canonical Growing commencement already exists for this Session.");
+      throw new Error("Canonical Growing commencement or initial conditions conflict with this retry.");
     }
     const operationAt = new Date(options.operationAt || getCanonicalGrowingOperationAt(operationId));
     if (Number.isNaN(operationAt.getTime())) {
@@ -2084,7 +2199,7 @@ async function enterCanonicalGrowing(session = null, options = {}) {
         throw new Error("The Session is not eligible for the authorized Begin Growing transition.");
       }
     }
-    const saved = attachCanonicalGrowingCommencement(normalizeStoredSession({
+    const savedWithCommencement = attachCanonicalGrowingCommencement(normalizeStoredSession({
       ...session,
       postGerminationDecision: entryPath === SESSION_ENTRY_PATH.SEED
         ? POST_GERMINATION_DECISION.GROW
@@ -2100,6 +2215,16 @@ async function enterCanonicalGrowing(session = null, options = {}) {
       entryPath,
       operationId,
     });
+    const sessionConditions = buildInitialSessionConditionProjection(
+      savedWithCommencement.id,
+      getCanonicalGrowingCommencement(savedWithCommencement),
+      initialConditions,
+    );
+    const saved = {
+      ...savedWithCommencement,
+      sessionConditions,
+      session_conditions: sessionConditions,
+    };
     const existing = getSessions().some((candidate) => candidate.id === saved.id);
     saveSessions(existing
       ? getSessions().map((candidate) => candidate.id === saved.id ? saved : candidate)
@@ -2112,6 +2237,7 @@ async function enterCanonicalGrowing(session = null, options = {}) {
     p_session_id: session.id,
     p_operation_id: operationId,
     p_entry_path: entryPath,
+    p_initial_conditions: initialConditions,
     p_expected_updated_at: entryPath === SESSION_ENTRY_PATH.SEED
       ? String(options.expectedUpdatedAt || session.updatedAt || session.updated_at || "").trim() || null
       : null,
@@ -2124,12 +2250,49 @@ async function enterCanonicalGrowing(session = null, options = {}) {
       })
       : null,
   };
-  const { data, error } = await appState.supabase.rpc("enter_canonical_growing", rpcInput);
+  const { data, error } = await appState.supabase.rpc("enter_canonical_growing_with_initial_conditions", rpcInput);
   if (error) throw error;
-  if (!data?.session || !data?.commencement) {
-    throw new Error("Canonical Growing entry returned an invalid result.");
+  if (
+    data?.operation_kind !== "begin_growing"
+    || data?.status !== "success"
+    || String(data?.session_id || "") !== String(session.id)
+    || String(data?.operation_id || "") !== operationId
+    || Number(data?.canonical_revision) !== 2
+    || !data?.session
+    || !data?.commencement
+    || !data?.grow_method_period
+    || !data?.environment_type_period
+  ) {
+    throw new Error("Atomic Begin Growing returned an invalid result.");
   }
-  const saved = attachCanonicalGrowingCommencement(mapRowToSession(data.session), data.commencement);
+  const sessionConditions = await fetchCanonicalSessionConditions(session.id);
+  const growMethod = getSessionConditionProjection(
+    sessionConditions,
+    SESSION_CONDITION_DIMENSIONS.GROW_METHOD,
+  );
+  const environmentType = getSessionConditionProjection(
+    sessionConditions,
+    SESSION_CONDITION_DIMENSIONS.ENVIRONMENT_TYPE,
+  );
+  const commencement = normalizeCanonicalGrowingCommencement(data.commencement);
+  if (
+    sessionConditions.authority !== "conditions"
+    || sessionConditions.growingCommencementStatus !== GROWING_COMMENCEMENT_STATUS.AUTHORITATIVE
+    || sessionConditions.growingCommencedAt !== commencement.commencedAt
+    || growMethod?.status !== "known"
+    || growMethod.value !== initialConditions.grow_method.value
+    || growMethod.otherText !== initialConditions.grow_method.other_text
+    || environmentType?.status !== "known"
+    || environmentType.value !== initialConditions.environment_type.value
+    || environmentType.otherText !== initialConditions.environment_type.other_text
+  ) {
+    throw new Error("Atomic Begin Growing did not refresh the canonical Current Conditions projection.");
+  }
+  const saved = {
+    ...attachCanonicalGrowingCommencement(mapRowToSession(data.session), data.commencement),
+    sessionConditions,
+    session_conditions: sessionConditions,
+  };
   const existing = getSessions().some((candidate) => candidate.id === saved.id);
   saveSessions(existing
     ? getSessions().map((candidate) => candidate.id === saved.id ? saved : candidate)
@@ -29328,6 +29491,9 @@ async function createCloudSession(session, options = {}) {
   assertDeveloperScenarioWritesAllowed("sessions", "create a session", session);
   assertSessionSingleSeedPositionRules(session);
   const isDirectGrowingEntry = isGrowSessionEntry(session);
+  const initialConditions = isDirectGrowingEntry
+    ? normalizeBeginGrowingInitialConditions(options.initialConditions)
+    : null;
   const directOperation = isDirectGrowingEntry
     ? getOrCreateDirectGrowingOperation(session.id)
     : null;
@@ -29366,6 +29532,7 @@ async function createCloudSession(session, options = {}) {
         entryPath: SESSION_ENTRY_PATH.GROW,
         operationId: directOperationId,
         operationAt: directOperationAt,
+        initialConditions,
       });
     }
     if (!isGrowSessionEntry(savedSession)) {
@@ -29387,6 +29554,7 @@ async function createCloudSession(session, options = {}) {
       entryPath: SESSION_ENTRY_PATH.GROW,
       operationId: directOperationId,
       operationAt: directOperationAt,
+      initialConditions,
     });
   }
   let attemptedRecord = mapSessionToRecord(sessionForSave, authUser.id, {
@@ -87138,6 +87306,13 @@ function syncNewSessionEntryPathUi(form = null) {
   const growContext = form.querySelector("[data-session-grow-entry-context]");
   if (growContext) growContext.hidden = !isGrowEntry;
   if (isGrowEntry) {
+    if (!growContext?.querySelector("[data-begin-growing-initial-conditions]")) {
+      growContext?.insertAdjacentHTML(
+        "beforeend",
+        renderBeginGrowingInitialConditionsMarkup("direct-growing-entry"),
+      );
+    }
+    initializeBeginGrowingInitialConditions(growContext);
     form.elements.sessionStatus.value = "active";
     delete form.dataset.germinationStartedAt;
     delete form.dataset.firstPlantedAt;
@@ -88043,6 +88218,9 @@ function renderSessionForm(initialSystemType = "KAN", initialEntryPath = "") {
     }
     const entryPath = entryValidation.entryPath;
     const isGrowEntry = entryPath === SESSION_ENTRY_PATH.GROW;
+    if (isGrowEntry && form.dataset.beginGrowingPending === "true") {
+      return null;
+    }
     if (!validateNewSessionName(form, { formMessage })) {
       setUnsavedChangesLastSaveError(new Error(formMessage?.textContent || "Please enter a session name before saving."), "Please enter a session name before saving.");
       return null;
@@ -88106,6 +88284,7 @@ function renderSessionForm(initialSystemType = "KAN", initialEntryPath = "") {
       : normalizeMethodType(formData.get("systemType") || form.elements.systemType?.value || "KAN");
     const sessionUnitValue = isGrowEntry ? "" : (formData.get("unitId") ?? form.elements.unitId?.value ?? "");
     const sessionNameValue = String(formData.get("sessionName") || form.elements.sessionName?.value || "").trim();
+    const initialConditions = isGrowEntry ? readBeginGrowingInitialConditions(form) : null;
     const pendingMethodType = sessionMethodValue;
     if (!isGrowEntry && isPreparedMediaSetupMethod(pendingMethodType) && !getMethodSetupStateFromForm(form).choice) {
       openPreparedMediaSetupModal(pendingMethodType);
@@ -88140,6 +88319,10 @@ function renderSessionForm(initialSystemType = "KAN", initialEntryPath = "") {
       : null;
     if (directGrowingOperation) {
       directGrowingOperation = bindDirectGrowingOperationTimestampInput(directGrowingOperation, sessionDateValue, sessionTimeValue);
+      directGrowingOperation = bindDirectGrowingOperationInitialConditions(
+        directGrowingOperation,
+        initialConditions,
+      );
     }
 
     const existingEntryPath = getSessionEntryPath(existingSessionForUpdate);
@@ -88244,7 +88427,12 @@ function renderSessionForm(initialSystemType = "KAN", initialEntryPath = "") {
       setUnsavedChangesLastSaveError(new Error(timelineValidation.message), timelineValidation.message);
       return null;
     }
-  const existingSessionsBeforeSave = getSessions();
+    const existingSessionsBeforeSave = getSessions();
+    let beginGrowingSucceeded = false;
+    if (isGrowEntry) {
+      form.dataset.beginGrowingPending = "true";
+      getNewSessionSaveButtons(form).forEach((button) => { button.disabled = true; });
+    }
 
     try {
       const canProceedWithoutFilterPapers = !isGrowEntry && selectedMethod.supportsFilterInventory
@@ -88261,13 +88449,14 @@ function renderSessionForm(initialSystemType = "KAN", initialEntryPath = "") {
       }
       const savedSession = isUpdatingExistingSession
         ? await saveSessionUpdate(session, { allowAutoComplete: false })
-        : await createCloudSession(session);
+        : await createCloudSession(session, { initialConditions });
       if (!savedSession) {
         throw appState.unsavedChanges.lastSaveError || new Error("Could not save session.");
       }
       form.__lastSavedSession = savedSession;
       if (isGrowEntry && !isUpdatingExistingSession) {
         retireDirectGrowingOperation(savedSession);
+        beginGrowingSucceeded = true;
       }
       void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
       void recordVarietyDirectoryUsages(getVarietyDirectoryUsageRecordsFromSession(savedSession || session));
@@ -88381,6 +88570,11 @@ function renderSessionForm(initialSystemType = "KAN", initialEntryPath = "") {
       setUnsavedChangesLastSaveError(new Error(visibleSaveError), visibleSaveError);
       setFeedbackMessage(formMessage, visibleSaveError, "error");
       return null;
+    } finally {
+      if (isGrowEntry) {
+        delete form.dataset.beginGrowingPending;
+        if (!beginGrowingSucceeded) resetNewSessionSaveButtonState(form);
+      }
     }
   };
 
@@ -95236,6 +95430,7 @@ function renderPostGerminationDecisionMarkup() {
   return `<section class="post-germination-decision" aria-labelledby="post-germination-decision-title">
     <p class="eyebrow">Germination complete</p><h3 id="post-germination-decision-title">What comes next?</h3>
     <p>Complete this Session after Germination, or continue the same Session into Growing. Neither choice creates Growing evidence.</p>
+    ${renderBeginGrowingInitialConditionsMarkup("post-germination")}
     <div class="post-germination-decision-actions">
       <button type="button" class="button button-secondary" data-post-germination-decision="complete">Complete Session</button>
       <button type="button" class="button button-primary" data-post-germination-decision="grow">Continue to Growing</button>
@@ -95434,6 +95629,7 @@ function syncSessionPhaseFoundation(scope = app, session = null) {
   const lifecycle = getSessionPhaseLifecycle(session);
   const expansion = getSessionPhaseExpansion(session, lifecycle);
   composeSessionCurrentPhaseWorkspace(root, session, lifecycle);
+  initializeBeginGrowingInitialConditions(root);
   initializeGrowCompanionActivity(root, session);
   const navigator = root.querySelector("[data-session-phase-navigator]");
   if (navigator && !navigator.querySelector("[data-session-phase-nav]")) {
@@ -95479,33 +95675,55 @@ function bindSessionPhaseFoundation(root = null, session = null) {
       const decision = normalizePostGerminationDecision(decisionButton.dataset.postGerminationDecision);
       if (![POST_GERMINATION_DECISION.COMPLETE, POST_GERMINATION_DECISION.GROW].includes(decision)) return;
       const message = root.querySelector("[data-post-germination-message]");
-      decisionButton.parentElement.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+      const decisionActions = decisionButton.parentElement;
+      if (decision === POST_GERMINATION_DECISION.GROW && root.dataset.beginGrowingPending === "true") return;
+      let initialConditions = null;
+      if (decision === POST_GERMINATION_DECISION.GROW) {
+        try {
+          initialConditions = readBeginGrowingInitialConditions(root);
+        } catch (error) {
+          if (message) message.textContent = error.message || "Choose an Environment Type and Grow Method before beginning Growing.";
+          root.querySelector("[data-begin-growing-condition]:invalid, [data-begin-growing-other]:invalid")?.focus();
+          return;
+        }
+        root.dataset.beginGrowingPending = "true";
+      }
+      decisionActions.querySelectorAll("button").forEach((button) => { button.disabled = true; });
       if (message) message.textContent = "Saving lifecycle decision…";
       const previous = getPostGerminationDecision(session);
-      const saveDecision = decision === POST_GERMINATION_DECISION.GROW
-        ? enterCanonicalGrowing(session, {
-          entryPath: SESSION_ENTRY_PATH.SEED,
-          operationId: getCanonicalGrowingOperationId(session.id, SESSION_ENTRY_PATH.SEED),
-          expectedUpdatedAt: session.updatedAt || session.updated_at || "",
-        })
-        : (() => {
-          session.postGerminationDecision = decision;
-          session.post_germination_decision = decision;
-          return saveSessionUpdate(session, { allowAutoComplete: false });
-        })();
-      void saveDecision.then((saved) => {
+      const saveDecision = async () => {
+        if (decision === POST_GERMINATION_DECISION.GROW) {
+          return enterCanonicalGrowing(session, {
+            entryPath: SESSION_ENTRY_PATH.SEED,
+            operationId: getCanonicalGrowingOperationId(
+              session.id,
+              SESSION_ENTRY_PATH.SEED,
+              initialConditions,
+            ),
+            expectedUpdatedAt: session.updatedAt || session.updated_at || "",
+            initialConditions,
+          });
+        }
+        session.postGerminationDecision = decision;
+        session.post_germination_decision = decision;
+        return saveSessionUpdate(session, { allowAutoComplete: false });
+      };
+      void saveDecision().then((saved) => {
         if (!saved) {
           session.postGerminationDecision = previous; session.post_germination_decision = previous;
           if (message) message.textContent = "Could not save the lifecycle decision.";
-          decisionButton.parentElement.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+          delete root.dataset.beginGrowingPending;
+          decisionActions.querySelectorAll("button").forEach((button) => { button.disabled = false; });
           return;
         }
+        if (decision === POST_GERMINATION_DECISION.GROW) retireCanonicalGrowingOperation(saved);
         Object.assign(session, saved);
         safeRender();
       }).catch((error) => {
         console.error("Failed to enter Growing", error);
         if (message) message.textContent = "Could not save the lifecycle decision.";
-        decisionButton.parentElement.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+        delete root.dataset.beginGrowingPending;
+        decisionActions.querySelectorAll("button").forEach((button) => { button.disabled = false; });
       });
       return;
     }
@@ -99840,6 +100058,21 @@ function validateNewSessionRequiredFields(form) {
   const parsedDate = dateValue ? new Date(`${dateValue}T00:00:00`) : null;
   const dateIsValid = parsedDate instanceof Date && !Number.isNaN(parsedDate.getTime());
   const parsedStart = dateValue && timeValue ? parseSessionStartDateTime(dateValue, timeValue) : null;
+
+  if (entryPath === SESSION_ENTRY_PATH.GROW) {
+    try {
+      readBeginGrowingInitialConditions(form);
+    } catch (error) {
+      return {
+        isValid: false,
+        firstInvalidField: form.querySelector(
+          "[data-begin-growing-condition]:invalid, [data-begin-growing-other]:invalid",
+        ),
+        title: "Incomplete session.",
+        message: error.message || "Choose an Environment Type and Grow Method before beginning Growing.",
+      };
+    }
+  }
 
   if (entryPath !== SESSION_ENTRY_PATH.GROW && !normalizedMethod) {
     return {

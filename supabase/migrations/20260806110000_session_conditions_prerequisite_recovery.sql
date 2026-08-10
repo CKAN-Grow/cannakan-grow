@@ -5,6 +5,9 @@
 do $$
 declare
   required_columns integer;
+  canonical_table_count integer;
+  canonical_function_count integer;
+  canonical_trigger_count integer;
 begin
   if to_regclass('public.grow_sessions') is null
      or to_regclass('public.grow_session_phase_commencements') is null
@@ -21,30 +24,39 @@ begin
     raise exception 'ICE-SC-003 prerequisite recovery found an incompatible grow_session_growing_phases shape.' using errcode = '42804';
   end if;
 
-  if to_regclass('public.grow_session_conditions_authority') is not null
-     or to_regclass('public.grow_session_condition_periods') is not null
-     or to_regclass('public.grow_session_condition_corrections') is not null
-     or to_regclass('public.grow_session_condition_operations') is not null then
-    raise exception 'ICE-SC-003 prerequisite recovery requires all canonical Session Conditions tables to be absent; partial state detected.' using errcode = '42710';
+  select count(*) into canonical_table_count
+  from (values
+    ('public.grow_session_conditions_authority'),
+    ('public.grow_session_condition_periods'),
+    ('public.grow_session_condition_corrections'),
+    ('public.grow_session_condition_operations')
+  ) expected_table(relation_name)
+  where to_regclass(expected_table.relation_name) is not null;
+  if canonical_table_count not in (0, 4) then
+    raise exception 'ICE-SC-003 prerequisite recovery found a partial canonical Session Conditions table set.' using errcode = '42710';
   end if;
 
-  if to_regprocedure('public.normalize_session_condition_input(text,text,text)') is not null
-     or to_regprocedure('public.enforce_canonical_session_condition_write()') is not null
-     or to_regprocedure('public.enforce_canonical_session_condition_period_write()') is not null
-     or to_regprocedure('public.enforce_legacy_condition_authority()') is not null
-     or to_regprocedure('public.initialize_session_conditions_authority()') is not null
-     or to_regprocedure('public.project_canonical_session_conditions(uuid,timestamptz)') is not null
-     or to_regprocedure('public.get_canonical_session_conditions(uuid,timestamptz)') is not null
-     or to_regprocedure('public.get_session_condition_history(uuid)') is not null
-     or to_regprocedure('public.declare_session_condition(uuid,uuid,text,text,text,bigint)') is not null
-     or to_regprocedure('public.change_session_condition(uuid,uuid,text,text,text,timestamptz,bigint)') is not null
-     or to_regprocedure('public.correct_session_condition(uuid,uuid,uuid,jsonb,bigint)') is not null
-     or to_regprocedure('public.migrate_session_conditions(uuid,uuid,timestamptz)') is not null then
-    raise exception 'ICE-SC-003 prerequisite recovery found an existing canonical Session Conditions function; partial state detected.' using errcode = '42723';
+  select count(*) into canonical_function_count
+  from (values
+    ('public.normalize_session_condition_input(text,text,text)'),
+    ('public.enforce_canonical_session_condition_write()'),
+    ('public.enforce_canonical_session_condition_period_write()'),
+    ('public.enforce_legacy_condition_authority()'),
+    ('public.initialize_session_conditions_authority()'),
+    ('public.project_canonical_session_conditions(uuid,timestamptz)'),
+    ('public.get_canonical_session_conditions(uuid,timestamptz)'),
+    ('public.get_session_condition_history(uuid)'),
+    ('public.declare_session_condition(uuid,uuid,text,text,text,bigint)'),
+    ('public.change_session_condition(uuid,uuid,text,text,text,timestamptz,bigint)'),
+    ('public.correct_session_condition(uuid,uuid,uuid,jsonb,bigint)'),
+    ('public.migrate_session_conditions(uuid,uuid,timestamptz)')
+  ) expected_function(function_identity)
+  where to_regprocedure(expected_function.function_identity) is not null;
+  if canonical_function_count not in (0, 12) then
+    raise exception 'ICE-SC-003 prerequisite recovery found a partial canonical Session Conditions function set.' using errcode = '42723';
   end if;
 
-  if exists (
-    select 1
+  select count(distinct trigger_row.tgname) into canonical_trigger_count
     from pg_trigger trigger_row
     join pg_class relation_row on relation_row.oid = trigger_row.tgrelid
     join pg_namespace namespace_row on namespace_row.oid = relation_row.relnamespace
@@ -57,9 +69,14 @@ begin
         'grow_session_condition_operations_guard',
         'grow_session_growing_phases_condition_authority_guard',
         'grow_session_commencement_initialize_conditions'
-      )
-  ) then
-    raise exception 'ICE-SC-003 prerequisite recovery found an existing canonical Session Conditions trigger; partial state detected.' using errcode = '42710';
+      );
+  if canonical_trigger_count not in (0, 6) then
+    raise exception 'ICE-SC-003 prerequisite recovery found a partial canonical Session Conditions trigger set.' using errcode = '42710';
+  end if;
+
+  if (canonical_table_count = 0 and (canonical_function_count <> 0 or canonical_trigger_count <> 0))
+     or (canonical_table_count = 4 and (canonical_function_count <> 12 or canonical_trigger_count <> 6)) then
+    raise exception 'ICE-SC-003 prerequisite recovery found an incoherent canonical Session Conditions state.' using errcode = '42710';
   end if;
 end;
 $$;
@@ -83,7 +100,7 @@ alter table public.grow_session_growing_phases
   alter column environment_other set default '',
   alter column grow_method_other set default '';
 
-create table public.grow_session_conditions_authority (
+create table if not exists public.grow_session_conditions_authority (
   session_id uuid primary key references public.grow_sessions(id) on delete cascade,
   authority_source text not null,
   source_growing_phase_id uuid,
@@ -98,7 +115,7 @@ create table public.grow_session_conditions_authority (
     check (canonical_revision >= 0)
 );
 
-create table public.grow_session_condition_periods (
+create table if not exists public.grow_session_condition_periods (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references public.grow_sessions(id) on delete cascade,
   dimension text not null,
@@ -171,7 +188,7 @@ create index if not exists grow_session_condition_periods_history_idx
     id
   );
 
-create table public.grow_session_condition_corrections (
+create table if not exists public.grow_session_condition_corrections (
   id uuid primary key default gen_random_uuid(),
   session_id uuid not null references public.grow_sessions(id) on delete cascade,
   condition_period_id uuid not null references public.grow_session_condition_periods(id) on delete cascade,
@@ -197,7 +214,7 @@ create index if not exists grow_session_condition_corrections_history_idx
     id
   );
 
-create table public.grow_session_condition_operations (
+create table if not exists public.grow_session_condition_operations (
   operation_id uuid primary key,
   session_id uuid not null references public.grow_sessions(id) on delete cascade,
   operation_kind text not null,

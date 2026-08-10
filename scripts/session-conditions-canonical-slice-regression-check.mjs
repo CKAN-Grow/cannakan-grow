@@ -38,8 +38,13 @@ assert.equal(
   1,
   "Schema snapshot must contain the ICE-SC-002 migration exactly once.",
 );
-assert.match(growingModule, /appState\.supabase\.rpc\("get_canonical_session_conditions"/);
-assert.match(growingModule, /appState\.supabase\.rpc\(rpcName/);
+assert.match(growingModule, /appState\.supabase\.rpc\("get_current_session_conditions_v1"/);
+assert.match(
+  growingModule,
+  /"get_current_session_conditions_v1", \{\s*p_session_id: normalizedSessionId,\s*p_at: at,\s*\}\)/,
+);
+assert.match(growingModule, /appState\.supabase\.rpc\("change_current_session_conditions"/);
+assert.match(growingModule, /appState\.supabase\.rpc\("correct_current_session_condition"/);
 assert.match(growingModule, /appState\.supabase\.rpc\("migrate_session_conditions"/);
 assert.match(growingModule, /SESSION_CONDITION_OPERATION_STORAGE_KEY/);
 assert.match(growingModule, /sessionConditions\.authority === "legacy"/);
@@ -219,6 +224,7 @@ declare
   declaration_two jsonb;
   change_result jsonb;
   change_retry jsonb;
+  no_change_result jsonb;
   correction_result jsonb;
   correction_retry jsonb;
   migration_result jsonb;
@@ -226,7 +232,12 @@ declare
   history_result jsonb;
   projection_result jsonb;
   period_one uuid;
+  change_at timestamptz;
+  original_start timestamptz;
+  original_end timestamptz;
   current_revision bigint;
+  operation_count_before_no_change bigint;
+  operation_count_after_no_change bigint;
   rejected boolean;
 begin
   select updated_at into future_updated_at
@@ -256,7 +267,7 @@ begin
     raise exception 'Future Growing entry did not initialize one atomic Session Conditions authority.';
   end if;
 
-  projection_result := public.get_canonical_session_conditions(
+  projection_result := public.get_current_session_conditions_v1(
     '72000000-0000-4000-8000-000000000101',
     commencement_at
   );
@@ -269,7 +280,7 @@ begin
   end if;
 
   if (
-    public.get_canonical_session_conditions(
+    public.get_current_session_conditions_v1(
       '72000000-0000-4000-8000-000000000101',
       commencement_at - interval '1 microsecond'
     ) #>> '{conditions,0,status}'
@@ -350,13 +361,10 @@ begin
 
   rejected := false;
   begin
-    perform public.change_session_condition(
+    perform public.change_current_session_conditions(
       '72000000-0000-4000-8000-000000000101',
       gen_random_uuid(),
-      'grow_method',
-      'Unsupported',
-      '',
-      commencement_at + interval '12 hours',
+      '{"grow_method":{"value":"Unsupported","other_text":""}}'::jsonb,
       2
     );
   exception when invalid_parameter_value then
@@ -368,13 +376,10 @@ begin
 
   rejected := false;
   begin
-    perform public.change_session_condition(
+    perform public.change_current_session_conditions(
       '72000000-0000-4000-8000-000000000101',
       gen_random_uuid(),
-      'grow_method',
-      'Coco',
-      '',
-      commencement_at + interval '12 hours',
+      '{"grow_method":{"value":"Coco","other_text":""}}'::jsonb,
       1
     );
   exception when serialization_failure then
@@ -384,26 +389,24 @@ begin
     raise exception 'A stale expected revision was accepted.';
   end if;
 
-  change_result := public.change_session_condition(
+  change_result := public.change_current_session_conditions(
     '72000000-0000-4000-8000-000000000101',
     '72000000-0000-4000-8000-000000000403',
-    'grow_method',
-    'Coco',
-    '',
-    commencement_at + interval '1 day',
+    '{"grow_method":{"value":"Coco","other_text":""}}'::jsonb,
     2
   );
-  if (change_result ->> 'canonical_revision')::bigint <> 3 then
+  change_at := (change_result ->> 'effective_at')::timestamptz;
+  if change_result ->> 'status' <> 'success'
+    or (change_result ->> 'canonical_revision')::bigint <> 3
+    or change_result -> 'changed_dimensions' <> '["grow_method"]'::jsonb
+    or change_at is null then
     raise exception 'Operational change did not advance canonical revision.';
   end if;
 
-  change_retry := public.change_session_condition(
+  change_retry := public.change_current_session_conditions(
     '72000000-0000-4000-8000-000000000101',
     '72000000-0000-4000-8000-000000000403',
-    'grow_method',
-    'Coco',
-    '',
-    commencement_at + interval '1 day',
+    '{"grow_method":{"value":"Coco","other_text":""}}'::jsonb,
     2
   );
   if change_retry is distinct from change_result then
@@ -412,13 +415,10 @@ begin
 
   rejected := false;
   begin
-    perform public.change_session_condition(
+    perform public.change_current_session_conditions(
       '72000000-0000-4000-8000-000000000101',
       '72000000-0000-4000-8000-000000000403',
-      'grow_method',
-      'Hydro',
-      '',
-      commencement_at + interval '1 day',
+      '{"grow_method":{"value":"Hydro","other_text":""}}'::jsonb,
       2
     );
   exception when unique_violation then
@@ -428,45 +428,53 @@ begin
     raise exception 'Operational-change identity reuse with different input was accepted.';
   end if;
 
-  rejected := false;
-  begin
-    perform public.change_session_condition(
-      '72000000-0000-4000-8000-000000000101',
-      gen_random_uuid(),
-      'grow_method',
-      'Hydro',
-      '',
-      commencement_at + interval '1 day',
-      3
-    );
-  exception when check_violation or unique_violation then
-    rejected := true;
-  end;
-  if not rejected then
-    raise exception 'A duplicate period start or second open period was accepted.';
+  operation_count_before_no_change := pg_temp.session_condition_operation_count(
+    '72000000-0000-4000-8000-000000000101'
+  );
+  no_change_result := public.change_current_session_conditions(
+    '72000000-0000-4000-8000-000000000101',
+    '72000000-0000-4000-8000-000000000411',
+    '{"grow_method":{"value":"Coco","other_text":""}}'::jsonb,
+    3
+  );
+  if no_change_result ->> 'status' <> 'no_change'
+    or (no_change_result ->> 'canonical_revision')::bigint <> 3
+    or (
+      select count(*)
+      from public.grow_session_condition_periods
+      where session_id = '72000000-0000-4000-8000-000000000101'
+    ) <> 3 then
+    raise exception 'Canonical no-change altered periods, revision, or durable operation evidence.';
+  end if;
+  operation_count_after_no_change := pg_temp.session_condition_operation_count(
+    '72000000-0000-4000-8000-000000000101'
+  );
+  if operation_count_after_no_change <> operation_count_before_no_change then
+    raise exception 'Canonical no-change created durable operation evidence.';
   end if;
 
   if (
-    public.get_canonical_session_conditions(
+    public.get_current_session_conditions_v1(
       '72000000-0000-4000-8000-000000000101',
-      commencement_at + interval '1 day' - interval '1 microsecond'
+      change_at - interval '1 microsecond'
     ) #>> '{conditions,0,value}'
   ) <> 'Soil' or (
-    public.get_canonical_session_conditions(
+    public.get_current_session_conditions_v1(
       '72000000-0000-4000-8000-000000000101',
-      commencement_at + interval '1 day'
+      change_at
     ) #>> '{conditions,0,value}'
   ) <> 'Coco' then
     raise exception 'Half-open operational boundary semantics failed.';
   end if;
 
-  select id into period_one
+  select id, effective_start, effective_end
+  into period_one, original_start, original_end
   from public.grow_session_condition_periods
   where session_id = '72000000-0000-4000-8000-000000000101'
     and dimension = 'grow_method'
     and effective_start = commencement_at;
 
-  correction_result := public.correct_session_condition(
+  correction_result := public.correct_current_session_condition(
     '72000000-0000-4000-8000-000000000101',
     period_one,
     '72000000-0000-4000-8000-000000000404',
@@ -475,11 +483,20 @@ begin
   );
   if correction_result #>> '{before_facts,value}' <> 'Soil'
     or correction_result #>> '{after_facts,value}' <> 'Living Soil'
-    or (correction_result ->> 'canonical_revision')::bigint <> 4 then
+    or (correction_result ->> 'canonical_revision')::bigint <> 4
+    or exists (
+      select 1
+      from public.grow_session_condition_periods
+      where id = period_one
+        and (
+          effective_start is distinct from original_start
+          or effective_end is distinct from original_end
+        )
+    ) then
     raise exception 'Correction did not preserve attributable before-and-after truth.';
   end if;
 
-  correction_retry := public.correct_session_condition(
+  correction_retry := public.correct_current_session_condition(
     '72000000-0000-4000-8000-000000000101',
     period_one,
     '72000000-0000-4000-8000-000000000404',
@@ -492,7 +509,7 @@ begin
 
   rejected := false;
   begin
-    perform public.correct_session_condition(
+    perform public.correct_current_session_condition(
       '72000000-0000-4000-8000-000000000101',
       period_one,
       '72000000-0000-4000-8000-000000000404',
@@ -507,14 +524,14 @@ begin
   end if;
 
   if (
-    public.get_canonical_session_conditions(
+    public.get_current_session_conditions_v1(
       '72000000-0000-4000-8000-000000000101',
-      commencement_at + interval '1 hour'
+      change_at - interval '1 microsecond'
     ) #>> '{conditions,0,value}'
   ) <> 'Living Soil' or (
-    public.get_canonical_session_conditions(
+    public.get_current_session_conditions_v1(
       '72000000-0000-4000-8000-000000000101',
-      commencement_at + interval '2 days'
+      change_at
     ) #>> '{conditions,0,value}'
   ) <> 'Coco' then
     raise exception 'Correction-aware historical or Current Conditions projection failed.';
@@ -530,14 +547,37 @@ begin
     raise exception 'Deterministic period or correction history retrieval failed.';
   end if;
 
-  perform public.correct_session_condition(
-    '72000000-0000-4000-8000-000000000101',
-    period_one,
-    '72000000-0000-4000-8000-000000000405',
-    jsonb_build_object('effective_end', commencement_at + interval '12 hours'),
-    4
-  );
-  correction_retry := public.correct_session_condition(
+  rejected := false;
+  begin
+    perform public.correct_current_session_condition(
+      '72000000-0000-4000-8000-000000000101',
+      period_one,
+      '72000000-0000-4000-8000-000000000405',
+      jsonb_build_object('effective_end', change_at),
+      4
+    );
+  exception when invalid_parameter_value then
+    rejected := true;
+  end;
+  if not rejected
+    or exists (
+      select 1
+      from public.grow_session_condition_corrections
+      where operation_id = '72000000-0000-4000-8000-000000000405'
+    )
+    or exists (
+      select 1
+      from public.grow_session_condition_periods
+      where id = period_one
+        and (
+          effective_start is distinct from original_start
+          or effective_end is distinct from original_end
+        )
+    ) then
+    raise exception 'An applicability-boundary correction was accepted.';
+  end if;
+
+  correction_retry := public.correct_current_session_condition(
     '72000000-0000-4000-8000-000000000101',
     period_one,
     '72000000-0000-4000-8000-000000000404',
@@ -554,13 +594,13 @@ begin
       select count(*)
       from public.grow_session_condition_corrections
       where session_id = '72000000-0000-4000-8000-000000000101'
-    ) <> 2 then
-    raise exception 'Correction replay after later omitted-field change was not deterministic.';
+    ) <> 1 then
+    raise exception 'Correction replay after a rejected boundary change was not deterministic.';
   end if;
 
   rejected := false;
   begin
-    perform public.correct_session_condition(
+    perform public.correct_current_session_condition(
       '72000000-0000-4000-8000-000000000101',
       period_one,
       '72000000-0000-4000-8000-000000000404',
@@ -579,18 +619,18 @@ begin
   where authority_row.session_id = '72000000-0000-4000-8000-000000000101';
   rejected := false;
   begin
-    perform public.correct_session_condition(
+    perform public.correct_current_session_condition(
       '72000000-0000-4000-8000-000000000101',
       period_one,
       gen_random_uuid(),
-      jsonb_build_object('effective_end', commencement_at + interval '2 days'),
-      current_revision
+      '{"value":"Hydro"}'::jsonb,
+      current_revision - 1
     );
-  exception when exclusion_violation then
+  exception when serialization_failure then
     rejected := true;
   end;
   if not rejected then
-    raise exception 'An overlapping correction was accepted.';
+    raise exception 'A stale correction revision was accepted.';
   end if;
 
   migration_result := public.migrate_session_conditions(
@@ -623,7 +663,7 @@ begin
     raise exception 'Migration operation identity reuse across Sessions was accepted.';
   end if;
 
-  projection_result := public.get_canonical_session_conditions(
+  projection_result := public.get_current_session_conditions_v1(
     '72000000-0000-4000-8000-000000000103',
     '2026-07-03T12:00:00Z'
   );
@@ -713,7 +753,7 @@ begin
     raise exception 'Stale migration failed to roll back completely.';
   end if;
 
-  projection_result := public.get_canonical_session_conditions(
+  projection_result := public.get_current_session_conditions_v1(
     '72000000-0000-4000-8000-000000000104',
     null
   );
@@ -756,7 +796,7 @@ do $$
 declare
   rejected boolean := false;
 begin
-  if public.get_canonical_session_conditions(
+  if public.get_current_session_conditions_v1(
     '72000000-0000-4000-8000-000000000101',
     null
   ) is not null then
@@ -788,10 +828,18 @@ do $$
 begin
   if has_function_privilege(
     'anon',
-    'public.get_canonical_session_conditions(uuid,timestamptz)',
+    'public.get_current_session_conditions_v1(uuid,timestamptz)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.change_session_condition(uuid,uuid,text,text,text,timestamptz,bigint)',
+    'EXECUTE'
+  ) or has_function_privilege(
+    'authenticated',
+    'public.correct_session_condition(uuid,uuid,uuid,jsonb,bigint)',
     'EXECUTE'
   ) then
-    raise exception 'Anonymous Current Conditions execute privilege was present.';
+    raise exception 'Current Conditions execute privileges did not preserve the settled boundary.';
   end if;
 end;
 $$;
@@ -909,11 +957,6 @@ select public.declare_session_condition(
 );
 `, { quiet: true });
 
-  const commencementAt = runLocalSql(
-    `select commenced_at from public.grow_session_phase_commencements where session_id = '${concurrencySession}';`,
-    { tuplesOnly: true, quiet: true },
-  );
-  const boundary = new Date(new Date(commencementAt).getTime() + 86_400_000).toISOString();
   const invocation = (operationId, value) => String.raw`
 set role authenticated;
 select set_config(
@@ -921,13 +964,13 @@ select set_config(
   '{"sub":"${concurrencyOwner}","role":"authenticated"}',
   false
 );
-select public.change_session_condition(
+select public.change_current_session_conditions(
   '${concurrencySession}',
   '${operationId}',
-  'grow_method',
-  '${value}',
-  '',
-  '${boundary}'::timestamptz,
+  jsonb_build_object(
+    'grow_method',
+    jsonb_build_object('value', '${value}', 'other_text', '')
+  ),
   2
 );
 `;
@@ -955,7 +998,7 @@ select jsonb_build_object(
   'grow_open_count',
   (select count(*) from public.grow_session_condition_periods where session_id = '${concurrencySession}' and dimension = 'grow_method' and effective_end is null),
   'operation_count',
-  (select count(*) from public.grow_session_condition_operations where session_id = '${concurrencySession}' and operation_kind = 'operational_change')
+  (select count(*) from public.grow_session_condition_operations where session_id = '${concurrencySession}' and operation_kind = 'current_change')
 )::text;
 `, { tuplesOnly: true, quiet: true }));
   assert.deepEqual(concurrencyState, {
@@ -976,7 +1019,7 @@ select set_config(
   '{"sub":"${concurrencyOwner}","role":"authenticated"}',
   false
 );
-select public.correct_session_condition(
+select public.correct_current_session_condition(
   '${concurrencySession}',
   '${firstPeriod}',
   '${concurrencyCorrection}',

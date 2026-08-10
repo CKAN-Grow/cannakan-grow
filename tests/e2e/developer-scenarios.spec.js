@@ -3559,6 +3559,8 @@ test.describe("local Developer Scenarios", () => {
     }
     await expect(form.locator("[data-session-grow-entry-context]")).toBeVisible();
     await form.locator('input[name="sessionName"]').fill("Direct Growing Regression");
+    await form.locator('[data-begin-growing-condition="environment_type"]').selectOption("Greenhouse");
+    await form.locator('[data-begin-growing-condition="grow_method"]').selectOption("Coco");
     await form.locator("[data-new-session-save-button]").last().click();
 
     await expect(page).toHaveURL(/#sessions\/[^/]+$/);
@@ -3578,6 +3580,7 @@ test.describe("local Developer Scenarios", () => {
         phases: phases.map(({ id, status }) => ({ id, status })),
         commencement: getCanonicalGrowingCommencement(session),
         conditionsCommencement: getSessionConditionsGrowingCommencement(session),
+        currentConditions: normalizeSessionConditionProjection(session?.sessionConditions || session?.session_conditions),
         sessionCountDelta: sessions.length - beforeCount,
         canonicalMatches: sessions.filter((item) => item.id === sessionId).length,
         methodSetupKeys: Object.keys(localStorage).filter((key) => key.includes(sessionId) && /method|setup/i.test(key)),
@@ -3607,6 +3610,20 @@ test.describe("local Developer Scenarios", () => {
         status: "authoritative",
         periodStart: expect.any(String),
       },
+      currentConditions: {
+        sessionId: expect.any(String),
+        authority: "conditions",
+        authoritySource: "future_growing_entry",
+        canonicalRevision: 2,
+        growingCommencementStatus: "authoritative",
+        growingCommencedAt: expect.any(String),
+        definedAt: expect.any(String),
+        earlierConditionsStatus: "absent",
+        conditions: [
+          expect.objectContaining({ dimension: "grow_method", status: "known", value: "Coco" }),
+          expect.objectContaining({ dimension: "environment_type", status: "known", value: "Greenhouse" }),
+        ],
+      },
       sessionCountDelta: 1,
       canonicalMatches: 1,
       methodSetupKeys: [],
@@ -3619,6 +3636,10 @@ test.describe("local Developer Scenarios", () => {
         entryPath: "grow",
         operationId: commencement.operationId,
         operationAt: commencement.commencedAt,
+        initialConditions: {
+          grow_method: { value: "Coco", other_text: "" },
+          environment_type: { value: "Greenhouse", other_text: "" },
+        },
       });
       const after = getSessions();
       return {
@@ -3710,6 +3731,189 @@ test.describe("local Developer Scenarios", () => {
     expect(backendMutations).toEqual([]);
   });
 
+  test("retries atomic Begin Growing without partial lifecycle or Current Conditions state", async ({ page }) => {
+    await page.goto("/#home");
+    const result = await page.evaluate(async () => {
+      const originalSupabase = appState.supabase;
+      const originalUser = appState.user;
+      const originalLocalQaBypass = isLocalDevQaBypassActive;
+      const originalSessions = getSessions();
+      const ownerId = crypto.randomUUID();
+      const sessionId = crypto.randomUUID();
+      const commencedAt = "2026-08-08T18:00:00.000Z";
+      const initialConditions = {
+        grow_method: { value: "Living Soil", other_text: "" },
+        environment_type: { value: "Indoor", other_text: "" },
+      };
+      const session = normalizeStoredSession({
+        id: sessionId,
+        userId: ownerId,
+        entryPath: "seed",
+        entry_path: "seed",
+        postGerminationDecision: "pending",
+        post_germination_decision: "pending",
+        date: "2026-08-08",
+        time: "14:00",
+        systemType: "KAN",
+        unitId: "A",
+        sessionName: "Atomic Begin Growing Retry",
+        sessionStatus: "completed",
+        completedAt: "2026-08-08T17:55:00.000Z",
+        createdAt: "2026-08-07T18:00:00.000Z",
+        updatedAt: "2026-08-08T17:55:00.000Z",
+        partitions: [{ id: 1, seedCount: 1, plantedCount: "1" }],
+      });
+      const rpcCalls = [];
+      let atomicAttempt = 0;
+      const supabase = {
+        auth: { getUser: async () => ({ data: { user: { id: ownerId } }, error: null }) },
+        async rpc(name, input) {
+          rpcCalls.push({ name, input: structuredClone(input) });
+          if (name === "enter_canonical_growing_with_initial_conditions") {
+            atomicAttempt += 1;
+            if (atomicAttempt === 1) {
+              return { data: null, error: { code: "NETWORK_LOSS", message: "Simulated response loss." } };
+            }
+            return {
+              data: {
+                operation_kind: "begin_growing",
+                status: "success",
+                session_id: sessionId,
+                operation_id: input.p_operation_id,
+                canonical_revision: 2,
+                session: {
+                  id: sessionId,
+                  user_id: ownerId,
+                  date: session.date,
+                  time: session.time,
+                  system_type: session.systemType,
+                  unit_id: session.unitId,
+                  session_name: session.sessionName,
+                  session_status: "completed",
+                  completed_at: session.completedAt,
+                  entry_path: "seed",
+                  post_germination_decision: "grow",
+                  partitions: session.partitions,
+                  created_at: session.createdAt,
+                  updated_at: commencedAt,
+                },
+                commencement: {
+                  status: "authoritative",
+                  session_id: sessionId,
+                  commenced_at: commencedAt,
+                  entry_path: "seed",
+                  operation_id: input.p_operation_id,
+                },
+                grow_method_period: { id: crypto.randomUUID(), effective_start: commencedAt },
+                environment_type_period: { id: crypto.randomUUID(), effective_start: commencedAt },
+              },
+              error: null,
+            };
+          }
+          if (name === "get_current_session_conditions_v1") {
+            return {
+              data: {
+                session_id: sessionId,
+                authority: "conditions",
+                authority_source: "future_growing_entry",
+                canonical_revision: 2,
+                growing_commencement_status: "authoritative",
+                growing_commenced_at: commencedAt,
+                defined_at: commencedAt,
+                earlier_conditions_status: "absent",
+                conditions: [
+                  { dimension: "grow_method", status: "known", value: "Living Soil", other_text: "", period_id: crypto.randomUUID(), effective_start: commencedAt, period_revision: 1, source_kind: "initial_declaration" },
+                  { dimension: "environment_type", status: "known", value: "Indoor", other_text: "", period_id: crypto.randomUUID(), effective_start: commencedAt, period_revision: 1, source_kind: "initial_declaration" },
+                ],
+              },
+              error: null,
+            };
+          }
+          return { data: null, error: { code: "UNEXPECTED_RPC", message: `Unexpected RPC ${name}` } };
+        },
+      };
+
+      try {
+        appState.user = { id: ownerId };
+        appState.supabase = supabase;
+        isLocalDevQaBypassActive = () => false;
+        saveSessions([session]);
+        const operationId = getCanonicalGrowingOperationId(sessionId, "seed", initialConditions);
+        let firstErrorCode = "";
+        try {
+          await enterCanonicalGrowing(session, {
+            entryPath: "seed",
+            operationId,
+            expectedUpdatedAt: session.updatedAt,
+            initialConditions,
+          });
+        } catch (error) {
+          firstErrorCode = String(error?.code || "");
+        }
+        const afterFailure = getSessions().find((candidate) => candidate.id === sessionId);
+        const retryOperationId = getCanonicalGrowingOperationId(sessionId, "seed", initialConditions);
+        const saved = await enterCanonicalGrowing(session, {
+          entryPath: "seed",
+          operationId: retryOperationId,
+          expectedUpdatedAt: session.updatedAt,
+          initialConditions,
+        });
+        retireCanonicalGrowingOperation(saved);
+        return {
+          firstErrorCode,
+          operationReused: operationId === retryOperationId,
+          failureDecision: getPostGerminationDecision(afterFailure),
+          failureCommencement: getCanonicalGrowingCommencement(afterFailure).status,
+          failureConditions: afterFailure?.sessionConditions || afterFailure?.session_conditions || null,
+          successDecision: getPostGerminationDecision(saved),
+          successCommencement: getCanonicalGrowingCommencement(saved),
+          successConditions: normalizeSessionConditionProjection(saved.sessionConditions),
+          rpcCalls,
+          retryStateRetired: localStorage.getItem(
+            getCanonicalGrowingOperationStorageKey(sessionId, "seed"),
+          ) === null,
+        };
+      } finally {
+        appState.supabase = originalSupabase;
+        appState.user = originalUser;
+        isLocalDevQaBypassActive = originalLocalQaBypass;
+        saveSessions(originalSessions);
+      }
+    });
+
+    expect(result.firstErrorCode).toBe("NETWORK_LOSS");
+    expect(result.operationReused).toBe(true);
+    expect(result.failureDecision).toBe("pending");
+    expect(result.failureCommencement).toBe("unresolved");
+    expect(result.failureConditions).toBeNull();
+    expect(result.successDecision).toBe("grow");
+    expect(result.successCommencement).toMatchObject({
+      status: "authoritative",
+      entryPath: "seed",
+      operationId: expect.any(String),
+    });
+    expect(result.successConditions).toMatchObject({
+      authority: "conditions",
+      canonicalRevision: 2,
+      growingCommencementStatus: "authoritative",
+      conditions: [
+        expect.objectContaining({ dimension: "grow_method", status: "known", value: "Living Soil" }),
+        expect.objectContaining({ dimension: "environment_type", status: "known", value: "Indoor" }),
+      ],
+    });
+    expect(result.rpcCalls.map((call) => call.name)).toEqual([
+      "enter_canonical_growing_with_initial_conditions",
+      "enter_canonical_growing_with_initial_conditions",
+      "get_current_session_conditions_v1",
+    ]);
+    expect(result.rpcCalls[0].input.p_operation_id).toBe(result.rpcCalls[1].input.p_operation_id);
+    expect(result.rpcCalls[0].input.p_initial_conditions).toEqual({
+      grow_method: { value: "Living Soil", other_text: "" },
+      environment_type: { value: "Indoor", other_text: "" },
+    });
+    expect(result.retryStateRetired).toBe(true);
+  });
+
   for (const actorRole of ["user", "admin"]) {
   test(`retries committed direct Growing after client reconstruction through the production boundary (${actorRole})`, async ({ page }) => {
     test.setTimeout(90000);
@@ -3722,6 +3926,10 @@ test.describe("local Developer Scenarios", () => {
       time: "10:15",
     };
     const runtimeBootStorageKey = "__iceSc001RuntimeBootCount";
+    const initialConditions = {
+      grow_method: { value: "Coco", other_text: "" },
+      environment_type: { value: "Greenhouse", other_text: "" },
+    };
     const rpcRequests = [];
     let loseNextSuccessfulResponse = true;
 
@@ -3741,11 +3949,12 @@ commit;
 `);
       return JSON.parse(output);
     };
-    const invokeCanonicalGrowing = (args = {}) => runAuthenticatedJson(`
-select public.enter_canonical_growing(
+    const invokeAtomicGrowingEntry = (args = {}) => runAuthenticatedJson(`
+select public.enter_canonical_growing_with_initial_conditions(
   ${escapeIceSqlLiteral(args.p_session_id)}::uuid,
   ${escapeIceSqlLiteral(args.p_operation_id)}::uuid,
   ${escapeIceSqlLiteral(args.p_entry_path)},
+  ${escapeIceSqlLiteral(JSON.stringify(args.p_initial_conditions || {}))}::jsonb,
   ${args.p_expected_updated_at ? `${escapeIceSqlLiteral(args.p_expected_updated_at)}::timestamptz` : "null"},
   ${args.p_session_record ? `${escapeIceSqlLiteral(JSON.stringify(args.p_session_record))}::jsonb` : "null"}
 )::text;
@@ -3759,6 +3968,13 @@ select jsonb_build_object(
     select count(*)
     from public.grow_session_phase_commencements commencement
     join public.grow_sessions session_row on session_row.id = commencement.session_id
+    where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid
+  ),
+  'condition_period_count',
+  (
+    select count(*)
+    from public.grow_session_condition_periods condition_period
+    join public.grow_sessions session_row on session_row.id = condition_period.session_id
     where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid
   ),
   'session',
@@ -3810,12 +4026,24 @@ where session_row.user_id = ${escapeIceSqlLiteral(ownerId)}::uuid;
       const args = JSON.parse(JSON.stringify(request.args || {}));
       rpcRequests.push({ name: request.name, args });
       try {
-        if (request.name === "enter_canonical_growing") {
-          const data = invokeCanonicalGrowing(args);
+        if (request.name === "enter_canonical_growing_with_initial_conditions") {
+          const data = invokeAtomicGrowingEntry(args);
           if (loseNextSuccessfulResponse) {
             loseNextSuccessfulResponse = false;
             return { data: null, error: null, lost: true };
           }
+          return { data, error: null, lost: false };
+        }
+        if (request.name === "get_current_session_conditions_v1") {
+          const data = runAuthenticatedJson(`
+select coalesce(
+  public.get_current_session_conditions_v1(
+    ${escapeIceSqlLiteral(args.p_session_id)}::uuid,
+    ${args.p_at ? `${escapeIceSqlLiteral(args.p_at)}::timestamptz` : "null"}
+  ),
+  '{}'::jsonb
+)::text;
+`);
           return { data, error: null, lost: false };
         }
         if (request.name === "get_canonical_growing_commencement") {
@@ -3908,6 +4136,12 @@ select coalesce(
       const skipNamePrompt = page.locator("[data-new-session-name-skip]");
       if (await skipNamePrompt.isVisible()) await skipNamePrompt.click();
       await form.locator('input[name="sessionName"]').fill(sessionName);
+      await form.locator('[data-begin-growing-condition="environment_type"]').selectOption(
+        initialConditions.environment_type.value,
+      );
+      await form.locator('[data-begin-growing-condition="grow_method"]').selectOption(
+        initialConditions.grow_method.value,
+      );
       return form;
     };
     const submitDirectGrowing = async (form) => {
@@ -3935,11 +4169,12 @@ select coalesce(
         }, founderTimestampInput);
       }
       await submitDirectGrowing(initialForm);
-      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing").length).toBe(1);
+      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing_with_initial_conditions").length).toBe(1);
       await expect(page).toHaveURL(/#new/);
       const committedAfterLoss = readCanonicalState();
       expect(committedAfterLoss.session_count).toBe(1);
       expect(committedAfterLoss.chronology_count).toBe(1);
+      expect(committedAfterLoss.condition_period_count).toBe(2);
       expect(committedAfterLoss.commencement.commenced_at).toBeTruthy();
       const pendingBeforeReconstruction = await page.evaluate((id) => readDirectGrowingOperation(id), ownerId);
       expect(pendingBeforeReconstruction).toMatchObject({
@@ -3998,13 +4233,13 @@ select coalesce(
         }))).toEqual(founderTimestampInput);
       }
       await submitDirectGrowing(retryForm);
-      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing").length).toBe(2);
+      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing_with_initial_conditions").length).toBe(2);
       await expect(page).toHaveURL(/#new/);
       expect(await page.evaluate((id) => readDirectGrowingOperation(id), ownerId)).toEqual(pendingBeforeReconstruction);
 
       await retryForm.locator('input[name="sessionName"]').fill("Committed Response Loss");
       await submitDirectGrowing(retryForm);
-      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing").length).toBe(3);
+      await expect.poll(() => rpcRequests.filter((request) => request.name === "enter_canonical_growing_with_initial_conditions").length).toBe(3);
       await expect(page).toHaveURL(new RegExp(`#sessions/${committedAfterLoss.session.id}$`));
 
       const browserResult = await page.evaluate((sessionId) => {
@@ -4012,11 +4247,27 @@ select coalesce(
         return {
           sessionId: session?.id || "",
           commencement: getCanonicalGrowingCommencement(session),
+          conditions: [
+            getSessionConditionProjection(
+              session?.sessionConditions || session?.session_conditions,
+              SESSION_CONDITION_DIMENSIONS.GROW_METHOD,
+            ),
+            getSessionConditionProjection(
+              session?.sessionConditions || session?.session_conditions,
+              SESSION_CONDITION_DIMENSIONS.ENVIRONMENT_TYPE,
+            ),
+          ].map((condition) => ({
+            dimension: condition?.dimension || "",
+            status: condition?.status || "",
+            value: condition?.value || "",
+          })),
           pendingOperation: readDirectGrowingOperation(appState.user?.id || ""),
         };
       }, committedAfterLoss.session.id);
       const finalCanonicalState = readCanonicalState();
-      const entryRequests = rpcRequests.filter((request) => request.name === "enter_canonical_growing");
+      const entryRequests = rpcRequests.filter(
+        (request) => request.name === "enter_canonical_growing_with_initial_conditions",
+      );
       const fingerprintRecord = (request) => {
         const record = JSON.parse(JSON.stringify(request.args.p_session_record || {}));
         delete record.user_id;
@@ -4027,6 +4278,8 @@ select coalesce(
 
       expect(entryRequests[0].args.p_session_id).toBe(entryRequests[2].args.p_session_id);
       expect(entryRequests[0].args.p_operation_id).toBe(entryRequests[2].args.p_operation_id);
+      expect(entryRequests[0].args.p_initial_conditions).toEqual(initialConditions);
+      expect(entryRequests[2].args.p_initial_conditions).toEqual(initialConditions);
       expect(fingerprintRecord(entryRequests[0])).toEqual(fingerprintRecord(entryRequests[2]));
       expect(fingerprintRecord(entryRequests[1])).not.toEqual(fingerprintRecord(entryRequests[0]));
       expect(entryRequests[1].args.p_operation_id).toBe(entryRequests[0].args.p_operation_id);
@@ -4039,10 +4292,15 @@ select coalesce(
           entryPath: "grow",
           operationId: committedAfterLoss.commencement.operation_id,
         },
+        conditions: [
+          { dimension: "grow_method", status: "known", value: "Coco" },
+          { dimension: "environment_type", status: "known", value: "Greenhouse" },
+        ],
         pendingOperation: null,
       });
       expect(finalCanonicalState.session_count).toBe(1);
       expect(finalCanonicalState.chronology_count).toBe(1);
+      expect(finalCanonicalState.condition_period_count).toBe(2);
       expect(finalCanonicalState.session.id).toBe(committedAfterLoss.session.id);
       expect(finalCanonicalState.commencement.commenced_at).toBe(committedAfterLoss.commencement.commenced_at);
       expect(finalCanonicalState.commencement.operation_id).toBe(committedAfterLoss.commencement.operation_id);
@@ -4232,6 +4490,7 @@ select coalesce(
       const calls = [];
       const rpcCalls = [];
       const conditionState = { authority: "legacy", revision: 0, growMethod: null, environmentType: null };
+      let lastCorrection = null;
       const identityCalls = { source: [], variety: [] };
       const copy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -4380,6 +4639,43 @@ select coalesce(
               error: null,
             };
           }
+          if (name === "correct_current_session_condition") {
+            conditionState.revision += 1;
+            lastCorrection = {
+              condition_period_id: input.p_condition_period_id,
+              correction_note: input.p_correction.correction_note || null,
+            };
+            return {
+              data: {
+                operation_kind: "correction",
+                status: "success",
+                canonical_revision: conditionState.revision,
+                correction_note: lastCorrection.correction_note,
+              },
+              error: null,
+            };
+          }
+          if (name === "get_session_condition_history") {
+            return {
+              data: {
+                session_id: input.p_session_id,
+                periods: [],
+                corrections: lastCorrection ? [lastCorrection] : [],
+              },
+              error: null,
+            };
+          }
+          if (name === "set_current_conditions_for_unresolved_legacy") {
+            return {
+              data: {
+                operation_kind: "forward_legacy_declaration",
+                status: "success",
+                canonical_revision: 1,
+                earlier_conditions_status: "unavailable",
+              },
+              error: null,
+            };
+          }
           return { data: null, error: new Error(`Unexpected RPC ${name}`) };
         },
         from(table) {
@@ -4433,6 +4729,38 @@ select coalesce(
           growMethod: "Soil",
           plantGroups: [{ ...firstDraft.plantGroups[0], plant: "North Renamed" }],
         });
+        const currentConditions = await fetchCanonicalSessionConditions(session.id);
+        const currentMethod = getSessionConditionProjection(
+          currentConditions,
+          SESSION_CONDITION_DIMENSIONS.GROW_METHOD,
+        );
+        const correctionResult = await correctCanonicalCurrentSessionCondition(
+          currentConditions,
+          currentMethod.periodId,
+          { value: "Living Soil", correction_note: "  verified correction  " },
+        );
+        const historyResult = await fetchCanonicalSessionConditionHistory(session.id);
+        const unresolvedSessionId = crypto.randomUUID();
+        const unresolvedConditions = normalizeSessionConditionProjection({
+          session_id: unresolvedSessionId,
+          authority: "legacy",
+          authority_source: null,
+          canonical_revision: 0,
+          growing_commencement_status: "unresolved",
+          growing_commenced_at: null,
+          defined_at: "2026-07-23T12:00:00.000Z",
+          conditions: [
+            { dimension: "grow_method", status: "unresolved", value: null, other_text: "" },
+            { dimension: "environment_type", status: "unresolved", value: null, other_text: "" },
+          ],
+        });
+        const forwardResult = await setCanonicalCurrentConditionsForUnresolvedLegacy(
+          unresolvedConditions,
+          "Coco",
+          "",
+          "Indoor",
+          "",
+        );
         const phaseUpsertsBeforeMalformed = calls.filter((call) => call.table === GROWING_PHASE_TABLE && call.operation === "upsert").length;
         let malformedRejected = false;
         try {
@@ -4448,6 +4776,7 @@ select coalesce(
           sessionId: session.id, phaseId, firstId, secondId, sourceId, varietyId,
           phaseRows: copy(phaseRows), groupRows: copy(groupRows), calls: copy(calls), rpcCalls: copy(rpcCalls), identityCalls: copy(identityCalls),
           canonicalChanged: copy(canonicalChanged),
+          correctionResult: copy(correctionResult), historyResult: copy(historyResult), forwardResult: copy(forwardResult),
           preservedCanonicalProjection: copy(preservedCanonicalProjection), invalidCanonicalProjectionRejected,
           zeroGroupCount: zeroGroup.plantGroups.length,
           reloadedWithTwo: copy(getSessionGrowingPhase(reloadedWithTwo)),
@@ -4480,6 +4809,20 @@ select coalesce(
       environment_type: { value: "Indoor", other_text: "" },
     });
     expect(result.canonicalChanged).toMatchObject({ growMethod: "Soil", environmentType: "Indoor" });
+    expect(result.correctionResult).toMatchObject({
+      operation_kind: "correction",
+      status: "success",
+      correction_note: "verified correction",
+    });
+    expect(result.historyResult.corrections).toEqual([
+      expect.objectContaining({ correction_note: "verified correction" }),
+    ]);
+    expect(result.forwardResult).toMatchObject({
+      operation_kind: "forward_legacy_declaration",
+      status: "success",
+      canonical_revision: 1,
+      earlier_conditions_status: "unavailable",
+    });
     expect(result.preservedCanonicalProjection.conditions[0].value).toBe("Living Soil");
     expect(result.preservedCanonicalProjection.conditions[1].otherText).toBe("  Protected   tunnel  ");
     expect(result.invalidCanonicalProjectionRejected).toBe(true);
