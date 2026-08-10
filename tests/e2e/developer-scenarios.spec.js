@@ -228,6 +228,106 @@ test.describe("local Developer Scenarios", () => {
     await enableFounderLocalQa(page);
   });
 
+  test("renders the Botanical Carbon Germination Setup review surface", async ({ page }) => {
+    const consoleErrors = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+
+    await page.goto("/#new/germination-setup-preview");
+
+    const preview = page.locator("[data-germination-setup-preview]");
+    await expect(preview).toBeVisible();
+    await expect(preview.getByRole("heading", { name: "Germination Setup", exact: true })).toBeVisible();
+    await expect(preview.getByText("Add the seeds for this Session and review their setup details.", { exact: true })).toBeVisible();
+    await expect(preview.getByText("Setup draft · Germination has not started.", { exact: true })).toBeVisible();
+    await expect(preview.getByText("These Session details are still a draft and do not start germination.", { exact: true })).toBeVisible();
+    await expect(preview.getByText("A quick summary of this draft setup.", { exact: true })).toBeVisible();
+    await expect(preview.getByText("See the planned use from My Seed Vault for this setup.", { exact: true })).toBeVisible();
+    const seedDetailsExplanation = preview.getByRole("region", { name: "How seed details are saved" });
+    await expect(seedDetailsExplanation.getByText("Linked to My Seed Vault", { exact: true })).toBeVisible();
+    await expect(seedDetailsExplanation.getByText("This Seed Entry keeps a link to its Vault record.", { exact: true })).toBeVisible();
+    await expect(seedDetailsExplanation.getByText("Saved with this Session", { exact: true })).toBeVisible();
+    await expect(seedDetailsExplanation.getByText("When this setup is saved, Grow keeps a copy of these seed details with the Session. Later changes in My Seed Vault will not change the Session’s saved details.", { exact: true })).toBeVisible();
+    await expect(preview.locator(".botanical-phase-segment")).toHaveCount(3);
+    await expect(preview.locator(".botanical-phase-segment").nth(0)).toContainText("Germination");
+    await expect(preview.locator(".botanical-phase-segment").nth(1)).toContainText("Growing");
+    await expect(preview.locator(".botanical-phase-segment").nth(2)).toContainText("Reflection");
+    await expect(preview.locator(".botanical-phase-segment").nth(0)).toHaveAttribute("aria-current", "step");
+    await expect(preview.getByRole("progressbar", { name: "Germination progress" })).toHaveAttribute("aria-valuenow", "0");
+    await expect(preview.getByRole("heading", { name: "How should seed age be recorded?" })).toBeVisible();
+    const seedAgeChoices = preview.getByRole("group", { name: "Seed-age recording choice" });
+    await expect(seedAgeChoices.getByText("Same for all Seed Entries", { exact: true })).toBeVisible();
+    await expect(seedAgeChoices.getByText("Set for each Seed Entry", { exact: true })).toBeVisible();
+    await expect(seedAgeChoices.getByRole("radio", { name: /Set for each Seed Entry/ })).toBeChecked();
+    await expect(preview.getByText("If you don’t know the seed age, you can select Unknown.", { exact: true })).toBeVisible();
+    await expect(preview.locator("[data-germination-entry]")).toHaveCount(2);
+    await expect(preview.getByText("From My Seed Vault", { exact: true }).first()).toBeVisible();
+    await expect(preview.getByText("Added for this Session", { exact: true }).first()).toBeVisible();
+    await expect(preview.getByText("Acquired 2024", { exact: true })).toBeVisible();
+    await expect(preview.getByText("Seed age unknown", { exact: true })).toBeVisible();
+    await expect(preview).not.toContainText(/qualified source fact|reference kind|\bprecision\b|\bprovenance\b|saved_vault_reference|\bmanual\b|authorized save|canonical commencement|canonical operation|Vault reference vs\. Session evidence|Frozen Session evidence|Session-owned evidence|preserves lineage|\bcanonical\b|\bevidence\b|\blineage\b/i);
+    await expect(preview.locator("[data-germination-summary]")).toContainText("6 seeds total");
+    await expect(preview.locator("[data-germination-inventory]")).toContainText("12");
+    await expect(preview.locator("[data-germination-inventory]")).toContainText("4");
+    await expect(preview.locator("[data-germination-inventory]")).toContainText("8");
+    await expect(preview.locator("[data-germination-inventory]")).toContainText("Current Vault Balance");
+    await expect(preview.locator("[data-germination-inventory]")).toContainText("Planned Vault Use");
+    await expect(preview.locator("[data-germination-inventory]")).toContainText("Projected Vault Balance");
+    await expect(preview.locator("[data-germination-inventory-breakdown]")).toContainText("6 seeds in this Session");
+    await expect(preview.locator("[data-germination-inventory-breakdown]")).toContainText("4 linked to My Seed Vault");
+    await expect(preview.locator("[data-germination-inventory-breakdown]")).toContainText("2 added for this Session");
+    await expect(preview.getByText("Reviewing this setup does not reserve or deduct seeds.", { exact: true })).toBeVisible();
+
+    const tokenValues = await preview.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        brand: style.getPropertyValue("--bc-brand").trim(),
+        canvas: style.getPropertyValue("--bc-canvas").trim(),
+        card: style.getPropertyValue("--bc-card").trim(),
+        raised: style.getPropertyValue("--bc-raised").trim(),
+      };
+    });
+    expect(tokenValues).toEqual({ brand: "#94d159", canvas: "#080c09", card: "#121a14", raised: "#1a241d" });
+
+    const secondEntry = preview.locator("[data-germination-entry]").nth(1);
+    await secondEntry.getByRole("button", { name: /Focus Green Crack/ }).click();
+    await expect(secondEntry).toHaveClass(/is-selected/);
+    await secondEntry.getByRole("button", { name: /Increase Green Crack quantity/ }).click();
+    await expect(preview.locator("[data-germination-summary]")).toContainText("7 seeds total");
+
+    await preview.getByRole("button", { name: "Add Seed Entry", exact: true }).click();
+    await expect(preview.locator("[data-germination-entry]")).toHaveCount(3);
+    const reviewButton = preview.getByRole("button", { name: "Review Setup", exact: true });
+    await expect(reviewButton).toBeDisabled();
+    await preview.locator("[data-germination-entry]").last().locator('input[data-germination-entry-field="variety"]').fill("Wedding Cake");
+    await expect(reviewButton).toBeEnabled();
+    await reviewButton.focus();
+    await expect(reviewButton).toBeFocused();
+    await reviewButton.click();
+    const reviewDialog = preview.getByRole("dialog", { name: "Setup ready for review" });
+    await expect(reviewDialog).toBeVisible();
+    await expect(reviewDialog).toContainText("Seed details linked to My Seed Vault remain distinguishable from the details saved with this Session.");
+    await expect(reviewDialog).toContainText("No Session or inventory record was created or changed");
+    await reviewDialog.getByRole("button", { name: "Return to setup" }).click();
+    await expect(reviewDialog).toBeHidden();
+
+    for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      const geometry = await page.evaluate(() => ({
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        previewWidth: document.querySelector("[data-germination-setup-preview]")?.getBoundingClientRect().width || 0,
+        timelineWidth: document.querySelector(".botanical-phase-timeline")?.getBoundingClientRect().width || 0,
+      }));
+      expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+      expect(geometry.previewWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+      expect(geometry.timelineWidth).toBeLessThanOrEqual(geometry.previewWidth);
+    }
+
+    expect(consoleErrors).toEqual([]);
+  });
+
   test("connects Current Conditions across active and historical Session states", async ({ page }) => {
     await page.goto("/#home");
     await useMixAndMatch(page);

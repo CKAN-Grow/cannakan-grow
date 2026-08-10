@@ -2,6 +2,1239 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Botanical Carbon candidate foundation — scoped to the Germination Setup founder preview. */
+.germination-setup-preview {
+  --bc-brand: #94d159;
+  --bc-brand-bright: #a7e66a;
+  --bc-brand-deep: #79b83d;
+  --bc-deepest: #050706;
+  --bc-canvas: #080c09;
+  --bc-card: #121a14;
+  --bc-raised: #1a241d;
+  --bc-selected: #203024;
+  --bc-border: #304036;
+  --bc-border-strong: #4b624f;
+  --bc-text: #f2f5f3;
+  --bc-muted: #a4aea7;
+  --bc-shadow: 0 22px 56px rgba(0, 0, 0, 0.34);
+  --bc-radius-lg: 18px;
+  --bc-radius-md: 12px;
+  --bc-radius-sm: 8px;
+  width: min(1280px, calc(100vw - 32px));
+  min-height: calc(100vh - 40px);
+  margin: 0 auto 32px;
+  padding: clamp(20px, 3vw, 40px);
+  color: var(--bc-text);
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at 82% 4%, rgba(34, 65, 42, 0.38), transparent 32%),
+    linear-gradient(145deg, var(--bc-deepest) 0%, var(--bc-canvas) 45%, #0b110d 100%);
+  border: 1px solid #18231b;
+  border-radius: 24px;
+  box-shadow: var(--bc-shadow);
+  font-family: inherit;
+  overflow: hidden;
+}
+
+.germination-setup-preview *,
+.germination-setup-preview *::before,
+.germination-setup-preview *::after {
+  box-sizing: border-box;
+}
+
+.germination-setup-preview h1,
+.germination-setup-preview h2,
+.germination-setup-preview p,
+.germination-setup-preview dl,
+.germination-setup-preview dd,
+.germination-setup-preview ol,
+.germination-setup-preview fieldset {
+  margin: 0;
+}
+
+.germination-setup-preview button,
+.germination-setup-preview input,
+.germination-setup-preview select {
+  font: inherit;
+}
+
+.germination-setup-preview button,
+.germination-setup-preview select,
+.germination-setup-preview input {
+  outline: none;
+}
+
+.germination-setup-preview button:focus-visible,
+.germination-setup-preview input:focus-visible,
+.germination-setup-preview select:focus-visible,
+.germination-tracking-choice:has(input:focus-visible) {
+  outline: 3px solid var(--bc-brand);
+  outline-offset: 3px;
+}
+
+.germination-setup-preview__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.germination-setup-preview__header h1 {
+  color: var(--bc-text);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.germination-setup-preview__header > div > p {
+  max-width: 680px;
+  margin-top: 12px;
+  color: var(--bc-muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.germination-setup-preview__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  color: var(--bc-brand);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 690;
+}
+
+.germination-setup-preview__status span {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.botanical-phase-timeline {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.botanical-phase-timeline ol {
+  display: flex;
+  width: 100%;
+  padding: 0;
+  list-style: none;
+}
+
+.botanical-phase-segment {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(9px, 1.5vw, 18px);
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 72px;
+  padding: 14px 28px;
+  color: var(--bc-muted);
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%, 24px 50%);
+}
+
+.botanical-phase-segment:first-child {
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 50%, calc(100% - 24px) 100%, 0 100%);
+  border-radius: 10px 0 0 10px;
+}
+
+.botanical-phase-segment:last-child {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 24px 50%);
+  border-radius: 0 10px 10px 0;
+}
+
+.botanical-phase-segment + .botanical-phase-segment {
+  margin-left: -15px;
+  padding-left: 40px;
+}
+
+.botanical-phase-segment.is-active {
+  z-index: 3;
+  color: #071006;
+  background: linear-gradient(120deg, var(--bc-brand-bright), var(--bc-brand) 55%, var(--bc-brand-deep));
+  border-color: var(--bc-brand);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+.botanical-phase-segment__number {
+  font-size: clamp(1.65rem, 3vw, 2.5rem);
+  font-weight: 820;
+  line-height: 1;
+}
+
+.botanical-phase-segment__label {
+  min-width: 0;
+  font-size: clamp(0.94rem, 1.6vw, 1.18rem);
+  font-weight: 720;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+
+.germination-progress-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 28px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 18px 20px;
+  background: linear-gradient(105deg, var(--bc-card), #152219);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.23);
+}
+
+.germination-progress-preview__heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.germination-progress-preview__icon,
+.germination-lineage-row__icon,
+.germination-seed-entry__leaf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bc-brand);
+}
+
+.germination-progress-preview__icon {
+  width: 38px;
+  height: 38px;
+  background: var(--bc-selected);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: 9px;
+}
+
+.germination-progress-preview__icon svg,
+.germination-lineage-row__icon svg,
+.germination-seed-entry__leaf svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.germination-progress-preview h2 {
+  color: var(--bc-text);
+  font-size: 1rem;
+  font-weight: 740;
+}
+
+.germination-progress-preview p,
+.germination-progress-preview__measure span {
+  margin-top: 4px;
+  color: var(--bc-muted);
+  font-size: 0.82rem;
+}
+
+.germination-progress-preview__measure {
+  text-align: right;
+}
+
+.germination-progress-preview__measure span,
+.germination-progress-preview__measure strong {
+  display: block;
+}
+
+.germination-progress-preview__measure strong {
+  margin-top: 2px;
+  color: var(--bc-text);
+  font-size: 1rem;
+}
+
+.germination-progress-preview__rail {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+}
+
+.germination-progress-preview__rail span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--bc-brand-deep), var(--bc-brand));
+}
+
+.germination-setup-preview__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.78fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.germination-setup-preview__main,
+.germination-setup-preview__aside {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.botanical-panel {
+  min-width: 0;
+  padding: 22px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-lg);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
+}
+
+.botanical-panel--identity,
+.botanical-panel--summary {
+  background: linear-gradient(145deg, #142018, var(--bc-card) 62%);
+}
+
+.botanical-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.botanical-panel__heading h2 {
+  color: var(--bc-text);
+  font-size: 1.18rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.botanical-panel__heading h2 span {
+  color: var(--bc-muted);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.botanical-panel__heading p {
+  max-width: 620px;
+  margin-top: 5px;
+  color: var(--bc-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.botanical-status,
+.botanical-compact-action {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 8px 11px;
+  color: var(--bc-brand);
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius-sm);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.botanical-compact-action {
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.botanical-compact-action:hover {
+  transform: translateY(-1px);
+  background: var(--bc-selected);
+  border-color: var(--bc-brand);
+}
+
+.germination-identity-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(150px, 0.82fr) minmax(160px, 0.9fr);
+  gap: 12px;
+}
+
+.germination-identity-fields label,
+.germination-seed-entry__details label,
+.germination-seed-entry__details > div,
+.germination-seed-entry__identity label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.germination-identity-fields label > span,
+.germination-seed-entry__details label > span,
+.germination-seed-entry__details > div > span,
+.germination-seed-entry__identity label > span {
+  color: var(--bc-muted);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.germination-identity-fields input,
+.germination-identity-fields select,
+.germination-seed-entry__details input,
+.germination-seed-entry__details select,
+.germination-seed-entry__identity input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--bc-text);
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-identity-fields input:hover,
+.germination-identity-fields select:hover,
+.germination-seed-entry__details input:hover,
+.germination-seed-entry__details select:hover,
+.germination-seed-entry__identity input:hover {
+  border-color: var(--bc-border-strong);
+}
+
+.germination-tracking-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+  border: 0;
+}
+
+.germination-tracking-note {
+  margin-top: 12px !important;
+  color: var(--bc-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.germination-tracking-choice {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-height: 112px;
+  padding: 17px;
+  cursor: pointer;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.germination-tracking-choice:hover {
+  transform: translateY(-1px);
+  border-color: var(--bc-border-strong);
+}
+
+.germination-tracking-choice:has(input:checked) {
+  background: linear-gradient(135deg, var(--bc-selected), #1a2b1e);
+  border-color: var(--bc-brand);
+}
+
+.germination-tracking-choice input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.germination-tracking-choice__indicator,
+.germination-seed-entry__selector span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: var(--bc-canvas);
+  border: 2px solid var(--bc-muted);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px var(--bc-canvas);
+}
+
+.germination-tracking-choice:has(input:checked) .germination-tracking-choice__indicator,
+.germination-seed-entry__selector[aria-pressed="true"] span {
+  background: var(--bc-brand);
+  border-color: var(--bc-brand-bright);
+}
+
+.germination-tracking-choice strong,
+.germination-tracking-choice small {
+  display: block;
+}
+
+.germination-tracking-choice strong {
+  color: var(--bc-text);
+  font-size: 0.95rem;
+}
+
+.germination-tracking-choice small {
+  margin-top: 7px;
+  color: var(--bc-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.germination-seed-entry-list {
+  display: grid;
+  gap: 12px;
+}
+
+.germination-seed-entry {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.germination-seed-entry:hover {
+  transform: translateY(-1px);
+  border-color: var(--bc-border-strong);
+}
+
+.germination-seed-entry.is-selected {
+  background: linear-gradient(110deg, var(--bc-selected), var(--bc-raised) 78%);
+  border-color: var(--bc-brand);
+}
+
+.germination-seed-entry__topline {
+  display: grid;
+  grid-template-columns: 24px 24px minmax(200px, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 15px 16px;
+}
+
+.germination-seed-entry__selector,
+.germination-seed-entry__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--bc-muted);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+}
+
+.germination-seed-entry__selector {
+  width: 24px;
+  height: 24px;
+}
+
+.germination-seed-entry__remove {
+  font-size: 1.35rem;
+}
+
+.germination-seed-entry__remove:hover {
+  color: var(--bc-text);
+  background: var(--bc-card);
+}
+
+.germination-seed-entry__index {
+  color: var(--bc-muted);
+  font-size: 0.82rem;
+  font-weight: 740;
+}
+
+.germination-seed-entry__identity {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.germination-seed-entry__identity strong,
+.germination-seed-entry__identity small {
+  display: block;
+}
+
+.germination-seed-entry__identity strong {
+  overflow: hidden;
+  color: var(--bc-text);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.germination-seed-entry__identity small {
+  margin-top: 3px;
+  color: var(--bc-brand);
+  font-size: 0.75rem;
+}
+
+.germination-seed-entry__quantity {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.germination-seed-entry__quantity > span {
+  color: var(--bc-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.germination-seed-entry__quantity > div {
+  display: grid;
+  grid-template-columns: 42px 48px 42px;
+  min-height: 42px;
+  overflow: hidden;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-seed-entry__quantity button,
+.germination-seed-entry__quantity strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--bc-text);
+  background: transparent;
+  border: 0;
+}
+
+.germination-seed-entry__quantity button {
+  min-height: 42px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.germination-seed-entry__quantity button:first-child {
+  border-right: 1px solid var(--bc-border);
+}
+
+.germination-seed-entry__quantity button:last-child {
+  border-left: 1px solid var(--bc-border);
+}
+
+.germination-seed-entry__quantity button:hover {
+  color: #071006;
+  background: var(--bc-brand);
+}
+
+.germination-seed-entry__details {
+  display: grid;
+  grid-template-columns: 0.8fr 1.25fr repeat(3, minmax(110px, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bc-card);
+  border-top: 1px solid var(--bc-border);
+  border-bottom: 1px solid var(--bc-border);
+}
+
+.germination-seed-entry__details > div > strong {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--bc-text);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.germination-seed-entry__evidence {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+}
+
+.germination-seed-entry__evidence span {
+  padding: 5px 8px;
+  color: var(--bc-brand);
+  background: var(--bc-selected);
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 740;
+}
+
+.germination-seed-entry__evidence strong {
+  color: var(--bc-text);
+  font-size: 0.78rem;
+}
+
+.germination-seed-entry__evidence small {
+  color: var(--bc-muted);
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.germination-setup-validation {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 24px;
+  margin-top: 14px !important;
+  color: var(--bc-brand);
+  font-size: 0.82rem;
+  font-weight: 680;
+}
+
+.germination-setup-validation::before {
+  content: "✓";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  border: 1px solid var(--bc-brand);
+  border-radius: 50%;
+}
+
+.germination-setup-preview[data-preview-state="incomplete"] .germination-setup-validation {
+  color: var(--bc-muted);
+}
+
+.germination-setup-preview[data-preview-state="incomplete"] .germination-setup-validation::before {
+  content: "!";
+  border-color: var(--bc-border-strong);
+}
+
+.germination-setup-summary {
+  display: grid;
+}
+
+.germination-setup-summary > div {
+  display: grid;
+  grid-template-columns: minmax(112px, 0.8fr) minmax(0, 1.25fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--bc-border);
+}
+
+.germination-setup-summary dt {
+  color: var(--bc-muted);
+  font-size: 0.78rem;
+}
+
+.germination-setup-summary dd {
+  overflow-wrap: anywhere;
+  color: var(--bc-text);
+  font-size: 0.82rem;
+  font-weight: 680;
+}
+
+.germination-inventory-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+}
+
+.germination-inventory-metrics > div {
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  min-height: 112px;
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.germination-inventory-metrics > div + div {
+  border-left: 1px solid var(--bc-border);
+}
+
+.germination-inventory-metrics span,
+.germination-inventory-metrics small {
+  color: var(--bc-muted);
+  font-size: 0.68rem;
+}
+
+.germination-inventory-metrics strong {
+  color: var(--bc-brand);
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.germination-inventory-metrics strong.is-zero {
+  color: var(--bc-text);
+}
+
+.germination-inventory-breakdown {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  color: var(--bc-text);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.germination-inventory-breakdown span,
+.germination-inventory-calculation-note {
+  color: var(--bc-muted);
+}
+
+.germination-inventory-calculation-note {
+  margin-top: 6px !important;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.germination-inventory-note {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 11px;
+  align-items: start;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bc-selected);
+  border: 1px solid var(--bc-brand-deep);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-inventory-note__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  color: var(--bc-brand);
+  border: 1px solid var(--bc-brand);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.germination-inventory-note p {
+  color: var(--bc-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.germination-lineage-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 13px;
+  padding: 14px;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+}
+
+.germination-lineage-row:first-of-type {
+  border-radius: var(--bc-radius-md) var(--bc-radius-md) 0 0;
+}
+
+.germination-lineage-row:last-child {
+  border-top: 0;
+  border-radius: 0 0 var(--bc-radius-md) var(--bc-radius-md);
+}
+
+.germination-lineage-row__icon {
+  width: 42px;
+  height: 42px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: 9px;
+  font-size: 1.5rem;
+}
+
+.germination-lineage-row strong,
+.germination-lineage-row span {
+  display: block;
+}
+
+.germination-lineage-row strong {
+  color: var(--bc-text);
+  font-size: 0.82rem;
+}
+
+.germination-lineage-row p span {
+  margin-top: 5px;
+  color: var(--bc-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.germination-review-action {
+  padding: 5px;
+}
+
+.botanical-primary-action,
+.botanical-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 54px;
+  padding: 13px 20px;
+  cursor: pointer;
+  border-radius: var(--bc-radius-md);
+  font-weight: 790;
+  transition: transform 150ms ease, filter 150ms ease, border-color 150ms ease;
+}
+
+.botanical-primary-action {
+  color: #071006;
+  background: linear-gradient(110deg, #9bd766, var(--bc-brand) 58%, #74a940);
+  border: 1px solid var(--bc-brand);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
+  font-size: 1rem;
+}
+
+.botanical-primary-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.02);
+}
+
+.botanical-primary-action:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.botanical-primary-action:disabled {
+  color: var(--bc-muted);
+  cursor: not-allowed;
+  background: var(--bc-raised);
+  border-color: var(--bc-border);
+  box-shadow: none;
+}
+
+.germination-review-action p {
+  margin-top: 9px;
+  color: var(--bc-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.germination-review-dialog[hidden] {
+  display: none;
+}
+
+.germination-review-dialog {
+  position: fixed;
+  z-index: 1300;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.germination-review-dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 7, 6, 0.92);
+}
+
+.germination-review-dialog__panel {
+  position: relative;
+  z-index: 1;
+  width: min(520px, 100%);
+  padding: 30px;
+  color: var(--bc-text);
+  background: linear-gradient(145deg, var(--bc-selected), var(--bc-card) 64%);
+  border: 1px solid var(--bc-brand);
+  border-radius: var(--bc-radius-lg);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.58);
+}
+
+.germination-review-dialog__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  color: var(--bc-text);
+  cursor: pointer;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: 50%;
+  font-size: 1.45rem;
+}
+
+.germination-review-dialog__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 18px;
+  color: #071006;
+  background: var(--bc-brand);
+  border-radius: 50%;
+  font-size: 1.25rem;
+  font-weight: 850;
+}
+
+.germination-review-dialog__panel h2 {
+  color: var(--bc-text);
+  font-size: 1.6rem;
+  letter-spacing: -0.025em;
+}
+
+.germination-review-dialog__panel > p {
+  margin-top: 10px;
+  color: var(--bc-muted);
+  line-height: 1.6;
+}
+
+.germination-review-dialog__boundary {
+  display: grid;
+  gap: 5px;
+  margin: 20px 0;
+  padding: 14px;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-review-dialog__boundary strong {
+  color: var(--bc-brand);
+  font-size: 0.78rem;
+}
+
+.germination-review-dialog__boundary span {
+  color: var(--bc-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.botanical-secondary-action {
+  color: var(--bc-text);
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border-strong);
+}
+
+.botanical-secondary-action:hover {
+  transform: translateY(-1px);
+  border-color: var(--bc-brand);
+}
+
+@media (max-width: 980px) {
+  .germination-setup-preview__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-setup-preview__aside {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .botanical-panel--summary,
+  .germination-review-action {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .germination-setup-preview {
+    width: 100%;
+    margin: 0;
+    padding: 20px 14px 30px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .germination-setup-preview__header {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .germination-setup-preview__header h1 {
+    font-size: 2.15rem;
+  }
+
+  .germination-setup-preview__header > div > p {
+    font-size: 0.9rem;
+  }
+
+  .germination-setup-preview__status {
+    width: fit-content;
+  }
+
+  .botanical-phase-segment {
+    gap: 5px;
+    min-height: 58px;
+    padding: 10px 13px;
+    clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%, 15px 50%);
+  }
+
+  .botanical-phase-segment:first-child {
+    clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%);
+  }
+
+  .botanical-phase-segment:last-child {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 15px 50%);
+  }
+
+  .botanical-phase-segment + .botanical-phase-segment {
+    margin-left: -9px;
+    padding-left: 22px;
+  }
+
+  .botanical-phase-segment__number {
+    font-size: 1.2rem;
+  }
+
+  .botanical-phase-segment__label {
+    font-size: clamp(0.65rem, 3vw, 0.78rem);
+  }
+
+  .germination-progress-preview {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .germination-progress-preview__measure {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    text-align: left;
+  }
+
+  .germination-progress-preview__rail {
+    grid-column: auto;
+  }
+
+  .botanical-panel {
+    padding: 18px;
+    border-radius: 15px;
+  }
+
+  .botanical-panel__heading,
+  .botanical-panel__heading--entries {
+    display: grid;
+    gap: 12px;
+  }
+
+  .botanical-compact-action {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .germination-identity-fields,
+  .germination-tracking-choices,
+  .germination-setup-preview__aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .botanical-panel--summary,
+  .germination-review-action {
+    grid-column: auto;
+  }
+
+  .germination-tracking-choice {
+    min-height: 0;
+  }
+
+  .germination-seed-entry__topline {
+    grid-template-columns: 24px 22px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .germination-seed-entry__remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .germination-seed-entry {
+    position: relative;
+  }
+
+  .germination-seed-entry__quantity {
+    grid-column: 3 / -1;
+    grid-row: 2;
+    justify-items: start;
+  }
+
+  .germination-seed-entry__quantity > div {
+    grid-template-columns: 48px 58px 48px;
+    min-height: 46px;
+  }
+
+  .germination-seed-entry__quantity button {
+    min-height: 46px;
+  }
+
+  .germination-seed-entry__details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 14px;
+  }
+
+  .germination-seed-entry__details > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .germination-seed-entry__evidence {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-seed-entry__evidence span {
+    width: fit-content;
+  }
+
+  .germination-seed-entry__evidence small {
+    text-align: left;
+  }
+
+  .germination-inventory-metrics > div {
+    min-height: 104px;
+    padding: 12px 6px;
+  }
+
+  .germination-inventory-metrics span,
+  .germination-inventory-metrics small {
+    font-size: 0.62rem;
+  }
+
+  .germination-inventory-metrics strong {
+    font-size: 1.45rem;
+  }
+}
+
+@media (max-width: 410px) {
+  .botanical-phase-segment__label {
+    font-size: 0.62rem;
+  }
+
+  .botanical-phase-segment__number {
+    font-size: 1.05rem;
+  }
+
+  .germination-seed-entry__details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-seed-entry__details > :last-child {
+    grid-column: auto;
+  }
+
+  .germination-setup-summary > div {
+    grid-template-columns: minmax(96px, 0.8fr) minmax(0, 1.2fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .germination-setup-preview *,
+  .germination-setup-preview *::before,
+  .germination-setup-preview *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 :root {
   /* Global semantic color language: entity and state meaning only. */
   --grow-color-variety: #94d159;
