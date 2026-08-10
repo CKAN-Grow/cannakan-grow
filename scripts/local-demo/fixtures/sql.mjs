@@ -97,6 +97,11 @@ insert into public.profiles (id, username, email, account_status, profile_setup_
 ${values(profileRows)} on conflict (id) do update set username=excluded.username, email=excluded.email, account_status='active', profile_setup_complete=true, last_active_at=excluded.last_active_at, created_at=excluded.created_at, updated_at=excluded.updated_at;
 insert into public.public_member_profiles (id,user_id,display_name,bio,public_handle,location_region,country_code,profile_visibility,show_profile_in_community_grow,show_grow_stats_publicly,profile_type,account_type,joined_at,created_at,updated_at) values
 ${values(publicProfileRows)} on conflict (id) do update set display_name=excluded.display_name,bio=excluded.bio,public_handle=excluded.public_handle,location_region=excluded.location_region,country_code=excluded.country_code,profile_visibility='public',show_profile_in_community_grow=true,show_grow_stats_publicly=true,profile_type='grower',account_type='grower',joined_at=excluded.joined_at,created_at=excluded.created_at,updated_at=excluded.updated_at;
+insert into public.grow_identity_field_visibility (user_id,field_key,visibility,updated_at)
+select demo_users.user_id,visibility_fields.field_key,'public',${sqlLiteral(DEMO_REFERENCE_TIME)}
+from unnest(${uuidArray(contributors.map((row) => row.id))}) demo_users(user_id)
+cross join unnest(array['display_name','state_province','country']::text[]) visibility_fields(field_key)
+on conflict (user_id,field_key) do update set visibility=excluded.visibility,updated_at=excluded.updated_at;
 insert into public.sources (id,name,description,status,is_mock,created_at,updated_at) values
 ${values(sourceRows)} on conflict (id) do update set name=excluded.name,description=excluded.description,status='active',is_mock=false,updated_at=excluded.updated_at;
 insert into public.variety_directory (id,name,source_name,variety_type,verified,active,needs_admin_review,created_at,updated_at) values
