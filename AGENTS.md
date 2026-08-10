@@ -61,10 +61,22 @@ At this checkpoint:
 
 `Next Grow capability: Germination Setup, Evidence & Inventory.`
 
-`Next authorized action: bounded founder-reviewable frontend implementation for
-Germination Setup, Evidence & Inventory.`
+The approved Germination Setup frontend checkpoint is complete, committed, and
+pushed at `8fa68c8997fe26a4cd89292fee2c7f80316ced65`. The committed frontend is the
+approved grower-facing interface contract. The complete Germination Setup
+capability remains open.
 
-Recording Gate 1 and Gate 2 closure does not authorize connected access, SQL
-or migration execution, restoration work, deployment, or production activity;
-remove a hold; or make any later action beyond the bounded Germination Setup
-frontend implementation eligible.
+`Next eligible action: minimum Germination Setup backend implementation and
+focused local verification under FN-008 and the approved frontend contract.`
+
+That backend task must stop for founder review with all task changes unstaged
+and uncommitted. A subsequent explicit backend implementation prompt
+constitutes the authorization required to begin that work. No additional
+architecture, foundation, governance, repository-adoption, or approval
+prerequisite is required before the authorized backend implementation and
+focused local verification.
+
+This checkpoint does not itself authorize backend implementation without that
+subsequent explicit prompt; connected or hosted database access; hosted SQL or
+migration execution; restoration work; commit or push of backend changes;
+deployment; production activity; or removal of any existing hold.
