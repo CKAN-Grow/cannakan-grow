@@ -3957,6 +3957,7 @@ const appState = {
   leaderboardAuditInsightsExpanded: false,
   growthStage: null,
   newSessionSystemType: "",
+  germinationSetupDraftState: null,
   newSessionSystemModalOpen: false,
   newSessionReturnHash: "#home",
   currentRouteHash: "#home",
@@ -87917,15 +87918,29 @@ async function renderConnectedGerminationSetup(sessionId = "", initialMethodType
     renderConnectedGerminationSetupLoading("This Germination Setup link is invalid.");
     return;
   }
+  const draftKey = normalizedSessionId || `new:${normalizeMethodType(initialMethodType)}`;
+  const getActiveDraftState = () => {
+    const activeDraft = appState.germinationSetupDraftState;
+    const activeSetup = app.querySelector("[data-germination-setup-preview] [data-germination-session-name]");
+    return activeSetup && activeDraft?.connected && !activeDraft.persisted && activeDraft.draftKey === draftKey
+      ? activeDraft
+      : null;
+  };
+  const activeDraftBeforeLoad = getActiveDraftState();
   renderConnectedGerminationSetupLoading();
   try {
     const [vaultEntries, savedSetup] = await Promise.all([
       fetchGerminationSetupVaultEntries(),
       normalizedSessionId ? fetchGerminationSetup(normalizedSessionId) : Promise.resolve(null),
     ]);
+    const loadedState = buildConnectedGerminationSetupState(savedSetup, vaultEntries, initialMethodType);
+    loadedState.draftKey = draftKey;
+    const activeDraft = activeDraftBeforeLoad || getActiveDraftState();
     renderGerminationSetupFounderPreview({
       connected: true,
-      initialState: buildConnectedGerminationSetupState(savedSetup, vaultEntries, initialMethodType),
+      initialState: activeDraft && !loadedState.persisted
+        ? { ...activeDraft, vaultEntries: loadedState.vaultEntries }
+        : loadedState,
     });
   } catch (error) {
     console.error("[Germination Setup] Connected load failed.", error);
@@ -88251,6 +88266,7 @@ function renderGerminationSetupFounderPreview(options = {}) {
   const state = {
     connected,
     persisted: Boolean(initialState.persisted),
+    draftKey: String(initialState.draftKey || ""),
     sessionId: normalizeGerminationSetupSessionId(initialState.sessionId),
     revision: Math.max(0, Number(initialState.revision) || 0),
     sessionName: String(initialState.sessionName || ""),
@@ -88264,6 +88280,7 @@ function renderGerminationSetupFounderPreview(options = {}) {
     reviewAttempted: false,
     isSaving: false,
   };
+  appState.germinationSetupDraftState = connected && !state.persisted ? state : null;
 
   const reindexGerminationSetupEntries = () => {
     const rule = getGerminationSetupMethodRule(state.methodType);
