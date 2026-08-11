@@ -1542,6 +1542,35 @@ button.germination-kan-contents__row {
   grid-column: span 2;
 }
 
+@media (min-width: 701px) {
+  .germination-seed-entry:has(> .germination-seed-entry__details + .germination-seed-entry__age) {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr);
+  }
+
+  .germination-seed-entry:has(> .germination-seed-entry__details + .germination-seed-entry__age)
+    > :not(.germination-seed-entry__details, .germination-seed-entry__age) {
+    grid-column: 1 / -1;
+  }
+
+  .germination-seed-entry__details {
+    grid-column: 1;
+    padding-right: 5px;
+    border-right: 0;
+  }
+
+  .germination-seed-entry__age {
+    grid-column: 2;
+    grid-template-columns: minmax(0, 1fr);
+    padding-left: 5px;
+    border-top: 1px solid var(--bc-border);
+  }
+
+  .germination-seed-entry__details > .germination-entry-field--source {
+    grid-column: auto;
+  }
+}
+
 .germination-seed-entry__details > div > strong {
   display: flex;
   align-items: center;

@@ -87683,6 +87683,11 @@ function buildGerminationSetupManualEntry(methodType = "KAN", entries = []) {
     ageSourceValue: "",
     agePrecision: "Unknown",
     provenance: "",
+    emptyStatePrompts: {
+      seedType: true,
+      sex: true,
+      ageReferenceKind: true,
+    },
   };
 }
 
@@ -88723,6 +88728,10 @@ function renderGerminationSetupFounderPreview(options = {}) {
       const hasVaultSelection = isVault && Boolean(entry.vaultEntryId);
       const vaultAge = getEntryVaultAge(entry);
       const effectiveAge = getEntryAge(entry);
+      const seedTypePrompt = entry.seedType === "unknown" && entry.emptyStatePrompts?.seedType === true;
+      const sexPrompt = entry.sex === "unknown" && entry.emptyStatePrompts?.sex === true;
+      const ageReferenceKindPrompt = effectiveAge.ageReferenceKind === "unknown"
+        && entry.emptyStatePrompts?.ageReferenceKind === true;
       const sharedAgeConstraint = getVaultAgeConstraint();
       const usesDerivedSharedAge = !vaultAge && state.trackingMode === "same" && Boolean(sharedAgeConstraint.sharedAge);
       const isSingleQuantity = methodRule.quantityMode === "single";
@@ -88740,9 +88749,10 @@ function renderGerminationSetupFounderPreview(options = {}) {
       const ageControlMarkup = !hasOrigin || vaultAge ? "" : usesDerivedSharedAge
         ? `<div class="germination-derived-age"><span>Session seed age</span><strong>${escapeHtml(getEntryEvidenceLabel(sharedAgeConstraint.sharedAge))}</strong><small>Derived from linked Vault records while shared recording is selected.</small></div>`
         : `<label>
-            <span>Session seed age source</span>
+            <span>Seed age</span>
             <select data-germination-entry-field="ageReferenceKind">
-              <option value="unknown"${effectiveAge.ageReferenceKind === "unknown" ? " selected" : ""}>Unknown</option>
+              ${ageReferenceKindPrompt ? '<option value="" disabled selected>Select</option>' : ""}
+              <option value="unknown"${effectiveAge.ageReferenceKind === "unknown" && !ageReferenceKindPrompt ? " selected" : ""}>Unknown</option>
               <option value="acquisition_year"${effectiveAge.ageReferenceKind === "acquisition_year" ? " selected" : ""}>Acquired year</option>
               <option value="user_statement"${effectiveAge.ageReferenceKind === "user_statement" ? " selected" : ""}>Grower estimate</option>
             </select>
@@ -88751,25 +88761,27 @@ function renderGerminationSetupFounderPreview(options = {}) {
       const evidenceFieldsMarkup = isVault
         ? (hasVaultSelection ? "" : '<div class="germination-vault-autofill-pending"><span>Vault details</span><strong>Choose a record to autofill variety, source, breeder, type, sex, age, and available quantity.</strong></div>')
         : isManual ? `
-            <label class="germination-entry-field--source"><span>Source</span><input type="text" value="${escapeHtml(entry.source)}" placeholder="Unknown" data-germination-entry-field="source"></label>
-            <label class="germination-entry-field--source"><span>Breeder</span><input type="text" value="${escapeHtml(entry.breeder)}" placeholder="Unknown" data-germination-entry-field="breeder"></label>
+            <label class="germination-entry-field--source"><span>Source</span><input type="text" value="${escapeHtml(entry.source)}" placeholder="Select" data-germination-entry-field="source"></label>
+            <label class="germination-entry-field--source"><span>Breeder</span><input type="text" value="${escapeHtml(entry.breeder)}" placeholder="Select" data-germination-entry-field="breeder"></label>
             <label>
               <span>Type</span>
               <select data-germination-entry-field="seedType">
+                ${seedTypePrompt ? '<option value="" disabled selected>Select</option>' : ""}
                 <option value="not_applicable"${entry.seedType === "not_applicable" ? " selected" : ""}>Not applicable</option>
                 <option value="photoperiod"${entry.seedType === "photoperiod" ? " selected" : ""}>Photoperiod</option>
                 <option value="autoflower"${entry.seedType === "autoflower" ? " selected" : ""}>Autoflower</option>
                 <option value="fast_flower"${entry.seedType === "fast_flower" ? " selected" : ""}>Fast Flower</option>
-                <option value="unknown"${entry.seedType === "unknown" ? " selected" : ""}>Unknown</option>
+                <option value="unknown"${entry.seedType === "unknown" && !seedTypePrompt ? " selected" : ""}>Unknown</option>
               </select>
             </label>
             <label>
               <span>Sex</span>
               <select data-germination-entry-field="sex">
+                ${sexPrompt ? '<option value="" disabled selected>Select</option>' : ""}
                 <option value="not_applicable"${entry.sex === "not_applicable" ? " selected" : ""}>Not applicable</option>
                 <option value="feminized"${entry.sex === "feminized" ? " selected" : ""}>Feminized</option>
                 <option value="regular"${entry.sex === "regular" ? " selected" : ""}>Regular</option>
-                <option value="unknown"${entry.sex === "unknown" ? " selected" : ""}>Unknown</option>
+                <option value="unknown"${entry.sex === "unknown" && !sexPrompt ? " selected" : ""}>Unknown</option>
               </select>
             </label>
           ` : "";
@@ -89298,9 +89310,13 @@ function renderGerminationSetupFounderPreview(options = {}) {
     if (structureField) return;
     const fieldName = field.dataset.germinationEntryField;
     if (fieldName === "variety" || fieldName === "source" || fieldName === "breeder") return;
-    if (fieldName === "seedType" || fieldName === "sex") entry[fieldName] = field.value;
+    if (fieldName === "seedType" || fieldName === "sex") {
+      entry[fieldName] = field.value;
+      if (entry.emptyStatePrompts) entry.emptyStatePrompts[fieldName] = false;
+    }
     if (fieldName === "ageReferenceKind") {
       entry.ageReferenceKind = field.value;
+      if (entry.emptyStatePrompts) entry.emptyStatePrompts.ageReferenceKind = false;
       if (field.value === "unknown"
         || (field.value === "acquisition_year" && !/^\d{4}$/.test(entry.ageSourceValue))) {
         entry.ageSourceValue = "";
