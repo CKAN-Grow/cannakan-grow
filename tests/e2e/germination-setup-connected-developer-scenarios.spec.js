@@ -888,7 +888,7 @@ select concat_ws('|',
     };
     await selectVaultEntry(entries.nth(0), "Blue Dream", FIXTURE_VAULT_ID);
     await expect(entries.nth(0).locator("[data-germination-vault-selected]")).toContainText("Acquired 2025");
-    await expect(entries.nth(0).locator(".germination-seed-entry__identity")).toHaveCount(0);
+    await expect(entries.nth(0).locator(".germination-seed-entry__identity")).toHaveCount(1);
     await expect(entries.nth(0).locator(".germination-seed-entry__evidence")).toHaveCount(0);
     await expect(entries.nth(0).locator(".germination-seed-entry__details")).toHaveCount(0);
 

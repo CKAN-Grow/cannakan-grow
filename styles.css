@@ -383,6 +383,8 @@ html {
 .germination-identity-fields label,
 .germination-seed-entry__details label,
 .germination-seed-entry__details > div,
+.germination-seed-entry__age label,
+.germination-seed-entry__age > div,
 .germination-seed-entry__identity label {
   display: grid;
   gap: 7px;
@@ -392,6 +394,8 @@ html {
 .germination-identity-fields label > span,
 .germination-seed-entry__details label > span,
 .germination-seed-entry__details > div > span,
+.germination-seed-entry__age label > span,
+.germination-seed-entry__age > div > span,
 .germination-seed-entry__identity label > span {
   color: var(--bc-muted);
   font-size: 0.74rem;
@@ -402,6 +406,8 @@ html {
 .germination-identity-fields select,
 .germination-seed-entry__details input,
 .germination-seed-entry__details select,
+.germination-seed-entry__age input,
+.germination-seed-entry__age select,
 .germination-seed-entry__identity input {
   width: 100%;
   min-height: 44px;
@@ -421,6 +427,8 @@ html {
 .germination-identity-fields select:hover,
 .germination-seed-entry__details input:hover,
 .germination-seed-entry__details select:hover,
+.germination-seed-entry__age input:hover,
+.germination-seed-entry__age select:hover,
 .germination-seed-entry__identity input:hover {
   border-color: var(--bc-border-strong);
 }
@@ -1003,15 +1011,6 @@ button.germination-kan-contents__row {
   border-color: var(--bc-brand-bright);
 }
 
-.germination-entry-origin label:has(input:checked)::after {
-  content: "Selected";
-  padding-left: 4px;
-  font-size: 0.58rem;
-  font-weight: 850;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .germination-entry-origin input {
   width: 16px;
   height: 16px;
@@ -1226,22 +1225,66 @@ button.germination-kan-contents__row {
 
 .germination-seed-entry__topline {
   display: grid;
-  grid-template-columns: 24px minmax(112px, auto) minmax(180px, 1fr) auto auto;
-  gap: 10px;
+  grid-template-columns: 24px minmax(0, 1fr) 34px;
+  column-gap: 10px;
+  row-gap: 16px;
   align-items: center;
-  padding: 11px 14px;
+  padding: 11px 14px 8px;
 }
 
-.germination-seed-entry__topline--fixed {
-  grid-template-columns: 24px minmax(112px, auto) minmax(180px, 1fr) auto;
-}
-
-.germination-seed-entry__topline--linked {
-  grid-template-columns: 24px minmax(112px, 1fr) auto auto;
-}
-
+.germination-seed-entry__topline--fixed,
+.germination-seed-entry__topline--linked,
 .germination-seed-entry__topline--fixed.germination-seed-entry__topline--linked {
-  grid-template-columns: 24px minmax(112px, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) 34px;
+}
+
+.germination-seed-entry__topline .germination-seed-entry__selector {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.germination-seed-entry__topline .germination-seed-entry__heading {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.germination-seed-entry__topline .germination-entry-origin {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  grid-template-columns: repeat(2, minmax(0, 252px));
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  align-items: stretch;
+}
+
+.germination-seed-entry__topline .germination-entry-origin legend {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0 0 4px;
+  color: var(--bc-text);
+  font-size: 0.82rem;
+  font-weight: 740;
+  line-height: 1.3;
+}
+
+.germination-seed-entry__topline .germination-entry-origin label {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.germination-seed-entry__topline .germination-seed-entry__remove {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.germination-seed-entry__identity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 6px 14px 12px;
 }
 
 .germination-seed-entry__heading {
@@ -1289,10 +1332,8 @@ button.germination-kan-contents__row {
 }
 
 .germination-seed-entry__identity {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
+  position: relative;
+  display: block;
   min-width: 0;
 }
 
@@ -1315,13 +1356,65 @@ button.germination-kan-contents__row {
   font-size: 0.75rem;
 }
 
+.germination-seed-entry__identity > div > .germination-vault-picker {
+  margin: 8px 0 0;
+}
+
+.germination-seed-entry__identity > div > .germination-vault-picker:first-child {
+  margin-top: 0;
+}
+
+.germination-seed-entry__identity > .germination-seed-entry__leaf {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.germination-seed-entry__identity > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.germination-seed-entry__identity > div > label {
+  gap: 7px;
+}
+
+.germination-seed-entry__identity > div > label > span,
+.germination-seed-entry__identity > div > strong {
+  display: flex;
+  min-height: 22px;
+  padding-left: 30px;
+  align-items: center;
+}
+
+.germination-seed-entry__identity > div > small {
+  margin-top: 0;
+}
+
+.germination-seed-entry__identity:has(> div > .germination-vault-picker:first-child) > .germination-seed-entry__leaf {
+  top: 11px;
+  left: 12px;
+}
+
+.germination-seed-entry__identity:has(> div > .germination-vault-picker:first-child) .germination-vault-selection__identity > span {
+  display: flex;
+  min-height: 22px;
+  padding-left: 30px;
+  align-items: center;
+}
+
 .germination-seed-entry__quantity {
   display: grid;
-  gap: 6px;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
 }
 
 .germination-seed-entry__quantity > span {
+  justify-self: start;
   color: var(--bc-muted);
   font-size: 0.7rem;
   font-weight: 650;
@@ -1330,6 +1423,7 @@ button.germination-kan-contents__row {
 .germination-seed-entry__quantity > div {
   display: grid;
   grid-template-columns: 42px 48px 42px;
+  justify-self: end;
   min-height: 42px;
   overflow: hidden;
   background: var(--bc-card);
@@ -1391,6 +1485,15 @@ button.germination-kan-contents__row {
   padding: 10px 14px;
   background: var(--bc-card);
   border-top: 1px solid var(--bc-border);
+  border-bottom: 1px solid var(--bc-border);
+}
+
+.germination-seed-entry__age {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bc-card);
   border-bottom: 1px solid var(--bc-border);
 }
 
@@ -2174,34 +2277,56 @@ button.germination-kan-contents__row {
   }
 
   .germination-seed-entry__topline {
-    grid-template-columns: 24px minmax(94px, auto) minmax(0, 1fr) auto;
-    gap: 8px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 16px 8px;
+    align-items: start;
     padding: 14px;
   }
 
-  .germination-seed-entry__topline--fixed {
-    grid-template-columns: 24px minmax(94px, auto) minmax(0, 1fr) auto;
-  }
-
+  .germination-seed-entry__topline--fixed,
   .germination-seed-entry__topline--linked,
   .germination-seed-entry__topline--fixed.germination-seed-entry__topline--linked {
-    grid-template-columns: 24px minmax(0, 1fr) auto;
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .germination-seed-entry__selector {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .germination-seed-entry__heading {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .germination-seed-entry__topline .germination-entry-origin {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+  }
+
+  .germination-seed-entry__topline .germination-entry-origin legend {
+    width: 100%;
+    margin: 0 0 4px;
+  }
+
+  .germination-seed-entry__identity-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 0 14px 14px;
   }
 
   .germination-seed-entry__remove {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    z-index: 1;
+    top: 10px;
+    right: 10px;
   }
 
   .germination-seed-entry {
     position: relative;
-  }
-
-  .germination-seed-entry__quantity {
-    grid-column: 3 / -1;
-    grid-row: 2;
-    justify-items: start;
   }
 
   .germination-seed-entry__quantity > div {
@@ -2213,7 +2338,8 @@ button.germination-kan-contents__row {
     min-height: 46px;
   }
 
-  .germination-seed-entry__details {
+  .germination-seed-entry__details,
+  .germination-seed-entry__age {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 10px 14px;
   }
@@ -2271,7 +2397,8 @@ button.germination-kan-contents__row {
     font-size: 1.05rem;
   }
 
-  .germination-seed-entry__details {
+  .germination-seed-entry__details,
+  .germination-seed-entry__age {
     grid-template-columns: minmax(0, 1fr);
   }
 

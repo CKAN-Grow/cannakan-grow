@@ -88143,11 +88143,24 @@ function renderGerminationSetupFounderPreview(options = {}) {
               </div>
             </div>
             <div class="germination-lineage-row">
-              <span class="germination-lineage-row__icon" aria-hidden="true">${renderBotanicalCarbonPhaseIconMarkup()}</span>
+              <span class="germination-lineage-row__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true" style="margin: 9px;">
+                  <rect x="3.5" y="2.5" width="17" height="19" rx="2.5"></rect>
+                  <rect x="6.5" y="5.5" width="11" height="13" rx="1.5"></rect>
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M12 9v6M9 12h6"></path>
+                </svg>
+              </span>
               <p><strong>Linked to My Seed Vault</strong><span>This Seed Entry keeps a link to its Vault record.</span></p>
             </div>
             <div class="germination-lineage-row">
-              <span class="germination-lineage-row__icon" aria-hidden="true">▧</span>
+              <span class="germination-lineage-row__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true" style="margin: 9px;">
+                  <path d="M6 2.5h8l4 4V21H6Z"></path>
+                  <path d="M14 2.5v4h4"></path>
+                  <path d="m9 14 2 2 4-5"></path>
+                </svg>
+              </span>
               <p><strong>Saved with this Session</strong><span>When this setup is saved, Grow keeps a copy of these seed details with the Session. Later changes in My Seed Vault will not change the Session’s saved details.</span></p>
             </div>
           </section>
@@ -88742,8 +88755,8 @@ function renderGerminationSetupFounderPreview(options = {}) {
                 <option value="unknown"${entry.sex === "unknown" ? " selected" : ""}>Unknown</option>
               </select>
             </label>
-          ` : '<div class="germination-origin-required-note"><span>Seed evidence</span><strong>Choose an origin above to continue.</strong></div>';
-      const detailsMarkup = `${renderStructureControl(entry)}${evidenceFieldsMarkup}${ageControlMarkup}`;
+          ` : "";
+      const detailsMarkup = `${renderStructureControl(entry)}${evidenceFieldsMarkup}`;
       return `
         <article class="germination-seed-entry${isSelected ? " is-selected" : ""}${state.reviewAttempted && entryValidations.length ? " is-invalid" : ""}" data-germination-entry="${escapeHtml(entry.id)}" tabindex="-1" aria-labelledby="${escapeHtml(entryHeadingId)}">
           <div class="germination-seed-entry__topline${isSingleQuantity ? " germination-seed-entry__topline--fixed" : ""}${hasVaultSelection ? " germination-seed-entry__topline--linked" : ""}">
@@ -88753,17 +88766,27 @@ function renderGerminationSetupFounderPreview(options = {}) {
             <div class="germination-seed-entry__heading">
               <span class="germination-seed-entry__index" id="${escapeHtml(entryHeadingId)}">${escapeHtml(entryHeading)}</span>
             </div>
-            ${hasVaultSelection ? "" : `<div class="germination-seed-entry__identity">
+            <fieldset class="germination-entry-origin">
+              <legend>Seed Entry origin</legend>
+              <label><input type="radio" name="germination-origin-${escapeHtml(entry.id)}" value="vault" data-germination-origin-choice${isVault ? " checked" : ""}><span>Choose from My Seed Vault</span></label>
+              <label><input type="radio" name="germination-origin-${escapeHtml(entry.id)}" value="manual" data-germination-origin-choice${isManual ? " checked" : ""}><span>Enter manually</span></label>
+            </fieldset>
+            <button type="button" class="germination-seed-entry__remove" data-germination-remove-entry aria-label="Remove ${escapeHtml(entryHeading)}">×</button>
+          </div>
+          <div class="germination-seed-entry__identity-row">
+            <div class="germination-seed-entry__identity">
               <span class="germination-seed-entry__leaf" aria-hidden="true">${renderBotanicalCarbonPhaseIconMarkup()}</span>
               <div>
                 ${isVault
-                  ? `<strong>${escapeHtml(hasVaultSelection ? entry.variety : "Choose from My Seed Vault")}</strong>`
+                  ? hasVaultSelection
+                    ? renderVaultOriginControl(entry)
+                    : `<strong>Choose from My Seed Vault</strong><small>Choose from My Seed Vault</small>${renderVaultOriginControl(entry)}`
                   : isManual
                     ? `<label><span>Variety</span><input type="text" value="${escapeHtml(entry.variety)}" placeholder="Seed variety" data-germination-entry-field="variety"></label>`
-                    : '<strong>Choose an origin</strong>'}
-                <small>${isVault ? "Choose from My Seed Vault" : isManual ? "Enter manually" : "Origin required"}</small>
+                    : '<strong>Choose an origin</strong><small>Origin required</small>'}
+                ${isManual ? "<small>Enter manually</small>" : ""}
               </div>
-            </div>`}
+            </div>
             ${isSingleQuantity ? "" : `<div class="germination-seed-entry__quantity">
               <span>Quantity</span>
               <div>
@@ -88772,19 +88795,10 @@ function renderGerminationSetupFounderPreview(options = {}) {
                     <button type="button" data-germination-quantity="increase" aria-label="Increase ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${cannotIncrease ? " disabled" : ""}>+</button>
               </div>
             </div>`}
-            <button type="button" class="germination-seed-entry__remove" data-germination-remove-entry aria-label="Remove ${escapeHtml(entryHeading)}">×</button>
           </div>
-          <fieldset class="germination-entry-origin">
-            <legend>Seed Entry origin</legend>
-            <label><input type="radio" name="germination-origin-${escapeHtml(entry.id)}" value="vault" data-germination-origin-choice${isVault ? " checked" : ""}><span>Choose from My Seed Vault</span></label>
-            <label><input type="radio" name="germination-origin-${escapeHtml(entry.id)}" value="manual" data-germination-origin-choice${isManual ? " checked" : ""}><span>Enter manually</span></label>
-          </fieldset>
-          ${isVault
-            ? renderVaultOriginControl(entry)
-            : isManual
-              ? '<p class="germination-entry-lineage-note germination-entry-lineage-note--manual">Retained evidence is now manually controlled. No Seed Vault relationship remains, and this entry has no Vault inventory effect.</p>'
-              : '<p class="germination-entry-origin-prompt">Choose an origin to add seed evidence. No Seed Vault record is selected.</p>'}
+          ${isManual ? '<p class="germination-entry-lineage-note germination-entry-lineage-note--manual">Retained evidence is now manually controlled. No Seed Vault relationship remains, and this entry has no Vault inventory effect.</p>' : ""}
           ${detailsMarkup ? `<div class="germination-seed-entry__details">${detailsMarkup}</div>` : ""}
+          ${ageControlMarkup ? `<div class="germination-seed-entry__age">${ageControlMarkup}</div>` : ""}
           ${isManual ? `<div class="germination-seed-entry__evidence">
             <span>Added for this Session</span>
             <strong>${escapeHtml(getEntryEvidenceLabel(getEntryAge(entry)))}</strong>
