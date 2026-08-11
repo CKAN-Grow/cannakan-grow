@@ -100,6 +100,7 @@ const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
+const GERMINATION_SETUP_OPERATION_STORAGE_PREFIX = "cannakanGrowGerminationSetupOperation";
 const SEED_VAULT_ENTRY_WRITE_COLUMNS = Object.freeze([
   "id",
   "user_id",
@@ -1711,6 +1712,28 @@ const METHOD_TYPE_CONFIG = Object.freeze({
 });
 const METHOD_TYPE_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL_SOAK", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
 const METHOD_TYPE_SELECTION_ORDER = Object.freeze(["KAN", "TRA", "PAPER_TOWEL", "ROCKWOOL", "RAPID_ROOTER", "WATER_SOAK", "DIRECT_SOW", "OTHER"]);
+const GERMINATION_SETUP_METHOD_SELECTION_ORDER = Object.freeze([
+  "KAN",
+  "ROCKWOOL",
+  "RAPID_ROOTER",
+  "DIRECT_SOW",
+  "PAPER_TOWEL",
+  "PAPER_TOWEL_SOAK",
+  "WATER_SOAK",
+  "OTHER",
+  "TRA",
+]);
+const GERMINATION_SETUP_METHOD_RULES = Object.freeze({
+  KAN: Object.freeze({ label: "KAN®", structureLabel: "KAN® partition", prefix: "P", kind: "kan", maximumEntries: 8, quantityMode: "grouped" }),
+  ROCKWOOL: Object.freeze({ label: "Rockwool", structureLabel: "Cube", prefix: "Cube ", kind: "positioned", quantityMode: "single" }),
+  RAPID_ROOTER: Object.freeze({ label: "Starter Plug", structureLabel: "Plug", prefix: "Plug ", kind: "positioned", quantityMode: "single" }),
+  DIRECT_SOW: Object.freeze({ label: "Direct Sow", structureLabel: "Planting position", prefix: "Planting position ", kind: "positioned", quantityMode: "single" }),
+  PAPER_TOWEL: Object.freeze({ label: "Paper Towel", structureLabel: "Shared towel", prefix: "", kind: "shared", quantityMode: "grouped", sharedStages: ["towel"] }),
+  PAPER_TOWEL_SOAK: Object.freeze({ label: "Soak + Paper Towel", structureLabel: "Shared glass-to-towel setup", prefix: "", kind: "shared", quantityMode: "grouped", sharedStages: ["glass", "towel"] }),
+  WATER_SOAK: Object.freeze({ label: "Water Glass", structureLabel: "Shared glass", prefix: "", kind: "shared", quantityMode: "grouped", sharedStages: ["glass"] }),
+  OTHER: Object.freeze({ label: "Other", structureLabel: "Group or position label", prefix: "", kind: "other", quantityMode: "grouped" }),
+  TRA: Object.freeze({ label: "TRā", structureLabel: "TRā partition", prefix: "", kind: "unavailable", quantityMode: "grouped", unavailable: true }),
+});
 const SINGLE_SEED_POSITION_METHOD_IDS = Object.freeze(["ROCKWOOL", "RAPID_ROOTER", "DIRECT_SOW"]);
 const SINGLE_SEED_POSITION_METHOD_SET = new Set(SINGLE_SEED_POSITION_METHOD_IDS);
 const SINGLE_SEED_POSITION_RESULT_MESSAGE = "Enter 0 or 1 for this physical seed position.";
@@ -44533,6 +44556,16 @@ function render() {
       }));
       return;
     }
+    if (id === "germination-setup") {
+      void renderConnectedGerminationSetup(subroute || "", "KAN");
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sessions",
+        pageKey: "germination-setup",
+        pageLabel: "Germination Setup",
+        pagePath: rawRoute ? `#${rawRoute}` : "#new/germination-setup",
+      }));
+      return;
+    }
     const requestedEntryPath = normalizeSessionEntryPath(id || "");
     if (requestedEntryPath === SESSION_ENTRY_PATH.GROW) {
       renderSessionForm("KAN", requestedEntryPath);
@@ -44547,11 +44580,11 @@ function render() {
     const requestedMethodType = normalizeMethodType(subroute || "");
     if (requestedEntryPath === SESSION_ENTRY_PATH.SEED && subroute && METHOD_TYPE_CONFIG[requestedMethodType]) {
       appState.newSessionSystemType = requestedMethodType;
-      renderSessionForm(requestedMethodType, requestedEntryPath);
+      void renderConnectedGerminationSetup("", requestedMethodType);
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "sessions",
-        pageKey: "new-session",
-        pageLabel: "New Session",
+        pageKey: "germination-setup",
+        pageLabel: "Germination Setup",
         pagePath: rawRoute ? `#${rawRoute}` : "#new",
       }));
       return;
@@ -87508,14 +87541,472 @@ function renderBotanicalCarbonPhaseIconMarkup() {
   `;
 }
 
-function renderGerminationSetupFounderPreview() {
-  if (!canUseDeveloperScenarios()) {
+function normalizeGerminationSetupSessionId(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(normalized)
+    ? normalized
+    : "";
+}
+
+function normalizeGerminationSetupSeedType(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["not_applicable", "not applicable"].includes(normalized)) return "not_applicable";
+  if (["fast_flower", "fast flower"].includes(normalized)) return "fast_flower";
+  if (normalized.includes("auto")) return "autoflower";
+  if (normalized === "photoperiod") return "photoperiod";
+  return "unknown";
+}
+
+function normalizeGerminationSetupSeedSex(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["not_applicable", "not applicable"].includes(normalized)) return "not_applicable";
+  if (normalized.includes("fem")) return "feminized";
+  if (normalized === "regular") return "regular";
+  return "unknown";
+}
+
+function getGerminationSetupSeedTypeLabel(value = "") {
+  return {
+    not_applicable: "Not applicable",
+    photoperiod: "Photoperiod",
+    autoflower: "Autoflower",
+    fast_flower: "Fast Flower",
+    unknown: "Unknown",
+  }[normalizeGerminationSetupSeedType(value)] || "Unknown";
+}
+
+function getGerminationSetupSeedSexLabel(value = "") {
+  return {
+    not_applicable: "Not applicable",
+    feminized: "Feminized",
+    regular: "Regular",
+    unknown: "Unknown",
+  }[normalizeGerminationSetupSeedSex(value)] || "Unknown";
+}
+
+function getGerminationSetupMethodRule(methodType = "") {
+  return GERMINATION_SETUP_METHOD_RULES[normalizeMethodType(methodType)] || GERMINATION_SETUP_METHOD_RULES.KAN;
+}
+
+function getGerminationSetupMethodLabel(methodType = "") {
+  return getGerminationSetupMethodRule(methodType).label;
+}
+
+function getGerminationSetupAssignmentNumber(methodType = "", assignment = "") {
+  const rule = getGerminationSetupMethodRule(methodType);
+  if (!rule.prefix) return null;
+  const escapedPrefix = rule.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = String(assignment || "").trim().match(new RegExp(`^${escapedPrefix}(\\d+)$`, "i"));
+  return match ? Number(match[1]) : null;
+}
+
+function getNextGerminationSetupAssignment(methodType = "", entries = []) {
+  const rule = getGerminationSetupMethodRule(methodType);
+  if (["other", "shared", "unavailable"].includes(rule.kind)) return "";
+  const used = new Set((entries || [])
+    .map((entry) => getGerminationSetupAssignmentNumber(methodType, entry?.partitionLabel))
+    .filter((value) => Number.isInteger(value) && value > 0));
+  const maximum = Number(rule.maximumEntries) || Number.POSITIVE_INFINITY;
+  for (let value = 1; value <= maximum; value += 1) {
+    if (!used.has(value)) return `${rule.prefix}${value}`;
+  }
+  return "";
+}
+
+function getInitialGerminationSetupAssignment(methodType = "", entries = []) {
+  return getNextGerminationSetupAssignment(methodType, entries);
+}
+
+function getGerminationSetupVaultAge(vaultEntry = null) {
+  const yearAcquired = Number(vaultEntry?.year_acquired);
+  return Number.isInteger(yearAcquired) && yearAcquired >= 1900 && yearAcquired <= new Date().getFullYear()
+    ? { ageReferenceKind: "acquisition_year", ageSourceValue: String(yearAcquired), agePrecision: "Year precision" }
+    : null;
+}
+
+function getGerminationSetupEntryVaultAge(entry = null, vaultEntries = []) {
+  if (entry?.referenceType !== "vault" || !entry?.vaultEntryId) return null;
+  const vaultEntry = (vaultEntries || []).find((candidate) => (
+    normalizeGerminationSetupSessionId(candidate?.id) === normalizeGerminationSetupSessionId(entry.vaultEntryId)
+  ));
+  return getGerminationSetupVaultAge(vaultEntry);
+}
+
+function getEffectiveGerminationSetupEntryAge(entry = null, vaultEntries = []) {
+  return getGerminationSetupEntryVaultAge(entry, vaultEntries) || {
+    ageReferenceKind: entry?.ageReferenceKind || "unknown",
+    ageSourceValue: String(entry?.ageSourceValue || ""),
+    agePrecision: entry?.agePrecision || "Unknown",
+  };
+}
+
+function getGerminationSetupEntryHeading(methodType = "", entry = null, index = 0) {
+  const normalizedMethodType = normalizeMethodType(methodType);
+  const entryNumber = Math.max(1, Number(index) + 1);
+  const assignmentNumber = getGerminationSetupAssignmentNumber(normalizedMethodType, entry?.partitionLabel);
+  if (normalizedMethodType === "KAN") return String(entry?.partitionLabel || `P${entryNumber}`).trim();
+  if (normalizedMethodType === "ROCKWOOL") return `Cube ${assignmentNumber || entryNumber}`;
+  if (normalizedMethodType === "RAPID_ROOTER") return `Plug ${assignmentNumber || entryNumber}`;
+  if (normalizedMethodType === "DIRECT_SOW") return `Planting Location ${assignmentNumber || entryNumber}`;
+  if (normalizedMethodType === "WATER_SOAK") return `Glass ${entryNumber}`;
+  if (normalizedMethodType === "PAPER_TOWEL") return `Paper Towel ${entryNumber}`;
+  if (normalizedMethodType === "PAPER_TOWEL_SOAK") return `Glass ${entryNumber} → Paper Towel ${entryNumber}`;
+  if (normalizedMethodType === "OTHER") return String(entry?.partitionLabel || `Custom Entry ${entryNumber}`).trim();
+  if (normalizedMethodType === "TRA") return `TRā Partition ${entryNumber}`;
+  return `Seed Entry ${entryNumber}`;
+}
+
+function getGerminationSetupPropagationUnitCopy(methodType = "") {
+  return {
+    ROCKWOOL: "1 seed per cube",
+    RAPID_ROOTER: "1 seed per plug",
+    DIRECT_SOW: "1 seed per planting location",
+  }[normalizeMethodType(methodType)] || "";
+}
+
+function buildGerminationSetupManualEntry(methodType = "KAN", entries = []) {
+  return {
+    id: `germination-manual-${crypto.randomUUID()}`,
+    partitionLabel: getInitialGerminationSetupAssignment(methodType, entries),
+    variety: "",
+    source: "",
+    breeder: "",
+    seedType: "unknown",
+    sex: "unknown",
+    quantity: 1,
+    referenceType: "",
+    vaultEntryId: "",
+    vaultAvailable: null,
+    committedVaultQuantity: 0,
+    ageReferenceKind: "unknown",
+    ageSourceValue: "",
+    agePrecision: "Unknown",
+    provenance: "",
+  };
+}
+
+function formatGerminationSetupDate(value = "") {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "Incomplete";
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (Number.isNaN(date.getTime())) return "Incomplete";
+  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" }).format(date);
+}
+
+function getGerminationSetupOperationStorageKey(sessionId = "") {
+  return `${GERMINATION_SETUP_OPERATION_STORAGE_PREFIX}:${normalizeGerminationSetupSessionId(sessionId) || "new"}`;
+}
+
+function getOrCreateGerminationSetupOperation(sessionId = "", expectedRevision = 0, setup = null) {
+  const storageKey = getGerminationSetupOperationStorageKey(sessionId);
+  const inputFingerprint = JSON.stringify({
+    sessionId: normalizeGerminationSetupSessionId(sessionId),
+    expectedRevision: Math.max(0, Number(expectedRevision) || 0),
+    setup,
+  });
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+    if (normalizeGerminationSetupSessionId(stored?.operationId)
+      && stored?.inputFingerprint === inputFingerprint) {
+      return stored.operationId;
+    }
+  } catch (error) {
+    console.warn("[Germination Setup] Could not read the pending save operation.", error);
+  }
+
+  const operationId = crypto.randomUUID();
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify({ operationId, inputFingerprint }));
+  } catch (error) {
+    console.warn("[Germination Setup] Could not persist the pending save operation.", error);
+  }
+  return operationId;
+}
+
+function retireGerminationSetupOperation(sessionId = "") {
+  try {
+    sessionStorage.removeItem(getGerminationSetupOperationStorageKey(sessionId));
+  } catch (error) {
+    console.warn("[Germination Setup] Could not retire the completed save operation.", error);
+  }
+}
+
+async function fetchGerminationSetupVaultEntries() {
+  if (!appState.supabase || isLocalDevQaBypassActive()) {
+    throw new Error("Connected Germination Setup requires the configured Supabase client.");
+  }
+  await getAuthenticatedSupabaseUser("Please sign in to load Germination Setup inventory.");
+  const { data, error } = await appState.supabase.rpc("get_germination_setup_vault_entries_v1");
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchGerminationSetup(sessionId = "") {
+  const normalizedSessionId = normalizeGerminationSetupSessionId(sessionId);
+  if (!normalizedSessionId) throw new Error("A valid Session identity is required.");
+  if (!appState.supabase || isLocalDevQaBypassActive()) {
+    throw new Error("Connected Germination Setup requires the configured Supabase client.");
+  }
+  await getAuthenticatedSupabaseUser("Please sign in to load Germination Setup.");
+  const { data, error } = await appState.supabase.rpc("get_germination_setup_v1", {
+    p_session_id: normalizedSessionId,
+  });
+  if (error) throw error;
+  return data;
+}
+
+function buildGerminationSetupSaveInput(state = null) {
+  const methodType = normalizeMethodType(state?.methodType || "");
+  const methodRule = getGerminationSetupMethodRule(methodType);
+  return {
+    session_name: String(state?.sessionName || "").trim(),
+    proposed_start: String(state?.proposedStart || "").trim(),
+    method_type: methodType,
+    tracking_mode: state?.trackingMode === "same" ? "same" : "mixed",
+    entries: (state?.entries || []).map((entry) => {
+      const effectiveAge = getEffectiveGerminationSetupEntryAge(entry, state?.vaultEntries || []);
+      return {
+        id: String(entry?.id || "").trim() || crypto.randomUUID(),
+        position: methodRule.kind === "shared" ? null : String(entry?.partitionLabel || "").trim(),
+        quantity: Math.max(1, Math.floor(Number(entry?.quantity) || 1)),
+        reference_type: entry?.referenceType === "vault" ? "vault" : "manual",
+        vault_entry_id: entry?.referenceType === "vault" ? String(entry?.vaultEntryId || "").trim() : null,
+        variety: String(entry?.variety || "").trim(),
+        source: String(entry?.source || "").trim(),
+        breeder: String(entry?.breeder || "").trim(),
+        seed_type: normalizeGerminationSetupSeedType(entry?.seedType),
+        sex: normalizeGerminationSetupSeedSex(entry?.sex),
+        age_reference_kind: ["acquisition_year", "user_statement"].includes(effectiveAge.ageReferenceKind)
+          ? effectiveAge.ageReferenceKind
+          : "unknown",
+        age_source_value: String(effectiveAge.ageSourceValue || "").trim(),
+      };
+    }),
+  };
+}
+
+async function saveConnectedGerminationSetup(state = null) {
+  const sessionId = normalizeGerminationSetupSessionId(state?.sessionId) || crypto.randomUUID();
+  const expectedRevision = Math.max(0, Number(state?.revision) || 0);
+  const setup = buildGerminationSetupSaveInput(state);
+  const operationId = getOrCreateGerminationSetupOperation(sessionId, expectedRevision, setup);
+  const { data, error } = await appState.supabase.rpc("save_germination_setup_v1", {
+    p_session_id: sessionId,
+    p_operation_id: operationId,
+    p_expected_revision: expectedRevision,
+    p_setup: setup,
+  });
+  if (error) throw error;
+  if (!data || data.operation_kind !== "save_germination_setup"
+    || !["success", "no_change"].includes(data.status)) {
+    throw new Error("Germination Setup returned an incomplete save result.");
+  }
+  retireGerminationSetupOperation(state?.sessionId || sessionId);
+  if (state?.sessionId && state.sessionId !== sessionId) {
+    retireGerminationSetupOperation(sessionId);
+  }
+  return data;
+}
+
+function buildGerminationSetupEntryFromVault(vaultEntry = null, methodType = "KAN", entries = []) {
+  const vaultEntryId = normalizeGerminationSetupSessionId(vaultEntry?.id);
+  if (!vaultEntryId) return null;
+  const vaultAge = getGerminationSetupVaultAge(vaultEntry);
+  return {
+    id: `germination-vault-${vaultEntryId}`,
+    partitionLabel: getInitialGerminationSetupAssignment(methodType, entries),
+    variety: String(vaultEntry?.seed_variety || "").trim(),
+    source: String(vaultEntry?.source || "").trim(),
+    breeder: String(vaultEntry?.breeder || "").trim(),
+    seedType: normalizeGerminationSetupSeedType(vaultEntry?.seed_type),
+    sex: normalizeGerminationSetupSeedSex(vaultEntry?.sex),
+    quantity: 1,
+    referenceType: "vault",
+    vaultEntryId,
+    vaultAvailable: Math.max(0, Number(vaultEntry?.quantity) || 0),
+    committedVaultQuantity: 0,
+    ageReferenceKind: vaultAge?.ageReferenceKind || "unknown",
+    ageSourceValue: vaultAge?.ageSourceValue || "",
+    agePrecision: vaultAge?.agePrecision || "Unknown",
+    provenance: "My Seed Vault",
+  };
+}
+
+function buildGerminationSetupEntryFromSaved(entry = null, inventoryByVaultId = new Map(), index = 0) {
+  const vaultEntryId = normalizeGerminationSetupSessionId(entry?.vault_entry_id);
+  const referenceType = entry?.reference_type === "vault" && vaultEntryId ? "vault" : "manual";
+  const inventory = referenceType === "vault" ? inventoryByVaultId.get(vaultEntryId) || {} : {};
+  const seedAge = entry?.seed_age && typeof entry.seed_age === "object" ? entry.seed_age : {};
+  return {
+    id: String(entry?.id || "").trim() || crypto.randomUUID(),
+    partitionLabel: String(entry?.position || "").trim(),
+    variety: String(entry?.variety || "").trim(),
+    source: String(entry?.source || "").trim(),
+    breeder: String(entry?.breeder || "").trim(),
+    seedType: normalizeGerminationSetupSeedType(entry?.seed_type),
+    sex: normalizeGerminationSetupSeedSex(entry?.sex),
+    quantity: Math.max(1, Math.floor(Number(entry?.quantity) || 1)),
+    referenceType,
+    vaultEntryId: referenceType === "vault" ? vaultEntryId : "",
+    vaultAvailable: referenceType === "vault" ? Math.max(0, Number(inventory?.available_quantity) || 0) : null,
+    committedVaultQuantity: referenceType === "vault" ? Math.max(0, Number(inventory?.allocated_quantity) || 0) : 0,
+    ageReferenceKind: ["acquisition_year", "user_statement"].includes(seedAge?.reference_kind)
+      ? seedAge.reference_kind
+      : "unknown",
+    ageSourceValue: String(seedAge?.source_value || "").trim(),
+    agePrecision: String(seedAge?.precision || "Unknown").trim(),
+    provenance: referenceType === "vault" ? "My Seed Vault" : "Grower-provided Session evidence",
+  };
+}
+
+function buildConnectedGerminationSetupState(savedSetup = null, vaultEntries = [], initialMethodType = "KAN") {
+  if (savedSetup?.setup && savedSetup?.session) {
+    const inventoryByVaultId = new Map((savedSetup.vault_inventory || []).map((entry) => [
+      normalizeGerminationSetupSessionId(entry?.vault_entry_id),
+      entry,
+    ]));
+    const entries = (savedSetup.setup.entries || [])
+      .map((entry, index) => buildGerminationSetupEntryFromSaved(entry, inventoryByVaultId, index));
+    return {
+      connected: true,
+      persisted: true,
+      sessionId: normalizeGerminationSetupSessionId(savedSetup.session.id),
+      revision: Math.max(1, Number(savedSetup.revision) || 1),
+      sessionName: String(savedSetup.setup.session_name || savedSetup.session.session_name || "").trim(),
+      proposedStart: String(savedSetup.setup.proposed_start || savedSetup.session.proposed_start || "").slice(0, 10),
+      methodType: normalizeMethodType(savedSetup.setup.method_type || savedSetup.session.method_type || initialMethodType),
+      trackingMode: savedSetup.setup.tracking_mode === "same" ? "same" : "mixed",
+      selectedEntryId: entries[0]?.id || "",
+      entries,
+      vaultEntries,
+    };
+  }
+
+  const methodType = normalizeMethodType(initialMethodType || "KAN");
+  const entries = [buildGerminationSetupManualEntry(methodType, [])];
+  return {
+    connected: true,
+    persisted: false,
+    sessionId: crypto.randomUUID(),
+    revision: 0,
+    sessionName: "",
+    proposedStart: "",
+    methodType,
+    trackingMode: "mixed",
+    selectedEntryId: entries[0].id,
+    entries,
+    vaultEntries,
+  };
+}
+
+function renderConnectedGerminationSetupLoading(message = "Loading your Germination Setup…") {
+  app.innerHTML = `
+    <section class="germination-setup-preview" data-germination-setup-preview data-preview-state="incomplete">
+      <header class="germination-setup-preview__header">
+        <div><h1>Germination Setup</h1><p>Add the seeds for this Session and review their setup details.</p></div>
+        <p class="germination-setup-preview__status" role="status">${escapeHtml(message)}</p>
+      </header>
+    </section>
+  `;
+}
+
+async function renderConnectedGerminationSetup(sessionId = "", initialMethodType = "KAN") {
+  const requestedSessionId = String(sessionId || "").trim();
+  const normalizedSessionId = normalizeGerminationSetupSessionId(requestedSessionId);
+  if (requestedSessionId && !normalizedSessionId) {
+    renderConnectedGerminationSetupLoading("This Germination Setup link is invalid.");
+    return;
+  }
+  renderConnectedGerminationSetupLoading();
+  try {
+    const [vaultEntries, savedSetup] = await Promise.all([
+      fetchGerminationSetupVaultEntries(),
+      normalizedSessionId ? fetchGerminationSetup(normalizedSessionId) : Promise.resolve(null),
+    ]);
+    renderGerminationSetupFounderPreview({
+      connected: true,
+      initialState: buildConnectedGerminationSetupState(savedSetup, vaultEntries, initialMethodType),
+    });
+  } catch (error) {
+    console.error("[Germination Setup] Connected load failed.", error);
+    renderConnectedGerminationSetupLoading(error?.message || "Germination Setup could not be loaded.");
+  }
+}
+
+function buildGerminationSetupFounderPreviewEntries() {
+  return [
+    {
+      id: "preview-seed-entry-northern-lights",
+      partitionLabel: "P1",
+      variety: "Northern Lights",
+      source: "Humboldt Seed Company",
+      breeder: "Humboldt Seed Company",
+      seedType: "photoperiod",
+      sex: "feminized",
+      quantity: 4,
+      referenceType: "vault",
+      vaultEntryId: "preview-vault-northern-lights-2024",
+      vaultAvailable: 12,
+      ageReferenceKind: "acquisition_year",
+      ageSourceValue: "2024",
+      agePrecision: "Year precision",
+      provenance: "My Seed Vault",
+    },
+    {
+      id: "preview-seed-entry-green-crack",
+      partitionLabel: "P2",
+      variety: "Green Crack",
+      source: "",
+      breeder: "",
+      seedType: "photoperiod",
+      sex: "unknown",
+      quantity: 2,
+      referenceType: "manual",
+      vaultEntryId: "",
+      vaultAvailable: null,
+      ageReferenceKind: "unknown",
+      ageSourceValue: "",
+      agePrecision: "Unknown",
+      provenance: "Grower-provided Session evidence",
+    },
+  ];
+}
+
+function renderBotanicalCarbonPhaseIconMarkup() {
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path d="M12 20v-7"></path>
+      <path d="M12 13c0-4 3-7 7-7 0 4-3 7-7 7Z"></path>
+      <path d="M12 15c0-3.2-2.6-5.4-6-5.4 0 3.4 2.3 5.4 6 5.4Z"></path>
+    </svg>
+  `;
+}
+
+function renderGerminationSetupFounderPreview(options = {}) {
+  const connected = options.connected === true;
+  if (!connected && !canUseDeveloperScenarios()) {
     renderSessionsList();
     return;
   }
 
-  const methodOptions = METHOD_TYPE_SELECTION_ORDER.map((methodId) => `
-    <option value="${escapeHtml(methodId)}"${methodId === "KAN" ? " selected" : ""}>${escapeHtml(getMethodTypeSelectionLabel(methodId))}</option>
+  const initialState = connected && options.initialState
+    ? options.initialState
+    : {
+      connected: false,
+      persisted: false,
+      sessionId: "",
+      revision: 0,
+      sessionName: "Northern Lights + Green Crack",
+      proposedStart: "2026-08-09",
+      methodType: "KAN",
+      trackingMode: "mixed",
+      selectedEntryId: "preview-seed-entry-northern-lights",
+      entries: buildGerminationSetupFounderPreviewEntries(),
+      vaultEntries: [],
+    };
+
+  const methodOptions = GERMINATION_SETUP_METHOD_SELECTION_ORDER.map((methodId) => `
+    <option value="${escapeHtml(methodId)}"${methodId === normalizeMethodType(initialState.methodType) ? " selected" : ""}${methodId === "TRA" ? " disabled" : ""}>${escapeHtml(methodId === "TRA" ? "TRā — Coming Soon" : getGerminationSetupMethodLabel(methodId))}</option>
   `).join("");
 
   app.innerHTML = `
@@ -87526,8 +88017,10 @@ function renderGerminationSetupFounderPreview() {
           <p>Add the seeds for this Session and review their setup details.</p>
         </div>
         <p class="germination-setup-preview__status" role="status">
-          <span aria-hidden="true">&lt;/&gt;</span>
-          Development preview — not saved
+          ${connected ? "" : '<span aria-hidden="true">&lt;/&gt;</span>'}
+          <span data-germination-connection-status>${connected
+            ? (initialState.persisted ? "Saved setup · Germination has not started." : "Setup draft · Not saved")
+            : "Development preview — not saved"}</span>
         </p>
       </header>
 
@@ -87553,7 +88046,7 @@ function renderGerminationSetupFounderPreview() {
           <span class="germination-progress-preview__icon">${renderBotanicalCarbonPhaseIconMarkup()}</span>
           <div>
             <h2 id="germination-progress-preview-title">Germination Progress</h2>
-            <p>Setup draft · Germination has not started.</p>
+            <p>${connected && initialState.persisted ? "Setup saved · Germination has not started." : "Setup draft · Germination has not started."}</p>
           </div>
         </div>
         <div class="germination-progress-preview__measure">
@@ -87573,16 +88066,16 @@ function renderGerminationSetupFounderPreview() {
                 <h2 id="germination-identity-title">Session identity</h2>
                 <p>These Session details are still a draft and do not start germination.</p>
               </div>
-              <span class="botanical-status botanical-status--draft">Draft</span>
+              <span class="botanical-status botanical-status--draft" data-germination-draft-badge>Draft</span>
             </div>
             <div class="germination-identity-fields">
               <label>
                 <span>Session name</span>
-                <input type="text" value="Northern Lights + Green Crack" maxlength="80" data-germination-session-name>
+                <input type="text" value="${escapeHtml(initialState.sessionName)}" maxlength="80" data-germination-session-name>
               </label>
               <label>
                 <span>Proposed start</span>
-                <input type="date" value="2026-08-09" data-germination-start-date>
+                <input type="date" value="${escapeHtml(initialState.proposedStart)}" data-germination-start-date>
               </label>
               <label>
                 <span>Germination method</span>
@@ -87590,6 +88083,9 @@ function renderGerminationSetupFounderPreview() {
               </label>
             </div>
           </section>
+
+          <section class="botanical-panel germination-method-structure" aria-labelledby="germination-method-structure-title" data-germination-method-structure></section>
+          <p class="germination-method-change-notice" data-germination-method-notice role="status" aria-live="polite" hidden></p>
 
           <section class="botanical-panel" aria-labelledby="germination-tracking-title">
             <div class="botanical-panel__heading">
@@ -87601,7 +88097,7 @@ function renderGerminationSetupFounderPreview() {
             <fieldset class="germination-tracking-choices">
               <legend class="sr-only">Seed-age recording choice</legend>
               <label class="germination-tracking-choice">
-                <input type="radio" name="germination-preview-tracking" value="same">
+                <input type="radio" name="germination-preview-tracking" value="same"${initialState.trackingMode === "same" ? " checked" : ""}>
                 <span class="germination-tracking-choice__indicator" aria-hidden="true"></span>
                 <span>
                   <strong>Same for all Seed Entries</strong>
@@ -87609,7 +88105,7 @@ function renderGerminationSetupFounderPreview() {
                 </span>
               </label>
               <label class="germination-tracking-choice">
-                <input type="radio" name="germination-preview-tracking" value="mixed" checked>
+                <input type="radio" name="germination-preview-tracking" value="mixed"${initialState.trackingMode === "same" ? "" : " checked"}>
                 <span class="germination-tracking-choice__indicator" aria-hidden="true"></span>
                 <span>
                   <strong>Set for each Seed Entry</strong>
@@ -87617,48 +88113,26 @@ function renderGerminationSetupFounderPreview() {
                 </span>
               </label>
             </fieldset>
-            <p class="germination-tracking-note">If you don’t know the seed age, you can select Unknown.</p>
+            <p class="germination-tracking-note" data-germination-tracking-note>If you don’t know the seed age, you can select Unknown.</p>
           </section>
 
           <section class="botanical-panel botanical-panel--entries" aria-labelledby="germination-seed-entries-title">
             <div class="botanical-panel__heading botanical-panel__heading--entries">
               <div>
                 <h2 id="germination-seed-entries-title">Seed Entries <span data-germination-entry-count></span></h2>
-                <p>Add each variety or seed group you plan to germinate. This KAN setup supports up to 8 Seed Entries.</p>
+                <p data-germination-entry-helper></p>
               </div>
-              <button type="button" class="botanical-compact-action" data-germination-add-entry>
-                <span aria-hidden="true">+</span> Add Seed Entry
-              </button>
+              <button type="button" class="botanical-compact-action germination-reset-setup" data-germination-reset-setup>Reset Setup</button>
             </div>
             <div class="germination-seed-entry-list" data-germination-entry-list></div>
-            <p class="germination-setup-validation" data-germination-validation role="status" aria-live="polite"></p>
-          </section>
-        </main>
-
-        <aside class="germination-setup-preview__aside">
-          <section class="botanical-panel botanical-panel--summary" aria-labelledby="germination-summary-title">
-            <div class="botanical-panel__heading">
-              <div>
-                <h2 id="germination-summary-title">Setup summary</h2>
-                <p>A quick summary of this draft setup.</p>
-              </div>
-            </div>
-            <dl class="germination-setup-summary" data-germination-summary></dl>
-          </section>
-
-          <section class="botanical-panel botanical-panel--inventory" aria-labelledby="germination-inventory-title">
-            <div class="botanical-panel__heading">
-              <div>
-                <h2 id="germination-inventory-title">Inventory impact</h2>
-                <p>See the planned use from My Seed Vault for this setup.</p>
-              </div>
-            </div>
-            <div class="germination-inventory-metrics" data-germination-inventory></div>
-            <div class="germination-inventory-breakdown" data-germination-inventory-breakdown></div>
-            <p class="germination-inventory-calculation-note">Only Seed Entries linked to My Seed Vault are included. Manually entered seeds do not affect Vault inventory.</p>
-            <div class="germination-inventory-note">
-              <span class="germination-inventory-note__icon" aria-hidden="true">i</span>
-              <p>Reviewing this setup does not reserve or deduct seeds.</p>
+            <div class="germination-lower-add-entry" data-germination-lower-add-entry></div>
+            <p class="germination-capacity-message" data-germination-capacity-message role="status"></p>
+            <div class="germination-review-action germination-review-action--primary">
+              <button type="button" class="botanical-primary-action" data-germination-review-setup>
+                Review Setup
+              </button>
+              <p class="germination-review-action__guidance">Review your setup, then save the Session.</p>
+              <div class="germination-setup-validation" data-germination-validation role="status" aria-live="polite"></div>
             </div>
           </section>
 
@@ -87677,14 +88151,42 @@ function renderGerminationSetupFounderPreview() {
               <p><strong>Saved with this Session</strong><span>When this setup is saved, Grow keeps a copy of these seed details with the Session. Later changes in My Seed Vault will not change the Session’s saved details.</span></p>
             </div>
           </section>
+        </main>
 
-          <div class="germination-review-action">
-            <button type="button" class="botanical-primary-action" data-germination-review-setup>
-              <span aria-hidden="true">✓</span>
-              Review Setup
-            </button>
-            <p>This preview reviews the draft only. It does not save, reserve, deduct, or consume inventory.</p>
+        <aside class="germination-setup-preview__aside">
+          <div class="germination-setup-preview__sticky-rail" data-germination-sticky-rail>
+            <section class="botanical-panel botanical-panel--summary" aria-labelledby="germination-summary-title">
+            <div class="botanical-panel__heading">
+              <div>
+                <h2 id="germination-summary-title">Setup summary</h2>
+                <p>A quick summary of this draft setup.</p>
+              </div>
+            </div>
+            <dl class="germination-setup-summary" data-germination-summary></dl>
+            </section>
+
+            <section class="botanical-panel botanical-panel--inventory" aria-labelledby="germination-inventory-title">
+            <div class="botanical-panel__heading">
+              <div>
+                <h2 id="germination-inventory-title">Inventory impact</h2>
+                <p>See the planned use from My Seed Vault for this setup.</p>
+              </div>
+            </div>
+            <div class="germination-inventory-metrics" data-germination-inventory></div>
+            <div class="germination-inventory-breakdown" data-germination-inventory-breakdown></div>
+            <p class="germination-inventory-calculation-note">Only Seed Entries linked to My Seed Vault are included. Manually entered seeds do not affect Vault inventory.</p>
+            <div class="germination-inventory-note">
+              <span class="germination-inventory-note__icon" aria-hidden="true">i</span>
+              <p>Reviewing this setup does not reserve or deduct seeds.</p>
+            </div>
+            </section>
+
+            <div class="germination-review-action">
+              <button type="button" class="botanical-secondary-action" data-germination-review-setup>Review Setup</button>
+              <p>Review this setup first. The Session is saved only from the review screen.</p>
+            </div>
           </div>
+
         </aside>
       </div>
 
@@ -87695,11 +88197,18 @@ function renderGerminationSetupFounderPreview() {
           <span class="germination-review-dialog__icon" aria-hidden="true">✓</span>
           <h2 id="germination-review-dialog-title">Setup ready for review</h2>
           <p data-germination-review-dialog-summary></p>
+          <div class="germination-review-dialog__entries" data-germination-review-dialog-entries></div>
           <div class="germination-review-dialog__boundary">
-            <strong>Development boundary</strong>
-            <span>No Session or inventory record was created or changed. Coordinated persistence remains unavailable in this preview.</span>
+            <strong>${connected ? "Save boundary" : "Development boundary"}</strong>
+            <span>${connected
+              ? "Saving records this Session’s setup evidence and applies only the shown net Seed Vault inventory change. Reviewing alone changes nothing."
+              : "No Session or inventory record was created or changed. Coordinated persistence remains unavailable in this preview."}</span>
           </div>
-          <button type="button" class="botanical-secondary-action" data-germination-review-close>Return to setup</button>
+          <p class="germination-review-dialog__status" data-germination-save-status role="status" aria-live="polite"></p>
+          <div class="germination-review-dialog__actions">
+            ${connected ? '<button type="button" class="botanical-primary-action" data-germination-save-setup>Save Session</button>' : ""}
+            <button type="button" class="botanical-secondary-action" data-germination-review-close>Return to setup</button>
+          </div>
         </section>
       </div>
     </section>
@@ -87708,19 +88217,89 @@ function renderGerminationSetupFounderPreview() {
   const root = app.querySelector("[data-germination-setup-preview]");
   const entryList = root.querySelector("[data-germination-entry-list]");
   const entryCount = root.querySelector("[data-germination-entry-count]");
+  const methodStructure = root.querySelector("[data-germination-method-structure]");
+  const entryHelper = root.querySelector("[data-germination-entry-helper]");
+  const lowerAddEntry = root.querySelector("[data-germination-lower-add-entry]");
+  const capacityMessage = root.querySelector("[data-germination-capacity-message]");
+  const methodNotice = root.querySelector("[data-germination-method-notice]");
   const summary = root.querySelector("[data-germination-summary]");
   const inventory = root.querySelector("[data-germination-inventory]");
   const inventoryBreakdown = root.querySelector("[data-germination-inventory-breakdown]");
   const validation = root.querySelector("[data-germination-validation]");
-  const reviewButton = root.querySelector("[data-germination-review-setup]");
+  const reviewButtons = [...root.querySelectorAll("[data-germination-review-setup]")];
+  const primaryReviewButton = reviewButtons[0] || null;
   const reviewDialog = root.querySelector("[data-germination-review-dialog]");
+  const reviewDialogEntries = root.querySelector("[data-germination-review-dialog-entries]");
+  const saveButton = root.querySelector("[data-germination-save-setup]");
+  const saveStatus = root.querySelector("[data-germination-save-status]");
+  const trackingSameInput = root.querySelector('input[name="germination-preview-tracking"][value="same"]');
+  const trackingMixedInput = root.querySelector('input[name="germination-preview-tracking"][value="mixed"]');
+  const trackingNote = root.querySelector("[data-germination-tracking-note]");
   const state = {
-    sessionName: "Northern Lights + Green Crack",
-    proposedStart: "2026-08-09",
-    methodType: "KAN",
-    trackingMode: "mixed",
-    selectedEntryId: "preview-seed-entry-northern-lights",
-    entries: buildGerminationSetupFounderPreviewEntries(),
+    connected,
+    persisted: Boolean(initialState.persisted),
+    sessionId: normalizeGerminationSetupSessionId(initialState.sessionId),
+    revision: Math.max(0, Number(initialState.revision) || 0),
+    sessionName: String(initialState.sessionName || ""),
+    proposedStart: String(initialState.proposedStart || ""),
+    methodType: normalizeMethodType(initialState.methodType || "KAN"),
+    trackingMode: initialState.trackingMode === "same" ? "same" : "mixed",
+    selectedEntryId: String(initialState.selectedEntryId || ""),
+    entries: (initialState.entries || []).map((entry) => ({ ...entry })),
+    vaultEntries: (initialState.vaultEntries || []).map((entry) => ({ ...entry })),
+    methodNotice: "",
+    reviewAttempted: false,
+    isSaving: false,
+  };
+
+  const reindexGerminationSetupEntries = () => {
+    const rule = getGerminationSetupMethodRule(state.methodType);
+    if (!["kan", "positioned"].includes(rule.kind)) return;
+    state.entries.forEach((entry, index) => {
+      entry.partitionLabel = `${rule.prefix}${index + 1}`;
+      if (rule.quantityMode === "single") entry.quantity = 1;
+    });
+  };
+  const getEntryVaultAge = (entry = null) => getGerminationSetupEntryVaultAge(entry, state.vaultEntries);
+  const getEntryAge = (entry = null) => getEffectiveGerminationSetupEntryAge(entry, state.vaultEntries);
+  const getVaultAgeConstraint = () => {
+    const knownAges = state.entries.map((entry) => getEntryVaultAge(entry)).filter(Boolean);
+    const uniqueAges = new Map(knownAges.map((age) => [`${age.ageReferenceKind}\u0000${age.ageSourceValue}`, age]));
+    return {
+      conflict: uniqueAges.size > 1,
+      sharedAge: uniqueAges.size === 1 ? [...uniqueAges.values()][0] : null,
+    };
+  };
+  const getSharedSeedAge = (entry = null) => getEntryAge(entry);
+  const applySharedSeedAge = (source = state.entries[0]) => {
+    if (state.trackingMode !== "same" || !source) return;
+    const constraint = getVaultAgeConstraint();
+    if (constraint.conflict) {
+      state.trackingMode = "mixed";
+      return;
+    }
+    const sharedAge = constraint.sharedAge || getSharedSeedAge(source);
+    state.entries.forEach((entry) => {
+      if (!getEntryVaultAge(entry)) Object.assign(entry, sharedAge);
+    });
+  };
+  const syncSeedAgeTracking = () => {
+    const constraint = getVaultAgeConstraint();
+    if (constraint.conflict) state.trackingMode = "mixed";
+    if (state.trackingMode === "same") applySharedSeedAge(constraint.sharedAge ? state.entries.find((entry) => getEntryVaultAge(entry)) : state.entries[0]);
+    if (trackingSameInput) {
+      trackingSameInput.disabled = constraint.conflict;
+      trackingSameInput.checked = state.trackingMode === "same";
+      trackingSameInput.closest(".germination-tracking-choice")?.classList.toggle("is-unavailable", constraint.conflict);
+    }
+    if (trackingMixedInput) trackingMixedInput.checked = state.trackingMode !== "same";
+    if (trackingNote) {
+      trackingNote.textContent = constraint.conflict
+        ? "Linked Vault records contain different acquisition years. Record seed age per entry is required so each Vault value is preserved."
+        : constraint.sharedAge && state.trackingMode === "same"
+          ? `The shared age is derived from linked Vault records (${getEntryEvidenceLabel(constraint.sharedAge)}).`
+          : "If you don’t know the seed age, you can select Unknown.";
+    }
   };
 
   const getEntryEvidenceLabel = (entry) => {
@@ -87732,132 +88311,675 @@ function renderGerminationSetupFounderPreview() {
     }
     return "Seed age unknown";
   };
+  reindexGerminationSetupEntries();
+  syncSeedAgeTracking();
+  const formatGerminationSeedQuantity = (quantity) => {
+    const normalized = Math.max(0, Number(quantity) || 0);
+    return `${normalized} ${normalized === 1 ? "seed" : "seeds"}`;
+  };
+
+  const getMethodCapacityState = () => {
+    const rule = getGerminationSetupMethodRule(state.methodType);
+    const maximum = Number(rule.maximumEntries) || null;
+    return {
+      maximum,
+      canAdd: !maximum || state.entries.length < maximum,
+      message: maximum && state.entries.length >= maximum ? "All 8 KAN® partitions are assigned." : "",
+    };
+  };
+
+  const getSeedAgeValidation = (entry) => {
+    const effectiveAge = getEntryAge(entry);
+    const sourceValue = String(effectiveAge.ageSourceValue || "").trim();
+    if (effectiveAge.ageReferenceKind === "unknown") {
+      return sourceValue ? "Unknown seed age cannot retain a source-specific value." : "";
+    }
+    if (effectiveAge.ageReferenceKind === "acquisition_year") {
+      const year = Number(sourceValue);
+      return /^\d{4}$/.test(sourceValue) && year >= 1980 && year <= 2100
+        ? ""
+        : "Enter an acquired year from 1980 through 2100.";
+    }
+    if (effectiveAge.ageReferenceKind === "user_statement") {
+      const years = Number(sourceValue);
+      return /^(?:\d+)(?:\.5)?$/.test(sourceValue)
+        && years >= 1 && years <= 99 && Number.isInteger(years * 2)
+        ? ""
+        : "Enter a grower estimate from 1 through 99 years in 0.5-year increments.";
+    }
+    return "Choose a valid seed-age source.";
+  };
+
+  const getVaultEntryId = (vaultEntry) => normalizeGerminationSetupSessionId(vaultEntry?.id);
+  const getVaultEntryAvailable = (vaultEntry) => Math.max(0, Number(
+    vaultEntry?.quantity ?? vaultEntry?.available_quantity ?? vaultEntry?.remaining_count,
+  ) || 0);
+  const getVaultEntryLabel = (vaultEntry) => String(
+    vaultEntry?.seed_variety || vaultEntry?.seed_name || "Unnamed seed variety",
+  ).trim();
+  const getVaultEntrySupportingText = (vaultEntry) => [vaultEntry?.breeder, vaultEntry?.source]
+    .map((value) => String(value || "").trim())
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .join(" · ") || "Source not recorded";
+  const getVaultEntryForEntry = (entry) => state.vaultEntries.find((vaultEntry) => (
+    getVaultEntryId(vaultEntry) === entry.vaultEntryId
+  )) || null;
+  const getVaultAllocationTotal = (entry) => state.entries
+    .filter((candidate) => candidate.referenceType === "vault" && candidate.vaultEntryId === entry.vaultEntryId)
+    .reduce((total, candidate) => total + Math.max(0, Number(candidate.quantity) || 0), 0);
+
+  const getEntryValidations = (entry) => {
+    const issues = [];
+    const methodRule = getGerminationSetupMethodRule(state.methodType);
+    const structureSentenceLabel = methodRule.kind === "kan"
+      ? methodRule.structureLabel
+      : methodRule.structureLabel.toLocaleLowerCase();
+    if (!["vault", "manual"].includes(entry.referenceType)) {
+      return [{ key: "origin", message: "Choose a Seed Entry origin.", target: "[data-germination-origin-choice]" }];
+    }
+    if (entry.referenceType === "vault" && !entry.vaultEntryId) {
+      return [{ key: "vault-record", message: "Choose a record from My Seed Vault.", target: "[data-germination-vault-search]" }];
+    }
+    if (!String(entry.variety || "").trim()) {
+      issues.push({ key: "variety", message: "Add the seed variety.", target: '[data-germination-entry-field="variety"]' });
+    }
+    if (!Number.isInteger(entry.quantity) || entry.quantity < 1) {
+      issues.push({ key: "quantity", message: "Enter a positive whole-seed quantity.", target: "[data-germination-quantity]" });
+    } else if (methodRule.quantityMode === "single" && entry.quantity !== 1) {
+      issues.push({ key: "quantity", message: `${methodRule.label} requires a fixed quantity of 1 seed.`, target: "[data-germination-fixed-quantity]" });
+    } else if (entry.referenceType === "vault" && entry.vaultEntryId) {
+      const allowed = Number(entry.vaultAvailable) + Math.max(0, Number(entry.committedVaultQuantity) || 0);
+      if (!Number.isFinite(allowed) || getVaultAllocationTotal(entry) > allowed) {
+        issues.push({ key: "quantity", message: "Planned use exceeds the available Vault quantity.", target: "[data-germination-quantity]" });
+      }
+    }
+    if (methodRule.kind !== "shared") {
+      const assignment = String(entry.partitionLabel || "").trim();
+      if (!assignment) {
+        issues.push({
+          key: "assignment",
+          message: `Assign a ${structureSentenceLabel}.`,
+          target: methodRule.kind === "kan" ? "[data-germination-kan-partition-control]" : "[data-germination-structure-assignment]",
+        });
+      } else if (methodRule.kind !== "other") {
+        const assignmentNumber = getGerminationSetupAssignmentNumber(state.methodType, assignment);
+        const isCanonical = Number.isInteger(assignmentNumber)
+          && assignmentNumber > 0
+          && assignment === `${methodRule.prefix}${assignmentNumber}`
+          && (!methodRule.maximumEntries || assignmentNumber <= methodRule.maximumEntries);
+        if (!isCanonical) {
+          issues.push({ key: "assignment", message: `Use a valid ${structureSentenceLabel} assignment.`, target: "[data-germination-structure-assignment]" });
+        }
+      }
+      if (assignment) {
+        const duplicate = state.entries.find((candidate) => (
+          candidate.id !== entry.id
+          && String(candidate.partitionLabel || "").trim().toLocaleLowerCase() === assignment.toLocaleLowerCase()
+        ));
+        if (duplicate) {
+          issues.push({ key: "assignment", message: `${methodRule.structureLabel} assignments must be unique.`, target: "[data-germination-structure-assignment]" });
+        }
+      }
+    }
+    const ageMessage = getSeedAgeValidation(entry);
+    if (ageMessage) {
+      issues.push({
+        key: "seed-age",
+        message: ageMessage,
+        target: entry.ageReferenceKind === "unknown"
+          ? '[data-germination-entry-field="ageReferenceKind"]'
+          : '[data-germination-entry-field="ageSourceValue"]',
+      });
+    }
+    return issues;
+  };
+
+  const getEntryValidation = (entry) => getEntryValidations(entry)[0] || null;
 
   const getPreviewValidation = () => {
-    if (!state.sessionName.trim()) return { isValid: false, message: "Add a Session name to continue.", target: "[data-germination-session-name]" };
-    if (!state.proposedStart) return { isValid: false, message: "Add a proposed start date to continue.", target: "[data-germination-start-date]" };
-    if (!state.methodType) return { isValid: false, message: "Choose a Germination method to continue.", target: "[data-germination-method]" };
-    if (!state.entries.length) return { isValid: false, message: "Add at least one Seed Entry to continue.", target: "[data-germination-add-entry]" };
-    const incompleteEntry = state.entries.find((entry) => !entry.variety.trim() || !Number.isInteger(entry.quantity) || entry.quantity < 1);
-    if (incompleteEntry) return { isValid: false, message: "Complete the variety and whole-seed quantity for every Seed Entry.", entryId: incompleteEntry.id };
-    const vaultTotals = new Map();
-    state.entries.filter((entry) => entry.referenceType === "vault" && entry.vaultEntryId).forEach((entry) => {
-      const current = vaultTotals.get(entry.vaultEntryId) || { quantity: 0, available: Number(entry.vaultAvailable) };
-      current.quantity += entry.quantity;
-      vaultTotals.set(entry.vaultEntryId, current);
+    const issues = [];
+    if (!state.sessionName.trim()) issues.push({ key: "session-name", message: "Add a Session name to continue.", target: "[data-germination-session-name]" });
+    if (!state.proposedStart) issues.push({ key: "start-date", message: "Add a proposed start date to continue.", target: "[data-germination-start-date]" });
+    const methodRule = getGerminationSetupMethodRule(state.methodType);
+    if (!state.methodType || methodRule.unavailable) issues.push({ key: "method", message: "TRā is Coming Soon and cannot be selected for a new active setup.", target: "[data-germination-method]" });
+    if (!state.entries.length) issues.push({ key: "entries", message: "Add at least one Seed Entry to continue.", target: "[data-germination-add-entry]" });
+    if (methodRule.maximumEntries && state.entries.length > methodRule.maximumEntries) {
+      issues.push({ key: "entry-capacity", message: "KAN® supports no more than 8 populated Seed Entries.", target: "[data-germination-entry-list]" });
+    }
+    for (const [entryIndex, entry] of state.entries.entries()) {
+      getEntryValidations(entry).forEach((entryValidation) => {
+        issues.push({
+          ...entryValidation,
+          key: `entry-${entry.id}-${entryValidation.key}`,
+          message: `${getGerminationSetupEntryHeading(state.methodType, entry, entryIndex)}: ${entryValidation.message}`,
+          entryId: entry.id,
+        });
+      });
+    }
+    if (state.trackingMode === "same" && state.entries.length) {
+      const firstEntryAge = getEntryAge(state.entries[0]);
+      const firstAge = `${firstEntryAge.ageReferenceKind}\u0000${String(firstEntryAge.ageSourceValue || "").trim()}`;
+      const inconsistentEntry = state.entries.find((entry) => {
+        const effectiveAge = getEntryAge(entry);
+        return `${effectiveAge.ageReferenceKind}\u0000${String(effectiveAge.ageSourceValue || "").trim()}` !== firstAge;
+      });
+      if (inconsistentEntry) {
+        const entryIndex = state.entries.indexOf(inconsistentEntry);
+        issues.push({
+          key: `entry-${inconsistentEntry.id}-shared-seed-age`,
+          message: `${getGerminationSetupEntryHeading(state.methodType, inconsistentEntry, entryIndex)}: Use the shared seed-age source and value.`,
+          target: '[data-germination-entry-field="ageReferenceKind"]',
+          entryId: inconsistentEntry.id,
+        });
+      }
+    }
+    return {
+      isValid: issues.length === 0,
+      issues,
+      message: issues[0]?.message || `Ready to review · ${state.entries.length} Seed Entries · ${state.entries.reduce((total, entry) => total + entry.quantity, 0)} seeds.`,
+    };
+  };
+
+  const renderMethodStructure = () => {
+    const rule = getGerminationSetupMethodRule(state.methodType);
+    const selectedEntry = state.entries.find((entry) => entry.id === state.selectedEntryId) || null;
+    const totalSeeds = state.entries.reduce((total, entry) => total + Math.max(0, entry.quantity), 0);
+    if (rule.kind === "shared") {
+      const unitMarkup = state.entries.length
+        ? state.entries.map((entry, entryIndex) => {
+          const entryHeading = getGerminationSetupEntryHeading(state.methodType, entry, entryIndex);
+          const stageMarkup = (rule.sharedStages || []).map((stage, stageIndex, stages) => `
+            <div class="germination-shared-stage germination-shared-stage--${escapeHtml(stage)}">
+              <span aria-hidden="true">${stage === "glass" ? "◒" : "▱"}</span>
+              <strong>${escapeHtml(stage === "glass" ? `Glass ${entryIndex + 1}` : `Paper Towel ${entryIndex + 1}`)}</strong>
+            </div>
+            ${stageIndex < stages.length - 1 ? '<span class="germination-shared-stage__connector" aria-label="then">→</span>' : ""}
+          `).join("");
+          return `
+            <button type="button" class="germination-shared-unit${entry.id === selectedEntry?.id ? " is-selected" : ""}" data-germination-method-position="${escapeHtml(entry.id)}" aria-pressed="${entry.id === selectedEntry?.id}">
+              <div class="germination-shared-method__stages">${stageMarkup}</div>
+              <div class="germination-shared-method__summary">
+                <strong>${escapeHtml(entryHeading)}</strong>
+                <span>${escapeHtml(entry.variety || `Seed Entry ${entryIndex + 1}`)} · ${formatGerminationSeedQuantity(entry.quantity)}</span>
+              </div>
+            </button>
+          `;
+        }).join("")
+        : '<p class="germination-method-visual__empty">Add a Seed Entry to build this method layout.</p>';
+      methodStructure.innerHTML = `
+        <div class="botanical-panel__heading">
+          <div>
+            <h2 id="germination-method-structure-title">${escapeHtml(rule.label)} setup visual</h2>
+            <p>${rule.sharedStages?.length === 2
+              ? "Each Seed Entry moves through its own glass, then its own paper towel."
+              : `Each Seed Entry uses its own ${rule.sharedStages?.[0] === "glass" ? "glass" : "paper towel"}.`}</p>
+          </div>
+          <span class="germination-method-visual__total">${totalSeeds} ${totalSeeds === 1 ? "seed" : "seeds"} total</span>
+        </div>
+        <div class="germination-shared-method" data-germination-method-visual="${escapeHtml(state.methodType)}" data-germination-shared-method>
+          <div class="germination-shared-method__units">${unitMarkup}</div>
+        </div>
+      `;
+      return;
+    }
+    if (rule.kind !== "kan") {
+      const propagationUnitCopy = getGerminationSetupPropagationUnitCopy(state.methodType);
+      const positionMarkup = state.entries.length
+        ? state.entries.map((entry, index) => `
+            <button type="button" class="germination-method-position${entry.id === selectedEntry?.id ? " is-selected" : ""}" data-germination-method-position="${escapeHtml(entry.id)}" aria-pressed="${entry.id === selectedEntry?.id}">
+              <span>${escapeHtml(getGerminationSetupEntryHeading(state.methodType, entry, index))}</span>
+              <strong>${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)}</strong>
+              <small>${rule.quantityMode === "single" ? escapeHtml(propagationUnitCopy) : `${entry.quantity} ${entry.quantity === 1 ? "seed" : "seeds"}`}</small>
+            </button>
+          `).join("")
+        : '<p class="germination-method-visual__empty">Add a Seed Entry to build this method layout.</p>';
+      methodStructure.innerHTML = `
+        <div class="botanical-panel__heading">
+          <div>
+            <h2 id="germination-method-structure-title">${escapeHtml(rule.label)} setup visual</h2>
+            <p>${rule.unavailable
+              ? "TRā is Coming Soon and remains unavailable for a new active setup."
+              : rule.kind === "other"
+                ? "Use an explicit grower-labeled seed group or position for each entry."
+                : `Select a ${escapeHtml(rule.structureLabel.toLocaleLowerCase())} here or in its Seed Entry; both views stay synchronized.`}</p>
+          </div>
+          <span class="germination-method-visual__total">${rule.quantityMode === "single" ? `${state.entries.length} positions` : `${totalSeeds} seeds total`}</span>
+        </div>
+        <div class="germination-method-visual germination-method-visual--${escapeHtml(rule.kind)}" data-germination-method-visual="${escapeHtml(state.methodType)}">
+          <div class="germination-method-visual__symbol" aria-hidden="true">${rule.kind === "positioned" ? "◫" : rule.unavailable ? "◌" : "✦"}</div>
+          <div class="germination-method-positions">${positionMarkup}</div>
+        </div>
+      `;
+      return;
+    }
+    methodStructure.innerHTML = `
+      <div class="botanical-panel__heading">
+        <div>
+          <h2 id="germination-method-structure-title">KAN® setup · 8 positions</h2>
+          <p>Entries are assigned P1 through P8 automatically. Select an assigned position to reveal its Seed Entry.</p>
+        </div>
+      </div>
+      <div class="germination-kan-composition">
+        <div class="germination-kan-layout" data-germination-kan-layout>
+          <div class="germination-kan-layout__image" role="group" aria-label="KAN® partition navigation" data-germination-kan-partition-control>
+            <img src="/public/assets/images/images/placeholder/kan_method.png" alt="Cannakan® KAN® germination method">
+            <div class="germination-kan-layout__indicators">
+            ${Array.from({ length: 8 }, (_, index) => {
+              const assignment = `P${index + 1}`;
+              const owner = state.entries[index] || null;
+              const selected = owner?.id === selectedEntry?.id;
+              const stateLabel = selected ? "Selected" : owner ? "Assigned" : "Available";
+              return `<button type="button" class="germination-kan-layout__partition germination-kan-layout__partition--${index + 1}${selected ? " is-selected" : owner ? " is-assigned" : " is-available"}" data-germination-kan-partition="${assignment}" data-partition-state="${stateLabel.toLocaleLowerCase()}" aria-label="${assignment}, ${stateLabel}${owner ? ` to ${escapeHtml(owner.variety || `Seed Entry ${index + 1}`)}` : ""}" aria-pressed="${selected}"${owner ? "" : " disabled"}><span class="germination-kan-layout__label">${assignment}</span><span class="germination-kan-layout__state">${stateLabel}</span></button>`;
+            }).join("")}
+            </div>
+          </div>
+        </div>
+        <div class="germination-kan-contents" data-germination-kan-contents aria-label="KAN® position contents">
+          ${Array.from({ length: 8 }, (_, index) => {
+            const assignment = `P${index + 1}`;
+            const owner = state.entries[index] || null;
+            if (!owner) return `<div class="germination-kan-contents__row is-available" data-germination-kan-list-row="${assignment}"><strong>${assignment}</strong><span>Available</span></div>`;
+            const selected = owner.id === selectedEntry?.id;
+            return `<button type="button" class="germination-kan-contents__row is-assigned${selected ? " is-selected" : ""}" data-germination-kan-list-row="${assignment}" data-germination-method-position="${escapeHtml(owner.id)}" aria-pressed="${selected}"><strong>${assignment}</strong><span>${escapeHtml(owner.variety || `Seed Entry ${index + 1}`)}</span><small>${escapeHtml(formatGerminationSeedQuantity(owner.quantity))}</small></button>`;
+          }).join("")}
+        </div>
+      </div>
+      <div class="germination-kan-filter-paper" data-germination-kan-filter-paper>
+        <strong>Filter paper required at Germination start: 1</strong>
+        <span>Nothing is deducted while this setup remains a draft.</span>
+      </div>
+    `;
+  };
+
+  const renderStructureControl = (entry) => {
+    const rule = getGerminationSetupMethodRule(state.methodType);
+    if (rule.kind === "other") {
+      return `<label class="germination-entry-field--source"><span>${escapeHtml(rule.structureLabel)}</span><input type="text" maxlength="80" value="${escapeHtml(entry.partitionLabel)}" placeholder="Custom entry label" data-germination-structure-assignment></label>`;
+    }
+    return "";
+  };
+
+  const renderVaultOriginControl = (entry) => {
+    const selectedVault = getVaultEntryForEntry(entry);
+    const vaultAge = getEntryVaultAge(entry);
+    const selectedLabel = selectedVault ? getVaultEntryLabel(selectedVault) : String(entry.variety || "").trim();
+    const selectedSupport = selectedVault
+      ? getVaultEntrySupportingText(selectedVault)
+      : [entry.breeder, entry.source].map((value) => String(value || "").trim()).filter(Boolean).join(" · ") || "Source not recorded";
+    const available = selectedVault ? getVaultEntryAvailable(selectedVault) : Math.max(0, Number(entry.vaultAvailable) || 0);
+    const planned = entry.vaultEntryId ? Math.max(0, Number(entry.quantity) || 0) : 0;
+    const totalPlannedForRecord = entry.vaultEntryId ? getVaultAllocationTotal(entry) : 0;
+    const committed = Math.max(0, Number(entry.committedVaultQuantity) || 0);
+    const projected = Math.max(0, available - Math.max(0, totalPlannedForRecord - committed));
+    const query = String(entry.vaultSearchQuery || "").trim().toLocaleLowerCase();
+    const matchingEntries = state.vaultEntries.filter((vaultEntry) => {
+      const searchable = [
+        getVaultEntryLabel(vaultEntry),
+        vaultEntry?.seed_name,
+        vaultEntry?.source,
+        vaultEntry?.breeder,
+      ].map((value) => String(value || "").toLocaleLowerCase()).join(" ");
+      return !query || searchable.includes(query);
     });
-    const overAllocated = [...vaultTotals.values()].some((value) => !Number.isFinite(value.available) || value.quantity > value.available);
-    if (overAllocated) return { isValid: false, message: "Planned Vault use exceeds the current owner-visible quantity." };
-    return { isValid: true, message: `Ready to review · ${state.entries.length} Seed Entries · ${state.entries.reduce((total, entry) => total + entry.quantity, 0)} seeds.` };
+    const showPicker = !entry.vaultEntryId || entry.vaultPickerOpen;
+    return `
+      <div class="germination-vault-picker" data-germination-vault-picker>
+        ${entry.vaultEntryId ? `
+          <div class="germination-vault-selection" data-germination-vault-selected>
+            <div class="germination-vault-selection__identity">
+              <span>Selected Vault record</span>
+              <strong>${escapeHtml(selectedLabel || "Selected seed record")}</strong>
+              <small>${escapeHtml(selectedSupport)}</small>
+            </div>
+            <div class="germination-vault-selection__actions">
+              <button type="button" class="germination-vault-selection__change" data-germination-vault-change>Change selection</button>
+              <button type="button" class="germination-vault-selection__remove" data-germination-vault-remove>Remove selection</button>
+            </div>
+            <dl>
+              <div><dt>Available now</dt><dd>${formatGerminationSeedQuantity(available)}</dd></div>
+              <div><dt>This entry</dt><dd>${formatGerminationSeedQuantity(planned)}</dd></div>
+              <div><dt>Projected after save</dt><dd>${formatGerminationSeedQuantity(projected)}</dd></div>
+              <div><dt>Type</dt><dd>${escapeHtml(getGerminationSetupSeedTypeLabel(entry.seedType))}</dd></div>
+              <div><dt>Sex</dt><dd>${escapeHtml(getGerminationSetupSeedSexLabel(entry.sex))}</dd></div>
+              <div data-germination-vault-age><dt>Seed age</dt><dd>${escapeHtml(vaultAge ? getEntryEvidenceLabel(vaultAge) : "Not recorded in Vault")}</dd></div>
+            </dl>
+          </div>
+        ` : ""}
+        ${showPicker ? `
+          <label class="germination-vault-search">
+            <span>Search My Seed Vault</span>
+            <input type="search" value="${escapeHtml(entry.vaultSearchQuery || "")}" placeholder="Search variety, breeder, or source" autocomplete="off" data-germination-vault-search>
+          </label>
+          <div class="germination-vault-results" role="list" aria-label="Matching Seed Vault records">
+            ${matchingEntries.length ? matchingEntries.map((vaultEntry) => {
+              const vaultEntryId = getVaultEntryId(vaultEntry);
+              const vaultAvailable = getVaultEntryAvailable(vaultEntry);
+              return `
+                <button type="button" data-germination-vault-option="${escapeHtml(vaultEntryId)}"${vaultAvailable < 1 ? " disabled" : ""}>
+                  <span><strong>${escapeHtml(getVaultEntryLabel(vaultEntry))}</strong><small>${escapeHtml(getVaultEntrySupportingText(vaultEntry))}</small></span>
+                  <span>${formatGerminationSeedQuantity(vaultAvailable)} available</span>
+                </button>
+              `;
+            }).join("") : '<p>No readable Vault records match this search.</p>'}
+          </div>
+        ` : ""}
+      </div>
+    `;
   };
 
   const renderEntries = () => {
+    const methodRule = getGerminationSetupMethodRule(state.methodType);
+    const propagationUnitCopy = getGerminationSetupPropagationUnitCopy(state.methodType);
+    const capacity = getMethodCapacityState();
     entryCount.textContent = `(${state.entries.length})`;
+    entryHelper.textContent = methodRule.kind === "kan"
+      ? "Each new Seed Entry receives the next available KAN® partition automatically."
+      : methodRule.quantityMode === "single"
+        ? `${propagationUnitCopy}. Add only the ${state.methodType === "DIRECT_SOW" ? "planting locations" : `${methodRule.structureLabel.toLocaleLowerCase()}s`} needed.`
+        : methodRule.kind === "shared"
+          ? `Each Seed Entry uses its own ${methodRule.label} unit while keeping an independent variety and quantity.`
+        : methodRule.kind === "other"
+          ? "Each entry uses an explicit grower-labeled group or position."
+          : `Each entry is one attributable ${methodRule.structureLabel.toLocaleLowerCase()} with a positive seed quantity.`;
+    lowerAddEntry.innerHTML = `<button type="button" class="botanical-compact-action germination-lower-add-entry__button" data-germination-add-entry${capacity.canAdd ? "" : " disabled"}><span aria-hidden="true">+</span> Add Seed Entry</button>`;
+    capacityMessage.textContent = capacity.message;
     entryList.innerHTML = state.entries.map((entry, index) => {
       const isSelected = entry.id === state.selectedEntryId;
+      const entryHeadingId = `germination-seed-entry-heading-${entry.id}`;
+      const entryHeading = getGerminationSetupEntryHeading(state.methodType, entry, index);
       const isVault = entry.referenceType === "vault";
-      return `
-        <article class="germination-seed-entry${isSelected ? " is-selected" : ""}" data-germination-entry="${escapeHtml(entry.id)}">
-          <div class="germination-seed-entry__topline">
-            <button type="button" class="germination-seed-entry__selector" data-germination-entry-select="${escapeHtml(entry.id)}" aria-pressed="${isSelected}" aria-label="Focus ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)}">
-              <span aria-hidden="true"></span>
-            </button>
-            <span class="germination-seed-entry__index">${index + 1}</span>
-            <div class="germination-seed-entry__identity">
-              <span class="germination-seed-entry__leaf" aria-hidden="true">${renderBotanicalCarbonPhaseIconMarkup()}</span>
-              <div>
-                ${isVault
-                  ? `<strong>${escapeHtml(entry.variety)}</strong>`
-                  : `<label><span>Variety</span><input type="text" value="${escapeHtml(entry.variety)}" placeholder="Seed variety" data-germination-entry-field="variety"></label>`}
-                <small>${isVault ? "From My Seed Vault" : "Added for this Session"}</small>
-              </div>
-            </div>
-            <div class="germination-seed-entry__quantity">
-              <span>Quantity</span>
-              <div>
-                <button type="button" data-germination-quantity="decrease" aria-label="Decrease ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity">−</button>
-                <strong>${entry.quantity}</strong>
-                <button type="button" data-germination-quantity="increase" aria-label="Increase ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity">+</button>
-              </div>
-            </div>
-            ${!isVault ? `<button type="button" class="germination-seed-entry__remove" data-germination-remove-entry aria-label="Remove ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)}">×</button>` : ""}
-          </div>
-          <div class="germination-seed-entry__details">
-            <div><span>Position</span><strong>${escapeHtml(entry.partitionLabel)}</strong></div>
-            ${isVault
-              ? `<div><span>Source</span><strong>${escapeHtml(entry.source || "Unknown")}</strong></div>`
-              : `<label><span>Source</span><input type="text" value="${escapeHtml(entry.source)}" placeholder="Unknown" data-germination-entry-field="source"></label>`}
+      const isManual = entry.referenceType === "manual";
+      const hasOrigin = isVault || isManual;
+      const hasVaultSelection = isVault && Boolean(entry.vaultEntryId);
+      const vaultAge = getEntryVaultAge(entry);
+      const effectiveAge = getEntryAge(entry);
+      const sharedAgeConstraint = getVaultAgeConstraint();
+      const usesDerivedSharedAge = !vaultAge && state.trackingMode === "same" && Boolean(sharedAgeConstraint.sharedAge);
+      const isSingleQuantity = methodRule.quantityMode === "single";
+      const entryValidations = getEntryValidations(entry);
+      const allocationLimit = hasVaultSelection
+        ? Number(entry.vaultAvailable) + Math.max(0, Number(entry.committedVaultQuantity) || 0)
+        : Number.POSITIVE_INFINITY;
+      const cannotIncrease = isSingleQuantity
+        || (hasVaultSelection && getVaultAllocationTotal(entry) >= allocationLimit);
+      const ageValueControl = effectiveAge.ageReferenceKind === "acquisition_year"
+        ? `<label><span>Acquired year</span><input type="number" min="1980" max="2100" step="1" value="${escapeHtml(effectiveAge.ageSourceValue)}" data-germination-entry-field="ageSourceValue"></label>`
+        : effectiveAge.ageReferenceKind === "user_statement"
+          ? `<label><span>Grower-estimated seed age</span><input type="number" min="1" max="99" step="0.5" value="${escapeHtml(effectiveAge.ageSourceValue)}" aria-label="Grower-estimated seed age in years" data-evidence-unit-label="Estimated age (years)" data-germination-entry-field="ageSourceValue"></label>`
+          : "";
+      const ageControlMarkup = !hasOrigin || vaultAge ? "" : usesDerivedSharedAge
+        ? `<div class="germination-derived-age"><span>Session seed age</span><strong>${escapeHtml(getEntryEvidenceLabel(sharedAgeConstraint.sharedAge))}</strong><small>Derived from linked Vault records while shared recording is selected.</small></div>`
+        : `<label>
+            <span>Session seed age source</span>
+            <select data-germination-entry-field="ageReferenceKind">
+              <option value="unknown"${effectiveAge.ageReferenceKind === "unknown" ? " selected" : ""}>Unknown</option>
+              <option value="acquisition_year"${effectiveAge.ageReferenceKind === "acquisition_year" ? " selected" : ""}>Acquired year</option>
+              <option value="user_statement"${effectiveAge.ageReferenceKind === "user_statement" ? " selected" : ""}>Grower estimate</option>
+            </select>
+          </label>
+          ${ageValueControl}`;
+      const evidenceFieldsMarkup = isVault
+        ? (hasVaultSelection ? "" : '<div class="germination-vault-autofill-pending"><span>Vault details</span><strong>Choose a record to autofill variety, source, breeder, type, sex, age, and available quantity.</strong></div>')
+        : isManual ? `
+            <label class="germination-entry-field--source"><span>Source</span><input type="text" value="${escapeHtml(entry.source)}" placeholder="Unknown" data-germination-entry-field="source"></label>
+            <label class="germination-entry-field--source"><span>Breeder</span><input type="text" value="${escapeHtml(entry.breeder)}" placeholder="Unknown" data-germination-entry-field="breeder"></label>
             <label>
               <span>Type</span>
               <select data-germination-entry-field="seedType">
-                <option value="unknown"${entry.seedType === "unknown" ? " selected" : ""}>Unknown</option>
+                <option value="not_applicable"${entry.seedType === "not_applicable" ? " selected" : ""}>Not applicable</option>
                 <option value="photoperiod"${entry.seedType === "photoperiod" ? " selected" : ""}>Photoperiod</option>
                 <option value="autoflower"${entry.seedType === "autoflower" ? " selected" : ""}>Autoflower</option>
+                <option value="fast_flower"${entry.seedType === "fast_flower" ? " selected" : ""}>Fast Flower</option>
+                <option value="unknown"${entry.seedType === "unknown" ? " selected" : ""}>Unknown</option>
               </select>
             </label>
             <label>
               <span>Sex</span>
               <select data-germination-entry-field="sex">
-                <option value="unknown"${entry.sex === "unknown" ? " selected" : ""}>Unknown</option>
+                <option value="not_applicable"${entry.sex === "not_applicable" ? " selected" : ""}>Not applicable</option>
                 <option value="feminized"${entry.sex === "feminized" ? " selected" : ""}>Feminized</option>
                 <option value="regular"${entry.sex === "regular" ? " selected" : ""}>Regular</option>
+                <option value="unknown"${entry.sex === "unknown" ? " selected" : ""}>Unknown</option>
               </select>
             </label>
-            <label>
-              <span>Seed age source</span>
-              <select data-germination-entry-field="ageReferenceKind">
-                <option value="unknown"${entry.ageReferenceKind === "unknown" ? " selected" : ""}>Unknown</option>
-                <option value="acquisition_year"${entry.ageReferenceKind === "acquisition_year" ? " selected" : ""}>Acquired year</option>
-                <option value="user_statement"${entry.ageReferenceKind === "user_statement" ? " selected" : ""}>Grower estimate</option>
-              </select>
-            </label>
+          ` : '<div class="germination-origin-required-note"><span>Seed evidence</span><strong>Choose an origin above to continue.</strong></div>';
+      const detailsMarkup = `${renderStructureControl(entry)}${evidenceFieldsMarkup}${ageControlMarkup}`;
+      return `
+        <article class="germination-seed-entry${isSelected ? " is-selected" : ""}${state.reviewAttempted && entryValidations.length ? " is-invalid" : ""}" data-germination-entry="${escapeHtml(entry.id)}" tabindex="-1" aria-labelledby="${escapeHtml(entryHeadingId)}">
+          <div class="germination-seed-entry__topline${isSingleQuantity ? " germination-seed-entry__topline--fixed" : ""}${hasVaultSelection ? " germination-seed-entry__topline--linked" : ""}">
+            <button type="button" class="germination-seed-entry__selector" data-germination-entry-select="${escapeHtml(entry.id)}" aria-pressed="${isSelected}" aria-label="Focus ${escapeHtml(entryHeading)}">
+              <span aria-hidden="true"></span>
+            </button>
+            <div class="germination-seed-entry__heading">
+              <span class="germination-seed-entry__index" id="${escapeHtml(entryHeadingId)}">${escapeHtml(entryHeading)}</span>
+            </div>
+            ${hasVaultSelection ? "" : `<div class="germination-seed-entry__identity">
+              <span class="germination-seed-entry__leaf" aria-hidden="true">${renderBotanicalCarbonPhaseIconMarkup()}</span>
+              <div>
+                ${isVault
+                  ? `<strong>${escapeHtml(hasVaultSelection ? entry.variety : "Choose from My Seed Vault")}</strong>`
+                  : isManual
+                    ? `<label><span>Variety</span><input type="text" value="${escapeHtml(entry.variety)}" placeholder="Seed variety" data-germination-entry-field="variety"></label>`
+                    : '<strong>Choose an origin</strong>'}
+                <small>${isVault ? "Choose from My Seed Vault" : isManual ? "Enter manually" : "Origin required"}</small>
+              </div>
+            </div>`}
+            ${isSingleQuantity ? "" : `<div class="germination-seed-entry__quantity">
+              <span>Quantity</span>
+              <div>
+                    <button type="button" data-germination-quantity="decrease" aria-label="Decrease ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${entry.quantity <= 1 ? " disabled" : ""}>−</button>
+                    <strong>${entry.quantity}</strong>
+                    <button type="button" data-germination-quantity="increase" aria-label="Increase ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${cannotIncrease ? " disabled" : ""}>+</button>
+              </div>
+            </div>`}
+            <button type="button" class="germination-seed-entry__remove" data-germination-remove-entry aria-label="Remove ${escapeHtml(entryHeading)}">×</button>
           </div>
-          <div class="germination-seed-entry__evidence">
-            <span>${isVault ? "From My Seed Vault" : "Added for this Session"}</span>
-            <strong>${escapeHtml(getEntryEvidenceLabel(entry))}</strong>
+          <fieldset class="germination-entry-origin">
+            <legend>Seed Entry origin</legend>
+            <label><input type="radio" name="germination-origin-${escapeHtml(entry.id)}" value="vault" data-germination-origin-choice${isVault ? " checked" : ""}><span>Choose from My Seed Vault</span></label>
+            <label><input type="radio" name="germination-origin-${escapeHtml(entry.id)}" value="manual" data-germination-origin-choice${isManual ? " checked" : ""}><span>Enter manually</span></label>
+          </fieldset>
+          ${isVault
+            ? renderVaultOriginControl(entry)
+            : isManual
+              ? '<p class="germination-entry-lineage-note germination-entry-lineage-note--manual">Retained evidence is now manually controlled. No Seed Vault relationship remains, and this entry has no Vault inventory effect.</p>'
+              : '<p class="germination-entry-origin-prompt">Choose an origin to add seed evidence. No Seed Vault record is selected.</p>'}
+          ${detailsMarkup ? `<div class="germination-seed-entry__details">${detailsMarkup}</div>` : ""}
+          ${isManual ? `<div class="germination-seed-entry__evidence">
+            <span>Added for this Session</span>
+            <strong>${escapeHtml(getEntryEvidenceLabel(getEntryAge(entry)))}</strong>
             <small>${escapeHtml(entry.source ? `Source: ${entry.source}` : "Source unknown")}</small>
-          </div>
+          </div>` : ""}
+          <div class="germination-seed-entry__validation" data-germination-entry-validation role="status" aria-live="polite"></div>
         </article>
       `;
     }).join("");
+    renderMethodStructure();
+  };
+
+  let navigationEmphasisTimeout = 0;
+  const syncActiveGerminationSetupEntry = (entryId) => {
+    if (!state.entries.some((entry) => entry.id === entryId)) return false;
+    state.selectedEntryId = entryId;
+    entryList.querySelectorAll("[data-germination-entry]").forEach((entryElement) => {
+      const isSelected = entryElement.dataset.germinationEntry === entryId;
+      entryElement.classList.toggle("is-selected", isSelected);
+      entryElement.querySelector("[data-germination-entry-select]")?.setAttribute("aria-pressed", String(isSelected));
+    });
+    renderMethodStructure();
+    updateSummary();
+    return true;
+  };
+
+  const navigateToGerminationSetupEntry = (entryId) => {
+    window.requestAnimationFrame(() => {
+      const entryElement = entryList.querySelector(`[data-germination-entry="${CSS.escape(entryId)}"]`);
+      if (!(entryElement instanceof HTMLElement)) return;
+      window.clearTimeout(navigationEmphasisTimeout);
+      entryList.querySelectorAll(".is-navigation-target").forEach((candidate) => candidate.classList.remove("is-navigation-target"));
+      void entryElement.offsetWidth;
+      entryElement.classList.add("is-navigation-target");
+      const top = Math.max(0, window.scrollY + entryElement.getBoundingClientRect().top - 112);
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      window.scrollTo({ top, behavior });
+      entryElement.focus({ preventScroll: true });
+      navigationEmphasisTimeout = window.setTimeout(() => entryElement.classList.remove("is-navigation-target"), 1800);
+    });
+  };
+
+  const getValidationIssueId = (issue, suffix = "") => `germination-validation-${String(issue.key || "issue").replace(/[^a-z0-9-]/gi, "-")}${suffix}`;
+  const resolveValidationControl = (issue) => {
+    const entryElement = issue.entryId
+      ? entryList.querySelector(`[data-germination-entry="${issue.entryId}"]`)
+      : null;
+    return entryElement?.querySelector(issue.target || "")
+      || root.querySelector(issue.target || "")
+      || entryElement?.querySelector("input, select, button, [tabindex]")
+      || null;
+  };
+  const getValidationControlGroup = (control) => {
+    if (!(control instanceof HTMLElement)) return control;
+    if (control.matches('[data-germination-origin-choice]')) return control.closest("fieldset") || control;
+    if (control.matches('[data-germination-quantity]')) return control.parentElement || control;
+    return control;
+  };
+  const clearReviewValidationState = () => {
+    root.querySelectorAll(".germination-control--invalid").forEach((control) => {
+      control.classList.remove("germination-control--invalid");
+      control.removeAttribute("aria-invalid");
+      if (control.dataset.germinationValidationTabindex === "true") {
+        control.removeAttribute("tabindex");
+        delete control.dataset.germinationValidationTabindex;
+      }
+      const describedBy = String(control.getAttribute("aria-describedby") || "")
+        .split(/\s+/)
+        .filter((id) => id && !id.startsWith("germination-validation-"));
+      if (describedBy.length) control.setAttribute("aria-describedby", describedBy.join(" "));
+      else control.removeAttribute("aria-describedby");
+    });
+    entryList.querySelectorAll("[data-germination-entry]").forEach((entryElement) => entryElement.classList.remove("is-invalid"));
+    entryList.querySelectorAll("[data-germination-entry-validation]").forEach((message) => message.replaceChildren());
+  };
+  const applyReviewValidationState = (validationResult) => {
+    clearReviewValidationState();
+    if (!state.reviewAttempted || validationResult.isValid) return;
+    const entryMessages = new Map();
+    validationResult.issues.forEach((issue) => {
+      if (!issue.entryId) return;
+      if (!entryMessages.has(issue.entryId)) entryMessages.set(issue.entryId, []);
+      entryMessages.get(issue.entryId).push(issue);
+    });
+    entryMessages.forEach((issues, entryId) => {
+      const entryElement = entryList.querySelector(`[data-germination-entry="${entryId}"]`);
+      const message = entryElement?.querySelector("[data-germination-entry-validation]");
+      if (!entryElement || !message) return;
+      entryElement.classList.add("is-invalid");
+      message.innerHTML = issues.map((issue) => `
+        <span id="${getValidationIssueId(issue)}"><span aria-hidden="true">!</span>${escapeHtml(issue.message)}</span>
+      `).join("");
+    });
+    validationResult.issues.forEach((issue) => {
+      const control = resolveValidationControl(issue);
+      const group = getValidationControlGroup(control);
+      if (!(group instanceof HTMLElement)) return;
+      group.classList.add("germination-control--invalid");
+      group.setAttribute("aria-invalid", "true");
+      if (!group.matches("input, select, button, textarea, [tabindex]")) {
+        group.tabIndex = -1;
+        group.dataset.germinationValidationTabindex = "true";
+      }
+      const descriptionId = issue.entryId ? getValidationIssueId(issue) : getValidationIssueId(issue, "-summary");
+      const describedBy = new Set(String(group.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean));
+      describedBy.add(descriptionId);
+      group.setAttribute("aria-describedby", [...describedBy].join(" "));
+    });
+  };
+  const focusValidationIssue = (issue) => {
+    const control = resolveValidationControl(issue);
+    const focusTarget = control?.matches?.('[data-germination-origin-choice]')
+      ? control
+      : getValidationControlGroup(control);
+    if (!(focusTarget instanceof HTMLElement)) return;
+    const top = Math.max(0, window.scrollY + focusTarget.getBoundingClientRect().top - 112);
+    window.scrollTo({ top, behavior: "smooth" });
+    focusTarget.focus({ preventScroll: true });
   };
 
   const updateSummary = () => {
     const totalSeeds = state.entries.reduce((total, entry) => total + Math.max(0, entry.quantity), 0);
     const vaultEntries = state.entries.filter((entry) => entry.referenceType === "vault");
     const plannedVaultUse = vaultEntries.reduce((total, entry) => total + Math.max(0, entry.quantity), 0);
-    const available = vaultEntries.length ? Number(vaultEntries[0].vaultAvailable) : null;
-    const remaining = Number.isFinite(available) ? Math.max(0, available - plannedVaultUse) : null;
-    const selectedMethodLabel = getMethodTypeSelectionLabel(state.methodType);
+    const vaultInventoryById = new Map();
+    vaultEntries.forEach((entry) => {
+      if (!entry.vaultEntryId || vaultInventoryById.has(entry.vaultEntryId)) return;
+      vaultInventoryById.set(entry.vaultEntryId, {
+        available: Number(entry.vaultAvailable),
+        committed: Math.max(0, Number(entry.committedVaultQuantity) || 0),
+      });
+    });
+    const inventoryRows = [...vaultInventoryById.values()];
+    const hasKnownInventory = inventoryRows.every((entry) => Number.isFinite(entry.available));
+    const available = inventoryRows.length && hasKnownInventory
+      ? inventoryRows.reduce((total, entry) => total + entry.available, 0)
+      : null;
+    const committedVaultUse = inventoryRows.reduce((total, entry) => total + entry.committed, 0);
+    const remaining = Number.isFinite(available)
+      ? Math.max(0, available - (plannedVaultUse - committedVaultUse))
+      : null;
+    const selectedMethodLabel = getGerminationSetupMethodLabel(state.methodType);
+    const selectedEntryIndex = state.entries.findIndex((entry) => entry.id === state.selectedEntryId);
+    const selectedEntry = selectedEntryIndex >= 0 ? state.entries[selectedEntryIndex] : null;
     summary.innerHTML = `
       <div><dt>Session name</dt><dd>${escapeHtml(state.sessionName || "Incomplete")}</dd></div>
-      <div><dt>Proposed start</dt><dd>${escapeHtml(state.proposedStart || "Incomplete")}</dd></div>
+      <div><dt>Proposed start</dt><dd>${escapeHtml(formatGerminationSetupDate(state.proposedStart))}</dd></div>
       <div><dt>Method</dt><dd>${escapeHtml(selectedMethodLabel)}</dd></div>
       <div><dt>Seed age</dt><dd>${state.trackingMode === "same" ? "Same for all Seed Entries" : "Set for each Seed Entry"}</dd></div>
-      <div><dt>Seed Entries</dt><dd>${state.entries.length} entries · ${totalSeeds} seeds total</dd></div>
+      <div><dt>Seed Entries</dt><dd>${state.entries.length} ${state.entries.length === 1 ? "entry" : "entries"} · ${formatGerminationSeedQuantity(totalSeeds)} total</dd></div>
+      ${state.methodType === "KAN" && selectedEntry ? `<div><dt>Active assignment</dt><dd>${escapeHtml(getGerminationSetupEntryHeading(state.methodType, selectedEntry, selectedEntryIndex))} · ${escapeHtml(selectedEntry.variety || `Seed Entry ${selectedEntryIndex + 1}`)}</dd></div>` : ""}
     `;
-    inventory.innerHTML = `
-      <div><span>Current Vault Balance</span><strong>${Number.isFinite(available) ? available : "Unknown"}</strong><small>${Number.isFinite(available) ? "seeds" : "owner read not supplied"}</small></div>
-      <div><span>Planned Vault Use</span><strong>${plannedVaultUse}</strong><small>seeds</small></div>
-      <div><span>Projected Vault Balance</span><strong class="${remaining === 0 ? "is-zero" : ""}">${Number.isFinite(remaining) ? remaining : "Unknown"}</strong><small>${Number.isFinite(remaining) ? "seeds" : "not calculated"}</small></div>
+    inventory.classList.toggle("is-empty", vaultEntries.length === 0);
+    inventory.innerHTML = vaultEntries.length ? `
+      <div><span>Current Vault Balance</span><strong>${Number.isFinite(available) ? available : "Unavailable"}</strong><small>${Number.isFinite(available) ? (available === 1 ? "seed" : "seeds") : "balance unavailable"}</small></div>
+      <div><span>Total planned</span><strong>${plannedVaultUse}</strong><small>${plannedVaultUse === 1 ? "seed" : "seeds"}</small></div>
+      <div><span>Projected Vault Balance</span><strong class="${remaining === 0 ? "is-zero" : ""}">${Number.isFinite(remaining) ? remaining : "Unavailable"}</strong><small>${Number.isFinite(remaining) ? (remaining === 1 ? "seed" : "seeds") : "balance unavailable"}</small></div>
+    ` : `
+      <div class="germination-inventory-empty" data-germination-inventory-empty>
+        <strong>No Vault inventory impact</strong>
+        <span>No Seed Entries in this setup are linked to My Seed Vault.</span>
+      </div>
     `;
     const addedForSession = Math.max(0, totalSeeds - plannedVaultUse);
     inventoryBreakdown.innerHTML = `
-      <strong>${totalSeeds} seeds in this Session</strong>
-      <span>${plannedVaultUse} linked to My Seed Vault · ${addedForSession} added for this Session</span>
+      <strong>${formatGerminationSeedQuantity(totalSeeds)} in this Session</strong>
+      <span>${vaultEntries.length ? `${plannedVaultUse} linked to My Seed Vault · ${addedForSession} added for this Session` : `${addedForSession} added for this Session`}</span>
     `;
     const validationResult = getPreviewValidation();
+    if (validationResult.isValid) state.reviewAttempted = false;
     root.dataset.previewState = validationResult.isValid ? "ready" : "incomplete";
-    validation.textContent = validationResult.message;
-    reviewButton.disabled = !validationResult.isValid;
-    reviewButton.setAttribute("aria-disabled", String(!validationResult.isValid));
+    if (state.reviewAttempted && !validationResult.isValid) {
+      validation.innerHTML = `
+        <div class="germination-setup-validation__notice"><span aria-hidden="true">!</span><strong>Review found ${validationResult.issues.length} ${validationResult.issues.length === 1 ? "problem" : "problems"}.</strong></div>
+        <ol>${validationResult.issues.map((issue) => `<li id="${getValidationIssueId(issue, "-summary")}">${escapeHtml(issue.message)}</li>`).join("")}</ol>
+      `;
+    } else {
+      validation.innerHTML = validationResult.isValid
+        ? `<span>${escapeHtml(validationResult.message)}</span>`
+        : '<div class="germination-setup-validation__notice"><span aria-hidden="true">!</span><span>Complete the required setup details, then Review Setup.</span></div>';
+    }
+    applyReviewValidationState(validationResult);
+    reviewButtons.forEach((button) => {
+      button.disabled = false;
+      button.setAttribute("aria-disabled", "false");
+    });
+    methodNotice.textContent = state.methodNotice;
+    methodNotice.hidden = !state.methodNotice;
   };
 
   const closeReviewDialog = () => {
-    if (reviewDialog.hidden) return;
+    if (reviewDialog.hidden || state.isSaving) return;
     reviewDialog.hidden = true;
     document.body.classList.remove("modal-open");
-    reviewButton.focus();
+    primaryReviewButton?.focus();
   };
 
   renderEntries();
@@ -87872,40 +88994,91 @@ function renderGerminationSetupFounderPreview() {
     updateSummary();
   });
   root.querySelector("[data-germination-method]")?.addEventListener("change", (event) => {
-    state.methodType = normalizeMethodType(event.target.value);
+    const nextMethodType = normalizeMethodType(event.target.value);
+    if (nextMethodType === state.methodType) return;
+    const previousRule = getGerminationSetupMethodRule(state.methodType);
+    const nextRule = getGerminationSetupMethodRule(nextMethodType);
+    state.methodType = nextMethodType;
+    state.entries.forEach((entry, index) => {
+      entry.partitionLabel = ["kan", "positioned"].includes(nextRule.kind) && index < (Number(nextRule.maximumEntries) || Number.POSITIVE_INFINITY)
+        ? `${nextRule.prefix}${index + 1}`
+        : "";
+      if (nextRule.quantityMode === "single") entry.quantity = 1;
+    });
+    state.methodNotice = `Changed from ${previousRule.label} to ${nextRule.label}. Seed details were retained${["kan", "positioned"].includes(nextRule.kind) ? " and positions were assigned in entry order" : ""}${nextRule.quantityMode === "single" ? "; each entry now represents one physical unit" : ""}.`;
+    reindexGerminationSetupEntries();
+    renderEntries();
     updateSummary();
   });
   root.querySelectorAll('input[name="germination-preview-tracking"]').forEach((input) => {
     input.addEventListener("change", () => {
+      if (input.disabled) return;
+      const changedToSame = input.value === "same" && state.trackingMode !== "same";
       state.trackingMode = input.value;
+      if (changedToSame) {
+        applySharedSeedAge();
+      }
+      syncSeedAgeTracking();
+      renderEntries();
       updateSummary();
     });
   });
-  root.querySelector("[data-germination-add-entry]")?.addEventListener("click", () => {
-    if (state.entries.length >= 8) return;
-    const nextIndex = state.entries.length + 1;
-    const nextEntry = {
-      id: `preview-seed-entry-manual-${crypto.randomUUID()}`,
-      partitionLabel: `Partition ${nextIndex}`,
-      variety: "",
-      source: "",
-      breeder: "",
-      seedType: "unknown",
-      sex: "unknown",
-      quantity: 1,
-      referenceType: "manual",
-      vaultEntryId: "",
-      vaultAvailable: null,
-      ageReferenceKind: "unknown",
-      ageSourceValue: "",
-      agePrecision: "Unknown",
-      provenance: "Grower-provided Session evidence",
-    };
+  const addGerminationSetupEntry = () => {
+    if (!getMethodCapacityState().canAdd) return;
+    const nextEntry = buildGerminationSetupManualEntry(state.methodType, state.entries);
+    if (state.trackingMode === "same" && state.entries[0]) {
+      nextEntry.ageReferenceKind = state.entries[0].ageReferenceKind;
+      nextEntry.ageSourceValue = state.entries[0].ageSourceValue;
+      nextEntry.agePrecision = state.entries[0].agePrecision;
+    }
     state.entries.push(nextEntry);
+    reindexGerminationSetupEntries();
+    syncSeedAgeTracking();
     state.selectedEntryId = nextEntry.id;
     renderEntries();
     updateSummary();
-    entryList.querySelector(`[data-germination-entry="${nextEntry.id}"] input[data-germination-entry-field="variety"]`)?.focus();
+    entryList.querySelector(`[data-germination-entry="${nextEntry.id}"] [data-germination-origin-choice]`)?.focus();
+  };
+  root.addEventListener("click", (event) => {
+    const resetButton = event.target instanceof Element ? event.target.closest("[data-germination-reset-setup]") : null;
+    if (resetButton) {
+      if (!window.confirm("Reset this Germination Setup draft? Entered setup details will be cleared, but the Session and Vault records will not be changed.")) return;
+      state.methodType = "KAN";
+      state.trackingMode = "mixed";
+      state.entries = [buildGerminationSetupManualEntry("KAN", [])];
+      state.selectedEntryId = state.entries[0].id;
+      state.methodNotice = "Setup reset to one fresh P1 entry. Nothing was saved and Germination has not started.";
+      state.reviewAttempted = false;
+      root.querySelector("[data-germination-method]").value = "KAN";
+      reindexGerminationSetupEntries();
+      syncSeedAgeTracking();
+      renderEntries();
+      updateSummary();
+      entryList.querySelector("[data-germination-entry]")?.focus();
+      return;
+    }
+    const addButton = event.target instanceof Element ? event.target.closest("[data-germination-add-entry]") : null;
+    if (addButton) {
+      addGerminationSetupEntry();
+      return;
+    }
+    const partitionButton = event.target instanceof Element ? event.target.closest("[data-germination-kan-partition]") : null;
+    if (partitionButton) {
+      const assignment = partitionButton.dataset.germinationKanPartition;
+      const owner = state.entries.find((entry) => entry.partitionLabel === assignment);
+      if (owner && syncActiveGerminationSetupEntry(owner.id)) navigateToGerminationSetupEntry(owner.id);
+      return;
+    }
+    const methodPosition = event.target instanceof Element ? event.target.closest("[data-germination-method-position]") : null;
+    if (!methodPosition) return;
+    const selectedPositionEntry = state.entries.find((entry) => entry.id === methodPosition.dataset.germinationMethodPosition);
+    if (!selectedPositionEntry) return;
+    if (syncActiveGerminationSetupEntry(selectedPositionEntry.id)) navigateToGerminationSetupEntry(selectedPositionEntry.id);
+  });
+  entryList.addEventListener("focusin", (event) => {
+    const entryElement = event.target instanceof Element ? event.target.closest("[data-germination-entry]") : null;
+    if (!(entryElement instanceof HTMLElement) || entryElement.dataset.germinationEntry === state.selectedEntryId) return;
+    syncActiveGerminationSetupEntry(entryElement.dataset.germinationEntry || "");
   });
   entryList.addEventListener("click", (event) => {
     const entryElement = event.target instanceof Element ? event.target.closest("[data-germination-entry]") : null;
@@ -87915,7 +89088,70 @@ function renderGerminationSetupFounderPreview() {
     const selectButton = event.target.closest("[data-germination-entry-select]");
     const quantityButton = event.target.closest("[data-germination-quantity]");
     const removeButton = event.target.closest("[data-germination-remove-entry]");
+    const vaultChangeButton = event.target.closest("[data-germination-vault-change]");
+    const vaultRemoveButton = event.target.closest("[data-germination-vault-remove]");
+    const vaultOptionButton = event.target.closest("[data-germination-vault-option]");
     if (selectButton) {
+      syncActiveGerminationSetupEntry(entry.id);
+      return;
+    }
+    if (vaultChangeButton) {
+      entry.vaultPickerOpen = true;
+      entry.vaultSearchQuery = "";
+      state.selectedEntryId = entry.id;
+      renderEntries();
+      updateSummary();
+      entryList.querySelector(`[data-germination-entry="${entry.id}"] [data-germination-vault-search]`)?.focus();
+      return;
+    }
+    if (vaultRemoveButton) {
+      const sharedAge = state.trackingMode === "same" ? getSharedSeedAge(state.entries[0]) : null;
+      Object.assign(entry, {
+        variety: "",
+        source: "",
+        breeder: "",
+        seedType: "unknown",
+        sex: "unknown",
+        quantity: 1,
+        vaultEntryId: "",
+        vaultAvailable: null,
+        committedVaultQuantity: 0,
+        ageReferenceKind: "unknown",
+        ageSourceValue: "",
+        agePrecision: "Unknown",
+        provenance: "My Seed Vault",
+        vaultPickerOpen: true,
+        vaultSearchQuery: "",
+      });
+      if (sharedAge) applySharedSeedAge(sharedAge);
+      syncSeedAgeTracking();
+      state.selectedEntryId = entry.id;
+      renderEntries();
+      updateSummary();
+      entryList.querySelector(`[data-germination-entry="${entry.id}"] [data-germination-vault-search]`)?.focus();
+      return;
+    }
+    if (vaultOptionButton) {
+      const sharedAge = state.trackingMode === "same" ? getSharedSeedAge(state.entries[0]) : null;
+      const vaultEntry = state.vaultEntries.find((candidate) => getVaultEntryId(candidate) === vaultOptionButton.dataset.germinationVaultOption);
+      const replacement = buildGerminationSetupEntryFromVault(
+        vaultEntry,
+        state.methodType,
+        state.entries.filter((candidate) => candidate.id !== entry.id),
+      );
+      if (!replacement) return;
+      const quantity = getGerminationSetupMethodRule(state.methodType).quantityMode === "single"
+        ? 1
+        : Math.min(Math.max(1, Number(entry.quantity) || 1), Math.max(1, replacement.vaultAvailable));
+      Object.assign(entry, replacement, {
+        id: entry.id,
+        partitionLabel: entry.partitionLabel || replacement.partitionLabel,
+        quantity,
+        vaultPickerOpen: false,
+        vaultSearchQuery: "",
+      });
+      if (sharedAge) applySharedSeedAge(sharedAge);
+      syncSeedAgeTracking();
       state.selectedEntryId = entry.id;
       renderEntries();
       updateSummary();
@@ -87923,60 +89159,201 @@ function renderGerminationSetupFounderPreview() {
     }
     if (quantityButton) {
       const delta = quantityButton.dataset.germinationQuantity === "increase" ? 1 : -1;
-      entry.quantity = Math.max(1, entry.quantity + delta);
+      const allowed = entry.referenceType === "vault" && entry.vaultEntryId
+        ? Number(entry.vaultAvailable) + Math.max(0, Number(entry.committedVaultQuantity) || 0)
+        : Number.POSITIVE_INFINITY;
+      const otherAllocation = entry.referenceType === "vault" && entry.vaultEntryId
+        ? getVaultAllocationTotal(entry) - entry.quantity
+        : 0;
+      entry.quantity = Math.max(1, Math.min(entry.quantity + delta, allowed - otherAllocation));
       state.selectedEntryId = entry.id;
       renderEntries();
       updateSummary();
       return;
     }
-    if (removeButton && entry.referenceType !== "vault") {
+    if (removeButton) {
       state.entries = state.entries.filter((candidate) => candidate.id !== entry.id);
+      reindexGerminationSetupEntries();
+      syncSeedAgeTracking();
       state.selectedEntryId = state.entries[0]?.id || "";
       renderEntries();
       updateSummary();
     }
   });
   entryList.addEventListener("input", (event) => {
+    const vaultSearch = event.target.closest("[data-germination-vault-search]");
+    const structureField = event.target.closest("[data-germination-structure-assignment]");
     const field = event.target.closest("[data-germination-entry-field]");
     const entryElement = event.target.closest("[data-germination-entry]");
-    if (!field || !entryElement) return;
+    if ((!field && !structureField && !vaultSearch) || !entryElement) return;
     const entry = state.entries.find((candidate) => candidate.id === entryElement.dataset.germinationEntry);
     if (!entry) return;
+    if (vaultSearch) {
+      const selectionStart = vaultSearch.selectionStart;
+      entry.vaultSearchQuery = vaultSearch.value;
+      renderEntries();
+      updateSummary();
+      const nextSearch = entryList.querySelector(`[data-germination-entry="${entry.id}"] [data-germination-vault-search]`);
+      nextSearch?.focus();
+      if (Number.isInteger(selectionStart)) nextSearch?.setSelectionRange(selectionStart, selectionStart);
+      return;
+    }
+    if (structureField) {
+      const rule = getGerminationSetupMethodRule(state.methodType);
+      if (rule.kind === "other") {
+        entry.partitionLabel = structureField.value;
+      }
+      renderMethodStructure();
+      updateSummary();
+      return;
+    }
     const fieldName = field.dataset.germinationEntryField;
-    if (fieldName === "variety" || fieldName === "source") {
+    if (fieldName === "variety" || fieldName === "source" || fieldName === "breeder") {
       entry[fieldName] = field.value;
+      if (fieldName === "variety") renderMethodStructure();
+      updateSummary();
+    }
+    if (fieldName === "ageSourceValue") {
+      entry.ageSourceValue = field.value;
+      if (state.trackingMode === "same") {
+        applySharedSeedAge(entry);
+        entryList.querySelectorAll('[data-germination-entry-field="ageSourceValue"]').forEach((control) => {
+          control.value = entry.ageSourceValue;
+        });
+      }
       updateSummary();
     }
   });
   entryList.addEventListener("change", (event) => {
+    const originChoice = event.target.closest("[data-germination-origin-choice]");
+    const structureField = event.target.closest("[data-germination-structure-assignment]");
     const field = event.target.closest("[data-germination-entry-field]");
     const entryElement = event.target.closest("[data-germination-entry]");
-    if (!field || !entryElement) return;
+    if ((!field && !structureField && !originChoice) || !entryElement) return;
     const entry = state.entries.find((candidate) => candidate.id === entryElement.dataset.germinationEntry);
     if (!entry) return;
+    if (originChoice) {
+      if (originChoice.value === "manual") {
+        Object.assign(entry, {
+          referenceType: "manual",
+          vaultEntryId: "",
+          vaultAvailable: null,
+          committedVaultQuantity: 0,
+          provenance: "Grower-provided Session evidence",
+          vaultPickerOpen: false,
+          vaultSearchQuery: "",
+        });
+      } else {
+        Object.assign(entry, {
+          referenceType: "vault",
+          vaultEntryId: "",
+          vaultAvailable: null,
+          committedVaultQuantity: 0,
+          provenance: "My Seed Vault",
+          vaultPickerOpen: true,
+          vaultSearchQuery: "",
+        });
+      }
+      syncSeedAgeTracking();
+      state.selectedEntryId = entry.id;
+      renderEntries();
+      updateSummary();
+      const nextTarget = originChoice.value === "vault"
+        ? entryList.querySelector(`[data-germination-entry="${entry.id}"] [data-germination-vault-search]`)
+        : entryList.querySelector(`[data-germination-entry="${entry.id}"] [data-germination-entry-field="variety"]`);
+      nextTarget?.focus();
+      return;
+    }
+    if (structureField) return;
     const fieldName = field.dataset.germinationEntryField;
+    if (fieldName === "variety" || fieldName === "source" || fieldName === "breeder") return;
     if (fieldName === "seedType" || fieldName === "sex") entry[fieldName] = field.value;
     if (fieldName === "ageReferenceKind") {
       entry.ageReferenceKind = field.value;
-      entry.ageSourceValue = field.value === "acquisition_year" ? "2024" : "";
+      if (field.value === "unknown"
+        || (field.value === "acquisition_year" && !/^\d{4}$/.test(entry.ageSourceValue))) {
+        entry.ageSourceValue = "";
+      }
+      if (field.value === "user_statement") entry.ageSourceValue = "";
       entry.agePrecision = field.value === "acquisition_year" ? "Year precision" : field.value === "user_statement" ? "Approximate statement" : "Unknown";
+      if (state.trackingMode === "same") {
+        applySharedSeedAge(entry);
+      }
+      syncSeedAgeTracking();
     }
     renderEntries();
     updateSummary();
   });
-  reviewButton.addEventListener("click", () => {
-    const validationResult = getPreviewValidation();
+  reviewButtons.forEach((reviewButton) => reviewButton.addEventListener("click", () => {
+    if (saveStatus) saveStatus.textContent = "";
+    state.reviewAttempted = true;
+    let validationResult = getPreviewValidation();
     if (!validationResult.isValid) {
-      validation.textContent = validationResult.message;
-      const invalidEntry = validationResult.entryId ? entryList.querySelector(`[data-germination-entry="${validationResult.entryId}"]`) : null;
-      (invalidEntry?.querySelector("input, select, button") || root.querySelector(validationResult.target || ""))?.focus();
+      if (validationResult.issues[0]?.entryId) state.selectedEntryId = validationResult.issues[0].entryId;
+      renderEntries();
+      updateSummary();
+      validationResult = getPreviewValidation();
+      window.requestAnimationFrame(() => focusValidationIssue(validationResult.issues[0]));
       return;
     }
     const totalSeeds = state.entries.reduce((total, entry) => total + entry.quantity, 0);
     reviewDialog.querySelector("[data-germination-review-dialog-summary]").textContent = `${state.sessionName} is ready for review with ${state.entries.length} Seed Entries and ${totalSeeds} seeds. Seed details linked to My Seed Vault remain distinguishable from the details saved with this Session.`;
+    reviewDialogEntries.innerHTML = state.entries.map((entry, index) => `
+      <div class="germination-review-dialog__entry">
+        <strong>${escapeHtml(getGerminationSetupEntryHeading(state.methodType, entry, index))}</strong>
+        <span>${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)}</span>
+        <small>${escapeHtml(formatGerminationSeedQuantity(entry.quantity))}</small>
+        <small class="germination-review-dialog__age">${escapeHtml(getEntryEvidenceLabel(getEntryAge(entry)))}${getEntryVaultAge(entry) ? " · My Seed Vault" : " · Session"}</small>
+      </div>
+    `).join("");
     reviewDialog.hidden = false;
     document.body.classList.add("modal-open");
     reviewDialog.querySelector("[data-germination-review-close]")?.focus();
+  }));
+  saveButton?.addEventListener("click", async () => {
+    if (state.isSaving) return;
+    const validationResult = getPreviewValidation();
+    if (!validationResult.isValid) {
+      closeReviewDialog();
+      state.reviewAttempted = true;
+      if (validationResult.issues[0]?.entryId) state.selectedEntryId = validationResult.issues[0].entryId;
+      renderEntries();
+      updateSummary();
+      window.requestAnimationFrame(() => focusValidationIssue(getPreviewValidation().issues[0]));
+      return;
+    }
+
+    state.isSaving = true;
+    saveButton.disabled = true;
+    reviewDialog.querySelectorAll("[data-germination-review-close]").forEach((control) => {
+      control.disabled = true;
+    });
+    saveStatus.textContent = "Saving setup and applying the shown Vault inventory change…";
+    try {
+      const result = await saveConnectedGerminationSetup(state);
+      const savedSessionId = normalizeGerminationSetupSessionId(result?.session?.id);
+      if (!savedSessionId) throw new Error("The saved Germination Setup did not return its Session identity.");
+      clearNewSessionSeedVaultStarterIntent();
+      try {
+        await refreshUserSessionsAfterSave("germination-setup:save");
+      } catch (refreshError) {
+        console.warn("[Germination Setup] Session cache refresh will retry on the next load.", refreshError);
+      }
+      const savedHash = `#new/germination-setup/${savedSessionId}`;
+      if (window.location.hash !== savedHash) {
+        window.location.hash = savedHash;
+      } else {
+        void renderConnectedGerminationSetup(savedSessionId, state.methodType);
+      }
+    } catch (error) {
+      console.error("[Germination Setup] Save failed.", error);
+      state.isSaving = false;
+      saveButton.disabled = false;
+      reviewDialog.querySelectorAll("[data-germination-review-close]").forEach((control) => {
+        control.disabled = false;
+      });
+      saveStatus.textContent = error?.message || "Germination Setup could not be saved.";
+    }
   });
   reviewDialog.querySelectorAll("[data-germination-review-close]").forEach((control) => control.addEventListener("click", closeReviewDialog));
   root.addEventListener("keydown", (event) => {
@@ -105911,7 +107288,6 @@ document.addEventListener("scroll", requestOpenCustomSelectMenuPositionSync, tru
 window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
-
 
 
 

@@ -32,12 +32,12 @@
   </g>
   <circle id="partition-1" class="st0 partition-node" data-partition="1" cx="528" cy="332.13" r="67.35"/>
   <circle id="partition-2" class="st0 partition-node" data-partition="2" cx="735.48" cy="432.68" r="67.35"/>
-  <circle id="partition-3" class="st0 partition-node" data-partition="3" cx="325.16" cy="432.68" r="67.35"/>
-  <circle id="partition-4" class="st0 partition-node" data-partition="4" cx="802.84" cy="637.21" r="67.35"/>
-  <circle id="partition-5" class="st0 partition-node" data-partition="5" cx="262.41" cy="637.21" r="67.35"/>
-  <circle id="partition-6" class="st0 partition-node" data-partition="6" cx="734.43" cy="844.76" r="67.35"/>
-  <circle id="partition-7" class="st0 partition-node" data-partition="7" cx="522.24" cy="931.6" r="67.35"/>
-  <circle id="partition-8" class="st0 partition-node" data-partition="8" cx="323.83" cy="840.83" r="67.35"/>
+  <circle id="partition-8" class="st0 partition-node" data-partition="8" cx="325.16" cy="432.68" r="67.35"/>
+  <circle id="partition-3" class="st0 partition-node" data-partition="3" cx="802.84" cy="637.21" r="67.35"/>
+  <circle id="partition-7" class="st0 partition-node" data-partition="7" cx="262.41" cy="637.21" r="67.35"/>
+  <circle id="partition-4" class="st0 partition-node" data-partition="4" cx="734.43" cy="844.76" r="67.35"/>
+  <circle id="partition-5" class="st0 partition-node" data-partition="5" cx="522.24" cy="931.6" r="67.35"/>
+  <circle id="partition-6" class="st0 partition-node" data-partition="6" cx="323.83" cy="840.83" r="67.35"/>
   <path d="M525.84,310.27h-.19l-11.85,5.63-2.41-10.94,16.53-7.68h12.03v62.34h-14.1v-49.35Z"/>
   <path d="M721.78,466.46v-8.83l5.61-7.25c9.53-12.25,14.17-19.21,14.25-26.5,0-5.06-2.08-9.09-7.13-9.09-3.75,0-7.03,2.69-9.32,5.12l-2.86-10.42c3.25-3.54,8.38-6.43,14.23-6.43,9.89,0,15.27,8.26,15.27,19.54,0,10.46-5.23,18.86-11.58,26.86l-4.03,4.79v.19h16.48v12.01h-30.91Z"/>
   <path d="M790.3,654.94c1.78,1.37,5.99,3.79,10.14,3.79,5.28,0,7.97-3.63,7.96-8.28-.02-6.18-4.29-8.97-8.78-8.99h-4.15v-10.46h3.98c3.41-.02,7.72-1.91,7.72-7.16,0-3.72-2.11-6.52-6.41-6.52-3.58,0-7.32,2.2-9.09,3.73l-2.09-10.51c2.63-2.42,7.83-4.72,13.48-4.72,9.32,0,14.46,7,14.46,15.56,0,6.55-2.63,11.78-7.96,14.46v.19c5.22,1.35,9.44,6.98,9.44,15.19,0,11-6.78,19.05-17.81,19.05-5.65,0-10.4-2.08-12.93-4.37l2.07-10.96Z"/>

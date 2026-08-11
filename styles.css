@@ -20,6 +20,7 @@ html {
   --bc-radius-lg: 18px;
   --bc-radius-md: 12px;
   --bc-radius-sm: 8px;
+  box-sizing: border-box;
   width: min(1280px, calc(100vw - 32px));
   min-height: calc(100vh - 40px);
   margin: 0 auto 32px;
@@ -33,7 +34,7 @@ html {
   border-radius: 24px;
   box-shadow: var(--bc-shadow);
   font-family: inherit;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .germination-setup-preview *,
@@ -287,6 +288,12 @@ html {
   min-width: 0;
 }
 
+.germination-setup-preview__sticky-rail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
 .botanical-panel {
   min-width: 0;
   padding: 22px;
@@ -343,6 +350,12 @@ html {
   font-weight: 720;
 }
 
+.botanical-status--draft {
+  width: fit-content;
+  max-width: max-content;
+  align-self: flex-start;
+}
+
 .botanical-compact-action {
   cursor: pointer;
   transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
@@ -354,9 +367,16 @@ html {
   border-color: var(--bc-brand);
 }
 
+.botanical-compact-action:disabled,
+.botanical-compact-action[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
 .germination-identity-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(150px, 0.82fr) minmax(160px, 0.9fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(150px, 0.8fr) minmax(220px, 1fr);
   gap: 12px;
 }
 
@@ -392,6 +412,11 @@ html {
   border-radius: var(--bc-radius-sm);
 }
 
+.germination-identity-fields select {
+  min-width: 0;
+  text-overflow: clip;
+}
+
 .germination-identity-fields input:hover,
 .germination-identity-fields select:hover,
 .germination-seed-entry__details input:hover,
@@ -413,6 +438,408 @@ html {
   color: var(--bc-muted);
   font-size: 0.76rem;
   line-height: 1.45;
+}
+
+.germination-method-structure {
+  overflow: hidden;
+}
+
+.germination-kan-composition {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(230px, 1fr);
+  gap: 18px;
+  align-items: center;
+}
+
+.germination-kan-layout {
+  width: min(100%, 360px);
+  margin: 0 auto;
+}
+
+.germination-kan-layout__image {
+  position: relative;
+  aspect-ratio: 1;
+  padding: 14px;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+}
+
+.germination-kan-layout img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.germination-kan-layout__indicators {
+  position: absolute;
+  inset: 14px;
+}
+
+.germination-kan-layout__partition {
+  position: absolute;
+  display: grid;
+  width: clamp(44px, 13%, 54px);
+  aspect-ratio: 1;
+  padding: 5px 3px;
+  place-content: center;
+  color: var(--bc-text);
+  cursor: pointer;
+  background: rgba(7, 16, 6, 0.84);
+  border: 2px solid rgba(222, 237, 213, 0.74);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.germination-kan-layout__partition:hover:not(:disabled),
+.germination-kan-layout__partition:focus-visible {
+  transform: translate(-50%, -50%) scale(1.06);
+  border-color: var(--bc-brand-bright);
+  outline: 3px solid rgba(184, 255, 92, 0.35);
+  outline-offset: 2px;
+}
+
+.germination-kan-layout__partition:disabled {
+  cursor: default;
+  opacity: 0.66;
+}
+
+.germination-kan-layout__partition .germination-kan-layout__label,
+.germination-kan-layout__partition .germination-kan-layout__state {
+  display: block;
+  color: var(--bc-text);
+  line-height: 1.05;
+}
+
+.germination-kan-layout__partition .germination-kan-layout__label {
+  font-size: clamp(0.68rem, 1.5vw, 0.82rem);
+  font-weight: 850;
+}
+
+.germination-kan-layout__partition .germination-kan-layout__state {
+  margin-top: 2px;
+  font-size: clamp(0.39rem, 0.9vw, 0.5rem);
+  font-weight: 760;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.germination-kan-layout__partition.is-assigned {
+  background: rgba(32, 51, 32, 0.9);
+  border-style: dashed;
+  border-color: var(--bc-brand-bright);
+}
+
+.germination-kan-layout__partition.is-selected {
+  color: #071006;
+  background: #b8ff5c;
+  border-color: #e4ffbd;
+  box-shadow: inset 0 0 0 2px #071006, 0 0 0 3px rgba(184, 255, 92, 0.28);
+}
+
+.germination-kan-layout__partition.is-selected .germination-kan-layout__label,
+.germination-kan-layout__partition.is-selected .germination-kan-layout__state {
+  color: #071006;
+}
+
+.germination-kan-layout__partition--1 { left: 50%; top: 23%; }
+.germination-kan-layout__partition--2 { left: 69.5%; top: 30%; }
+.germination-kan-layout__partition--3 { left: 76%; top: 50.5%; }
+.germination-kan-layout__partition--4 { left: 70%; top: 70.5%; }
+.germination-kan-layout__partition--5 { left: 50%; top: 76%; }
+.germination-kan-layout__partition--6 { left: 30%; top: 70.5%; }
+.germination-kan-layout__partition--7 { left: 24%; top: 50.5%; }
+.germination-kan-layout__partition--8 { left: 30.5%; top: 30%; }
+
+.germination-kan-contents {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.germination-kan-contents__row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 10px;
+  color: var(--bc-text);
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+  text-align: left;
+}
+
+button.germination-kan-contents__row {
+  width: 100%;
+  cursor: pointer;
+}
+
+.germination-kan-contents__row strong {
+  color: var(--bc-brand-bright);
+  font-size: 0.76rem;
+}
+
+.germination-kan-contents__row span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.germination-kan-contents__row small {
+  color: var(--bc-muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.germination-kan-contents__row.is-available {
+  color: var(--bc-muted);
+  border-style: dashed;
+}
+
+.germination-kan-contents__row.is-available span {
+  grid-column: 2 / -1;
+  font-weight: 600;
+}
+
+.germination-kan-contents__row.is-selected {
+  color: #071006;
+  background: var(--bc-brand-bright);
+  border-color: #e4ffbd;
+}
+
+.germination-kan-contents__row.is-selected strong,
+.germination-kan-contents__row.is-selected small {
+  color: #071006;
+}
+
+.germination-kan-filter-paper {
+  display: grid;
+  gap: 4px;
+  width: min(100%, 608px);
+  margin: 14px auto 0;
+  padding: 12px 14px;
+  color: var(--bc-text);
+  background: rgba(184, 255, 92, 0.08);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius-sm);
+  font-size: 0.78rem;
+}
+
+.germination-kan-filter-paper span {
+  color: var(--bc-muted);
+}
+
+.germination-method-change-notice {
+  margin: -6px 0 0 !important;
+  padding: 12px 14px;
+  color: var(--bc-text);
+  background: rgba(90, 200, 255, 0.08);
+  border: 1px solid rgba(90, 200, 255, 0.32);
+  border-radius: var(--bc-radius-sm);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.germination-method-visual {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(148, 209, 89, 0.08), var(--bc-raised));
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+}
+
+.germination-method-visual__symbol {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  color: var(--bc-brand-bright);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: 18px;
+  font-size: 2rem;
+}
+
+.germination-method-visual__total {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  color: var(--bc-brand-bright);
+  background: var(--bc-selected);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 760;
+}
+
+.germination-method-positions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.germination-method-position {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 11px 12px;
+  color: var(--bc-text);
+  cursor: pointer;
+  text-align: left;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-method-position:hover,
+.germination-method-position:focus-visible,
+.germination-method-position.is-selected {
+  border-color: var(--bc-brand-bright);
+}
+
+.germination-method-position.is-selected {
+  background: var(--bc-selected);
+  box-shadow: inset 4px 0 0 var(--bc-brand-bright);
+}
+
+.germination-method-position span,
+.germination-method-position small {
+  color: var(--bc-muted);
+  font-size: 0.68rem;
+}
+
+.germination-method-position strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.germination-method-visual__empty {
+  color: var(--bc-muted);
+  font-size: 0.8rem;
+}
+
+.germination-shared-method {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(148, 209, 89, 0.08), var(--bc-raised));
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+}
+
+.germination-shared-method__units {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.germination-shared-unit {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  color: var(--bc-text);
+  cursor: pointer;
+  text-align: left;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-md);
+}
+
+.germination-shared-unit:hover,
+.germination-shared-unit:focus-visible,
+.germination-shared-unit.is-selected {
+  border-color: var(--bc-brand-bright);
+}
+
+.germination-shared-unit.is-selected {
+  background: var(--bc-selected);
+  box-shadow: inset 4px 0 0 var(--bc-brand-bright);
+}
+
+.germination-shared-method__stages {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+}
+
+.germination-shared-stage {
+  display: grid;
+  gap: 8px;
+  width: min(220px, 100%);
+  min-height: 104px;
+  padding: 16px;
+  place-content: center;
+  text-align: center;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius-md);
+}
+
+.germination-shared-stage > span {
+  color: var(--bc-brand-bright);
+  font-size: 2rem;
+}
+
+.germination-shared-stage strong {
+  font-size: 0.8rem;
+}
+
+.germination-shared-stage__connector {
+  align-self: center;
+  color: var(--bc-muted);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.germination-shared-method__summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bc-border);
+}
+
+.germination-shared-method__summary strong {
+  color: var(--bc-text);
+  font-size: 0.8rem;
+}
+
+.germination-shared-method__summary span {
+  color: var(--bc-muted);
+  font-size: 0.72rem;
+}
+
+.germination-lower-add-entry {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.germination-lower-add-entry__button {
+  min-height: 44px;
+}
+
+.germination-capacity-message {
+  min-height: 1.3em;
+  margin-top: 10px !important;
+  color: var(--bc-brand);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .germination-tracking-choice {
@@ -438,6 +865,12 @@ html {
 .germination-tracking-choice:has(input:checked) {
   background: linear-gradient(135deg, var(--bc-selected), #1a2b1e);
   border-color: var(--bc-brand);
+}
+
+.germination-tracking-choice:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.58;
+  transform: none;
 }
 
 .germination-tracking-choice input {
@@ -483,12 +916,13 @@ html {
 
 .germination-seed-entry-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .germination-seed-entry {
   min-width: 0;
   overflow: hidden;
+  scroll-margin-top: 112px;
   background: var(--bc-raised);
   border: 1px solid var(--bc-border);
   border-radius: var(--bc-radius-md);
@@ -505,12 +939,317 @@ html {
   border-color: var(--bc-brand);
 }
 
+.germination-seed-entry:focus-visible {
+  outline: 3px solid var(--bc-brand-bright);
+  outline-offset: 3px;
+}
+
+.germination-seed-entry.is-navigation-target {
+  border-color: var(--bc-brand-bright);
+  box-shadow: 0 0 0 4px rgba(184, 255, 92, 0.2), 0 10px 32px rgba(0, 0, 0, 0.28);
+}
+
+.germination-seed-entry.is-invalid {
+  border-color: rgba(235, 132, 119, 0.78);
+  box-shadow: 0 0 0 1px rgba(235, 132, 119, 0.16);
+}
+
+.germination-control--invalid {
+  border-color: rgba(235, 132, 119, 0.92) !important;
+  box-shadow: 0 0 0 3px rgba(235, 132, 119, 0.14) !important;
+}
+
+.germination-entry-origin.germination-control--invalid,
+.germination-kan-layout__image.germination-control--invalid {
+  outline: 2px solid rgba(235, 132, 119, 0.92);
+  outline-offset: 3px;
+}
+
+.germination-entry-origin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px 10px;
+  border: 0;
+}
+
+.germination-entry-origin legend {
+  width: 100%;
+  margin-bottom: 7px;
+  color: var(--bc-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.germination-entry-origin label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 11px;
+  color: var(--bc-text);
+  cursor: pointer;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+.germination-entry-origin label:has(input:checked) {
+  color: #071006;
+  background: var(--bc-brand-bright);
+  border-color: var(--bc-brand-bright);
+}
+
+.germination-entry-origin label:has(input:checked)::after {
+  content: "Selected";
+  padding-left: 4px;
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.germination-entry-origin input {
+  width: 16px;
+  height: 16px;
+  accent-color: #315d18;
+}
+
+.germination-entry-origin-prompt {
+  margin: 0 16px 14px !important;
+  padding: 12px 14px;
+  color: var(--bc-muted);
+  background: var(--bc-raised);
+  border: 1px dashed var(--bc-border-strong);
+  border-radius: var(--bc-radius-sm);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.germination-entry-assignment,
+.germination-origin-required-note {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-height: 68px;
+  padding: 11px 12px;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-entry-assignment span,
+.germination-origin-required-note span {
+  color: var(--bc-muted);
+  font-size: 0.68rem;
+}
+
+.germination-entry-assignment strong,
+.germination-origin-required-note strong {
+  color: var(--bc-text);
+  font-size: 0.78rem;
+}
+
+.germination-vault-picker {
+  display: grid;
+  gap: 10px;
+  margin: 0 14px 10px;
+  padding: 11px 12px;
+  background: rgba(148, 209, 89, 0.06);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-vault-selection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.germination-vault-selection__identity {
+  min-width: 0;
+}
+
+.germination-vault-selection > div:first-child,
+.germination-vault-selection > div:first-child strong,
+.germination-vault-selection > div:first-child small {
+  display: block;
+}
+
+.germination-vault-selection > div:first-child > span,
+.germination-vault-search > span {
+  color: var(--bc-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.germination-vault-selection > div:first-child strong {
+  margin-top: 5px;
+  color: var(--bc-text);
+}
+
+.germination-vault-selection > div:first-child small {
+  margin-top: 4px;
+  color: var(--bc-muted);
+  font-size: 0.72rem;
+}
+
+.germination-vault-selection dl {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.germination-vault-selection dl div {
+  padding: 8px;
+  background: var(--bc-card);
+  border-radius: 7px;
+}
+
+.germination-vault-selection dt {
+  color: var(--bc-muted);
+  font-size: 0.6rem;
+}
+
+.germination-vault-selection dd {
+  margin: 4px 0 0;
+  color: var(--bc-text);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.germination-vault-selection__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.germination-vault-selection__actions button,
+.germination-vault-results button {
+  min-height: 38px;
+  padding: 8px 10px;
+  color: var(--bc-text);
+  cursor: pointer;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: 7px;
+  font-size: 0.72rem;
+}
+
+.germination-vault-selection__actions .germination-vault-selection__change {
+  background: var(--bc-raised);
+  border-color: var(--bc-brand-deep);
+}
+
+.germination-vault-selection__actions .germination-vault-selection__remove {
+  color: var(--bc-muted);
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.germination-vault-selection__actions button:hover,
+.germination-vault-selection__actions button:focus-visible {
+  color: var(--bc-brand-bright);
+  border-color: var(--bc-brand);
+}
+
+.germination-vault-search {
+  display: grid;
+  gap: 7px;
+}
+
+.germination-vault-search input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--bc-text);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-vault-results {
+  display: grid;
+  gap: 7px;
+  max-height: 230px;
+  overflow: auto;
+}
+
+.germination-vault-results button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.germination-vault-results button:hover,
+.germination-vault-results button:focus-visible {
+  border-color: var(--bc-brand-bright);
+}
+
+.germination-vault-results button span:first-child,
+.germination-vault-results button strong,
+.germination-vault-results button small {
+  display: block;
+}
+
+.germination-vault-results button small,
+.germination-vault-results > p {
+  margin-top: 3px;
+  color: var(--bc-muted);
+  font-size: 0.68rem;
+}
+
+.germination-entry-lineage-note {
+  margin: 0 !important;
+  color: var(--bc-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.germination-entry-lineage-note--manual {
+  margin: 0 14px 10px !important;
+  padding: 8px 10px;
+  background: var(--bc-card);
+  border-radius: 7px;
+}
+
 .germination-seed-entry__topline {
   display: grid;
-  grid-template-columns: 24px 24px minmax(200px, 1fr) auto auto;
-  gap: 12px;
+  grid-template-columns: 24px minmax(112px, auto) minmax(180px, 1fr) auto auto;
+  gap: 10px;
   align-items: center;
-  padding: 15px 16px;
+  padding: 11px 14px;
+}
+
+.germination-seed-entry__topline--fixed {
+  grid-template-columns: 24px minmax(112px, auto) minmax(180px, 1fr) auto;
+}
+
+.germination-seed-entry__topline--linked {
+  grid-template-columns: 24px minmax(112px, 1fr) auto auto;
+}
+
+.germination-seed-entry__topline--fixed.germination-seed-entry__topline--linked {
+  grid-template-columns: 24px minmax(112px, 1fr) auto;
+}
+
+.germination-seed-entry__heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  align-items: center;
+  min-width: 0;
 }
 
 .germination-seed-entry__selector,
@@ -546,6 +1285,7 @@ html {
   color: var(--bc-muted);
   font-size: 0.82rem;
   font-weight: 740;
+  white-space: nowrap;
 }
 
 .germination-seed-entry__identity {
@@ -597,6 +1337,23 @@ html {
   border-radius: var(--bc-radius-sm);
 }
 
+.germination-seed-entry__quantity > .germination-seed-entry__fixed-quantity {
+  display: flex;
+  width: min(190px, 100%);
+  min-width: 150px;
+  min-height: 42px;
+  padding: 8px 10px;
+  align-items: center;
+  justify-content: center;
+  color: var(--bc-text);
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border-strong);
+  border-radius: var(--bc-radius-sm);
+  font-size: 0.82rem;
+  line-height: 1.25;
+  text-align: center;
+}
+
 .germination-seed-entry__quantity button,
 .germination-seed-entry__quantity strong {
   display: inline-flex;
@@ -629,12 +1386,16 @@ html {
 
 .germination-seed-entry__details {
   display: grid;
-  grid-template-columns: 0.8fr 1.25fr repeat(3, minmax(110px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  padding: 14px 16px;
+  padding: 10px 14px;
   background: var(--bc-card);
   border-top: 1px solid var(--bc-border);
   border-bottom: 1px solid var(--bc-border);
+}
+
+.germination-seed-entry__details > .germination-entry-field--source {
+  grid-column: span 2;
 }
 
 .germination-seed-entry__details > div > strong {
@@ -651,7 +1412,29 @@ html {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 9px 14px;
+}
+
+.germination-derived-age {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  background: var(--bc-raised);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-derived-age span,
+.germination-derived-age small {
+  color: var(--bc-muted);
+  font-size: 0.68rem;
+}
+
+.germination-derived-age strong {
+  color: var(--bc-text);
+  font-size: 0.78rem;
 }
 
 .germination-seed-entry__evidence span {
@@ -674,36 +1457,86 @@ html {
   text-align: right;
 }
 
-.germination-setup-validation {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 24px;
-  margin-top: 14px !important;
-  color: var(--bc-brand);
-  font-size: 0.82rem;
+.germination-seed-entry__validation {
+  display: grid;
+  gap: 7px;
+  min-height: 1em;
+  margin: 0 !important;
+  padding: 7px 14px 9px;
+  color: var(--bc-muted);
+  font-size: 0.72rem;
   font-weight: 680;
 }
 
-.germination-setup-validation::before {
-  content: "✓";
+.germination-seed-entry.is-invalid .germination-seed-entry__validation {
+  color: #f1a398;
+}
+
+.germination-seed-entry__validation > span {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.germination-seed-entry__validation > span > span {
   display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   align-items: center;
   justify-content: center;
+  color: #190807;
+  background: #eb8477;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.germination-setup-validation {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 24px;
+  margin-top: 14px !important;
+  color: var(--bc-muted);
+  font-size: 0.82rem;
+  font-weight: 680;
+  text-align: center;
+}
+
+.germination-setup-validation__notice > strong {
+  color: #f1a398;
+}
+
+.germination-setup-validation__notice {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.germination-setup-validation__notice > span[aria-hidden="true"] {
+  display: inline-flex;
   width: 21px;
   height: 21px;
   flex: 0 0 21px;
-  border: 1px solid var(--bc-brand);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bc-border-strong);
   border-radius: 50%;
+}
+
+.germination-setup-validation ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 1.35rem;
+  color: #f1a398;
+  text-align: left;
 }
 
 .germination-setup-preview[data-preview-state="incomplete"] .germination-setup-validation {
   color: var(--bc-muted);
-}
-
-.germination-setup-preview[data-preview-state="incomplete"] .germination-setup-validation::before {
-  content: "!";
-  border-color: var(--bc-border-strong);
 }
 
 .germination-setup-summary {
@@ -759,13 +1592,39 @@ html {
 }
 
 .germination-inventory-metrics strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--bc-brand);
-  font-size: 1.65rem;
+  font-size: clamp(1.05rem, 2vw, 1.65rem);
   line-height: 1;
 }
 
 .germination-inventory-metrics strong.is-zero {
   color: var(--bc-text);
+}
+
+.germination-inventory-metrics.is-empty {
+  grid-template-columns: minmax(0, 1fr);
+  overflow: visible;
+}
+
+.germination-inventory-empty {
+  display: grid;
+  gap: 7px;
+  min-height: 0 !important;
+  padding: 15px !important;
+  text-align: left !important;
+}
+
+.germination-inventory-empty strong {
+  color: var(--bc-text);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.germination-inventory-empty span {
+  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 .germination-inventory-breakdown {
@@ -865,6 +1724,14 @@ html {
 
 .germination-review-action {
   padding: 5px;
+}
+
+.germination-review-action--primary {
+  display: grid;
+  gap: 0;
+  max-width: 560px;
+  margin: 18px auto 0;
+  padding: 0;
 }
 
 .botanical-primary-action,
@@ -986,6 +1853,47 @@ html {
   line-height: 1.6;
 }
 
+.germination-review-dialog__entries {
+  display: grid;
+  gap: 8px;
+  max-height: min(36vh, 320px);
+  margin-top: 16px;
+  overflow: auto;
+}
+
+.germination-review-dialog__entry {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(0, 1fr) auto minmax(130px, auto);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bc-card);
+  border: 1px solid var(--bc-border);
+  border-radius: var(--bc-radius-sm);
+}
+
+.germination-review-dialog__age {
+  text-align: right;
+}
+
+.germination-review-dialog__entry strong {
+  color: var(--bc-brand-bright);
+  font-size: 0.78rem;
+}
+
+.germination-review-dialog__entry span,
+.germination-review-dialog__entry small {
+  color: var(--bc-muted);
+  font-size: 0.76rem;
+}
+
+.germination-review-dialog__entry span {
+  overflow: hidden;
+  color: var(--bc-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .germination-review-dialog__boundary {
   display: grid;
   gap: 5px;
@@ -1007,6 +1915,28 @@ html {
   line-height: 1.5;
 }
 
+.germination-review-dialog__status {
+  min-height: 1.35em;
+  margin: 0 0 12px;
+  color: var(--bc-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.germination-review-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.germination-review-dialog__actions button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--bc-radius-sm);
+  font-weight: 780;
+}
+
 .botanical-secondary-action {
   color: var(--bc-text);
   background: var(--bc-raised);
@@ -1018,13 +1948,50 @@ html {
   border-color: var(--bc-brand);
 }
 
+@media (min-width: 981px) {
+  .germination-setup-preview__aside {
+    position: relative;
+    align-self: stretch;
+    align-content: start;
+  }
+
+  .germination-setup-preview__sticky-rail {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+    gap: 12px;
+  }
+
+  .germination-setup-preview__sticky-rail .botanical-panel {
+    padding: 16px;
+  }
+
+  .germination-setup-preview__sticky-rail .botanical-panel__heading {
+    margin-bottom: 12px;
+  }
+
+  .germination-setup-preview__sticky-rail .germination-inventory-metrics > div {
+    min-height: 88px;
+  }
+
+  .germination-setup-preview__sticky-rail .botanical-primary-action,
+  .germination-setup-preview__sticky-rail .botanical-secondary-action {
+    min-height: 48px;
+  }
+}
+
 @media (max-width: 980px) {
   .germination-setup-preview__layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .germination-setup-preview__aside {
+    position: static;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .germination-setup-preview__sticky-rail {
+    display: contents;
   }
 
   .botanical-panel--summary,
@@ -1137,10 +2104,88 @@ html {
     min-height: 0;
   }
 
+  .germination-method-visual {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-kan-composition {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-kan-layout {
+    width: min(100%, 340px);
+  }
+
+  .germination-kan-layout__image {
+    min-height: 0;
+  }
+
+  .germination-kan-layout__partition {
+    width: clamp(44px, 13%, 48px);
+  }
+
+  .germination-method-visual__symbol {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    font-size: 1.5rem;
+  }
+
+  .germination-method-positions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .germination-vault-selection {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-vault-selection__actions {
+    justify-content: flex-start;
+  }
+
+  .germination-vault-selection dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .germination-entry-origin {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-entry-origin label {
+    border-radius: var(--bc-radius-sm);
+  }
+
+  .germination-setup-preview__aside .germination-review-action {
+    display: none;
+  }
+
+  .germination-shared-method__stages {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .germination-shared-stage {
+    width: 100%;
+  }
+
+  .germination-shared-stage__connector {
+    transform: rotate(90deg);
+  }
+
   .germination-seed-entry__topline {
-    grid-template-columns: 24px 22px minmax(0, 1fr) auto;
+    grid-template-columns: 24px minmax(94px, auto) minmax(0, 1fr) auto;
     gap: 8px;
     padding: 14px;
+  }
+
+  .germination-seed-entry__topline--fixed {
+    grid-template-columns: 24px minmax(94px, auto) minmax(0, 1fr) auto;
+  }
+
+  .germination-seed-entry__topline--linked,
+  .germination-seed-entry__topline--fixed.germination-seed-entry__topline--linked {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
   }
 
   .germination-seed-entry__remove {
@@ -1170,7 +2215,11 @@ html {
 
   .germination-seed-entry__details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 14px;
+    padding: 10px 14px;
+  }
+
+  .germination-seed-entry__details > .germination-entry-field--source {
+    grid-column: span 2;
   }
 
   .germination-seed-entry__details > :last-child {
@@ -1186,6 +2235,15 @@ html {
   }
 
   .germination-seed-entry__evidence small {
+    text-align: left;
+  }
+
+  .germination-review-dialog__entry {
+    grid-template-columns: minmax(80px, auto) minmax(0, 1fr) auto;
+  }
+
+  .germination-review-dialog__age {
+    grid-column: 1 / -1;
     text-align: left;
   }
 
@@ -1219,6 +2277,37 @@ html {
 
   .germination-seed-entry__details > :last-child {
     grid-column: auto;
+  }
+
+  .germination-seed-entry__details > .germination-entry-field--source {
+    grid-column: auto;
+  }
+
+  .germination-shared-method__units {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-review-dialog__entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .germination-review-dialog__entry span {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .germination-review-dialog__age {
+    grid-row: auto;
+  }
+
+  .germination-method-positions,
+  .germination-vault-selection dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .germination-vault-results button {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .germination-setup-summary > div {
