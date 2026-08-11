@@ -1406,17 +1406,16 @@ button.germination-kan-contents__row {
 }
 
 .germination-seed-entry__quantity {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  display: flex;
+  gap: 10px;
   align-items: center;
+  justify-content: flex-end;
   min-width: 0;
 }
 
 .germination-seed-entry__quantity > span {
-  justify-self: start;
   color: var(--bc-muted);
-  font-size: 0.7rem;
+  font-size: 0.9rem;
   font-weight: 650;
 }
 
