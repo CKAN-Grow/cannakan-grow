@@ -52694,6 +52694,623 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
     rgba(20, 31, 18, 0.72);
 }
 
+.germination-progress-preview__start {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.germination-progress-preview__start > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.germination-progress-preview__start strong {
+  color: #f2f7ef;
+  font-size: 0.94rem;
+}
+
+.germination-progress-preview__start span,
+.germination-progress-preview__start-status {
+  color: rgba(218, 229, 216, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.germination-progress-preview__start-status {
+  grid-column: 1 / -1;
+  min-height: 1.2em;
+  margin: -10px 0 0;
+}
+
+.active-germination {
+  --active-v2-canvas: #080c09;
+  --active-v2-card: #121a14;
+  --active-v2-raised: #1a241d;
+  --active-v2-border: #304036;
+  --active-v2-border-strong: #4b624f;
+  --active-v2-text: #f2f5f3;
+  --active-v2-muted: #a4aea7;
+  display: grid;
+  gap: 18px;
+  margin-bottom: 22px;
+  padding: clamp(18px, 2.6vw, 30px);
+  overflow: hidden;
+  border: 1px solid #18231b;
+  border-radius: 22px;
+  background: #050706;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+}
+
+.active-germination-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 210px;
+  padding: clamp(24px, 3.6vw, 42px);
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background-color: #050706;
+  background-image: var(--active-method-image, none);
+  background-position: var(--active-method-position, 50% 50%);
+  background-size: cover;
+}
+
+.active-germination-hero::before,
+.active-germination-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.active-germination-hero::before {
+  z-index: 0;
+  background: linear-gradient(90deg, rgba(5, 7, 6, 0.98) 0%, rgba(5, 7, 6, 0.9) 42%, rgba(5, 7, 6, 0.52) 68%, rgba(5, 7, 6, 0.28) 100%);
+}
+
+.active-germination-hero::after {
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(5, 7, 6, 0.06), rgba(5, 7, 6, 0.18) 58%, #050706 100%);
+}
+
+.active-germination-hero > * {
+  position: relative;
+  z-index: 2;
+}
+
+.active-germination-hero__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.active-germination-hero__copy .eyebrow,
+.active-germination-hero__copy h3,
+.active-germination-hero__copy p {
+  margin: 0;
+}
+
+.active-germination-hero__copy h3 {
+  color: #f5faf2;
+  font-size: clamp(2rem, 4vw, 3.35rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.active-germination-elapsed {
+  color: color-mix(in srgb, var(--active-method-accent, #94d159) 82%, #ffffff);
+  font-size: clamp(1rem, 1.8vw, 1.22rem);
+  font-weight: 780;
+}
+
+.active-germination-day {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--active-method-accent, #94d159) 24%, var(--active-v2-border));
+  border-radius: 12px;
+  background: var(--active-v2-card);
+}
+
+.active-germination-day span {
+  color: rgba(218, 229, 216, 0.68);
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.active-germination-day strong {
+  color: #e9f8dd;
+  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  line-height: 1.05;
+}
+
+.active-germination-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.active-germination-stat {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-height: 98px;
+  padding: 15px 16px;
+  border: 1px solid var(--active-v2-border);
+  border-radius: 12px;
+  background: var(--active-v2-card);
+}
+
+.active-germination-stat > span {
+  color: rgba(218, 229, 216, 0.62);
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.active-germination-stat > strong {
+  color: #f4f9f1;
+  font-size: 1.36rem;
+  line-height: 1.1;
+}
+
+.active-germination-stat > small {
+  color: rgba(218, 229, 216, 0.7);
+  font-size: 0.78rem;
+}
+
+.active-germination-stat--result {
+  border-color: var(--active-v2-border-strong);
+  background: var(--active-v2-selected, #203024);
+}
+
+.active-germination-timeline {
+  min-width: 0;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-card {
+  gap: 16px;
+  padding: 18px;
+  border-color: var(--active-v2-border);
+  border-radius: 12px;
+  background: var(--active-v2-card);
+  box-shadow: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-card.is-overdue {
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-head {
+  align-items: center;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-title .eyebrow {
+  color: rgba(218, 229, 216, 0.58);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-title h3 {
+  color: #f2f7ef;
+  font-size: 1.05rem;
+  font-weight: 820;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-next {
+  max-width: min(48%, 420px);
+  padding: 5px 9px;
+  border-color: rgba(148, 209, 89, 0.16);
+  color: rgba(218, 229, 216, 0.76);
+  background: rgba(148, 209, 89, 0.045);
+  font-weight: 760;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-scroll {
+  overflow-x: visible;
+  scrollbar-color: rgba(148, 209, 89, 0.22) transparent;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-list {
+  grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(88px, 1fr));
+  min-width: 0;
+  padding: 7px 0 0;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step {
+  gap: 6px;
+  padding-inline: 7px;
+  color: rgba(218, 229, 216, 0.66);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step:not(:last-child)::after {
+  top: 19px;
+  left: calc(50% + 22px);
+  width: calc(100% - 44px);
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(164, 174, 167, 0.16);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-complete:not(:last-child)::after,
+.active-germination-timeline .session-engine-visual-timeline-step.is-preparation-complete:not(:last-child)::after,
+.active-germination-timeline .session-engine-visual-timeline-step.is-current:not(:last-child)::after {
+  background: color-mix(in srgb, var(--visual-timeline-accent) 34%, rgba(164, 174, 167, 0.12));
+  box-shadow: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-marker {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--active-v2-border);
+  border-radius: 999px;
+  color: rgba(164, 174, 167, 0.72);
+  background: var(--active-v2-raised);
+  box-shadow: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.7;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-complete .session-engine-visual-timeline-marker {
+  border-color: rgba(148, 209, 89, 0.26);
+  color: rgba(184, 239, 132, 0.78);
+  background: #172219;
+  box-shadow: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-current .session-engine-visual-timeline-marker {
+  border-color: color-mix(in srgb, var(--visual-timeline-accent) 58%, var(--active-v2-border));
+  color: color-mix(in srgb, var(--visual-timeline-accent) 82%, #ffffff);
+  background: var(--active-v2-selected, #203024);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--visual-timeline-accent) 13%, transparent);
+  transform: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-preparation-complete .session-engine-visual-timeline-marker {
+  border-color: rgba(245, 158, 11, 0.18);
+  color: rgba(251, 191, 36, 0.76);
+  background: rgba(245, 158, 11, 0.065);
+  box-shadow: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-overdue .session-engine-visual-timeline-marker {
+  border-color: rgba(245, 158, 11, 0.28);
+  color: #f5c35c;
+  background: rgba(245, 158, 11, 0.09);
+  box-shadow: inset 3px 0 0 rgba(245, 158, 11, 0.7);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-card.is-overdue {
+  border-color: rgba(198, 83, 76, 0.26);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-card.is-overdue .session-engine-visual-timeline-next {
+  border-color: rgba(198, 83, 76, 0.34);
+  color: #f0a09a;
+  background: rgba(113, 36, 33, 0.18);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-action-required {
+  opacity: 1;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-action-required .session-engine-visual-timeline-marker {
+  border-color: rgba(218, 91, 82, 0.78);
+  color: #ffc3bd;
+  background: #2a1313;
+  box-shadow: 0 0 0 3px rgba(198, 83, 76, 0.16);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-action-required strong {
+  color: #fff2f0;
+  font-weight: 850;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-action-required .session-engine-visual-timeline-state {
+  color: #ef8d86;
+  font-weight: 850;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-upcoming {
+  opacity: 0.52;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step strong {
+  color: rgba(242, 247, 239, 0.88);
+  font-size: 0.77rem;
+  font-weight: 790;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step small,
+.active-germination-timeline .session-engine-visual-timeline-state {
+  color: rgba(218, 229, 216, 0.52);
+  font-size: 0.67rem;
+  font-weight: 680;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-complete .session-engine-visual-timeline-state,
+.active-germination-timeline .session-engine-visual-timeline-step.is-current .session-engine-visual-timeline-state {
+  color: rgba(184, 239, 132, 0.74);
+}
+
+.active-germination-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(230px, 0.7fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.active-germination-check-in,
+.active-germination-next {
+  min-width: 0;
+  padding: 17px;
+  border: 1px solid var(--active-v2-border);
+  border-radius: 12px;
+  background: var(--active-v2-card);
+}
+
+.active-germination-check-in {
+  display: grid;
+  gap: 15px;
+}
+
+.active-germination-check-in__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.active-germination-check-in__heading > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.active-germination-check-in__heading .eyebrow,
+.active-germination-check-in__heading h4,
+.active-germination-check-in__heading p,
+.active-germination-next .eyebrow,
+.active-germination-next h4,
+.active-germination-next p {
+  margin: 0;
+}
+
+.active-germination-check-in__heading h4,
+.active-germination-next h4 {
+  color: #f2f7ef;
+  font-size: 1.08rem;
+}
+
+.active-germination-check-in__heading p,
+.active-germination-next p {
+  color: rgba(218, 229, 216, 0.68);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.active-germination-check-in__state {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 999px;
+  color: #b8ef84;
+  font-size: 0.7rem;
+  font-weight: 820;
+  white-space: nowrap;
+}
+
+.active-germination-check-in-list {
+  display: grid;
+  gap: 8px;
+}
+
+.active-germination-check-in-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 54px;
+  padding: 8px 10px 8px 13px;
+  border: 1px solid var(--active-v2-border);
+  border-radius: 10px;
+  background: var(--active-v2-raised);
+}
+
+.active-germination-check-in-row > span:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.active-germination-check-in-row strong {
+  color: #eaf2e6;
+  font-size: 0.86rem;
+}
+
+.active-germination-check-in-row small {
+  color: rgba(218, 229, 216, 0.64);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.active-germination-check-in-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.active-germination-check-in-control input {
+  width: 64px;
+  min-height: 38px;
+  margin: 0;
+  padding: 7px 8px;
+  border-color: rgba(148, 209, 89, 0.22);
+  text-align: center;
+}
+
+.active-germination-check-in__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.active-germination-check-in__footer p {
+  min-height: 1.2em;
+  margin: 0;
+  color: rgba(218, 229, 216, 0.72);
+  font-size: 0.78rem;
+}
+
+.active-germination .active-germination-check-in__footer .button-primary {
+  min-height: 46px;
+  border-color: rgba(148, 209, 89, 0.34);
+  border-radius: 12px;
+  color: #f2f5f3;
+  background: #315f31 !important;
+  box-shadow: none !important;
+}
+
+.active-germination .active-germination-check-in__footer .button-primary::before,
+.active-germination .active-germination-check-in__footer .button-primary::after {
+  content: none;
+  display: none;
+}
+
+.active-germination .active-germination-check-in__footer .button-primary:hover,
+.active-germination .active-germination-check-in__footer .button-primary:focus-visible {
+  border-color: rgba(167, 230, 106, 0.5);
+  color: #ffffff;
+  background: #397039 !important;
+  box-shadow: none !important;
+}
+
+.active-germination .active-germination-check-in__footer .button-primary:active {
+  background: #294f2a !important;
+  box-shadow: none !important;
+}
+
+.active-germination-next {
+  display: grid;
+  gap: 7px;
+}
+
+.active-germination-next > span {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(218, 229, 216, 0.52);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .germination-progress-preview__start,
+  .active-germination-hero,
+  .active-germination-check-in__heading,
+  .active-germination-check-in__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .germination-progress-preview__start .botanical-primary-action,
+  .active-germination-check-in__footer .button {
+    width: 100%;
+  }
+
+  .active-germination-day {
+    justify-items: start;
+    width: fit-content;
+  }
+
+  .active-germination-hero {
+    min-height: 250px;
+    background-position: center;
+  }
+
+  .active-germination-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .active-germination-check-in__state {
+    width: fit-content;
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-head {
+    align-items: flex-start;
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-next {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-scroll {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 209, 89, 0.2) rgba(255, 255, 255, 0.035);
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-list {
+    grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(118px, 1fr));
+    min-width: max(100%, calc(var(--visual-timeline-step-count) * 118px));
+    padding-bottom: 8px;
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-step {
+    scroll-snap-align: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .active-germination {
+    gap: 14px;
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .active-germination-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .active-germination-stat--result {
+    grid-column: 1 / -1;
+  }
+
+  .active-germination-check-in,
+  .active-germination-next {
+    padding: 14px;
+  }
+
+  .active-germination-check-in-row {
+    gap: 10px;
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-card {
+    padding: 14px;
+  }
+}
+
 @media (max-width: 1120px) {
   .session-workspace-shell--detail .detail-header {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -52749,14 +53366,17 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 @media (max-width: 520px) {
   .session-workspace-shell--detail .session-workspace-header .app-section-header-main {
-    display: grid;
-    grid-template-columns: 76px minmax(0, 1fr);
+    display: block;
     gap: 12px;
   }
 
   .session-workspace-shell--detail .session-identity-image-frame {
-    width: 76px;
-    border-radius: 14px;
+    display: none;
+  }
+
+  .session-workspace-shell--detail .session-identity-copy {
+    width: 100%;
+    max-width: none;
   }
 
   .session-workspace-shell--detail .session-identity-copy h2 {

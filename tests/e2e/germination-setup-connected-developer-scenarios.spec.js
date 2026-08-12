@@ -1,5 +1,6 @@
 const { test, expect } = require("@playwright/test");
 const { execFileSync } = require("child_process");
+const path = require("path");
 
 const LOCAL_DB_CONTAINER = "supabase_db_Cannakan_Grow_App";
 const FIXTURE_VAULT_ID = "96000000-0000-4000-8000-000000000101";
@@ -974,6 +975,86 @@ select concat_ws('|',
   (select setup_evidence #>> '{entries,2,seed_age,source_value}' from public.grow_session_germination_setups where session_id = (select id from public.grow_sessions where user_id = ${escapeSqlLiteral(demoIdentity.ownerId)}::uuid and session_name = ${escapeSqlLiteral(FIXTURE_SESSION_NAME)}))
 );
 `)).toBe("6|2025|2|2022|P1|acquisition_year|2025|P2|acquisition_year|2022|P3|user_statement|3.5");
+
+    const beginGermination = page.getByRole("button", { name: "Begin Germination", exact: true });
+    await expect(beginGermination).toBeVisible();
+    await beginGermination.click();
+    await expect.poll(() => page.evaluate(() => window.location.hash)).toMatch(/^#sessions\/[0-9a-f-]{36}$/i);
+    await page.clock.setFixedTime(new Date(Date.now() + (57 * 60 * 60 * 1000)));
+    await page.reload();
+
+    const activeGermination = page.locator("[data-active-germination-workspace]");
+    await expect(activeGermination).toBeVisible({ timeout: 15000 });
+    await expect(activeGermination.getByRole("heading", { name: "Germination", exact: true })).toBeVisible();
+    await expect(activeGermination.locator("[data-active-germination-elapsed]")).toContainText("Germination ·");
+    await expect(activeGermination.locator("[data-active-germination-day]")).toHaveText("Day 3");
+    await expect(activeGermination).toContainText("KAN");
+    await expect(activeGermination).toContainText("3 seeds in Germination");
+
+    const activeTimeline = activeGermination.locator(".active-germination-timeline .session-engine-visual-timeline-card");
+    await expect(activeTimeline).toBeVisible();
+    for (const label of ["Start", "Soak", "Transfer Window", "Germination", "Check Seeds", "Complete"]) {
+      await expect(activeTimeline.locator(".session-engine-visual-timeline-step strong", { hasText: label })).toBeVisible();
+    }
+    const checkSeedsTimelineStep = activeTimeline.locator(".session-engine-visual-timeline-step", { hasText: "Check Seeds" });
+    const completeTimelineStep = activeTimeline.locator(".session-engine-visual-timeline-step", { hasText: "Complete" }).last();
+    await expect(checkSeedsTimelineStep).toHaveClass(/is-action-required/);
+    await expect(checkSeedsTimelineStep).toContainText("Action needed");
+    await expect(completeTimelineStep).toHaveClass(/is-upcoming/);
+    await expect(completeTimelineStep).not.toContainText("Action needed");
+    await expect(page.locator("#detail-session-status-alerts")).toContainText("Urgent inspection reminder");
+    await expect(page.locator("#detail-session-status-alerts")).toContainText("Inspect the remaining seeds and record each Seed Entry outcome.");
+    await expect(page.locator("#detail-session-status-alerts")).not.toContainText("Complete the session or snooze this reminder.");
+    const screenshotDirectory = String(process.env.CANNAKAN_TIMELINE_SCREENSHOT_DIR || "").trim();
+    if (screenshotDirectory) {
+      await activeTimeline.screenshot({
+        path: path.join(screenshotDirectory, "active-germination-action-target-desktop-1366x900.png"),
+      });
+    }
+    expect(await activeTimeline.locator(".session-engine-visual-timeline-step.is-upcoming").count()).toBeGreaterThan(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => activeTimeline.locator(".session-engine-visual-timeline-scroll").evaluate((scroller) => {
+      const currentStep = scroller.querySelector(
+        ".session-engine-visual-timeline-step.is-action-required, .session-engine-visual-timeline-step.is-current, .session-engine-visual-timeline-step.is-overdue",
+      );
+      if (!(currentStep instanceof HTMLElement)) return false;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const currentStepRect = currentStep.getBoundingClientRect();
+      return currentStepRect.left >= scrollerRect.left && currentStepRect.right <= scrollerRect.right;
+    })).toBe(true);
+    expect(await activeTimeline.locator(".session-engine-visual-timeline-scroll").evaluate(
+      (scroller) => scroller.scrollWidth > scroller.clientWidth,
+    )).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+    if (screenshotDirectory) {
+      await activeTimeline.screenshot({
+        path: path.join(screenshotDirectory, "active-germination-action-target-mobile-390x844.png"),
+      });
+    }
+
+    const firstCheckInCount = activeGermination.locator('[data-active-germination-count="0"]');
+    await firstCheckInCount.fill("1");
+    await activeGermination.locator('[data-active-germination-count="1"]').fill("0");
+    await activeGermination.locator('[data-active-germination-count="2"]').fill("0");
+    await activeGermination.getByRole("button", { name: "Save check-in", exact: true }).click();
+    await expect(activeGermination.locator("[data-active-germination-check-in-status]")).toHaveText("Check-in saved with this Session.", { timeout: 15000 });
+    await expect(activeGermination).toContainText("Check-in recorded");
+    await expect(activeGermination).toContainText("1 / 3");
+    await expect(activeGermination).toContainText("33% germinated");
+    await expect(completeTimelineStep).toHaveClass(/is-action-required/);
+    await expect(completeTimelineStep).toContainText("Action needed");
+    await expect(checkSeedsTimelineStep).not.toHaveClass(/is-action-required|is-current/);
+
+    expect(runLocalSql(`
+select concat_ws('|',
+  session_status,
+  (germination_started_at is not null)::text,
+  coalesce(partitions #>> '{0,plantedCount}', partitions #>> '{0,planted_count}', '')
+)
+from public.grow_sessions
+where user_id = ${escapeSqlLiteral(demoIdentity.ownerId)}::uuid
+  and session_name = ${escapeSqlLiteral(FIXTURE_SESSION_NAME)};
+`)).toBe("germinating|true|1");
 
     expect(directVaultUpdateRequests).toEqual([]);
     const testedFlowConsoleErrors = consoleErrors.filter((message) => (
