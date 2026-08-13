@@ -50,6 +50,9 @@ async function loadLocalDemoIdentity() {
 function removeFocusedFixture(ownerId) {
   runLocalSql(`
 begin;
+delete from public.seed_vault_germination_inventory_operations
+where owner_user_id = ${escapeSqlLiteral(ownerId)}::uuid
+  and vault_entry_id in (${escapeSqlLiteral(FIXTURE_VAULT_ID)}::uuid, ${escapeSqlLiteral(FIXTURE_VAULT_SECONDARY_ID)}::uuid);
 delete from public.grow_sessions
 where user_id = ${escapeSqlLiteral(ownerId)}::uuid
   and session_name = ${escapeSqlLiteral(FIXTURE_SESSION_NAME)};
@@ -984,12 +987,33 @@ select concat_ws('|',
     await page.reload();
 
     const activeGermination = page.locator("[data-active-germination-workspace]");
+    const activeCompanion = page.locator(".session-grow-companion-surface");
+    const activeOverview = activeCompanion.locator("[data-active-germination-overview]");
     await expect(activeGermination).toBeVisible({ timeout: 15000 });
     await expect(activeGermination.getByRole("heading", { name: "Germination", exact: true })).toBeVisible();
     await expect(activeGermination.locator("[data-active-germination-elapsed]")).toContainText("Germination ·");
     await expect(activeGermination.locator("[data-active-germination-day]")).toHaveText("Day 3");
-    await expect(activeGermination).toContainText("KAN");
-    await expect(activeGermination).toContainText("3 seeds in Germination");
+    await expect(activeOverview).toContainText("KAN");
+    await expect(activeOverview).toContainText(FIXTURE_SESSION_NAME);
+    const lifecycleRail = activeCompanion.locator("[data-active-germination-orientation] .botanical-phase-timeline");
+    await expect(lifecycleRail).toBeVisible();
+    await expect(lifecycleRail.locator(".botanical-phase-segment__number")).toHaveText(["1", "2", "3"]);
+    await expect(lifecycleRail.locator(".botanical-phase-segment__label")).toHaveText(["Germination", "Growing", "Reflection"]);
+    await expect(activeCompanion.locator("[data-active-germination-orientation] .germination-progress-preview")).toHaveCount(0);
+    await expect(activeGermination.locator(".active-germination-companion-grid")).toBeVisible();
+    await expect(activeGermination.getByRole("heading", { name: "Session Progress (KAN)", exact: true })).toBeVisible();
+    await expect(activeOverview).not.toContainText("Unit ID");
+    await expect(activeOverview).not.toContainText("Elapsed time");
+    await expect(activeOverview).not.toContainText("Germinated");
+    await expect(activeGermination).toContainText("Completion readiness");
+    await expect(activeGermination.locator(".active-germination-context")).toContainText("3 Seed Entries");
+    await expect(activeGermination.locator(".active-germination-context")).toContainText("3 seeds");
+    await expect(activeGermination.locator("[data-active-germination-saved-total]")).toHaveText("0");
+    const completeSessionButton = activeGermination.getByRole("button", { name: "Complete Session", exact: true });
+    await expect(completeSessionButton).toBeDisabled();
+    await expect(page.locator(".session-workspace-shell--detail")).toHaveClass(/is-active-germination-companion/);
+    await expect(page.locator(".session-workspace-shell--detail > .session-workspace-header")).toBeHidden();
+    await expect(page.locator(".session-workspace-shell--detail > .session-orientation")).toBeHidden();
 
     const activeTimeline = activeGermination.locator(".active-germination-timeline .session-engine-visual-timeline-card");
     await expect(activeTimeline).toBeVisible();
@@ -1007,8 +1031,9 @@ select concat_ws('|',
     await expect(page.locator("#detail-session-status-alerts")).not.toContainText("Complete the session or snooze this reminder.");
     const screenshotDirectory = String(process.env.CANNAKAN_TIMELINE_SCREENSHOT_DIR || "").trim();
     if (screenshotDirectory) {
-      await activeTimeline.screenshot({
-        path: path.join(screenshotDirectory, "active-germination-action-target-desktop-1366x900.png"),
+      await page.locator("#developer-scenarios-launcher").evaluate((launcher) => launcher.remove());
+      await activeCompanion.screenshot({
+        path: path.join(screenshotDirectory, "compact-active-germination-companion-v2-desktop-1366x900.png"),
       });
     }
     expect(await activeTimeline.locator(".session-engine-visual-timeline-step.is-upcoming").count()).toBeGreaterThan(0);
@@ -1027,23 +1052,58 @@ select concat_ws('|',
     )).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
     if (screenshotDirectory) {
-      await activeTimeline.screenshot({
-        path: path.join(screenshotDirectory, "active-germination-action-target-mobile-390x844.png"),
+      await activeOverview.scrollIntoViewIfNeeded();
+      await page.locator("#developer-scenarios-launcher").evaluate((launcher) => launcher.remove());
+      await page.screenshot({
+        path: path.join(screenshotDirectory, "compact-active-germination-companion-v2-mobile-390x844.png"),
+        fullPage: false,
       });
+      await page.reload();
+      await expect(activeGermination).toBeVisible({ timeout: 15000 });
+      failedApplicationRequests.length = 0;
     }
 
     const firstCheckInCount = activeGermination.locator('[data-active-germination-count="0"]');
-    await firstCheckInCount.fill("1");
+    await activeGermination.getByRole("button", { name: "Increase P1 germinated seed count" }).click();
+    await expect(firstCheckInCount).toHaveValue("1");
+    await expect(completeSessionButton).toBeDisabled();
     await activeGermination.locator('[data-active-germination-count="1"]').fill("0");
     await activeGermination.locator('[data-active-germination-count="2"]').fill("0");
     await activeGermination.getByRole("button", { name: "Save check-in", exact: true }).click();
     await expect(activeGermination.locator("[data-active-germination-check-in-status]")).toHaveText("Check-in saved with this Session.", { timeout: 15000 });
     await expect(activeGermination).toContainText("Check-in recorded");
-    await expect(activeGermination).toContainText("1 / 3");
-    await expect(activeGermination).toContainText("33% germinated");
+    await expect(activeGermination.locator("[data-active-germination-saved-total]")).toHaveText("1");
+    await expect(completeSessionButton).toBeEnabled();
     await expect(completeTimelineStep).toHaveClass(/is-action-required/);
     await expect(completeTimelineStep).toContainText("Action needed");
+    await expect(completeTimelineStep).not.toHaveClass(/is-final-complete/);
     await expect(checkSeedsTimelineStep).not.toHaveClass(/is-action-required|is-current/);
+
+    await firstCheckInCount.fill("0");
+    await expect(completeSessionButton).toBeEnabled();
+    await activeGermination.getByRole("button", { name: "Save check-in", exact: true }).click();
+    await expect(activeGermination.locator("[data-active-germination-check-in-status]")).toHaveText("Check-in saved with this Session.", { timeout: 15000 });
+    await expect(activeGermination.locator("[data-active-germination-saved-total]")).toHaveText("0");
+    await expect(completeSessionButton).toBeDisabled();
+
+    await activeGermination.getByRole("button", { name: "Increase P1 germinated seed count" }).click();
+    await activeGermination.getByRole("button", { name: "Save check-in", exact: true }).click();
+    await expect(completeSessionButton).toBeEnabled();
+    await completeSessionButton.click();
+    await expect(page.getByRole("dialog", { name: "Complete Session?" })).toBeVisible();
+    await page.getByRole("button", { name: "Complete Session", exact: true }).last().click();
+    await expect(page.getByRole("heading", { name: "Next step", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Germination Complete", exact: true })).toBeVisible();
+    expect(runLocalSql(`
+select count(*)
+from public.seed_vault_germination_inventory_operations
+where owner_user_id = ${escapeSqlLiteral(demoIdentity.ownerId)}::uuid
+  and session_id is not null
+  and vault_entry_id = ${escapeSqlLiteral(FIXTURE_VAULT_ID)}::uuid;
+`)).toBe("1");
+    const completedTimeline = page.locator(".active-germination-timeline--completed .session-engine-visual-timeline-card");
+    await expect(completedTimeline.locator(".session-engine-visual-timeline-step", { hasText: "Complete" }).last()).toHaveClass(/is-final-complete/);
+    await expect(completedTimeline.locator(".session-engine-visual-timeline-step.is-final-complete")).toHaveCount(1);
 
     expect(runLocalSql(`
 select concat_ws('|',
@@ -1054,7 +1114,7 @@ select concat_ws('|',
 from public.grow_sessions
 where user_id = ${escapeSqlLiteral(demoIdentity.ownerId)}::uuid
   and session_name = ${escapeSqlLiteral(FIXTURE_SESSION_NAME)};
-`)).toBe("germinating|true|1");
+`)).toBe("");
 
     expect(directVaultUpdateRequests).toEqual([]);
     const testedFlowConsoleErrors = consoleErrors.filter((message) => (

@@ -52965,6 +52965,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .active-germination-timeline .session-engine-visual-timeline-svg {
   width: 21px;
   height: 21px;
+  color: #ffffff;
   stroke-width: 1.7;
 }
 
@@ -53282,19 +53283,1149 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 }
 
+/* Active Germination Companion V2: compact, presentation-only composition. */
+.session-workspace-shell--detail.is-active-germination-companion {
+  padding: 12px;
+  border-radius: 20px;
+  border-color: rgba(148, 209, 89, 0.14);
+  background: #050907;
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.38);
+}
+
+.session-workspace-shell--detail.is-active-germination-companion::before {
+  opacity: 0.28;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion > .session-workspace-header,
+.session-workspace-shell--detail.is-active-germination-companion > .session-orientation,
+.session-workspace-shell--detail.is-active-germination-companion > .session-workspace-overview,
+.session-workspace-shell--detail.is-active-germination-companion > .session-workspace-content {
+  display: none;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-workspace-body > #detail-lifecycle-section,
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-workspace-body > .session-workspace-content {
+  display: none;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-foundation {
+  gap: 0;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-surface {
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.active-germination-overview {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(300px, 1.55fr) minmax(250px, 1fr) auto;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  border-radius: 16px;
+  background: #090e0b;
+}
+
+.active-germination-overview__identity {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 7px 12px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.active-germination-overview__identity > div:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.active-germination-overview__identity .eyebrow,
+.active-germination-overview__identity strong,
+.active-germination-overview__identity span {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.active-germination-overview__identity strong {
+  color: #f2f5f3;
+  font-size: 1.16rem;
+}
+
+.active-germination-overview__identity span {
+  color: var(--active-v2-muted, #a4aea7);
+  font-size: 0.72rem;
+}
+
+.active-germination-overview__heading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.active-germination-overview__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.active-germination-overview__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  color: var(--active-method-accent, #94d159) !important;
+  border: 1px solid rgba(148, 209, 89, 0.32);
+  border-radius: 999px;
+  font-size: 0.67rem !important;
+  font-weight: 800;
+}
+
+.active-germination-overview__status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.active-germination-overview__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(108px, 1fr));
+  gap: 0;
+  min-width: 0;
+}
+
+.active-germination-overview__metrics article {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 8px 16px;
+  border: 0;
+  border-left: 1px solid rgba(164, 174, 167, 0.16);
+  border-radius: 0;
+  background: transparent;
+}
+
+.active-germination-overview__metrics span {
+  color: rgba(218, 229, 216, 0.56);
+  font-size: 0.58rem;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.active-germination-overview__metrics strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: #eef3ef;
+  font-size: 0.75rem;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.active-germination-overview__utilities {
+  display: flex;
+  align-content: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+}
+
+.active-germination-overview__utilities .button {
+  min-height: 34px;
+  padding: 5px 10px;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-header {
+  display: none;
+}
+
+.active-germination-orientation {
+  --bc-brand: #94d159;
+  --bc-brand-bright: #b4ed75;
+  --bc-brand-deep: #6da73d;
+  --bc-card: #0b110e;
+  --bc-raised: #111914;
+  --bc-selected: rgba(148, 209, 89, 0.08);
+  --bc-border: rgba(148, 209, 89, 0.16);
+  --bc-border-strong: rgba(148, 209, 89, 0.3);
+  --bc-text: #f2f5f3;
+  --bc-muted: #9ca89f;
+  --bc-radius-md: 13px;
+  display: grid;
+  gap: 0;
+  margin-bottom: 0;
+}
+
+.active-germination-orientation .botanical-phase-timeline,
+.active-germination-orientation .germination-progress-preview {
+  margin: 0;
+}
+
+@media (min-width: 761px) {
+  .session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-workspace-body {
+    gap: 12px;
+  }
+
+  .active-germination-orientation .botanical-phase-timeline ol {
+    margin: 0;
+  }
+}
+
+.active-germination-orientation .botanical-phase-segment {
+  min-height: 72px;
+  padding-block: 12px;
+}
+
+.active-germination-orientation .botanical-phase-segment__number {
+  font-size: 1.55rem;
+}
+
+.active-germination-orientation .botanical-phase-segment__label {
+  font-size: 0.9rem;
+}
+
+.active-germination-orientation .germination-progress-preview {
+  gap: 10px 20px;
+  padding: 12px 14px;
+}
+
+.active-germination-orientation .germination-progress-preview__rail {
+  height: 7px;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-title-copy {
+  align-content: center;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-title-copy .eyebrow,
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-title-copy > p:last-child,
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-workspace > header {
+  display: none;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-title-copy h2 {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-list {
+  position: relative;
+  gap: 0;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-list::before {
+  content: "";
+  position: absolute;
+  top: 19px;
+  left: 16.66%;
+  right: 16.66%;
+  height: 1px;
+  background: rgba(164, 174, 167, 0.3);
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-button {
+  position: relative;
+  z-index: 1;
+  justify-content: center;
+  gap: 7px;
+  min-height: 54px;
+  padding: 2px 8px;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  box-shadow: none;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-button.is-current {
+  color: #f3f7ef;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-marker {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border-color: rgba(164, 174, 167, 0.38);
+  background: #090e0b;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-copy {
+  gap: 0;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-copy strong {
+  font-size: 0.74rem;
+}
+
+.session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-copy small {
+  font-size: 0.58rem;
+}
+
+.active-germination {
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.active-germination-companion-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 24fr) minmax(440px, 46fr) minmax(230px, 30fr);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.active-germination-companion-column {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.active-germination-time,
+.active-germination-milestone,
+.active-germination-context,
+.active-germination-result,
+.active-germination-check-in,
+.active-germination-next,
+.active-germination-timeline .session-engine-visual-timeline-card {
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 14px;
+  background: #0b110e;
+  box-shadow: none;
+}
+
+.active-germination-time {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-height: 306px;
+  padding: 16px;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(3, 7, 5, 0.7), rgba(3, 7, 5, 0.86)),
+    var(--active-method-image, none) center / cover no-repeat,
+    #0b110e;
+}
+
+.active-germination-time > .eyebrow {
+  justify-self: start;
+  margin: 0;
+  font-weight: 800;
+}
+
+.active-germination-time__radial {
+  --active-germination-elapsed-angle: 0deg;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: min(218px, 88%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 12px 34px rgba(0, 0, 0, 0.3),
+    inset 0 0 24px rgba(0, 0, 0, 0.7);
+}
+
+.active-germination-time__radial::before,
+.active-germination-time__radial::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.active-germination-time__radial::before {
+  z-index: -2;
+  background: repeating-conic-gradient(
+    rgba(68, 82, 67, 0.68) 0deg 27deg,
+    #07100b 27deg 30deg
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.045),
+    inset 0 0 16px rgba(0, 0, 0, 0.72);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px));
+}
+
+.active-germination-time__radial::after {
+  z-index: -1;
+  background:
+    repeating-conic-gradient(
+      transparent 0deg 27deg,
+      rgba(4, 10, 7, 0.94) 27deg 30deg
+    ),
+    conic-gradient(
+      #dc4e49 0deg,
+      #3679dc 135deg,
+      #9cdb55 180deg,
+      #9cdb55 360deg
+    );
+  -webkit-mask:
+    radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px)),
+    conic-gradient(
+      #000 0deg var(--active-germination-elapsed-angle),
+      transparent var(--active-germination-elapsed-angle) 360deg
+    );
+  -webkit-mask-composite: source-in;
+  mask:
+    radial-gradient(farthest-side, transparent calc(100% - 14px), #000 calc(100% - 13px)),
+    conic-gradient(
+      #000 0deg var(--active-germination-elapsed-angle),
+      transparent var(--active-germination-elapsed-angle) 360deg
+    );
+  mask-composite: intersect;
+}
+
+.active-germination-time__radial > div {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  width: calc(100% - 28px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 50%;
+  background: rgba(3, 7, 5, 0.7);
+  box-shadow:
+    inset 0 0 38px rgba(0, 0, 0, 0.78),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.active-germination-time__radial strong {
+  color: #f5f7f5;
+  font-size: clamp(1.9rem, 2.5vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+}
+
+.active-germination-time__radial strong b {
+  font: inherit;
+}
+
+.active-germination-time__radial span {
+  color: rgba(238, 243, 239, 0.84);
+  color: #f0f4f1;
+  font-size: 1rem;
+  font-weight: 720;
+}
+
+.active-germination-milestone,
+.active-germination-context,
+.active-germination-next {
+  padding: 14px;
+}
+
+.active-germination-milestone {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 88px;
+  background:
+    radial-gradient(circle at 12% 28%, rgba(148, 209, 89, 0.06), transparent 44%),
+    #090f0c;
+}
+
+.active-germination-milestone :is(.eyebrow, h4, p),
+.active-germination-context > .eyebrow {
+  margin: 0;
+}
+
+.active-germination-milestone__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  color: var(--active-method-accent, #94d159);
+  border: 1px solid color-mix(in srgb, var(--active-method-accent, #94d159) 56%, transparent);
+  border-radius: 50%;
+  background: rgba(4, 10, 7, 0.72);
+}
+
+.active-germination-milestone__icon-svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.active-germination-milestone__copy {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.active-germination-milestone .eyebrow {
+  color: color-mix(in srgb, var(--active-method-accent, #94d159) 78%, #dbe7d7);
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+}
+
+.active-germination-milestone__copy > strong {
+  color: #f0f4f1;
+  font-size: 1.08rem;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.active-germination-milestone__timing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 3px 8px;
+  color: rgba(222, 233, 218, 0.76);
+  border: 1px solid rgba(148, 209, 89, 0.19);
+  border-radius: 999px;
+  background: rgba(4, 9, 6, 0.68);
+  font-size: 0.68rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.active-germination-milestone__timing-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  fill: none;
+  stroke: var(--active-method-accent, #94d159);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.active-germination-milestone.is-action-required {
+  border-color: rgba(148, 209, 89, 0.16);
+  box-shadow: inset -2px 0 0 rgba(218, 91, 82, 0.48);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-card {
+  gap: 12px;
+  padding: 14px;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-title {
+  grid-template-columns: 26px minmax(0, 1fr);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-title-icon {
+  display: grid;
+  grid-row: 1 / span 2;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--visual-timeline-accent, #94d159);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-title-icon svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-title .eyebrow {
+  display: none;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-next {
+  max-width: 48%;
+  font-size: 0.65rem;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-list {
+  grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(74px, 1fr));
+}
+
+.active-germination-timeline .session-engine-visual-timeline-marker {
+  width: 38px;
+  height: 38px;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step:not(:last-child)::after {
+  top: 17px;
+  left: calc(50% + 20px);
+  width: calc(100% - 40px);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-complete-badge {
+  position: absolute;
+  z-index: 3;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #071006;
+  background: var(--visual-timeline-accent, #94d159);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-complete-icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-final-complete .session-engine-visual-timeline-marker {
+  color: #071006;
+  border-color: var(--visual-timeline-accent, #94d159);
+  background: var(--visual-timeline-accent, #94d159);
+  box-shadow: 0 0 0 4px rgba(148, 209, 89, 0.1);
+}
+
+.active-germination-timeline .session-engine-visual-timeline-step.is-final-complete .session-engine-visual-timeline-complete-badge {
+  display: none;
+}
+
+.active-germination-check-in {
+  gap: 10px;
+  padding: 14px;
+}
+
+.active-germination-check-in__heading {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.active-germination-check-in__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--active-method-accent, #94d159);
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  border-radius: 8px;
+  background: rgba(148, 209, 89, 0.08);
+}
+
+.active-germination-check-in__icon-svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.active-germination-check-in__heading p {
+  font-size: 0.76rem;
+}
+
+.active-germination-check-in-list {
+  gap: 6px;
+}
+
+.active-germination-check-in-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  min-height: 52px;
+  padding: 7px 9px 7px 11px;
+  border-color: rgba(148, 209, 89, 0.18);
+  background: #0a100d;
+}
+
+.active-germination-check-in-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  min-width: 0;
+}
+
+.active-germination-check-in-row > span.active-germination-check-in-identity {
+  display: flex;
+  gap: 15px;
+}
+
+.active-germination-check-in-partition {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  color: #071006;
+  border: 1px solid var(--active-method-accent, #94d159);
+  border-radius: 50%;
+  background: var(--active-method-accent, #94d159);
+}
+
+.active-germination-check-in-row .active-germination-check-in-partition {
+  color: #071006;
+}
+
+.active-germination-check-in-identity > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.active-germination-check-in-identity b {
+  overflow: hidden;
+  color: #eef3ef;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.active-germination-check-in-identity small {
+  text-transform: none;
+}
+
+.active-germination-check-in-outcome {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.active-germination-check-in-control-label {
+  color: #eef3ef;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.active-germination-check-in-control {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 10px;
+}
+
+.active-germination-check-in-control button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  min-height: 32px;
+  padding: 0;
+  color: #dce8d7;
+  border: 0;
+  background: #0d140f;
+  font-size: 1rem;
+}
+
+.active-germination-check-in-control button:hover:not(:disabled) {
+  color: var(--active-method-accent, #94d159);
+  background: rgba(148, 209, 89, 0.08);
+}
+
+.session-workspace-shell .active-germination-check-in-control input[type="number"] {
+  width: 52px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 6px;
+  border-block: 0;
+  border-color: rgba(148, 209, 89, 0.16);
+  border-radius: 0;
+  text-align: center;
+}
+
+.active-germination-check-in-control input::-webkit-inner-spin-button,
+.active-germination-check-in-control input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.active-germination-check-in-control > small {
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.active-germination-check-in__save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  min-height: 34px;
+  padding: 6px 20px;
+  color: var(--active-method-accent, #94d159);
+  border-color: color-mix(in srgb, var(--active-method-accent, #94d159) 62%, transparent);
+  border-radius: 999px;
+  background: #09100c;
+  font-size: 0.75rem;
+}
+
+.active-germination-check-in__footer .active-germination-check-in__save.button {
+  color: var(--active-method-accent, #94d159) !important;
+  border-color: color-mix(in srgb, var(--active-method-accent, #94d159) 62%, transparent) !important;
+  background: #09100c !important;
+}
+
+.active-germination-check-in__save-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.active-germination-context {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.active-germination-context__icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  color: #eef3ef;
+  border: 1px solid rgba(148, 209, 89, 0.34);
+  border-radius: 50%;
+}
+
+.active-germination-context__icon svg {
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.active-germination-context p {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px 7px;
+  margin: 0;
+  color: #f0f4f1;
+  font-size: 1.3rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.active-germination-result {
+  display: grid;
+  place-items: center;
+  min-height: 154px;
+  padding: 18px;
+  text-align: center;
+}
+
+.active-germination-result strong {
+  color: var(--active-method-accent, #94d159);
+  font-size: clamp(3.6rem, 6.5vw, 5.4rem);
+  line-height: 0.9;
+}
+
+.active-germination-result span {
+  color: var(--active-method-accent, #94d159);
+  font-size: 1.25rem;
+  font-weight: 820;
+}
+
+.active-germination-next {
+  gap: 5px;
+}
+
+.active-germination-next__complete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 9px;
+}
+
+.active-germination-next__complete-icon {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+@media (max-width: 1100px) {
+  .active-germination-overview {
+    grid-template-columns: minmax(260px, 1.35fr) minmax(220px, 1fr) auto;
+  }
+
+  .active-germination-overview__metrics {
+    grid-template-columns: repeat(2, minmax(100px, 1fr));
+  }
+
+  .active-germination-overview__utilities {
+    grid-column: auto;
+  }
+
+  .active-germination-companion-grid {
+    grid-template-columns: minmax(210px, 0.78fr) minmax(420px, 1.5fr);
+  }
+
+  .active-germination-companion-column--support {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .session-workspace-shell--detail.is-active-germination-companion {
+    padding: 8px;
+  }
+
+  .active-germination-overview {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 9px;
+  }
+
+  .active-germination-overview__identity {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 4px 2px 7px;
+    border: 0;
+    background: transparent;
+  }
+
+  .active-germination-overview__title-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .active-germination-overview__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .active-germination-overview__metrics article {
+    min-height: 60px;
+  }
+
+  .active-germination-overview__utilities {
+    display: grid;
+    grid-column: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-direction: initial;
+  }
+
+  .session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .active-germination-orientation {
+    gap: 6px;
+    margin-bottom: 9px;
+  }
+
+  .active-germination-orientation .botanical-phase-segment {
+    min-height: 42px;
+    padding: 6px 10px;
+  }
+
+  .active-germination-orientation .botanical-phase-segment + .botanical-phase-segment {
+    padding-left: 24px;
+  }
+
+  .active-germination-orientation .botanical-phase-segment__number {
+    font-size: 1.1rem;
+  }
+
+  .active-germination-orientation .botanical-phase-segment__label {
+    font-size: 0.68rem;
+  }
+
+  .active-germination-orientation .germination-progress-preview {
+    gap: 7px 10px;
+    padding: 10px;
+  }
+
+  .active-germination-orientation .germination-progress-preview__icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .active-germination-orientation .germination-progress-preview p {
+    font-size: 0.7rem;
+  }
+
+  .session-workspace-shell--detail.is-active-germination-companion .session-grow-companion-title-copy {
+    display: none;
+  }
+
+  .session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-marker {
+    width: 30px;
+    height: 30px;
+    flex-basis: 30px;
+  }
+
+  .session-workspace-shell--detail.is-active-germination-companion .session-phase-navigator-list::before {
+    top: 15px;
+  }
+
+  .active-germination-companion-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .active-germination-companion-column {
+    width: 100%;
+  }
+
+  .active-germination-companion-column--work {
+    order: 1;
+  }
+
+  .active-germination-companion-column--support {
+    order: 2;
+  }
+
+  .active-germination-companion-column--time {
+    order: 3;
+  }
+
+  .active-germination-companion-column--support {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .active-germination-time {
+    min-height: 0;
+    padding: 13px;
+  }
+
+  .active-germination-time__radial {
+    width: 154px;
+  }
+
+  .active-germination-time__radial strong {
+    font-size: 1.45rem;
+  }
+
+  .active-germination-context p {
+    font-size: 1.125rem;
+  }
+
+  .active-germination-timeline .session-engine-visual-timeline-list {
+    grid-template-columns: repeat(var(--visual-timeline-step-count), minmax(108px, 1fr));
+    min-width: max(100%, calc(var(--visual-timeline-step-count) * 108px));
+  }
+}
+
+@media (max-width: 420px) {
+  .active-germination-check-in__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .active-germination-check-in__heading {
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: start;
+    flex-direction: initial;
+  }
+
+  .active-germination-check-in__state {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .active-germination-check-in-control {
+    justify-content: flex-end;
+  }
+
+  .active-germination-check-in-row {
+    gap: 8px;
+    padding-inline: 8px;
+  }
+
+  .active-germination-check-in-identity {
+    gap: 14px;
+  }
+
+  .active-germination-check-in-row > span.active-germination-check-in-identity {
+    gap: 14px;
+  }
+
+  .active-germination-check-in-partition {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+
+  .active-germination-check-in-outcome {
+    gap: 3px;
+  }
+
+  .active-germination-check-in-control-label {
+    font-size: 0.66rem;
+  }
+
+  .active-germination-check-in-control button {
+    width: 30px;
+  }
+
+  .session-workspace-shell .active-germination-check-in-control input[type="number"] {
+    width: 44px;
+  }
+}
+
 @media (max-width: 520px) {
   .active-germination {
     gap: 14px;
     padding: 15px;
     border-radius: 18px;
-  }
-
-  .active-germination-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .active-germination-stat--result {
-    grid-column: 1 / -1;
   }
 
   .active-germination-check-in,

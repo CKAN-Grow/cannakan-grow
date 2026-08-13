@@ -4011,6 +4011,7 @@ const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session ti
 const NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL = "Save Session";
 const SESSION_UPDATE_BUTTON_LABEL = "Update Session";
 const SESSION_COMPLETE_BUTTON_LABEL = "Complete Session";
+const GERMINATION_COMPLETION_INELIGIBLE_MESSAGE = "Record and save at least one germinated seed before completing this Session.";
 const SESSION_SAVE_BUTTON_SAVED_LABEL = "Session Saved.";
 const NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS = 1200;
 const SESSION_SAVE_BUTTON_SAVED_RESET_MS = 2200;
@@ -87940,7 +87941,7 @@ async function renderConnectedGerminationSetup(sessionId = "", initialMethodType
     ]);
     const loadedState = buildConnectedGerminationSetupState(savedSetup, vaultEntries, initialMethodType);
     loadedState.draftKey = draftKey;
-    const activeDraft = activeDraftBeforeLoad || getActiveDraftState();
+    const activeDraft = getActiveDraftState() || activeDraftBeforeLoad;
     renderGerminationSetupFounderPreview({
       connected: true,
       initialState: activeDraft && !loadedState.persisted
@@ -88044,39 +88045,11 @@ function renderGerminationSetupFounderPreview(options = {}) {
         </p>
       </header>
 
-      <nav class="botanical-phase-timeline" aria-label="Grow Session phases">
-        <ol>
-          <li class="botanical-phase-segment is-active" aria-current="step">
-            <span class="botanical-phase-segment__number">1</span>
-            <span class="botanical-phase-segment__label">Germination</span>
-          </li>
-          <li class="botanical-phase-segment is-upcoming">
-            <span class="botanical-phase-segment__number">2</span>
-            <span class="botanical-phase-segment__label">Growing</span>
-          </li>
-          <li class="botanical-phase-segment is-upcoming">
-            <span class="botanical-phase-segment__number">3</span>
-            <span class="botanical-phase-segment__label">Reflection</span>
-          </li>
-        </ol>
-      </nav>
+      ${renderBotanicalPhaseTimelineMarkup()}
 
-      <section class="germination-progress-preview" aria-labelledby="germination-progress-preview-title">
-        <div class="germination-progress-preview__heading">
-          <span class="germination-progress-preview__icon">${renderBotanicalCarbonPhaseIconMarkup()}</span>
-          <div>
-            <h2 id="germination-progress-preview-title">Germination Progress</h2>
-            <p>${connected && initialState.persisted ? "Setup saved · Germination has not started." : "Setup draft · Germination has not started."}</p>
-          </div>
-        </div>
-        <div class="germination-progress-preview__measure">
-          <span>Observed duration</span>
-          <strong>Not started</strong>
-        </div>
-        <div class="germination-progress-preview__rail" role="progressbar" aria-label="Germination progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <span></span>
-        </div>
-        ${connected && initialState.persisted ? `
+      ${renderGerminationProgressPreviewMarkup({
+        description: connected && initialState.persisted ? "Setup saved · Germination has not started." : "Setup draft · Germination has not started.",
+        afterRailMarkup: connected && initialState.persisted ? `
           <div class="germination-progress-preview__start">
             <div>
               <strong>Ready to begin?</strong>
@@ -88085,8 +88058,8 @@ function renderGerminationSetupFounderPreview(options = {}) {
             <button type="button" class="botanical-primary-action" data-germination-begin>Begin Germination</button>
           </div>
           <p class="germination-progress-preview__start-status" data-germination-begin-status role="status" aria-live="polite"></p>
-        ` : ""}
-      </section>
+        ` : "",
+      })}
 
       <div class="germination-setup-preview__layout">
         <main class="germination-setup-preview__main">
@@ -95731,6 +95704,11 @@ function formatSessionIdentityVarieties(session = null) {
   return `${varieties[0]} +${varieties.length - 1} more varieties`;
 }
 
+function formatSessionIdentityVarietyCount(session = null) {
+  const varietyCount = getSessionIdentityVarietyNames(session).length;
+  return `${varietyCount} ${varietyCount === 1 ? "Variety" : "Varieties"}`;
+}
+
 function getSessionIdentityLifecycleLabel(session = null) {
   const lifecycle = getSessionLifecyclePresentation(session);
   const sessionType = sessionIncludesGermination(session) ? "Seed Session" : "Grow Session";
@@ -96378,6 +96356,38 @@ const SESSION_TERMINAL_STATUS_LABELS = Object.freeze({
 });
 
 const sessionPhaseExpansionState = new Map();
+const activeGerminationCheckInConfirmationState = new Map();
+const activeGerminationCheckInDraftState = new Map();
+
+function getActiveGerminationCheckInDraft(session = null) {
+  const sessionId = String(session?.id || "").trim();
+  const draft = sessionId ? activeGerminationCheckInDraftState.get(sessionId) : null;
+  return Array.isArray(draft) ? draft : null;
+}
+
+function setActiveGerminationCheckInDraft(session = null, inputs = []) {
+  const sessionId = String(session?.id || "").trim();
+  if (!sessionId) return;
+  activeGerminationCheckInDraftState.set(sessionId, [...inputs].map((input) => String(input?.value || "").trim()));
+}
+
+function clearActiveGerminationCheckInDraft(session = null) {
+  const sessionId = String(session?.id || "").trim();
+  if (sessionId) activeGerminationCheckInDraftState.delete(sessionId);
+}
+
+function getActiveGerminationCheckInConfirmation(session = null) {
+  const sessionId = String(session?.id || "").trim();
+  return sessionId ? String(activeGerminationCheckInConfirmationState.get(sessionId) || "") : "";
+}
+
+function setActiveGerminationCheckInConfirmation(session = null, message = "") {
+  const sessionId = String(session?.id || "").trim();
+  if (!sessionId) return;
+  const normalizedMessage = String(message || "").trim();
+  if (normalizedMessage) activeGerminationCheckInConfirmationState.set(sessionId, normalizedMessage);
+  else activeGerminationCheckInConfirmationState.delete(sessionId);
+}
 
 function isLegacySessionGerminationComplete(session = null) {
   // Compatibility boundary: production's existing "Complete Session" action
@@ -97657,6 +97667,8 @@ function syncSessionPhaseSection(section = null, phase = {}, session = null, isE
 function getSessionPhaseCompositionNodes(root = null) {
   const shell = root?.closest?.(".session-workspace-shell--detail");
   return {
+    shell,
+    surface: root?.querySelector?.("[data-grow-companion-primary]") || null,
     workspace: root?.querySelector?.("[data-session-current-phase-workspace]") || null,
     workspaceBody: root?.querySelector?.("[data-session-current-phase-body]") || null,
     records: root?.querySelector?.("[data-session-completed-phase-records]") || null,
@@ -97681,8 +97693,12 @@ function getActiveGerminationWorkspaceState(session = null, now = new Date()) {
   const hasRecordedResults = entries.some((entry) => entry.hasResultValue);
   return {
     startedAt,
+    startedLabel: formatTimingDateTime(startedAt),
     elapsedLabel: formatElapsedMinutesShorthand(elapsedMinutes),
+    elapsedRadialDegrees: Math.min(360, (elapsedMinutes / (48 * 60)) * 360),
     dayNumber: Math.floor(elapsedMinutes / (24 * 60)) + 1,
+    sessionLabel: formatSessionLabel(session),
+    varietyLabel: formatSessionIdentityVarietyCount(session),
     methodLabel: formatMethodTypeLabel(method.id),
     unitLabel: method.rowLabel || "Seed Entry",
     entries,
@@ -97696,9 +97712,21 @@ function getActiveGerminationWorkspaceState(session = null, now = new Date()) {
 function renderActiveGerminationWorkspaceMarkup(session = null) {
   const state = getActiveGerminationWorkspaceState(session);
   if (!state) return "";
+  const checkInDraft = getActiveGerminationCheckInDraft(session);
   const engineState = buildSessionEngineState(session);
-  const completionAvailable = areSessionSeedResultsFullyAccountedFor(session);
+  const completionAvailable = isSessionGerminationCompletionEligible(session);
   const theme = getSessionEngineVisualTimelineTheme(engineState);
+  const timelineSteps = Array.isArray(engineState?.timelineSteps) ? engineState.timelineSteps : [];
+  const timelinePresentation = getSessionEngineVisualTimelinePresentation(timelineSteps, engineState, { completionAvailable });
+  const actionStep = timelineSteps.find((step) => String(step?.key || "") === timelinePresentation?.actionStepKey)
+    || timelineSteps.find((step) => step?.isCurrent)
+    || timelineSteps.find((step) => step?.isFuture)
+    || null;
+  const nextMilestoneLabel = String(actionStep?.label || "Review Germination").trim();
+  const nextMilestoneTiming = String(actionStep?.timing || "").trim();
+  const nextMilestoneTimingLabel = nextMilestoneTiming
+    ? nextMilestoneTiming.replace(/(\d)\s*-\s*(\d)/g, "$1–$2")
+    : (completionAvailable ? "Ready when all outcomes are recorded" : "Continue checking Seed Entry outcomes");
   const methodHeroStyle = [
     `--active-method-accent: ${theme.accent}`,
     `--active-method-accent-soft: ${theme.accentSoft}`,
@@ -97706,38 +97734,71 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
     `--active-method-position: ${theme.heroBackgroundPosition || "50% 50%"}`,
   ].filter(Boolean).join("; ");
   const readOnly = isDeveloperScenarioModuleActive("sessions") || isDeveloperScenarioRecord(session);
-  const recordedResultMarkup = state.hasRecordedResults ? `
-    <article class="active-germination-stat active-germination-stat--result">
-      <span>Observed result</span>
-      <strong>${escapeHtml(String(state.germinatedCount))} / ${escapeHtml(String(state.totalSeeds))}</strong>
-      <small>${escapeHtml(state.germinationRate)} germinated</small>
-    </article>
-  ` : "";
-  const checkInRows = state.entries.map((entry) => `
+  const checkInRows = state.entries.map((entry) => {
+    const draftValue = checkInDraft?.[entry.index];
+    const inputValue = draftValue === undefined
+      ? (entry.hasResultValue ? String(entry.germinatedCount) : "")
+      : draftValue;
+    return `
     <label class="active-germination-check-in-row">
-      <span>
-        <strong>${escapeHtml(entry.label)}</strong>
-        <small>${escapeHtml(entry.varietyLabel || entry.displayLabel || "Seed Entry")}</small>
+      <span class="active-germination-check-in-identity">
+        <strong class="active-germination-check-in-partition">${escapeHtml(entry.label)}</strong>
+        <span>
+          <b>${escapeHtml(entry.varietyLabel || entry.displayLabel || "Seed Entry")}</b>
+          <small>${escapeHtml(String(entry.totalCount))} ${entry.totalCount === 1 ? "seed" : "seeds"}</small>
+        </span>
       </span>
-      <span class="active-germination-check-in-control">
-        <input
-          type="number"
-          min="0"
-          max="${escapeHtml(String(entry.totalCount))}"
-          step="1"
-          inputmode="numeric"
-          value="${entry.hasResultValue ? escapeHtml(String(entry.germinatedCount)) : ""}"
-          placeholder="—"
-          data-active-germination-count="${escapeHtml(String(entry.index))}"
-          aria-label="${escapeHtml(entry.label)} germinated seeds out of ${escapeHtml(String(entry.totalCount))}"
-          ${readOnly ? "disabled" : ""}
-        >
-        <small>of ${escapeHtml(String(entry.totalCount))}</small>
+      <span class="active-germination-check-in-outcome">
+        <span class="active-germination-check-in-control">
+          <button type="button" data-active-germination-count-step="-1" aria-label="Decrease ${escapeHtml(entry.label)} germinated seed count" ${readOnly ? "disabled" : ""}>−</button>
+          <input
+            type="number"
+            min="0"
+            max="${escapeHtml(String(entry.totalCount))}"
+            step="1"
+            inputmode="numeric"
+            value="${escapeHtml(inputValue)}"
+            placeholder="—"
+            data-active-germination-count="${escapeHtml(String(entry.index))}"
+            aria-label="${escapeHtml(entry.label)} germinated seeds out of ${escapeHtml(String(entry.totalCount))}"
+            ${readOnly ? "disabled" : ""}
+          >
+          <button type="button" data-active-germination-count-step="1" aria-label="Increase ${escapeHtml(entry.label)} germinated seed count" ${readOnly ? "disabled" : ""}>+</button>
+        </span>
+        <span class="active-germination-check-in-control-label">Germinated</span>
       </span>
     </label>
-  `).join("");
+  `;
+  }).join("");
 
   return `
+    <section class="active-germination-overview" data-active-germination-overview style="${escapeHtml(methodHeroStyle)}" aria-labelledby="active-germination-overview-title">
+      <div class="active-germination-overview__identity">
+        <div>
+          <div class="active-germination-overview__heading-row">
+            <p class="eyebrow" id="active-germination-overview-title">Session Overview</p>
+            <span class="active-germination-overview__status"><i aria-hidden="true"></i>In Progress</span>
+          </div>
+          <div class="active-germination-overview__title-row">
+            <strong>${escapeHtml(state.sessionLabel)}</strong>
+          </div>
+          <span>${escapeHtml(state.varietyLabel)}</span>
+        </div>
+      </div>
+      <div class="active-germination-overview__metrics" aria-label="Active Session orientation">
+        <article><span>Method</span><strong>${escapeHtml(state.methodLabel)}</strong></article>
+        <article><span>Started</span><strong>${escapeHtml(state.startedLabel)}</strong></article>
+      </div>
+      <div class="active-germination-overview__utilities">
+        <button type="button" class="button button-secondary" data-active-germination-edit-session>Edit Session Details</button>
+        <a class="button button-secondary" href="#sessions">Back</a>
+      </div>
+    </section>
+
+    <div class="active-germination-orientation" data-active-germination-orientation>
+      ${renderBotanicalPhaseTimelineMarkup()}
+    </div>
+
     <section
       class="active-germination"
       data-active-germination-workspace
@@ -97745,41 +97806,44 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
       style="${escapeHtml(methodHeroStyle)}"
       aria-labelledby="active-germination-title"
     >
-      <header class="active-germination-hero">
-        <div class="active-germination-hero__copy">
-          <p class="eyebrow">Active phase</p>
-          <h3 id="active-germination-title">Germination</h3>
-          <p class="active-germination-elapsed" data-active-germination-elapsed>Germination · ${escapeHtml(state.elapsedLabel)}</p>
+      <h3 id="active-germination-title" class="sr-only">Germination</h3>
+      <div class="active-germination-companion-grid">
+        <div class="active-germination-companion-column active-germination-companion-column--time">
+          <section class="active-germination-time" aria-labelledby="active-germination-time-title">
+            <p class="eyebrow" id="active-germination-time-title">Germination progress</p>
+            <div
+              class="active-germination-time__radial"
+              style="--active-germination-elapsed-angle: ${escapeHtml(String(state.elapsedRadialDegrees))}deg"
+              aria-label="Elapsed Germination time ${escapeHtml(state.elapsedLabel)}"
+            >
+              <div>
+                <strong data-active-germination-elapsed><span class="sr-only">Germination · </span><b>${escapeHtml(state.elapsedLabel)}</b></strong>
+                <span data-active-germination-day>Day ${escapeHtml(String(state.dayNumber))}</span>
+              </div>
+            </div>
+          </section>
+          <aside class="active-germination-milestone ${timelinePresentation?.isActionRequired ? "is-action-required" : ""}" aria-labelledby="active-germination-milestone-title">
+            <span class="active-germination-milestone__icon">${renderSessionProgressCompanionIconMarkup("flag", "active-germination-milestone__icon-svg")}</span>
+            <span class="active-germination-milestone__copy">
+              <span class="eyebrow">Next milestone</span>
+              <strong id="active-germination-milestone-title">${escapeHtml(nextMilestoneLabel)}</strong>
+              <span class="active-germination-milestone__timing">
+                ${renderSessionProgressCompanionIconMarkup("clock", "active-germination-milestone__timing-icon")}
+                <span>${escapeHtml(nextMilestoneTimingLabel)}</span>
+              </span>
+            </span>
+          </aside>
         </div>
-        <div class="active-germination-day" aria-label="Germination day ${escapeHtml(String(state.dayNumber))}">
-          <span>Germination</span>
-          <strong data-active-germination-day>Day ${escapeHtml(String(state.dayNumber))}</strong>
-        </div>
-      </header>
 
-      <div class="active-germination-stats" aria-label="Active Germination context">
-        <article class="active-germination-stat">
-          <span>Method</span>
-          <strong>${escapeHtml(state.methodLabel)}</strong>
-          <small>${escapeHtml(state.unitLabel)}</small>
-        </article>
-        <article class="active-germination-stat">
-          <span>Seed Entries</span>
-          <strong>${escapeHtml(String(state.entries.length))}</strong>
-          <small>${escapeHtml(String(state.totalSeeds))} ${state.totalSeeds === 1 ? "seed" : "seeds"} in Germination</small>
-        </article>
-        ${recordedResultMarkup}
-      </div>
-
-      <section class="active-germination-timeline" aria-label="Method-aware Germination timeline">
-        ${renderSessionEngineVisualTimelineMarkup(engineState, { completionAvailable })}
-      </section>
-
-      <div class="active-germination-actions">
+        <div class="active-germination-companion-column active-germination-companion-column--work">
+          <section class="active-germination-timeline" aria-label="Method-aware Germination timeline">
+            ${renderSessionEngineVisualTimelineMarkup(engineState, { completionAvailable })}
+          </section>
         <form class="active-germination-check-in" data-active-germination-check-in>
           <div class="active-germination-check-in__heading">
+            <span class="active-germination-check-in__icon">${renderSessionProgressCompanionIconMarkup("clipboard", "active-germination-check-in__icon-svg")}</span>
             <div>
-              <p class="eyebrow">First check-in</p>
+              <p class="eyebrow">Current check-in</p>
               <h4>What has germinated?</h4>
               <p>Record the number of seeds showing a successful germination response. You can update this as the Session progresses.</p>
             </div>
@@ -97787,20 +97851,87 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
           </div>
           <div class="active-germination-check-in-list">${checkInRows}</div>
           <div class="active-germination-check-in__footer">
-            <p data-active-germination-check-in-status role="status" aria-live="polite">${readOnly ? "Developer scenario preview — check-in is read-only." : ""}</p>
-            <button type="submit" class="button button-primary" ${readOnly ? "disabled" : ""}>Save check-in</button>
+            <p data-active-germination-check-in-status role="status" aria-live="polite">${escapeHtml(readOnly ? "Developer scenario preview — check-in is read-only." : getActiveGerminationCheckInConfirmation(session))}</p>
+            <button type="submit" class="button button-secondary active-germination-check-in__save" data-action-icon-exempt="true" ${readOnly ? "disabled" : ""}><span>Save check-in</span></button>
           </div>
         </form>
+        </div>
 
+        <div class="active-germination-companion-column active-germination-companion-column--support">
+          <section class="active-germination-context" aria-labelledby="active-germination-context-title">
+            <span class="active-germination-context__icon" aria-hidden="true">${renderBotanicalCarbonPhaseIconMarkup()}</span>
+            <p id="active-germination-context-title"><strong>${escapeHtml(String(state.entries.length))}</strong> ${state.entries.length === 1 ? "Seed Entry" : "Seed Entries"}<span aria-hidden="true">·</span><strong>${escapeHtml(String(state.totalSeeds))}</strong> ${state.totalSeeds === 1 ? "seed" : "seeds"}</p>
+          </section>
+          <section class="active-germination-result" aria-label="Saved germinated seed total">
+            <strong data-active-germination-saved-total>${escapeHtml(String(state.germinatedCount))}</strong>
+            <span>Germinated</span>
+          </section>
         <aside class="active-germination-next" aria-labelledby="active-germination-next-title">
-          <p class="eyebrow">Next milestone</p>
-          <h4 id="active-germination-next-title">Complete Germination</h4>
+          <p class="eyebrow">Completion readiness</p>
+          <h4 id="active-germination-next-title">Complete Session</h4>
           <p>${completionAvailable
-            ? "Every Seed Entry has a recorded outcome. Germination is ready for completion."
-            : "Keep checking each Seed Entry. Germination completion becomes available after every entry has a recorded outcome."}</p>
-          <span>${completionAvailable ? "Completion is now available." : "Completion is not part of this check-in."}</span>
+            ? "At least one saved germination is recorded. Complete Germination when you are ready to continue the established Session lifecycle."
+            : "Record and save at least one germinated seed before completing Germination."}</p>
+          <button type="button" class="button button-secondary active-germination-next__complete" data-active-germination-complete-session ${completionAvailable && !readOnly ? "" : "disabled"} aria-disabled="${completionAvailable && !readOnly ? "false" : "true"}">${renderSessionProgressCompanionIconMarkup("clipboard", "active-germination-next__complete-icon")}<span>Complete Session</span></button>
+          <span>${completionAvailable ? `${escapeHtml(String(state.germinatedCount))} saved germinated ${state.germinatedCount === 1 ? "seed" : "seeds"}` : "No saved germinated seeds yet"}</span>
         </aside>
+        </div>
       </div>
+    </section>
+  `;
+}
+
+function renderBotanicalPhaseTimelineMarkup() {
+  return `
+    <nav class="botanical-phase-timeline" aria-label="Grow Session phases">
+      <ol>
+        <li class="botanical-phase-segment is-active" aria-current="step">
+          <span class="botanical-phase-segment__number">1</span>
+          <span class="botanical-phase-segment__label">Germination</span>
+        </li>
+        <li class="botanical-phase-segment is-upcoming">
+          <span class="botanical-phase-segment__number">2</span>
+          <span class="botanical-phase-segment__label">Growing</span>
+        </li>
+        <li class="botanical-phase-segment is-upcoming">
+          <span class="botanical-phase-segment__number">3</span>
+          <span class="botanical-phase-segment__label">Reflection</span>
+        </li>
+      </ol>
+    </nav>
+  `;
+}
+
+function renderGerminationProgressPreviewMarkup(options = {}) {
+  const titleId = String(options.titleId || "germination-progress-preview-title").trim();
+  const description = String(options.description || "Setup draft · Germination has not started.").trim();
+  const observedDuration = String(options.observedDuration || "Not started").trim();
+  const progressValue = Math.max(0, Math.min(100, Number(options.progressValue) || 0));
+  const afterRailMarkup = String(options.afterRailMarkup || "");
+  const activeDataAttributes = options.active === true
+    ? {
+        observedDuration: " data-active-germination-progress-elapsed",
+        rail: " data-active-germination-progress",
+        fill: " data-active-germination-progress-fill",
+      }
+    : { observedDuration: "", rail: "", fill: "" };
+  return `
+    <section class="germination-progress-preview" aria-labelledby="${escapeHtml(titleId)}">
+      <div class="germination-progress-preview__heading">
+        <span class="germination-progress-preview__icon">${renderBotanicalCarbonPhaseIconMarkup()}</span>
+        <div>
+          <h2 id="${escapeHtml(titleId)}">Germination Progress</h2>
+          <p>${escapeHtml(description)}</p>
+        </div>
+      </div>
+      <div class="germination-progress-preview__measure">
+        <span>Observed duration</span>
+        <strong${activeDataAttributes.observedDuration}>${escapeHtml(observedDuration)}</strong>
+      </div>
+      <div class="germination-progress-preview__rail" role="progressbar" aria-label="Germination progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(String(progressValue))}"${activeDataAttributes.rail}>
+        <span style="width: ${escapeHtml(String(progressValue))}%"${activeDataAttributes.fill}></span>
+      </div>
+      ${afterRailMarkup}
     </section>
   `;
 }
@@ -97809,9 +97940,14 @@ function syncActiveGerminationWorkspace(root = null, session = null) {
   const state = getActiveGerminationWorkspaceState(session);
   const workspace = root?.querySelector?.("[data-active-germination-workspace]");
   if (!state || !(workspace instanceof HTMLElement)) return;
+  const radial = workspace.querySelector(".active-germination-time__radial");
   const elapsed = workspace.querySelector("[data-active-germination-elapsed]");
   const day = workspace.querySelector("[data-active-germination-day]");
-  if (elapsed) elapsed.textContent = `Germination · ${state.elapsedLabel}`;
+  if (radial) {
+    radial.style.setProperty("--active-germination-elapsed-angle", `${state.elapsedRadialDegrees}deg`);
+    radial.setAttribute("aria-label", `Elapsed Germination time ${state.elapsedLabel}`);
+  }
+  if (elapsed) elapsed.innerHTML = `<span class="sr-only">Germination · </span><b>${escapeHtml(state.elapsedLabel)}</b>`;
   if (day) day.textContent = `Day ${state.dayNumber}`;
 }
 
@@ -97870,11 +98006,13 @@ function composeSessionCurrentPhaseWorkspace(root = null, session = null, lifecy
   );
   nodes.lifecycleSection.hidden = germinationOmitted;
   nodes.germinationContent.hidden = germinationOmitted;
+  nodes.shell?.classList.toggle("is-active-germination-companion", currentPhase.id === "germination");
 
   if (root.dataset.sessionCurrentPhase === currentPhase.id) {
     return;
   }
 
+  root.querySelector("[data-active-germination-overview]")?.remove();
   nodes.workspace.dataset.sessionCurrentPhase = currentPhase.id;
   nodes.workspace.setAttribute("aria-labelledby", "session-grow-companion-workspace-title");
   nodes.workspaceBody.replaceChildren();
@@ -97883,6 +98021,10 @@ function composeSessionCurrentPhaseWorkspace(root = null, session = null, lifecy
 
   if (currentPhase.id === "germination") {
     nodes.workspaceBody.insertAdjacentHTML("beforeend", renderActiveGerminationWorkspaceMarkup(session));
+    const activeGerminationOverview = nodes.workspaceBody.querySelector("[data-active-germination-overview]");
+    if (activeGerminationOverview && nodes.surface) {
+      nodes.surface.insertBefore(activeGerminationOverview, nodes.surface.firstChild);
+    }
     const activeGerminationWorkspace = nodes.workspaceBody.querySelector("[data-active-germination-workspace]");
     positionActiveGerminationTimelineCurrentStep(activeGerminationWorkspace);
     bindActiveGerminationTimelineResponsivePositioning(activeGerminationWorkspace);
@@ -97981,6 +98123,54 @@ function bindSessionPhaseFoundation(root = null, session = null) {
     return;
   }
   root.dataset.sessionPhaseBound = "true";
+  root.addEventListener("click", (event) => {
+    const completionButton = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-complete-session]")
+      : null;
+    if (completionButton instanceof HTMLButtonElement) {
+      if (completionButton.disabled || !isSessionGerminationCompletionEligible(session)) return;
+      const canonicalCompletionButton = app.querySelector("#detail-complete-session");
+      if (canonicalCompletionButton instanceof HTMLButtonElement) {
+        canonicalCompletionButton.dataset.activeGerminationSavedResults = "true";
+        canonicalCompletionButton.click();
+      }
+      return;
+    }
+    const editSessionButton = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-edit-session]")
+      : null;
+    if (editSessionButton instanceof HTMLButtonElement) {
+      const shell = root.closest(".session-workspace-shell--detail");
+      shell?.querySelector("#detail-edit-session-details")?.click();
+      shell?.querySelector("#detail-session-editor")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    const countStepButton = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-count-step]")
+      : null;
+    if (!(countStepButton instanceof HTMLButtonElement) || countStepButton.disabled) return;
+    const control = countStepButton.closest(".active-germination-check-in-control");
+    const input = control?.querySelector("[data-active-germination-count]");
+    if (!(input instanceof HTMLInputElement) || input.disabled) return;
+    const direction = Number(countStepButton.dataset.activeGerminationCountStep);
+    if (![1, -1].includes(direction)) return;
+    if (direction > 0) input.stepUp();
+    else input.stepDown();
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  });
+  root.addEventListener("input", (event) => {
+    const input = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-count]")
+      : null;
+    if (!(input instanceof HTMLInputElement)) return;
+    const form = input.closest("[data-active-germination-check-in]");
+    if (!(form instanceof HTMLFormElement)) return;
+    setActiveGerminationCheckInDraft(session, form.querySelectorAll("[data-active-germination-count]"));
+    setActiveGerminationCheckInConfirmation(session, "");
+    const status = form.querySelector("[data-active-germination-check-in-status]");
+    if (status) status.textContent = "";
+  });
   root.addEventListener("submit", async (event) => {
     const form = event.target instanceof HTMLFormElement
       ? event.target.closest("[data-active-germination-check-in]")
@@ -98016,19 +98206,24 @@ function bindSessionPhaseFoundation(root = null, session = null) {
     });
     session.partitions = nextPartitions;
     captureFirstPlantedEventForSession(session);
+    setActiveGerminationCheckInConfirmation(session, "");
     if (status) status.textContent = "Saving check-in…";
     if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
     const savedSession = await saveSessionUpdate(session, { allowAutoComplete: false });
     if (!savedSession) {
       session.partitions = previousPartitions;
+      setActiveGerminationCheckInConfirmation(session, "");
       if (status) status.textContent = "Check-in could not be saved.";
       if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
       return;
     }
     Object.assign(session, savedSession);
     markUnsavedChangesSaved();
+    clearActiveGerminationCheckInDraft(session);
+    setActiveGerminationCheckInConfirmation(session, "Check-in saved with this Session.");
     delete root.dataset.sessionCurrentPhase;
     syncSessionDetailHeaderMeta(getSessionDetailElements(app), session);
+    syncSessionDetailCompletionActions(getSessionDetailElements(app), session);
     const refreshedStatus = root.querySelector("[data-active-germination-check-in-status]");
     if (refreshedStatus) refreshedStatus.textContent = "Check-in saved with this Session.";
   });
@@ -98710,7 +98905,10 @@ function renderSessionDetail(sessionId) {
     const selectedProgressKey = getSessionStatusProgressKey(detail.statusField);
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
-    if (selectedProgressKey === "completed" && normalizeSessionStatus(previousStatus) !== "completed" && !areSessionSeedResultsFullyAccountedFor(session)) {
+    const completionEligible = isSessionInActiveGerminationPhase(session)
+      ? isSessionGerminationCompletionEligible(session)
+      : areSessionSeedResultsFullyAccountedFor(session);
+    if (selectedProgressKey === "completed" && normalizeSessionStatus(previousStatus) !== "completed" && !completionEligible) {
       detail.statusField.value = previousStatus || "";
       syncSessionStatusControlDatasets(detail.statusField, {
         startedAt: getSessionStatusStartedAtValue(session),
@@ -98763,7 +98961,7 @@ function renderSessionDetail(sessionId) {
     }
   });
 
-  const persistDetailSession = async () => {
+  const persistDetailSession = async (options = {}) => {
     clearSessionDetailEditorMessage(detail);
     if (!applySessionDetailEditorValues(detail.detailsForm, session)) {
       setFeedbackMessage(detail.detailsMessage, "Please enter a session name to continue.", "error");
@@ -98777,14 +98975,17 @@ function renderSessionDetail(sessionId) {
       seedAgeValidation.firstInvalidField?.focus();
       return null;
     }
-    const partitionValidation = validatePartitions(partitions);
-    if (!partitionValidation.isValid) {
-      setFeedbackMessage(detail.saveMessage, "Complete each seed position before saving.", "error");
-      focusInvalidSessionField(partitionValidation.firstInvalidField || partitionValidation.firstInvalidRow);
-      return null;
+    const useSavedGerminationResults = options.useSavedGerminationResults === true;
+    if (!useSavedGerminationResults) {
+      const partitionValidation = validatePartitions(partitions);
+      if (!partitionValidation.isValid) {
+        setFeedbackMessage(detail.saveMessage, "Complete each seed position before saving.", "error");
+        focusInvalidSessionField(partitionValidation.firstInvalidField || partitionValidation.firstInvalidRow);
+        return null;
+      }
+      syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
-    syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     if (sessionMethod.supportsStageTracking) {
       captureFirstPlantedEventForSession(session);
     } else if (normalizeSessionStatus(session.sessionStatus || "") !== "completed") {
@@ -98856,7 +99057,7 @@ function renderSessionDetail(sessionId) {
     return savedSession;
   };
 
-  const completeActiveSession = async () => {
+  const completeActiveSession = async (options = {}) => {
     if (normalizeSessionStatus(session.sessionStatus || "") === "completed") {
       return null;
     }
@@ -98864,6 +99065,7 @@ function renderSessionDetail(sessionId) {
     const previousStatus = session.sessionStatus || getMethodDefaultSessionStatus(sessionMethod.id);
     const previousCompletedAt = session.completedAt || "";
     const previousDecision = getPostGerminationDecision(session);
+    const germinationCompletionTimelineState = buildSessionEngineState(session);
     clearSessionDetailEditorMessage(detail);
     if (!applySessionDetailEditorValues(detail.detailsForm, session)) {
       setFeedbackMessage(detail.detailsMessage, "Please enter a session name to continue.", "error");
@@ -98877,16 +99079,29 @@ function renderSessionDetail(sessionId) {
       seedAgeValidation.firstInvalidField?.focus();
       return null;
     }
-    const partitionValidation = validatePartitions(partitions);
-    if (!partitionValidation.isValid) {
-      setFeedbackMessage(detail.saveMessage, "Complete each seed position before saving.", "error");
-      focusInvalidSessionField(partitionValidation.firstInvalidField || partitionValidation.firstInvalidRow);
-      return null;
+    const useSavedGerminationResults = options.useSavedGerminationResults === true
+      && isSessionInActiveGerminationPhase(session);
+    if (!useSavedGerminationResults) {
+      const partitionValidation = validatePartitions(partitions);
+      if (!partitionValidation.isValid) {
+        setFeedbackMessage(detail.saveMessage, "Complete each seed position before saving.", "error");
+        focusInvalidSessionField(partitionValidation.firstInvalidField || partitionValidation.firstInvalidRow);
+        return null;
+      }
+      syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
-    syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
-    if (!areSessionSeedResultsFullyAccountedFor(session)) {
-      showSessionCompletionResultsWarning(detail.saveMessage);
+    const completionEligible = isSessionInActiveGerminationPhase(session)
+      ? isSessionGerminationCompletionEligible(session)
+      : areSessionSeedResultsFullyAccountedFor(session);
+    if (!completionEligible) {
+      setFeedbackMessage(
+        detail.saveMessage,
+        isSessionInActiveGerminationPhase(session)
+          ? GERMINATION_COMPLETION_INELIGIBLE_MESSAGE
+          : SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE,
+        "error",
+      );
       focusSessionResultEntry(detail.chartShell || app);
       return null;
     }
@@ -98915,7 +99130,7 @@ function renderSessionDetail(sessionId) {
     refreshDetailDerivedViews();
     syncSessionDetailCompletionActions(detail, session);
 
-    const savedSession = await persistDetailSession();
+    const savedSession = await persistDetailSession({ useSavedGerminationResults });
     if (!savedSession) {
       session.sessionStatus = previousStatus;
       session.completedAt = previousCompletedAt;
@@ -98938,6 +99153,12 @@ function renderSessionDetail(sessionId) {
     }
 
     setFeedbackMessage(detail.saveMessage, "Session completed.", "success");
+    const completedTimelineHost = app.querySelector("[data-session-completed-phase-records]");
+    const completedTimelineMarkup = renderCompletedGerminationTimelineMarkup(germinationCompletionTimelineState);
+    if (completedTimelineHost && completedTimelineMarkup) {
+      completedTimelineHost.innerHTML = `<section class="active-germination-timeline active-germination-timeline--completed" aria-label="Completed Germination timeline">${completedTimelineMarkup}</section>`;
+      completedTimelineHost.hidden = false;
+    }
     syncSessionDetailCompletionActions(detail, savedSession);
     clearSessionTimerInterval();
     syncSessionProgressionReminderNotifications(getSessions());
@@ -98968,7 +99189,13 @@ function renderSessionDetail(sessionId) {
 
   detail.saveShortcutButton?.addEventListener("click", persistDetailSession);
   detail.saveButton?.addEventListener("click", persistDetailSession);
-  detail.completeButton?.addEventListener("click", completeActiveSession);
+  detail.completeButton?.addEventListener("click", async () => {
+    const useSavedGerminationResults = detail.completeButton?.dataset.activeGerminationSavedResults === "true";
+    await completeActiveSession({
+      useSavedGerminationResults,
+    });
+    if (detail.completeButton) delete detail.completeButton.dataset.activeGerminationSavedResults;
+  });
   detail.customCompleteButton?.addEventListener("click", completeCustomMethodSession);
   detail.detailsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -101255,9 +101482,12 @@ async function renderSystemLayoutReference(container, systemType) {
 
 function syncSessionDetailCompletionActions(detail, session = null) {
   const isCompleted = normalizeSessionStatus(session?.sessionStatus || "") === "completed";
+  const isActiveGermination = isSessionInActiveGerminationPhase(session);
+  const completionBlocked = isActiveGermination && !isSessionGerminationCompletionEligible(session);
   getSessionDetailCompleteButtons(detail).forEach((button) => {
     button.hidden = isCompleted;
-    button.disabled = isCompleted;
+    button.disabled = isCompleted || completionBlocked;
+    button.setAttribute("aria-disabled", String(isCompleted || completionBlocked));
     button.textContent = SESSION_COMPLETE_BUTTON_LABEL;
   });
 }
@@ -102947,8 +103177,23 @@ function getSessionEngineVisualTimelinePresentation(steps = [], engineState = nu
   };
 }
 
+function isSessionGerminationCompletionEligible(session = null) {
+  return getSessionSeedResultAccounting(session).totalGerminated > 0;
+}
+
+function isSessionInActiveGerminationPhase(session = null) {
+  const status = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  return ["active", "germinating"].includes(status)
+    && getSessionPhaseLifecycle(session).some((phase) => (
+      phase.id === "germination" && phase.status === SESSION_PHASE_STATUS.CURRENT
+    ));
+}
+
 function getSessionEngineVisualTimelineStatus(step = {}, engineState = null, presentation = null) {
   const stepKey = String(step.key || "");
+  if (presentation?.germinationCompleted && stepKey === "complete") {
+    return { key: "complete", label: "Complete" };
+  }
   if (presentation?.actionStepKey && stepKey === presentation.actionStepKey) {
     return {
       key: presentation.isActionRequired ? "action-required" : "current",
@@ -103012,7 +103257,7 @@ function getSessionEngineVisualTimelineNextLabel(engineState = null, presentatio
 }
 
 function getSessionEngineVisualTimelineIconKey(step = {}, status = {}) {
-  if (status.key === "complete") {
+  if (status.key === "complete" && !status.preserveSemanticIcon) {
     return "check";
   }
   if (status.key === "overdue" || status.key === "action-required") {
@@ -103094,6 +103339,10 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null, options = {
   const stepCount = Math.max(1, steps.length);
   const isOverdue = Boolean(engineState?.overdueStatus?.isOverdue);
   const presentation = getSessionEngineVisualTimelinePresentation(steps, engineState, options);
+  if (presentation) {
+    presentation.germinationCompleted = options.germinationCompleted === true;
+  }
+  const showCompactCompanionTreatment = Boolean(presentation);
 
   return `
     <article
@@ -103103,8 +103352,9 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null, options = {
     >
       <div class="session-engine-visual-timeline-head">
         <div class="session-engine-visual-timeline-title">
+          ${showCompactCompanionTreatment ? `<span class="session-engine-visual-timeline-title-icon">${renderBotanicalCarbonPhaseIconMarkup()}</span>` : ""}
           <p class="eyebrow">Timeline</p>
-          <h3>Session Progress</h3>
+          <h3>Session Progress${showCompactCompanionTreatment ? ` (${escapeHtml(methodName)})` : ""}</h3>
         </div>
         <span class="session-engine-visual-timeline-next">${escapeHtml(getSessionEngineVisualTimelineNextLabel(engineState, presentation))}</span>
       </div>
@@ -103112,14 +103362,24 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null, options = {
         <ol class="session-engine-visual-timeline-list">
           ${steps.map((step, index) => {
             const status = getSessionEngineVisualTimelineStatus(step, engineState, presentation);
+            const showCompleteBadge = showCompactCompanionTreatment && ["complete", "preparation-complete"].includes(status.key);
+            const completeBadgeMarkup = showCompleteBadge
+              ? `<span class="session-engine-visual-timeline-complete-badge" aria-hidden="true">${renderSessionProgressCompanionIconMarkup("check", "session-engine-visual-timeline-complete-icon")}</span>`
+              : "";
+            const stateMarkup = showCompleteBadge
+              ? `<span class="sr-only">${escapeHtml(status.label)}</span>`
+              : `<span class="session-engine-visual-timeline-state">${escapeHtml(status.label)}</span>`;
             return `
-              <li class="session-engine-visual-timeline-step is-${escapeHtml(status.key)}">
+              <li class="session-engine-visual-timeline-step is-${escapeHtml(status.key)} ${String(step.key || "") === "complete" && status.key === "complete" ? "is-final-complete" : ""}">
                 <span class="session-engine-visual-timeline-marker">
-                  ${renderSessionEngineVisualTimelineIconMarkup(step, index, status)}
+                  ${renderSessionEngineVisualTimelineIconMarkup(step, index, showCompactCompanionTreatment
+                    ? { ...status, preserveSemanticIcon: true }
+                    : status)}
+                  ${completeBadgeMarkup}
                 </span>
                 <strong>${escapeHtml(step.label || "Step")}</strong>
                 <small>${escapeHtml(step.timing || "")}</small>
-                <span class="session-engine-visual-timeline-state">${escapeHtml(status.label)}</span>
+                ${stateMarkup}
               </li>
             `;
           }).join("")}
@@ -103127,6 +103387,13 @@ function renderSessionEngineVisualTimelineMarkup(engineState = null, options = {
       </div>
     </article>
   `;
+}
+
+function renderCompletedGerminationTimelineMarkup(engineState = null) {
+  return renderSessionEngineVisualTimelineMarkup(engineState, {
+    completionAvailable: true,
+    germinationCompleted: true,
+  });
 }
 
 function updateSessionEngineVisualTimeline(timelineElement = null, state = {}) {
@@ -103986,6 +104253,7 @@ function renderSessionProgressCompanionIconMarkup(iconKey = "info", className = 
     bulb: '<path d="M9 18h6" /><path d="M10 21h4" /><path d="M8 11a4 4 0 1 1 8 0c0 1.8-1.1 2.8-2 4H10c-.9-1.2-2-2.2-2-4Z" /><path d="M12 2v2M4.9 4.9l1.4 1.4M19.1 4.9l-1.4 1.4" />',
     bell: '<path d="M6 16h12l-1.2-2V10a4.8 4.8 0 0 0-9.6 0v4L6 16Z" /><path d="M10 19a2 2 0 0 0 4 0" />',
     check: '<path d="M5 12.3 9.2 16.4 19 7" />',
+    clipboard: '<rect x="5" y="5" width="14" height="16" rx="2" /><path d="M9 5V3.5h6V5" /><path d="m8.5 13 2 2 4.5-5" />',
   };
   return `
     <svg class="${escapeHtml(className)}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -106686,8 +106954,13 @@ async function saveSessionUpdate(session, options = {}) {
     const previousStatus = previousSession?.sessionStatus || "";
     const isNewCompletion = normalizeSessionStatus(session?.sessionStatus || "") === "completed"
       && normalizeSessionStatus(previousStatus) !== "completed";
-    if (isNewCompletion && !areSessionSeedResultsFullyAccountedFor(session)) {
-      throw new Error(SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE);
+    const isActiveGerminationCompletion = isNewCompletion && isSessionInActiveGerminationPhase(previousSession);
+    if (isNewCompletion && (isActiveGerminationCompletion
+      ? !isSessionGerminationCompletionEligible(session)
+      : !areSessionSeedResultsFullyAccountedFor(session))) {
+      throw new Error(isActiveGerminationCompletion
+        ? GERMINATION_COMPLETION_INELIGIBLE_MESSAGE
+        : SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE);
     }
     const shouldAutoCompleteAccountedResults = options.allowAutoComplete !== false
       || normalizeSessionStatus(session?.sessionStatus || "") === "completed";
