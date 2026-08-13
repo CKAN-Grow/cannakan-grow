@@ -4216,6 +4216,39 @@ function initializeTopbarControls() {
     });
   }
 
+  if (app && app.dataset.sessionReminderSnoozeBound !== "true") {
+    app.dataset.sessionReminderSnoozeBound = "true";
+    app.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const snoozeToggle = target?.closest("[data-session-reminder-snooze-toggle]");
+      if (snoozeToggle instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleNotificationSnoozeMenu(snoozeToggle.dataset.sessionReminderSnoozeToggle || "");
+        safeRender();
+        return;
+      }
+
+      const snoozeOptionButton = target?.closest("[data-session-reminder-snooze-option]");
+      if (!(snoozeOptionButton instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      const notification = getSessionReminderSnoozeNotification(
+        snoozeOptionButton.dataset.sessionReminderSnoozeEvent || "",
+        snoozeOptionButton.dataset.sessionReminderSnoozeSession || "",
+      );
+      if (!notification) {
+        return;
+      }
+
+      snoozeAppNotification(notification, snoozeOptionButton.dataset.sessionReminderSnoozeOption || "");
+      safeRender();
+    });
+  }
+
   if (appNotificationMarkAllReadButton && appNotificationMarkAllReadButton.dataset.bound !== "true") {
     appNotificationMarkAllReadButton.dataset.bound = "true";
     appNotificationMarkAllReadButton.addEventListener("click", () => {
@@ -19953,12 +19986,40 @@ function snoozeAppNotification(notification = null, optionKey = "") {
   });
 }
 
+function getSessionReminderSnoozeNotification(eventKey = "", sessionId = "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedEventKey || !normalizedSessionId) {
+    return null;
+  }
+
+  const storedNotification = getAppNotifications()
+    .find((notification) => String(notification?.eventKey || "").trim() === normalizedEventKey);
+  if (storedNotification && canSnoozeNotification(storedNotification)) {
+    return storedNotification;
+  }
+
+  const session = getSessions()
+    .find((candidate) => String(candidate?.id || "").trim() === normalizedSessionId);
+  return buildStageProgressReminderEntries(session)
+    .find((notification) => String(notification?.eventKey || "").trim() === normalizedEventKey) || null;
+}
+
 function buildStageProgressReminderEventKey(sessionId = "", reminderIdentifier = "", reminderKind = "stage") {
   const normalizedSessionId = String(sessionId || "").trim();
   const normalizedKind = String(reminderKind || "stage").trim();
   const normalizedIdentifier = String(reminderIdentifier || "").trim()
     || `after-${Math.max(0, Number(reminderIdentifier) || 0)}h`;
   return normalizedSessionId ? `stage-progress:${normalizedSessionId}:${normalizedIdentifier}` : "";
+}
+
+function getStageProgressReminderEventKey(session = null, reminder = null) {
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  return buildStageProgressReminderEventKey(
+    session?.id || "",
+    String(reminder?.key || `${normalizedStatus}-${Math.max(0, Number(reminder?.atHours || reminder?.hours) || 0)}h`).trim(),
+    normalizedStatus,
+  );
 }
 
 function buildNotificationSessionActionRoute(sessionId = "", actionKind = "open-session", eventKey = "", optionKey = "") {
@@ -20055,11 +20116,7 @@ function buildStageProgressReminderEntries(session = null) {
     return [];
   }
 
-  const reminderEventKey = buildStageProgressReminderEventKey(
-    session.id,
-    String(latestDueReminder?.key || `${normalizedStatus}-${Math.max(0, Number(latestDueReminder?.atHours || latestDueReminder?.hours) || 0)}h`).trim(),
-    normalizedStatus,
-  );
+  const reminderEventKey = getStageProgressReminderEventKey(session, latestDueReminder);
   if (isStageProgressReminderSuppressed(session, latestDueReminder, reminderEventKey)) {
     return [];
   }
@@ -97790,8 +97847,8 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
         <article><span>Started</span><strong>${escapeHtml(state.startedLabel)}</strong></article>
       </div>
       <div class="active-germination-overview__utilities">
-        <button type="button" class="button button-secondary" data-active-germination-edit-session>Edit Session Details</button>
-        <a class="button button-secondary" href="#sessions">Back</a>
+        <button type="button" class="button button-secondary active-germination-overview__utility-button" data-active-germination-edit-session>${renderAppIconSvgMarkup("editPencil", { className: "active-germination-overview__utility-icon" })}<span>Edit Session Details</span></button>
+        <a class="button button-secondary active-germination-overview__utility-button" href="#sessions">${renderAppIconSvgMarkup("backArrow", { className: "active-germination-overview__utility-icon" })}<span>Back</span></a>
       </div>
     </section>
 
@@ -97819,6 +97876,7 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
               <div>
                 <strong data-active-germination-elapsed><span class="sr-only">Germination · </span><b>${escapeHtml(state.elapsedLabel)}</b></strong>
                 <span data-active-germination-day>Day ${escapeHtml(String(state.dayNumber))}</span>
+                <span class="active-germination-time__method">${escapeHtml(state.methodLabel)}</span>
               </div>
             </div>
           </section>
@@ -101926,6 +101984,44 @@ function renderSessionStatusAlertIcon(level = "") {
   `;
 }
 
+function renderSessionStatusAlertSnoozeMarkup(alert = {}) {
+  const notification = alert?.snoozeNotification;
+  if (!canSnoozeNotification(notification)) {
+    return "";
+  }
+
+  const eventKey = String(notification.eventKey || "").trim();
+  const sessionId = String(notification.sessionId || "").trim();
+  const menuId = `session-reminder-snooze-${eventKey}`;
+  const isOpen = appState.notificationSnoozeMenuOpenId === eventKey;
+  return `
+    <div class="session-detail-alert-snooze">
+      <button
+        type="button"
+        class="button button-secondary session-detail-alert-snooze-button${isOpen ? " is-open" : ""}"
+        data-session-reminder-snooze-toggle="${escapeHtml(eventKey)}"
+        aria-controls="${escapeHtml(menuId)}"
+        aria-expanded="${isOpen ? "true" : "false"}"
+        aria-label="Snooze urgent inspection reminder"
+      >Snooze</button>
+      ${isOpen ? `
+        <div class="session-detail-alert-snooze-menu" id="${escapeHtml(menuId)}" role="menu" aria-label="Snooze urgent inspection reminder">
+          ${APP_NOTIFICATION_SNOOZE_OPTIONS.map((option) => `
+            <button
+              type="button"
+              class="button button-secondary session-detail-alert-snooze-option"
+              role="menuitem"
+              data-session-reminder-snooze-option="${escapeHtml(option.key)}"
+              data-session-reminder-snooze-event="${escapeHtml(eventKey)}"
+              data-session-reminder-snooze-session="${escapeHtml(sessionId)}"
+            >${escapeHtml(option.label)}</button>
+          `).join("")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 function renderSessionStatusAlertsMarkup(alerts = []) {
   const normalizedAlerts = Array.isArray(alerts)
     ? alerts.filter((alert) => alert && (alert.message || alert.title))
@@ -101937,14 +102033,16 @@ function renderSessionStatusAlertsMarkup(alerts = []) {
 
   return normalizedAlerts.map((alert) => {
     const tone = getSessionStatusAlertTone(alert.level);
+    const snoozeMarkup = renderSessionStatusAlertSnoozeMarkup(alert);
     return `
-      <article class="session-detail-alert session-detail-alert--${escapeHtml(tone)}" role="status">
+      <article class="session-detail-alert session-detail-alert--${escapeHtml(tone)}${snoozeMarkup ? " session-detail-alert--with-snooze" : ""}" role="status">
         <span class="session-detail-alert-icon" aria-hidden="true">${renderSessionStatusAlertIcon(alert.level)}</span>
         <div class="session-detail-alert-copy">
           <strong>${escapeHtml(alert.title || "")}</strong>
           <p>${escapeHtml(alert.message || "")}</p>
           ${alert.actionText ? `<span class="session-detail-alert-action">${escapeHtml(alert.actionText)}</span>` : ""}
         </div>
+        ${snoozeMarkup}
       </article>
     `;
   }).join("");
@@ -101992,6 +102090,17 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
     const milestone = engineState.activeMilestone;
     const completionAvailable = areSessionSeedResultsFullyAccountedFor(options.session || null);
     const isIncompleteUrgentInspection = !completionAvailable && milestone.level === "critical";
+    const urgentReminderEventKey = isIncompleteUrgentInspection
+      ? getStageProgressReminderEventKey(options.session || null, milestone)
+      : "";
+    if (urgentReminderEventKey && isAppNotificationEventSnoozed(urgentReminderEventKey)) {
+      element.innerHTML = lifecycleAlert ? renderSessionStatusAlertsMarkup([lifecycleAlert]) : "";
+      element.hidden = !lifecycleAlert;
+      return;
+    }
+    const urgentReminderNotification = urgentReminderEventKey
+      ? getSessionReminderSnoozeNotification(urgentReminderEventKey, options.session?.id || "")
+      : null;
     element.innerHTML = renderSessionStatusAlertsMarkup([
       ...(lifecycleAlert ? [lifecycleAlert] : []),
       {
@@ -102005,6 +102114,7 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
         actionText: isIncompleteUrgentInspection
           ? "Record outcomes or snooze this reminder."
           : (milestone.actionText || getSessionStatusAlertActionText(normalizedStatus, milestone.level)),
+        snoozeNotification: urgentReminderNotification,
       },
     ]);
     element.hidden = false;
