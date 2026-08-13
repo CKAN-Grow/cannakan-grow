@@ -96415,6 +96415,23 @@ const SESSION_TERMINAL_STATUS_LABELS = Object.freeze({
 const sessionPhaseExpansionState = new Map();
 const activeGerminationCheckInConfirmationState = new Map();
 const activeGerminationCheckInDraftState = new Map();
+const activeGerminationResultsPresentationState = {
+  sessionId: "",
+  selectedGroup: "all",
+  detailsExpanded: false,
+  showAll: false,
+};
+
+function getActiveGerminationResultsPresentationState(session = null) {
+  const sessionId = String(session?.id || "").trim();
+  if (activeGerminationResultsPresentationState.sessionId !== sessionId) {
+    activeGerminationResultsPresentationState.sessionId = sessionId;
+    activeGerminationResultsPresentationState.selectedGroup = "all";
+    activeGerminationResultsPresentationState.detailsExpanded = false;
+    activeGerminationResultsPresentationState.showAll = false;
+  }
+  return activeGerminationResultsPresentationState;
+}
 
 function getActiveGerminationCheckInDraft(session = null) {
   const sessionId = String(session?.id || "").trim();
@@ -97721,6 +97738,37 @@ function syncSessionPhaseSection(section = null, phase = {}, session = null, isE
   }
 }
 
+function getGrowCompanionPageContextLabel(session = null) {
+  const lifecycle = getSessionLifecyclePresentation(session);
+  if (lifecycle.isSessionComplete || lifecycle.terminalStatus) {
+    return lifecycle.sessionStatusLabel;
+  }
+  if (!lifecycle.currentPhase) {
+    return lifecycle.sessionStatusLabel;
+  }
+  const dayLabel = formatSessionCommandCenterDayLabel(session);
+  return `Active ${lifecycle.currentPhase.label}${dayLabel ? ` · ${dayLabel}` : ""}`;
+}
+
+function renderGrowCompanionPageIdentityMarkup(session = null) {
+  return `
+    <div class="grow-companion-page-identity__copy">
+      <span class="grow-companion-page-identity__icon" aria-hidden="true">${renderAppIconSvgMarkup("seedSprout")}</span>
+      <div>
+        <h1 id="grow-companion-page-title">Grow Companion</h1>
+        <p>Your guided workspace from germination through reflection.</p>
+      </div>
+    </div>
+    <p class="grow-companion-page-identity__context" data-grow-companion-page-context>${escapeHtml(getGrowCompanionPageContextLabel(session))}</p>
+  `;
+}
+
+function syncGrowCompanionPageIdentity(shell = null, session = null) {
+  const identity = shell?.querySelector?.(":scope > [data-grow-companion-page-identity]");
+  const context = identity?.querySelector?.("[data-grow-companion-page-context]");
+  if (context) context.textContent = getGrowCompanionPageContextLabel(session);
+}
+
 function getSessionPhaseCompositionNodes(root = null) {
   const shell = root?.closest?.(".session-workspace-shell--detail");
   return {
@@ -97764,6 +97812,619 @@ function getActiveGerminationWorkspaceState(session = null, now = new Date()) {
     germinationRate: summary.overall.percentageLabel,
     hasRecordedResults,
   };
+}
+
+const ACTIVE_GERMINATION_RESULT_PRESENTATION = Object.freeze({
+  failed: Object.freeze({ label: "Unsuccessful", icon: "failed" }),
+  poor: Object.freeze({ label: "Low", icon: "poor" }),
+  mixed: Object.freeze({ label: "Moderate", icon: "mixed" }),
+  good: Object.freeze({ label: "Strong", icon: "good" }),
+  strong: Object.freeze({ label: "Excellent / Full germination", icon: "strong" }),
+  none: Object.freeze({ label: "No saved data", icon: "none" }),
+});
+const ACTIVE_GERMINATION_RESULT_SCALE_ORDER = Object.freeze(["failed", "poor", "mixed", "good", "strong"]);
+const ACTIVE_GERMINATION_RESULT_COLOR_SCALE = Object.freeze([
+  Object.freeze({ percentage: 0, color: "#f02b2b" }),
+  Object.freeze({ percentage: 20, color: "#ff8212" }),
+  Object.freeze({ percentage: 40, color: "#ffc21a" }),
+  Object.freeze({ percentage: 60, color: "#d9cf26" }),
+  Object.freeze({ percentage: 70, color: "#add63a" }),
+  Object.freeze({ percentage: 80, color: "#77ca3d" }),
+  Object.freeze({ percentage: 90, color: "#3dbc43" }),
+  Object.freeze({ percentage: 100, color: "#18d253" }),
+]);
+const ACTIVE_GERMINATION_RESULT_LEGEND_PERCENTAGES = Object.freeze({
+  failed: 0,
+  poor: 20,
+  mixed: 60,
+  good: 80,
+  strong: 100,
+});
+
+function getActiveGerminationResultScaleColor(percentage) {
+  const normalizedPercentage = normalizePartitionSuccessRateValue(percentage);
+  if (normalizedPercentage === null) return "";
+  const upperIndex = ACTIVE_GERMINATION_RESULT_COLOR_SCALE.findIndex(
+    (stop) => normalizedPercentage <= stop.percentage,
+  );
+  if (upperIndex <= 0) return ACTIVE_GERMINATION_RESULT_COLOR_SCALE[0].color;
+  if (upperIndex === -1) return ACTIVE_GERMINATION_RESULT_COLOR_SCALE.at(-1).color;
+  const lowerStop = ACTIVE_GERMINATION_RESULT_COLOR_SCALE[upperIndex - 1];
+  const upperStop = ACTIVE_GERMINATION_RESULT_COLOR_SCALE[upperIndex];
+  const mix = (normalizedPercentage - lowerStop.percentage) / (upperStop.percentage - lowerStop.percentage);
+  const lowerRgb = lowerStop.color.match(/[a-f\d]{2}/gi).map((channel) => Number.parseInt(channel, 16));
+  const upperRgb = upperStop.color.match(/[a-f\d]{2}/gi).map((channel) => Number.parseInt(channel, 16));
+  return `#${lowerRgb.map((channel, index) => Math.round(channel + ((upperRgb[index] - channel) * mix))
+    .toString(16)
+    .padStart(2, "0")).join("")}`;
+}
+
+function getActiveGerminationResultColorStyle(percentage) {
+  const color = getActiveGerminationResultScaleColor(percentage);
+  return color ? `--active-result-color: ${color}` : "";
+}
+
+function getActiveGerminationResultScaleGradient() {
+  return `conic-gradient(from -90deg, ${ACTIVE_GERMINATION_RESULT_COLOR_SCALE
+    .map((stop) => `${stop.color} ${stop.percentage}%`)
+    .join(", ")})`;
+}
+
+function getActiveGerminationResultPresentation(status = {}) {
+  return ACTIVE_GERMINATION_RESULT_PRESENTATION[status?.key]
+    || ACTIVE_GERMINATION_RESULT_PRESENTATION.none;
+}
+
+function renderActiveGerminationResultIconMarkup(status = {}) {
+  const icon = getActiveGerminationResultPresentation(status).icon;
+  const paths = {
+    failed: '<path d="M7 7l10 10M17 7 7 17" />',
+    poor: '<path d="M12 6v8" /><circle cx="12" cy="18" r="1" />',
+    mixed: '<path d="M7 12h10" />',
+    good: '<path d="m6.5 12.5 3.5 3.5 7.5-8" />',
+    strong: '<path d="M12 19v-8" /><path d="M12 13c-4.2 0-6.5-2.3-6.5-6.5 4.2 0 6.5 2.3 6.5 6.5Z" /><path d="M12 11.5c0-4.2 2.3-6.5 6.5-6.5 0 4.2-2.3 6.5-6.5 6.5Z" />',
+    none: '<circle cx="12" cy="12" r="1" /><circle cx="7" cy="12" r="1" /><circle cx="17" cy="12" r="1" />',
+  };
+  return `<svg class="active-germination-results__status-icon" viewBox="0 0 24 24" aria-hidden="true">${paths[icon] || paths.none}</svg>`;
+}
+
+function getActiveGerminationResultStatusForGroup(group = {}) {
+  if (group.status && PARTITION_SUCCESS_STATUS_DEFINITIONS[group.status.key]) {
+    return group.status;
+  }
+  const totalAccounted = Number(group.totalAccounted ?? (group.hasFinalResultValue ? group.totalCount : 0));
+  if (!(totalAccounted > 0)) {
+    return getPartitionSuccessStatus(null, null, 0);
+  }
+  return getPartitionSuccessStatus(group.percentage, group.totalGerminated, group.totalSeeds ?? group.totalCount);
+}
+
+function renderActiveGerminationResultScaleMarkup(status = {}, percentage = null) {
+  const exactColor = getActiveGerminationResultScaleColor(percentage);
+  return `
+    <span class="active-germination-results__quality-scale" aria-hidden="true">
+      ${ACTIVE_GERMINATION_RESULT_SCALE_ORDER.map((key) => {
+        const color = status.key === key && exactColor
+          ? exactColor
+          : getActiveGerminationResultScaleColor(ACTIVE_GERMINATION_RESULT_LEGEND_PERCENTAGES[key]);
+        return `
+          <i class="partition-success-card ${escapeHtml(PARTITION_SUCCESS_STATUS_DEFINITIONS[key].className)}${status.key === key ? " is-active" : ""}" style="--active-result-color: ${escapeHtml(color)}"></i>
+        `;
+      }).join("")}
+    </span>
+  `;
+}
+
+function renderActiveGerminationResultGroupRowMarkup(group = {}) {
+  const status = getActiveGerminationResultStatusForGroup(group);
+  const presentation = getActiveGerminationResultPresentation(status);
+  const hasSavedResult = status.key !== "none";
+  const isTracking = group.isTracking === true && !hasSavedResult;
+  const presentationLabel = isTracking ? "Tracking" : presentation.label;
+  const totalCount = Number(group.totalSeeds ?? group.totalCount) || 0;
+  const germinatedCount = Number(group.totalGerminated ?? group.germinatedCount) || 0;
+  const canonicalPercentage = normalizePartitionSuccessRateValue(group.percentage);
+  const percentageLabel = hasSavedResult && canonicalPercentage !== null ? `${canonicalPercentage}%` : "N/A";
+  const countLabel = hasSavedResult
+    ? `${germinatedCount} / ${totalCount} germinated`
+    : `— / ${totalCount} tracked`;
+  return `
+    <article
+      class="active-germination-results__group-row partition-success-card ${escapeHtml(status.className)}${isTracking ? " is-tracking" : ""}"
+      style="${escapeHtml(getActiveGerminationResultColorStyle(hasSavedResult ? canonicalPercentage : null))}"
+      ${hasSavedResult ? `data-result-classification="${escapeHtml(status.key)}"` : "data-result-state=\"tracking\""}
+      aria-label="${escapeHtml(group.label || "Saved Session results")}, ${escapeHtml(countLabel)}, ${escapeHtml(percentageLabel)}, ${escapeHtml(presentationLabel)}"
+    >
+      <strong>${escapeHtml(group.label || "Saved Session results")}</strong>
+      <span>${escapeHtml(countLabel)}</span>
+      <b>${escapeHtml(percentageLabel)}</b>
+      <span class="active-germination-results__group-status">
+        ${renderActiveGerminationResultScaleMarkup(status, hasSavedResult ? canonicalPercentage : null)}
+        <span class="sr-only">${escapeHtml(presentationLabel)}</span>
+      </span>
+    </article>
+  `;
+}
+
+function buildActiveGerminationResultClassificationGroups(unitRows = []) {
+  const groups = new Map();
+  unitRows.forEach((unit) => {
+    const status = unit.status;
+    const hasSavedResult = unit.hasFinalResultValue === true;
+    const canonicalStatus = hasSavedResult && ACTIVE_GERMINATION_RESULT_PRESENTATION[status?.key]
+      ? status
+      : getPartitionSuccessStatus(null, null, 0);
+    const key = hasSavedResult ? canonicalStatus.key : "none";
+    const presentation = getActiveGerminationResultPresentation(canonicalStatus);
+    const group = groups.get(key) || {
+      rowType: "result",
+      key,
+      label: presentation.label,
+      status: canonicalStatus,
+      actualUnitCount: 0,
+      totalSeeds: 0,
+      totalGerminated: 0,
+      totalAccounted: 0,
+      isTracking: key === "none",
+      contributingUnits: [],
+    };
+    group.actualUnitCount += 1;
+    group.totalSeeds += Number(unit.totalCount) || 0;
+    group.totalGerminated += Number(unit.germinatedCount) || 0;
+    group.totalAccounted += Number(unit.totalAccounted) || 0;
+    group.contributingUnits.push(unit);
+    groups.set(key, group);
+  });
+  return PARTITION_SUCCESS_STATUS_ORDER
+    .filter((key) => groups.has(key))
+    .map((key) => {
+      const group = groups.get(key);
+      return {
+        ...group,
+        contributingUnits: sortActiveGerminationResultClassificationUnits(
+          group.contributingUnits,
+          { tracking: group.isTracking },
+        ),
+        percentage: group.isTracking || group.totalSeeds <= 0
+          ? null
+          : Math.round((group.totalGerminated / group.totalSeeds) * 100),
+      };
+    });
+}
+
+function sortActiveGerminationResultGroupsAlphabetically(groups = []) {
+  return groups
+    .map((group, index) => ({ group, index }))
+    .sort((left, right) => {
+      const leftLabel = String(left.group?.label || "").trim();
+      const rightLabel = String(right.group?.label || "").trim();
+      const leftIsMissing = !leftLabel || leftLabel.toLocaleLowerCase() === "not shared";
+      const rightIsMissing = !rightLabel || rightLabel.toLocaleLowerCase() === "not shared";
+      if (leftIsMissing !== rightIsMissing) return leftIsMissing ? 1 : -1;
+      const labelOrder = leftLabel.localeCompare(rightLabel, undefined, { sensitivity: "base" });
+      return labelOrder || left.index - right.index;
+    })
+    .map(({ group }) => group);
+}
+
+function sortActiveGerminationResultUnitRows(rows = []) {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const leftOrdinal = Number(left.row?.unitOrdinal);
+      const rightOrdinal = Number(right.row?.unitOrdinal);
+      const leftIsNumbered = Number.isInteger(leftOrdinal) && leftOrdinal > 0;
+      const rightIsNumbered = Number.isInteger(rightOrdinal) && rightOrdinal > 0;
+      if (leftIsNumbered !== rightIsNumbered) return leftIsNumbered ? -1 : 1;
+      if (leftIsNumbered && leftOrdinal !== rightOrdinal) return leftOrdinal - rightOrdinal;
+      return left.index - right.index;
+    })
+    .map(({ row }) => row);
+}
+
+function sortActiveGerminationResultClassificationUnits(units = [], options = {}) {
+  const canonicalUnits = sortActiveGerminationResultUnitRows(units);
+  if (options.tracking === true) return canonicalUnits;
+  return canonicalUnits
+    .map((unit, index) => ({ unit, index }))
+    .sort((left, right) => {
+      const percentageOrder = (Number(right.unit?.percentage) || 0) - (Number(left.unit?.percentage) || 0);
+      return percentageOrder || left.index - right.index;
+    })
+    .map(({ unit }) => unit);
+}
+
+function renderActiveGerminationResultClassificationRowMarkup(group = {}) {
+  const status = group.status || getPartitionSuccessStatus(null, null, 0);
+  const presentation = getActiveGerminationResultPresentation(status);
+  const isTracking = group.isTracking === true || status.key === "none";
+  const canonicalPercentage = isTracking ? null : normalizePartitionSuccessRateValue(group.percentage);
+  const percentageLabel = canonicalPercentage === null ? "N/A" : `${canonicalPercentage}%`;
+  const countLabel = isTracking
+    ? `— / ${Number(group.totalSeeds) || 0} tracked`
+    : `${Number(group.totalGerminated) || 0} / ${Number(group.totalSeeds) || 0} germinated`;
+  const unitCount = Number(group.actualUnitCount) || 0;
+  return `
+    <article
+      class="active-germination-results__group-row active-germination-results__group-row--result partition-success-card ${escapeHtml(status.className)}${isTracking ? " is-tracking" : ""}"
+      style="${escapeHtml(getActiveGerminationResultColorStyle(canonicalPercentage))}"
+      data-active-germination-result-classification-group="${escapeHtml(group.key || "none")}"
+      data-result-unit-count="${escapeHtml(String(unitCount))}"
+      ${isTracking ? "data-result-state=\"tracking\"" : `data-result-classification="${escapeHtml(status.key)}"`}
+      aria-label="${escapeHtml(presentation.label)}, ${escapeHtml(String(unitCount))} actual ${unitCount === 1 ? "unit" : "units"}, ${escapeHtml(countLabel)}, ${escapeHtml(percentageLabel)}"
+    >
+      <strong>
+        <span class="active-germination-results__result-group-icon">${renderActiveGerminationResultIconMarkup(status)}</span>
+        <span>${escapeHtml(presentation.label)}<small>${escapeHtml(String(unitCount))} ${unitCount === 1 ? "unit" : "units"}</small></span>
+      </strong>
+      <span>${escapeHtml(countLabel)}</span>
+      <b>${escapeHtml(percentageLabel)}</b>
+      <span class="active-germination-results__group-status">
+        ${renderActiveGerminationResultScaleMarkup(status, canonicalPercentage)}
+        <span class="sr-only">${escapeHtml(presentation.label)}</span>
+      </span>
+    </article>
+  `;
+}
+
+function renderActiveGerminationResultClassificationUnitRowMarkup(unit = {}) {
+  const status = getActiveGerminationResultStatusForGroup(unit);
+  const presentation = getActiveGerminationResultPresentation(status);
+  const hasSavedResult = unit.hasFinalResultValue === true && status.key !== "none";
+  const totalCount = Number(unit.totalCount) || 0;
+  const germinatedCount = Number(unit.germinatedCount) || 0;
+  const canonicalPercentage = hasSavedResult
+    ? normalizePartitionSuccessRateValue(unit.percentage)
+    : null;
+  const percentageLabel = canonicalPercentage === null ? "" : `${canonicalPercentage}%`;
+  const resultLabel = hasSavedResult ? presentation.label : "Tracking";
+  const evidenceLabel = hasSavedResult
+    ? `${germinatedCount} / ${totalCount} germinated`
+    : `No saved outcome · ${totalCount} tracked`;
+  return `
+    <article
+      class="active-germination-results__classification-unit-row partition-success-card ${escapeHtml(status.className)}${hasSavedResult ? "" : " is-tracking"}"
+      style="${escapeHtml(getActiveGerminationResultColorStyle(canonicalPercentage))}"
+      data-active-germination-result-classification-unit="${escapeHtml(String(unit.id))}"
+      ${hasSavedResult ? `data-result-classification="${escapeHtml(status.key)}" data-result-percentage="${escapeHtml(percentageLabel)}"` : "data-result-state=\"tracking\""}
+      aria-label="${escapeHtml(unit.label)}, variety ${escapeHtml(unit.varietyLabel)}, source ${escapeHtml(unit.sourceLabel)}, ${escapeHtml(evidenceLabel)}${hasSavedResult ? `, ${escapeHtml(percentageLabel)}, ${escapeHtml(resultLabel)}` : ", Tracking"}"
+    >
+      <div class="active-germination-results__classification-unit-identity">
+        <strong>${escapeHtml(unit.label)}</strong>
+        <span>${escapeHtml(unit.varietyLabel)}</span>
+        <span>${escapeHtml(unit.sourceLabel)}</span>
+      </div>
+      <div class="active-germination-results__classification-unit-evidence">
+        <span>${escapeHtml(evidenceLabel)}</span>
+        ${hasSavedResult ? `<b>${escapeHtml(percentageLabel)}</b>` : ""}
+        <span>Status: <b>${escapeHtml(resultLabel)}</b></span>
+      </div>
+      ${hasSavedResult ? '<i class="active-germination-results__exact-indicator" aria-hidden="true"></i>' : ""}
+    </article>
+  `;
+}
+
+function renderActiveGerminationResultClassificationSectionMarkup(group = {}, options = {}) {
+  const startIndex = Math.max(0, Number(options.startIndex) || 0);
+  const showAll = options.showAll === true;
+  const units = Array.isArray(group.contributingUnits) ? group.contributingUnits : [];
+  const sectionHasVisibleUnit = showAll || startIndex < 8;
+  return `
+    <section
+      class="active-germination-results__classification-section"
+      data-active-germination-result-classification-section="${escapeHtml(group.key || "none")}"
+      ${sectionHasVisibleUnit ? "" : "hidden"}
+    >
+      ${renderActiveGerminationResultClassificationRowMarkup(group)}
+      <div class="active-germination-results__classification-units">
+        ${units.map((unit, index) => {
+          const detailIndex = startIndex + index;
+          return `
+            <div data-active-germination-result-detail-row${!showAll && detailIndex >= 8 ? " hidden" : ""}>
+              ${renderActiveGerminationResultClassificationUnitRowMarkup(unit)}
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderActiveGerminationResultUnitRowMarkup(unit = {}, options = {}) {
+  const status = getActiveGerminationResultStatusForGroup(unit);
+  const presentation = getActiveGerminationResultPresentation(status);
+  const hasSavedResult = status.key !== "none";
+  const isTracking = unit.isTracking === true && !hasSavedResult;
+  const presentationLabel = isTracking ? "Tracking" : presentation.label;
+  const totalCount = Number(unit.totalCount) || 0;
+  const germinatedCount = Number(unit.germinatedCount) || 0;
+  const canonicalPercentage = normalizePartitionSuccessRateValue(unit.percentage);
+  const unitLabel = options.useDisplayLabel === true
+    ? String(unit.displayLabel || unit.label || "")
+    : String(unit.label || "");
+  const percentageLabel = hasSavedResult && canonicalPercentage !== null ? `${canonicalPercentage}%` : "N/A";
+  const countLabel = hasSavedResult
+    ? `${germinatedCount} / ${totalCount} germinated`
+    : `— / ${totalCount} tracked`;
+  return `
+    <article
+      class="active-germination-results__all-unit-row partition-success-card ${escapeHtml(status.className)}${isTracking ? " is-tracking" : ""}"
+      style="${escapeHtml(getActiveGerminationResultColorStyle(hasSavedResult ? canonicalPercentage : null))}"
+      data-active-germination-result-all-unit="${escapeHtml(String(unit.id))}"
+      ${hasSavedResult ? `data-result-classification="${escapeHtml(status.key)}"` : "data-result-state=\"tracking\""}
+      data-result-percentage="${escapeHtml(percentageLabel)}"
+      aria-label="${escapeHtml(unitLabel)}, ${escapeHtml(countLabel)}, ${escapeHtml(percentageLabel)}, ${escapeHtml(presentationLabel)}, variety ${escapeHtml(unit.varietyLabel)}, source ${escapeHtml(unit.sourceLabel)}"
+    >
+      <strong>${escapeHtml(unitLabel)}</strong>
+      <span class="active-germination-results__all-unit-count">${escapeHtml(countLabel)}</span>
+      <b>${escapeHtml(percentageLabel)}</b>
+      <span class="active-germination-results__all-unit-meta">
+        <span>Status: <b>${escapeHtml(presentationLabel)}</b></span>
+        <span>Variety: <b>${escapeHtml(unit.varietyLabel)}</b></span>
+        <span>Source: <b>${escapeHtml(unit.sourceLabel)}</b></span>
+      </span>
+      <i class="active-germination-results__exact-indicator" aria-hidden="true"></i>
+    </article>
+  `;
+}
+
+function renderActiveGerminationResultLegendMarkup() {
+  return `
+    <div class="active-germination-results__legend" aria-label="Saved Germination result quality legend">
+      ${[...ACTIVE_GERMINATION_RESULT_SCALE_ORDER, "none"].map((key) => {
+        const status = PARTITION_SUCCESS_STATUS_DEFINITIONS[key];
+        const presentation = ACTIVE_GERMINATION_RESULT_PRESENTATION[key];
+        const colorStyle = key === "none"
+          ? ""
+          : getActiveGerminationResultColorStyle(ACTIVE_GERMINATION_RESULT_LEGEND_PERCENTAGES[key]);
+        return `
+          <span class="partition-success-card ${escapeHtml(status.className)}" style="${escapeHtml(colorStyle)}">
+            <i aria-hidden="true"></i>
+            <span>${escapeHtml(presentation.label)}<small>${escapeHtml(status.range)}</small></span>
+          </span>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderActiveGerminationResultsMarkup(session = null, options = {}) {
+  const summary = getSessionResultSummary(session, { includePendingCustomResults: true });
+  const applicablePartitions = summary.partitions.filter((partition) => partition.hasSeeds);
+  const hasSavedResultData = applicablePartitions.some((partition) => partition.hasFinalResultValue);
+
+  const resultPartitions = applicablePartitions.map((partition) => ({
+    partition,
+    status: partition.hasFinalResultValue
+      ? getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount)
+      : getPartitionSuccessStatus(null, null, 0),
+  }));
+  const overallStatus = hasSavedResultData
+    ? getPartitionSuccessStatus(
+      summary.overall.percentage,
+      summary.overall.totalGerminated,
+      summary.overall.totalSeeds,
+    )
+    : getPartitionSuccessStatus(null, null, 0);
+  const overallRate = hasSavedResultData ? (Number(summary.overall.percentage) || 0) : null;
+  const overallRateLabel = overallRate === null ? "N/A" : `${overallRate}%`;
+  const overallCountLabel = hasSavedResultData
+    ? `${summary.overall.totalGerminated} of ${summary.overall.totalSeeds} germinated`
+    : "";
+  const selectedResultIndex = Math.max(0, resultPartitions.findIndex(({ partition }) => partition.hasFinalResultValue));
+  const availablePositionCount = Math.max(0, 8 - resultPartitions.length);
+  const workspacePositionCount = resultPartitions.length + availablePositionCount;
+  const unitRowCount = Math.max(1, Math.ceil(workspacePositionCount / 8));
+  const presentationState = getActiveGerminationResultsPresentationState(session);
+  const aggregateResult = {
+    label: "All saved Session results",
+    totalSeeds: summary.overall.totalSeeds,
+    totalGerminated: summary.overall.totalGerminated,
+    totalAccounted: summary.overall.totalAccounted,
+    percentage: summary.overall.percentage,
+  };
+  const unitResultRows = resultPartitions.map(({ partition, status }) => ({
+    rowType: "unit",
+    id: partition.id,
+    label: partition.label,
+    displayLabel: partition.displayLabel || partition.label,
+    unitOrdinal: Number(partition.index) + 1,
+    totalCount: partition.totalCount,
+    germinatedCount: partition.germinatedCount,
+    totalAccounted: partition.accountedCount,
+    hasFinalResultValue: partition.hasFinalResultValue,
+    percentage: partition.percentage,
+    status,
+    isTracking: !partition.hasFinalResultValue,
+    varietyLabel: partition.varietyLabel,
+    sourceLabel: partition.sourceLabel,
+  }));
+  const resultClassificationGroups = buildActiveGerminationResultClassificationGroups(unitResultRows);
+  const groupFilters = [
+    {
+      key: "all",
+      label: "All",
+      rows: unitResultRows,
+    },
+    {
+      key: "result",
+      label: "Result",
+      rows: resultClassificationGroups,
+      detailCount: unitResultRows.length,
+    },
+    ...(summary.varietyGroups.length ? [{ key: "variety", label: "Variety", rows: sortActiveGerminationResultGroupsAlphabetically(summary.varietyGroups) }] : []),
+    ...(summary.sourceGroups.length ? [{ key: "source", label: "Source", rows: sortActiveGerminationResultGroupsAlphabetically(summary.sourceGroups) }] : []),
+    {
+      key: "unit",
+      label: "Partition / Unit",
+      rows: sortActiveGerminationResultUnitRows(unitResultRows),
+      useDisplayLabel: true,
+    },
+  ];
+  const selectedFilter = groupFilters.find((filter) => filter.key === presentationState.selectedGroup)
+    || groupFilters[0];
+  if (selectedFilter.key !== presentationState.selectedGroup) {
+    presentationState.selectedGroup = selectedFilter.key;
+    presentationState.detailsExpanded = false;
+    presentationState.showAll = false;
+  }
+  const selectedDetailCount = Number(selectedFilter.detailCount ?? selectedFilter.rows.length);
+  const detailsExpanded = presentationState.detailsExpanded && selectedDetailCount > 0;
+  const showAllDetails = presentationState.showAll && selectedDetailCount > 8;
+  const renderGroupFilterRowsMarkup = (filter) => {
+    if (filter.key === "result") {
+      let detailIndex = 0;
+      return filter.rows.map((group) => {
+        const markup = renderActiveGerminationResultClassificationSectionMarkup(group, {
+          startIndex: detailIndex,
+          showAll: filter.key === selectedFilter.key && showAllDetails,
+        });
+        detailIndex += Number(group.actualUnitCount) || 0;
+        return markup;
+      }).join("");
+    }
+    return filter.rows.map((row, index) => `
+      <div data-active-germination-result-detail-row${index >= 8 && !(filter.key === selectedFilter.key && showAllDetails) ? " hidden" : ""}>
+        ${row.rowType === "unit"
+          ? renderActiveGerminationResultUnitRowMarkup(row, { useDisplayLabel: filter.useDisplayLabel === true })
+          : renderActiveGerminationResultGroupRowMarkup(row)}
+      </div>
+    `).join("");
+  };
+
+  return `
+    <section class="active-germination-results" data-active-germination-results aria-labelledby="active-germination-results-title">
+      <header class="active-germination-results__heading">
+        <h3 id="active-germination-results-title">Germination Results</h3>
+      </header>
+
+      <div class="active-germination-results__summary">
+        <article
+          class="active-germination-results__overall partition-success-card ${escapeHtml(overallStatus.className)}"
+          data-active-germination-results-overall
+          ${hasSavedResultData ? `data-result-classification="${escapeHtml(overallStatus.key)}"` : "data-result-state=\"tracking\""}
+        >
+          <h4>Overall Germination Rate</h4>
+          <div
+            class="active-germination-results__overall-radial"
+            style="--active-germination-result-rate: ${escapeHtml(String(overallRate ?? 0))}%; --active-result-scale-gradient: ${escapeHtml(getActiveGerminationResultScaleGradient())}"
+            role="img"
+            aria-label="${hasSavedResultData ? `Overall Germination rate ${escapeHtml(String(overallRate))} percent, ${escapeHtml(String(summary.overall.totalGerminated))} of ${escapeHtml(String(summary.overall.totalSeeds))} seeds germinated` : `Overall Germination rate not available, ${escapeHtml(String(summary.overall.totalSeeds))} seeds tracked with no saved outcomes`}"
+          >
+            <div>
+              <strong data-active-germination-results-rate>${escapeHtml(overallRateLabel)}</strong>
+              <span class="active-germination-results__overall-count${hasSavedResultData ? "" : " is-tracking"}" data-active-germination-results-count>${hasSavedResultData
+                ? escapeHtml(overallCountLabel)
+                : `<span>No saved outcomes</span><span>${escapeHtml(String(summary.overall.totalSeeds))} tracked</span>`}</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="active-germination-results__units" data-active-germination-results-units>
+          <header>
+            <h4>Results by Unit</h4>
+            <div class="active-germination-results__unit-header-actions">
+              <span>Rows adapt to the Session size</span>
+            </div>
+          </header>
+          <div
+            class="active-germination-results__unit-grid ${unitRowCount <= 3 ? "is-balanced" : "is-expanded"}"
+            style="--active-result-unit-rows: ${escapeHtml(String(unitRowCount))}"
+            data-active-germination-results-unit-grid
+            aria-label="Saved Germination results by unit"
+          >
+            ${resultPartitions.map(({ partition, status }, index) => {
+              const presentation = getActiveGerminationResultPresentation(status);
+              const isSelected = index === selectedResultIndex;
+              const isTracking = !partition.hasFinalResultValue;
+              const presentationLabel = isTracking ? "Tracking" : presentation.label;
+              return `
+                <button
+                  type="button"
+                  class="active-germination-results__unit partition-success-card ${escapeHtml(status.className)}${isTracking ? " is-tracking" : ""}${isSelected ? " is-selected" : ""}"
+                  style="${escapeHtml(getActiveGerminationResultColorStyle(partition.hasFinalResultValue ? partition.percentage : null))}"
+                  data-active-germination-result-unit="${escapeHtml(String(partition.id))}"
+                  ${isTracking ? "data-result-state=\"tracking\"" : `data-result-classification="${escapeHtml(status.key)}"`}
+                  aria-pressed="${isSelected ? "true" : "false"}"
+                  aria-controls="active-germination-result-unit-detail-${escapeHtml(String(partition.id))}"
+                  aria-label="Select ${escapeHtml(partition.displayLabel || partition.label)}, ${escapeHtml(presentationLabel)}, ${partition.hasFinalResultValue ? `${escapeHtml(String(partition.germinatedCount))} of ${escapeHtml(String(partition.totalCount))} germinated, ${escapeHtml(String(partition.percentage))} percent` : "no saved result"}"
+                >
+                  <strong>${escapeHtml(partition.label)}</strong>
+                  <span class="active-germination-results__unit-icon">${isTracking ? "<span>Tracking</span>" : renderActiveGerminationResultIconMarkup(status)}</span>
+                  <i class="partition-success-dot" aria-hidden="true"></i>
+                  <span class="sr-only">${escapeHtml(presentationLabel)}</span>
+                </button>
+              `;
+            }).join("")}
+            ${Array.from({ length: availablePositionCount }, () => `
+              <div class="active-germination-results__unit-placeholder" data-active-germination-result-placeholder role="img" aria-label="Available result workspace position">
+                <span aria-hidden="true">·</span>
+                <strong>Available</strong>
+              </div>
+            `).join("")}
+          </div>
+          <div class="active-germination-results__unit-details" data-active-germination-result-unit-details aria-live="polite">
+            ${resultPartitions.map(({ partition, status }, index) => {
+              const presentation = getActiveGerminationResultPresentation(status);
+              const hasSavedResult = partition.hasFinalResultValue;
+              const presentationLabel = hasSavedResult ? presentation.label : "Tracking";
+              return `
+                <div id="active-germination-result-unit-detail-${escapeHtml(String(partition.id))}" data-active-germination-result-unit-detail="${escapeHtml(String(partition.id))}"${index === selectedResultIndex ? "" : " hidden"}>
+                  <strong>${escapeHtml(partition.displayLabel || partition.label)} <small>(Selected)</small></strong>
+                  <span>${hasSavedResult ? `${escapeHtml(String(partition.germinatedCount))}/${escapeHtml(String(partition.totalCount))} germinated · ${escapeHtml(String(partition.percentage))}%` : `No saved result · ${escapeHtml(String(partition.totalCount))} tracked`}</span>
+                  <span>Status: <b>${escapeHtml(presentationLabel)}</b></span>
+                  ${partition.varietyLabel ? `<span>Variety: <b>${escapeHtml(partition.varietyLabel)}</b></span>` : ""}
+                  ${partition.sourceLabel ? `<span>Source: <b>${escapeHtml(partition.sourceLabel)}</b></span>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </article>
+      </div>
+
+      <section class="active-germination-results__groups" data-active-germination-result-groups aria-labelledby="active-germination-results-groups-title">
+        <header>
+          <h4 id="active-germination-results-groups-title">Results by Group</h4>
+          <div class="active-germination-results__group-filters" role="tablist" aria-label="Group saved Germination results">
+            ${groupFilters.map((filter) => `
+              <button type="button" role="tab" data-active-germination-result-filter="${escapeHtml(filter.key)}" aria-selected="${filter.key === selectedFilter.key ? "true" : "false"}" aria-controls="active-germination-result-group-${escapeHtml(filter.key)}">${escapeHtml(filter.label)}</button>
+            `).join("")}
+          </div>
+          ${selectedDetailCount > 0 ? `
+            <button
+              type="button"
+              class="active-germination-results__group-disclosure"
+              data-active-germination-result-disclosure
+              aria-expanded="${detailsExpanded ? "true" : "false"}"
+              aria-controls="active-germination-result-group-details"
+            >
+              <span data-active-germination-result-disclosure-label>${detailsExpanded ? "Hide details" : `Show details (${selectedDetailCount})`}</span>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+            </button>
+          ` : ""}
+          <span>Available filters adapt to the Session method and saved data.</span>
+        </header>
+        <div class="active-germination-results__group-aggregate" data-active-germination-result-aggregate>
+          ${renderActiveGerminationResultGroupRowMarkup(aggregateResult)}
+        </div>
+        <div id="active-germination-result-group-details" class="active-germination-results__group-details" data-active-germination-result-group-details${detailsExpanded ? "" : " hidden"}>
+          <div class="active-germination-results__group-panels">
+            ${groupFilters.map((filter) => `
+              <div id="active-germination-result-group-${escapeHtml(filter.key)}" role="tabpanel" data-active-germination-result-group="${escapeHtml(filter.key)}" data-active-germination-result-row-count="${escapeHtml(String(filter.detailCount ?? filter.rows.length))}"${filter.key === selectedFilter.key ? "" : " hidden"}>
+                ${renderGroupFilterRowsMarkup(filter)}
+              </div>
+            `).join("")}
+          </div>
+          <div class="active-germination-results__group-limit" data-active-germination-result-limit${selectedDetailCount > 8 && !showAllDetails ? "" : " hidden"}>
+            <span data-active-germination-result-showing>Showing 8 of ${escapeHtml(String(selectedDetailCount))}</span>
+            <button type="button" data-active-germination-result-show-all>Show all ${escapeHtml(String(selectedDetailCount))}</button>
+          </div>
+        </div>
+      </section>
+
+      ${renderActiveGerminationResultLegendMarkup()}
+    </section>
+  `;
 }
 
 function renderActiveGerminationWorkspaceMarkup(session = null) {
@@ -97936,6 +98597,7 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
         </div>
       </div>
     </section>
+    ${renderActiveGerminationResultsMarkup(session, { allowEditing: !readOnly })}
   `;
 }
 
@@ -98146,6 +98808,7 @@ function syncSessionPhaseFoundation(scope = app, session = null) {
   }
   const lifecycle = getSessionPhaseLifecycle(session);
   const expansion = getSessionPhaseExpansion(session, lifecycle);
+  syncGrowCompanionPageIdentity(root.closest(".session-workspace-shell--detail"), session);
   composeSessionCurrentPhaseWorkspace(root, session, lifecycle);
   initializeBeginGrowingInitialConditions(root);
   initializeSessionCurrentConditions(root, session);
@@ -98176,12 +98839,110 @@ function focusAdjacentSessionPhaseNavigatorButton(navigator = null, currentButto
   buttons[nextIndex]?.focus();
 }
 
+function syncActiveGerminationResultsGroupPresentation(results = null, session = null) {
+  if (!(results instanceof HTMLElement)) return;
+  const state = getActiveGerminationResultsPresentationState(session);
+  const filters = [...results.querySelectorAll("[data-active-germination-result-filter]")];
+  const panels = [...results.querySelectorAll("[data-active-germination-result-group]")];
+  let selectedPanel = panels.find((panel) => panel.dataset.activeGerminationResultGroup === state.selectedGroup);
+  if (!selectedPanel) {
+    state.selectedGroup = "all";
+    state.detailsExpanded = false;
+    state.showAll = false;
+    selectedPanel = panels.find((panel) => panel.dataset.activeGerminationResultGroup === "all") || null;
+  }
+  const detailCount = Number(selectedPanel?.dataset.activeGerminationResultRowCount || 0);
+  const isExpanded = state.detailsExpanded && detailCount > 0;
+  filters.forEach((button) => {
+    button.setAttribute("aria-selected", button.dataset.activeGerminationResultFilter === state.selectedGroup ? "true" : "false");
+  });
+  panels.forEach((panel) => {
+    const isSelected = panel === selectedPanel;
+    panel.hidden = !isSelected;
+    const detailRows = [...panel.querySelectorAll("[data-active-germination-result-detail-row]")];
+    detailRows.forEach((row, index) => {
+      row.hidden = !state.showAll && index >= 8;
+    });
+    panel.querySelectorAll("[data-active-germination-result-classification-section]").forEach((section) => {
+      section.hidden = ![...section.querySelectorAll("[data-active-germination-result-detail-row]")]
+        .some((row) => !row.hidden);
+    });
+  });
+  const detailRegion = results.querySelector("[data-active-germination-result-group-details]");
+  if (detailRegion instanceof HTMLElement) detailRegion.hidden = !isExpanded;
+  const disclosure = results.querySelector("[data-active-germination-result-disclosure]");
+  if (disclosure instanceof HTMLButtonElement) {
+    disclosure.hidden = detailCount <= 0;
+    disclosure.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    const label = disclosure.querySelector("[data-active-germination-result-disclosure-label]");
+    if (label) label.textContent = isExpanded ? "Hide details" : `Show details (${detailCount})`;
+  }
+  const limit = results.querySelector("[data-active-germination-result-limit]");
+  if (limit instanceof HTMLElement) {
+    limit.hidden = !isExpanded || detailCount <= 8 || state.showAll;
+    const showing = limit.querySelector("[data-active-germination-result-showing]");
+    const showAll = limit.querySelector("[data-active-germination-result-show-all]");
+    if (showing) showing.textContent = `Showing 8 of ${detailCount}`;
+    if (showAll) showAll.textContent = `Show all ${detailCount}`;
+  }
+}
+
 function bindSessionPhaseFoundation(root = null, session = null) {
   if (!(root instanceof HTMLElement) || root.dataset.sessionPhaseBound === "true") {
     return;
   }
   root.dataset.sessionPhaseBound = "true";
   root.addEventListener("click", (event) => {
+    const resultUnitButton = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-result-unit]")
+      : null;
+    if (resultUnitButton instanceof HTMLButtonElement) {
+      const results = resultUnitButton.closest("[data-active-germination-results]");
+      const selectedUnitId = String(resultUnitButton.dataset.activeGerminationResultUnit || "");
+      results?.querySelectorAll("[data-active-germination-result-unit]").forEach((button) => {
+        const isSelected = button === resultUnitButton;
+        button.classList.toggle("is-selected", isSelected);
+        button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      });
+      results?.querySelectorAll("[data-active-germination-result-unit-detail]").forEach((detail) => {
+        detail.hidden = detail.dataset.activeGerminationResultUnitDetail !== selectedUnitId;
+      });
+      return;
+    }
+    const resultGroupDisclosure = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-result-disclosure]")
+      : null;
+    if (resultGroupDisclosure instanceof HTMLButtonElement) {
+      const results = resultGroupDisclosure.closest("[data-active-germination-results]");
+      const state = getActiveGerminationResultsPresentationState(session);
+      state.detailsExpanded = !state.detailsExpanded;
+      if (!state.detailsExpanded) state.showAll = false;
+      syncActiveGerminationResultsGroupPresentation(results, session);
+      return;
+    }
+    const resultGroupShowAll = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-result-show-all]")
+      : null;
+    if (resultGroupShowAll instanceof HTMLButtonElement) {
+      const results = resultGroupShowAll.closest("[data-active-germination-results]");
+      const state = getActiveGerminationResultsPresentationState(session);
+      state.showAll = true;
+      syncActiveGerminationResultsGroupPresentation(results, session);
+      return;
+    }
+    const resultGroupFilter = event.target instanceof Element
+      ? event.target.closest("[data-active-germination-result-filter]")
+      : null;
+    if (resultGroupFilter instanceof HTMLButtonElement) {
+      const results = resultGroupFilter.closest("[data-active-germination-results]");
+      const selectedFilter = String(resultGroupFilter.dataset.activeGerminationResultFilter || "all");
+      const state = getActiveGerminationResultsPresentationState(session);
+      state.selectedGroup = selectedFilter;
+      state.detailsExpanded = true;
+      state.showAll = false;
+      syncActiveGerminationResultsGroupPresentation(results, session);
+      return;
+    }
     const completionButton = event.target instanceof Element
       ? event.target.closest("[data-active-germination-complete-session]")
       : null;
@@ -98200,7 +98961,8 @@ function bindSessionPhaseFoundation(root = null, session = null) {
     if (editSessionButton instanceof HTMLButtonElement) {
       const shell = root.closest(".session-workspace-shell--detail");
       shell?.querySelector("#detail-edit-session-details")?.click();
-      shell?.querySelector("#detail-session-editor")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const editTarget = shell?.querySelector("#detail-session-editor");
+      editTarget?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       return;
     }
     const countStepButton = event.target instanceof Element
@@ -98430,19 +99192,22 @@ function composeSessionPhaseFoundation(scope = app, session = null) {
   }
 
   const lifecycle = getSessionPhaseLifecycle(session);
+  const hasCommenced = hasSessionOfficialStart(session);
+  if (hasCommenced) {
+    const pageIdentity = document.createElement("header");
+    pageIdentity.className = "grow-companion-page-identity";
+    pageIdentity.dataset.growCompanionPageIdentity = "true";
+    pageIdentity.innerHTML = renderGrowCompanionPageIdentityMarkup(session);
+    shell.prepend(pageIdentity);
+  }
   const root = document.createElement("div");
   root.className = "session-phase-foundation";
   root.dataset.sessionPhaseFoundation = "true";
   root.dataset.sessionId = String(session?.id || "");
 
   root.innerHTML = `
-    <section class="session-grow-companion-surface" data-grow-companion-primary aria-labelledby="session-grow-companion-title">
+    <section class="session-grow-companion-surface" data-grow-companion-primary ${hasCommenced ? 'aria-labelledby="grow-companion-page-title"' : 'aria-label="Session lifecycle workspace"'}>
       <header class="session-grow-companion-header">
-        <div class="session-grow-companion-title-copy">
-          <p class="eyebrow">Session guide</p>
-          <h2 id="session-grow-companion-title">Grow Companion</h2>
-          <p>One permanent hub for the complete Session lifecycle.</p>
-        </div>
         <nav class="session-phase-navigator" data-session-phase-navigator aria-label="Session lifecycle phases">
           ${renderSessionPhaseNavigatorMarkup(lifecycle)}
         </nav>
