@@ -104138,8 +104138,9 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
   if (engineState?.activeMilestone) {
     const milestone = engineState.activeMilestone;
     const completionAvailable = areSessionSeedResultsFullyAccountedFor(options.session || null);
-    const isIncompleteUrgentInspection = !completionAvailable && milestone.level === "critical";
-    const urgentReminderEventKey = isIncompleteUrgentInspection
+    const isUrgentInspection = milestone.level === "critical";
+    const isIncompleteUrgentInspection = !completionAvailable && isUrgentInspection;
+    const urgentReminderEventKey = isUrgentInspection
       ? getStageProgressReminderEventKey(options.session || null, milestone)
       : "";
     if (urgentReminderEventKey && isAppNotificationEventSnoozed(urgentReminderEventKey)) {
