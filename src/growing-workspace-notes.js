@@ -31,6 +31,9 @@
       plantGroupId: String(first(record, "plantGroupId", "plant_group_id")).trim(),
       taskId: String(first(record, "taskId", "task_id")).trim(),
       eventId: String(first(record, "eventId", "event_id")).trim(),
+      phaseKey: String(first(record, "phaseKey", "journal_phase")).trim(),
+      phaseLabel: String(first(record, "phaseLabel", "journal_phase_label")).trim(),
+      dayLabel: String(first(record, "dayLabel", "journal_day_label")).trim(),
       createdAt: String(first(record, "createdAt", "created_at")).trim(),
       updatedAt: String(first(record, "updatedAt", "updated_at")).trim(),
     });
@@ -43,7 +46,8 @@
     const contextId = String(input.contextId || "").trim();
     if (!sessionId) return freeze({ isValid: false, message: "A canonical Session is required." });
     if (!narrative) return freeze({ isValid: false, message: "Enter a note." });
-    if (narrative.length > 10000) return freeze({ isValid: false, message: "Keep the note to 10,000 characters or fewer." });
+    const maximumLength = Math.max(1, Number(context.maxLength) || 10000);
+    if (narrative.length > maximumLength) return freeze({ isValid: false, message: `Keep the note to ${maximumLength.toLocaleString()} characters or fewer.` });
     if (!NOTE_CONTEXT_TYPES.includes(contextType)) return freeze({ isValid: false, message: "Choose an approved Note context." });
     if (contextType === "session" && contextId) return freeze({ isValid: false, message: "Session context does not use a separate reference." });
     const collections = {
@@ -87,7 +91,12 @@
       task_id: value.taskId || null,
       event_id: value.eventId || null,
     };
-    if (!options.existing) payload.author_user_id = String(options.authorId || "");
+    if (!options.existing) {
+      payload.author_user_id = String(options.authorId || "");
+      if (options.phaseKey) payload.journal_phase = String(options.phaseKey);
+      if (options.phaseLabel) payload.journal_phase_label = String(options.phaseLabel);
+      if (options.dayLabel) payload.journal_day_label = String(options.dayLabel);
+    }
     return freeze(payload);
   }
 

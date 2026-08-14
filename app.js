@@ -86,6 +86,8 @@ const AUTH_NAVIGATION_KEYS = [
   "cannakan-grow-last-session-route",
 ];
 const MAX_SESSION_IMAGES = 3;
+const SESSION_JOURNAL_NOTE_MAX_LENGTH = 2000;
+const SESSION_JOURNAL_IMAGE_URL_TTL_SECONDS = 60 * 60;
 const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
@@ -30812,7 +30814,7 @@ function showSessionDeleteFailureFeedback(error = null) {
   });
 }
 
-async function uploadSessionImageFile(sessionId, file) {
+async function uploadSessionImageFile(sessionId, file, metadata = {}) {
   assertDeveloperScenarioWritesAllowed("sessions", "upload a session image", getSessions().find((session) => session.id === sessionId));
   if (!appState.supabase?.storage || !appState.user) {
     throw new Error("Image uploads are not available until Supabase Storage is ready.");
@@ -30822,7 +30824,8 @@ async function uploadSessionImageFile(sessionId, file) {
   const extension = preparedImage.extension || "jpg";
   const photoId = crypto.randomUUID();
   const fileName = `${photoId}.${extension}`;
-  const path = `${appState.user.id}/${sessionId}/${fileName}`;
+  const isPrivateJournalImage = metadata.privateJournal === true;
+  const path = `${appState.user.id}/${sessionId}/${isPrivateJournalImage ? "journal/" : ""}${fileName}`;
   const { error } = await appState.supabase.storage
     .from(SESSION_IMAGE_BUCKET)
     .upload(path, preparedImage.blob, {
@@ -30834,13 +30837,20 @@ async function uploadSessionImageFile(sessionId, file) {
     throw new Error("Could not upload images. Make sure the Supabase Storage bucket is ready.");
   }
 
-  const { data } = appState.supabase.storage.from(SESSION_IMAGE_BUCKET).getPublicUrl(path);
+  const { data } = isPrivateJournalImage
+    ? { data: null }
+    : appState.supabase.storage.from(SESSION_IMAGE_BUCKET).getPublicUrl(path);
   return {
     id: photoId,
     path,
-    url: data.publicUrl,
+    url: data?.publicUrl || "",
     filename: file.name,
     name: file.name,
+    ...(metadata.createdAt ? { createdAt: metadata.createdAt } : {}),
+    ...(metadata.phaseKey ? { phaseKey: metadata.phaseKey } : {}),
+    ...(metadata.phaseLabel ? { phaseLabel: metadata.phaseLabel } : {}),
+    ...(metadata.dayLabel ? { dayLabel: metadata.dayLabel } : {}),
+    ...(isPrivateJournalImage ? { privateJournal: true } : {}),
   };
 }
 
@@ -32152,8 +32162,13 @@ function normalizePersistedSessionImages(images) {
     .map((image) => {
       const id = String(image?.id || image?.photoId || image?.photo_id || "").trim();
       const path = String(image?.path || "").trim();
-      const url = String(image?.url || image?.previewUrl || "").trim() || getSessionImagePublicUrl(path);
+      const privateJournal = image?.privateJournal === true || image?.private_journal === true;
+      const url = String(image?.url || image?.previewUrl || "").trim() || (privateJournal ? "" : getSessionImagePublicUrl(path));
       const filename = String(image?.filename || image?.name || "Session image").trim() || "Session image";
+      const createdAt = String(image?.createdAt || image?.created_at || "").trim();
+      const phaseKey = String(image?.phaseKey || image?.phase_key || "").trim();
+      const phaseLabel = String(image?.phaseLabel || image?.phase_label || "").trim();
+      const dayLabel = String(image?.dayLabel || image?.day_label || "").trim();
 
       if (!url && !path) {
         return null;
@@ -32165,6 +32180,11 @@ function normalizePersistedSessionImages(images) {
         url,
         filename,
         name: filename,
+        ...(createdAt ? { createdAt } : {}),
+        ...(phaseKey ? { phaseKey } : {}),
+        ...(phaseLabel ? { phaseLabel } : {}),
+        ...(dayLabel ? { dayLabel } : {}),
+        ...(privateJournal ? { privateJournal: true } : {}),
       };
     })
     .filter(Boolean);
@@ -42019,7 +42039,7 @@ async function maybePublishSnapshotFromState(state, result) {
 }
 
 function getSnapshotImageEntries(state) {
-  return (state.getImageEntries?.() || []).map((image, index) => {
+  return (state.getImageEntries?.() || []).filter((image) => image?.privateJournal !== true).map((image, index) => {
     const key = image.path || image.previewUrl || image.url || `${image.name || "snapshot-image"}-${index}`;
     return {
       ...image,
@@ -96773,7 +96793,6 @@ function renderSessionGrowingPhaseBodyMarkup(session = null) {
       <div class="session-phase-foundation-actions" aria-describedby="grow-companion-activity-note">
         <button type="button" class="button button-secondary" data-grow-companion-action="add-task" disabled>Add Task</button>
         <button type="button" class="button button-secondary" data-grow-companion-action="add-event" disabled>Add Event</button>
-        <button type="button" class="button button-secondary" data-grow-companion-action="add-note" disabled>Add Note</button>
       </div>
     </div>
     <p id="grow-companion-activity-note" class="session-phase-foundation-note" data-grow-companion-activity-note>Loading Session activity…</p>
@@ -96788,11 +96807,6 @@ function renderSessionGrowingPhaseBodyMarkup(session = null) {
         <p class="eyebrow">Recent Activity</p>
         <h4 id="grow-companion-activity-title">Loading activity…</h4>
         <p>Checking this Session for completed tasks and events.</p>
-      </section>
-      <section aria-labelledby="grow-companion-notes-title" data-grow-companion-notes>
-        <p class="eyebrow">Notes</p>
-        <h4 id="grow-companion-notes-title">Loading notes…</h4>
-        <p>Checking this Session for authored narrative.</p>
       </section>
       <section class="session-grow-companion-temporal" aria-labelledby="grow-companion-temporal-title" data-grow-companion-temporal>
         <p class="eyebrow">Timeline</p>
@@ -96830,6 +96844,11 @@ function getGrowCompanionActivityController(root = null, session = null) {
     temporalSource: "all",
     pending: new Set(),
     requestToken: 0,
+    selectedJournalImageId: "",
+    journalSignedImageUrls: new Map(),
+    journalImageUrlsLoading: false,
+    journalFeedback: "",
+    journalImageFeedback: "",
   };
   growCompanionActivityControllers.set(root, controller);
   return controller;
@@ -97071,6 +97090,518 @@ function renderGrowCompanionNotesPanel(controller = {}, eligibility = {}) {
       </li>`).join("")}
     </ol>`;
 }
+
+function getSessionJournalContext(session = null) {
+  const lifecycle = getSessionLifecyclePresentation(session);
+  const phase = lifecycle.currentPhase
+    || [...lifecycle.lifecycle].reverse().find((candidate) => candidate.status === SESSION_PHASE_STATUS.COMPLETE)
+    || { id: "germination", label: "Germination" };
+  const phaseKey = ["germination", "grow", "reflection"].includes(phase.id) ? phase.id : "reflection";
+  const phaseLabel = phaseKey === "grow" ? "Growing" : phase.label || "Reflection";
+  const dayLabel = phaseKey === "reflection" ? "" : formatSessionCommandCenterDayLabel(session);
+  return Object.freeze({
+    phaseKey,
+    phaseLabel,
+    dayLabel,
+    contextLabel: [phaseLabel, dayLabel].filter(Boolean).join(" · "),
+  });
+}
+
+function getSessionJournalWriteEligibility(session = null) {
+  if (!session?.id || !appState.user?.id) {
+    return Object.freeze({ canWrite: false, reason: "Sign in to use this Session Journal." });
+  }
+  if (isDeveloperScenarioModuleActive("sessions") || isDeveloperScenarioRecord(session)) {
+    return Object.freeze({ canWrite: false, reason: DEVELOPER_SCENARIO_WRITE_MESSAGE });
+  }
+  if (!appState.supabase) {
+    return Object.freeze({ canWrite: false, reason: "Session Journal persistence is unavailable." });
+  }
+  const ownerId = String(session.userId || session.user_id || "").trim();
+  if (!ownerId || ownerId !== String(appState.user.id)) {
+    return Object.freeze({ canWrite: false, reason: "Only the Session owner can change this Journal." });
+  }
+  const lifecycle = getSessionLifecyclePresentation(session);
+  if (lifecycle.terminalStatus || lifecycle.isSessionComplete || !["germination", "grow", "reflection"].includes(lifecycle.currentPhaseId)) {
+    return Object.freeze({ canWrite: false, reason: "This completed Session Journal is read-only." });
+  }
+  return Object.freeze({ canWrite: true, reason: "" });
+}
+
+function normalizeSessionJournalNoteRecord(record = {}) {
+  return getGrowingWorkspaceNotesContract().normalizeNoteRecord(record);
+}
+
+function formatSessionJournalTimestamp(value = "") {
+  const parsed = parseCompletedAtValue(value);
+  if (!parsed) return "Time unavailable";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function getSessionJournalImageSource(controller = {}, image = {}) {
+  return controller.journalSignedImageUrls?.get(String(image.path || ""))
+    || String(image.previewUrl || image.url || "").trim();
+}
+
+function getSessionJournalImages(controller = {}) {
+  return normalizePersistedSessionImages(controller.session?.sessionImages || controller.session?.session_images || []);
+}
+
+function getSessionJournalSelectedImage(controller = {}, images = getSessionJournalImages(controller)) {
+  const selected = images.find((image) => String(image.id || image.path) === String(controller.selectedJournalImageId || ""));
+  return selected || images[0] || null;
+}
+
+function renderSessionJournalObservationMarkup(controller = {}, eligibility = {}) {
+  if (!eligibility.canWrite) {
+    return `
+      <section class="session-journal-card session-journal-observation session-journal-observation--readonly" aria-labelledby="session-journal-observation-title">
+        <h3 id="session-journal-observation-title">Journal preserved</h3>
+        <p>${escapeHtml(eligibility.reason)}</p>
+      </section>
+    `;
+  }
+  return `
+    <section class="session-journal-card session-journal-observation" aria-labelledby="session-journal-observation-title">
+      <div class="session-journal-card-heading">
+        <div>
+          <h3 id="session-journal-observation-title"><span aria-hidden="true">${renderAppIconSvgMarkup("editPencil")}</span>Today’s observation</h3>
+          <p>Capture your observations, questions, or anything notable from today.</p>
+        </div>
+      </div>
+      <form class="session-journal-note-form" data-session-journal-note-form novalidate>
+        <label for="session-journal-note-input">What did you observe today?</label>
+        <textarea id="session-journal-note-input" name="narrative" maxlength="${SESSION_JOURNAL_NOTE_MAX_LENGTH}" rows="7" placeholder="What did you observe today?" aria-describedby="session-journal-note-count session-journal-note-feedback"></textarea>
+        <div class="session-journal-note-footer">
+          <output id="session-journal-note-count" data-session-journal-note-count aria-live="polite">0 / ${SESSION_JOURNAL_NOTE_MAX_LENGTH}</output>
+          <button type="submit" class="button button-primary" data-session-journal-note-save disabled>${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Save note</span></button>
+        </div>
+        <p id="session-journal-note-feedback" class="form-message" data-session-journal-note-feedback role="status" aria-live="polite">${escapeHtml(controller.journalFeedback || "")}</p>
+      </form>
+    </section>
+  `;
+}
+
+function renderSessionJournalImageSlotMarkup(controller = {}, image = null, index = 0, selectedImage = null) {
+  if (!image) {
+    return `<span class="session-journal-image-slot is-empty" aria-label="Empty image position ${index + 1}">${renderAppIconSvgMarkup("addPlus", { className: "session-journal-empty-slot-icon" })}<small>${index + 1}</small></span>`;
+  }
+  const key = String(image.id || image.path || index);
+  const selected = selectedImage && String(selectedImage.id || selectedImage.path) === key;
+  return `
+    <button type="button" class="session-journal-image-slot${selected ? " is-selected" : ""}" data-session-journal-image-select="${escapeHtml(key)}" aria-pressed="${String(Boolean(selected))}" aria-label="Select ${escapeHtml(image.filename || `Session image ${index + 1}`)}">
+      <img src="${escapeHtml(getSessionJournalImageSource(controller, image))}" alt="${escapeHtml(image.filename || `Session image ${index + 1}`)}">
+      <small>${index + 1}</small>
+    </button>
+  `;
+}
+
+function renderSessionJournalImagesMarkup(controller = {}, eligibility = {}) {
+  const images = getSessionJournalImages(controller);
+  const selectedImage = getSessionJournalSelectedImage(controller, images);
+  const atLimit = images.length >= MAX_SESSION_IMAGES;
+  const selectedKey = selectedImage ? String(selectedImage.id || selectedImage.path || "") : "";
+  return `
+    <section class="session-journal-card session-journal-images" aria-labelledby="session-journal-images-title">
+      <div class="session-journal-card-heading session-journal-images-heading">
+        <div>
+          <h3 id="session-journal-images-title"><span aria-hidden="true">${renderAppIconSvgMarkup("uploadImage")}</span>Session images</h3>
+          <p>Add up to 3 images to document your session.</p>
+        </div>
+      </div>
+      <div class="session-journal-image-preview${selectedImage ? " has-image" : ""}" data-session-journal-image-preview>
+        <strong class="session-journal-image-count">${images.length} of ${MAX_SESSION_IMAGES}</strong>
+        ${selectedImage
+          ? `<img src="${escapeHtml(getSessionJournalImageSource(controller, selectedImage))}" alt="Selected Session image: ${escapeHtml(selectedImage.filename || "Session image")}">`
+          : `<div>${renderSessionImagePlaceholderIconMarkup()}<span>No Session image selected</span></div>`}
+        ${eligibility.canWrite && selectedImage ? `<button type="button" class="session-journal-image-remove" data-session-journal-image-remove="${escapeHtml(selectedKey)}" aria-label="Remove selected image">${renderAppIconSvgMarkup("deleteTrash", { className: "session-journal-action-icon" })}<span>Remove image</span></button>` : ""}
+      </div>
+      <div class="session-journal-image-strip" aria-label="Three Session image positions">
+        ${Array.from({ length: MAX_SESSION_IMAGES }, (_, index) => renderSessionJournalImageSlotMarkup(controller, images[index] || null, index, selectedImage)).join("")}
+      </div>
+      ${eligibility.canWrite ? `
+        <div class="session-journal-image-actions">
+          <button type="button" class="button button-secondary session-journal-upload-desktop" data-session-journal-acquire="library"${atLimit ? " disabled" : ""}>${renderAppIconSvgMarkup("uploadImage", { className: "session-journal-action-icon" })}<span>Upload image</span></button>
+          <button type="button" class="button button-secondary session-journal-upload-mobile" data-session-journal-acquire="camera"${atLimit ? " disabled" : ""}>${renderAppIconSvgMarkup("uploadImage", { className: "session-journal-action-icon" })}<span>Take photo</span></button>
+          <button type="button" class="button button-secondary session-journal-upload-mobile" data-session-journal-acquire="library"${atLimit ? " disabled" : ""}>${renderSessionImagePlaceholderIconMarkup()}<span>Choose from library</span></button>
+        </div>
+        <input type="file" accept="image/*" capture="environment" data-session-journal-camera-input hidden>
+        <input type="file" accept="image/*" multiple data-session-journal-library-input hidden>
+      ` : ""}
+      <p class="form-message session-journal-image-feedback" data-session-journal-image-feedback role="status" aria-live="polite">${escapeHtml(controller.journalImageFeedback || "")}</p>
+    </section>
+  `;
+}
+
+function getSessionJournalTimelineEntries(controller = {}) {
+  const notes = (controller.notes || []).map((note) => ({
+    type: "note",
+    id: note.id,
+    createdAt: note.createdAt,
+    phaseLabel: note.phaseLabel || "Session",
+    dayLabel: note.dayLabel || "",
+    note,
+  }));
+  const images = getSessionJournalImages(controller).map((image, index) => ({
+    type: "image",
+    id: String(image.id || image.path || index),
+    createdAt: image.createdAt || "",
+    phaseLabel: image.phaseLabel || "Session",
+    dayLabel: image.dayLabel || "",
+    image,
+  }));
+  return [...notes, ...images].sort((left, right) => {
+    const leftTime = parseCompletedAtValue(left.createdAt)?.getTime() || 0;
+    const rightTime = parseCompletedAtValue(right.createdAt)?.getTime() || 0;
+    return rightTime - leftTime || String(right.id).localeCompare(String(left.id));
+  });
+}
+
+function renderSessionJournalRecordMarkup(controller = {}, eligibility = {}) {
+  const entries = getSessionJournalTimelineEntries(controller);
+  return `
+    <section class="session-journal-card session-journal-record" aria-labelledby="session-journal-record-title">
+      <div class="session-journal-card-heading">
+        <div>
+          <h3 id="session-journal-record-title"><span aria-hidden="true">${renderAppIconSvgMarkup("reportDocument")}</span>Session record</h3>
+          <p>Your chronological field log for this session.</p>
+        </div>
+        <strong>${entries.length} ${entries.length === 1 ? "entry" : "entries"}</strong>
+      </div>
+      ${entries.length ? `
+        <ol class="session-journal-timeline">
+          ${entries.map((entry) => `
+            <li class="session-journal-timeline-entry session-journal-timeline-entry--${entry.type}" data-session-journal-entry="${escapeHtml(`${entry.type}:${entry.id}`)}">
+              <span class="session-journal-timeline-marker" aria-hidden="true">${entry.type === "image" ? renderAppIconSvgMarkup("uploadImage") : renderAppIconSvgMarkup("seedSprout")}</span>
+              <article>
+                <header class="session-journal-entry-context">
+                  <span class="session-journal-phase-icon" aria-hidden="true">${renderAppIconSvgMarkup(entry.type === "image" ? "uploadImage" : "seedSprout")}</span>
+                  <div><strong>${escapeHtml(entry.phaseLabel)}</strong>${entry.dayLabel ? `<span>${escapeHtml(entry.dayLabel)}</span>` : ""}</div>
+                </header>
+                <span class="session-journal-entry-divider" aria-hidden="true"></span>
+                <time datetime="${escapeHtml(entry.createdAt || "")}">${escapeHtml(entry.createdAt ? formatSessionJournalTimestamp(entry.createdAt) : "Recorded with this Session")}</time>
+                ${entry.type === "note"
+                  ? `<div class="session-journal-entry-evidence"><p>${escapeHtml(entry.note.narrative)}</p></div><figure class="session-journal-entry-image is-placeholder" aria-hidden="true"><span>${renderSessionImagePlaceholderIconMarkup()}</span></figure>${eligibility.canWrite ? `<button type="button" class="button button-secondary" data-session-journal-note-edit="${escapeHtml(entry.note.id)}">${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Edit</span></button>` : ""}`
+                  : `<div class="session-journal-entry-evidence"><strong>Session image added</strong>${entry.image.filename ? `<span>${escapeHtml(entry.image.filename)}</span>` : ""}</div><figure class="session-journal-entry-image"><img src="${escapeHtml(getSessionJournalImageSource(controller, entry.image))}" alt="${escapeHtml(entry.image.filename || "Session image")}"></figure>${eligibility.canWrite ? `<button type="button" class="button button-secondary" data-session-journal-image-edit="${escapeHtml(String(entry.image.id || entry.image.path || ""))}">${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Edit</span></button>` : ""}`}
+              </article>
+            </li>
+          `).join("")}
+        </ol>
+      ` : '<div class="session-journal-empty"><p>No Journal entries yet.</p><span>Your saved observations and Session images will form one continuous record here.</span></div>'}
+    </section>
+  `;
+}
+
+function renderSessionJournalWorkspace(root = null, controller = null) {
+  const journal = root?.querySelector?.("[data-session-journal]");
+  if (!(journal instanceof HTMLElement) || !controller) return;
+  const context = getSessionJournalContext(controller.session);
+  const eligibility = getSessionJournalWriteEligibility(controller.session);
+  journal.innerHTML = `
+    <header class="session-journal-header">
+      <div>
+        <div><h2 id="session-journal-title">Session Journal</h2><p><span aria-hidden="true">${renderAppIconSvgMarkup("lock")}</span>Private to you</p></div>
+      </div>
+      <div class="session-journal-context"><span>${escapeHtml(context.contextLabel || "Session record")}</span></div>
+    </header>
+    ${controller.loading && !controller.loaded ? '<p class="session-journal-loading" role="status">Loading private Session Journal…</p>' : ""}
+    ${controller.error ? `<p class="form-message is-error" role="alert">${escapeHtml(controller.error)}</p>` : ""}
+    <div class="session-journal-top-grid">
+      ${renderSessionJournalObservationMarkup(controller, eligibility)}
+      ${renderSessionJournalImagesMarkup(controller, eligibility)}
+    </div>
+    ${renderSessionJournalRecordMarkup(controller, eligibility)}
+  `;
+}
+
+async function hydrateSessionJournalImageUrls(root = null, controller = null) {
+  if (!controller || controller.journalImageUrlsLoading || !appState.supabase?.storage) return;
+  const images = getSessionJournalImages(controller).filter((image) => image.path && !controller.journalSignedImageUrls.has(image.path));
+  if (!images.length) return;
+  controller.journalImageUrlsLoading = true;
+  await Promise.all(images.map(async (image) => {
+    const { data, error } = await appState.supabase.storage
+      .from(SESSION_IMAGE_BUCKET)
+      .createSignedUrl(image.path, SESSION_JOURNAL_IMAGE_URL_TTL_SECONDS);
+    if (!error && data?.signedUrl) controller.journalSignedImageUrls.set(image.path, data.signedUrl);
+  }));
+  controller.journalImageUrlsLoading = false;
+  if (root?.isConnected) renderSessionJournalWorkspace(root, controller);
+}
+
+async function persistSessionJournalNote(root = null, narrative = "", record = null) {
+  const controller = growCompanionActivityControllers.get(root);
+  if (!controller) throw new Error("Session Journal is unavailable.");
+  const eligibility = getSessionJournalWriteEligibility(controller.session);
+  if (!eligibility.canWrite) throw new Error(eligibility.reason);
+  const notesContract = getGrowingWorkspaceNotesContract();
+  const validation = notesContract.validateNoteInput({ narrative, contextType: "session", contextId: "" }, {
+    sessionId: controller.sessionId,
+    maxLength: SESSION_JOURNAL_NOTE_MAX_LENGTH,
+    existingNote: record,
+  });
+  if (!validation.isValid) throw new Error(validation.message);
+  const context = getSessionJournalContext(controller.session);
+  const payload = notesContract.buildNotePersistencePayload(validation.value, {
+    sessionId: controller.sessionId,
+    authorId: String(appState.user.id),
+    existing: record,
+    phaseKey: context.phaseKey,
+    phaseLabel: context.phaseLabel,
+    dayLabel: context.dayLabel,
+  });
+  const pendingKey = `${record ? "update" : "create"}:journal-note:${record?.id || "new"}`;
+  if (controller.pending.has(pendingKey)) throw new Error("That note is already being saved.");
+  controller.pending.add(pendingKey);
+  const base = appState.supabase.from(GROW_COMPANION_ACTIVITY_TABLES.notes);
+  const query = record
+    ? base.update(payload).eq("id", record.id).eq("session_id", controller.sessionId)
+    : base.insert(payload);
+  const { data, error } = await query.select("*").single();
+  controller.pending.delete(pendingKey);
+  if (error) throw error;
+  const normalized = normalizeSessionJournalNoteRecord(data);
+  controller.notes = record
+    ? controller.notes.map((note) => note.id === normalized.id ? normalized : note)
+    : [...controller.notes, normalized];
+  controller.journalFeedback = `Note ${record ? "updated" : "saved"}.`;
+  renderSessionJournalWorkspace(root, controller);
+  return normalized;
+}
+
+async function persistSessionJournalImages(root = null, files = []) {
+  const controller = growCompanionActivityControllers.get(root);
+  if (!controller) throw new Error("Session Journal images are unavailable.");
+  const eligibility = getSessionJournalWriteEligibility(controller.session);
+  if (!eligibility.canWrite) throw new Error(eligibility.reason);
+  const currentImages = getSessionJournalImages(controller);
+  if (!files.length) return currentImages;
+  if (currentImages.length + files.length > MAX_SESSION_IMAGES) {
+    throw new Error(`You can add up to ${MAX_SESSION_IMAGES} images to this Session.`);
+  }
+  for (const file of files) {
+    if (!String(file?.type || "").startsWith("image/")) throw new Error("Choose an image file.");
+    if (Number(file.size) > MAX_IMAGE_SIZE_BYTES) throw new Error("Image is too large. Choose an image under 12 MB.");
+  }
+  const pendingKey = "journal-image-upload";
+  if (controller.pending.has(pendingKey)) throw new Error("Images are already being saved.");
+  controller.pending.add(pendingKey);
+  const context = getSessionJournalContext(controller.session);
+  const uploaded = [];
+  try {
+    for (const file of files) {
+      uploaded.push(await uploadSessionImageFile(controller.sessionId, file, {
+        createdAt: new Date().toISOString(),
+        phaseKey: context.phaseKey,
+        phaseLabel: context.phaseLabel,
+        dayLabel: context.dayLabel,
+        privateJournal: true,
+      }));
+    }
+    const nextImages = await persistSessionImages(controller.session, [...currentImages, ...uploaded]);
+    controller.session.sessionImages = nextImages;
+    controller.photos = getPhotosComposition().mapSessionImagesToCanonicalPhotos(nextImages, {
+      sessionId: controller.sessionId,
+      ownerId: String(appState.user.id),
+    });
+    controller.selectedJournalImageId = String(uploaded.at(-1)?.id || uploaded.at(-1)?.path || "");
+    controller.journalImageFeedback = `${uploaded.length} ${uploaded.length === 1 ? "image" : "images"} added privately.`;
+  } catch (error) {
+    await Promise.allSettled(uploaded.map((image) => removeSessionImageFromStorage(image)));
+    throw error;
+  } finally {
+    controller.pending.delete(pendingKey);
+  }
+  renderSessionJournalWorkspace(root, controller);
+  await hydrateSessionJournalImageUrls(root, controller);
+  return getSessionJournalImages(controller);
+}
+
+async function removeSessionJournalImage(root = null, imageKey = "") {
+  const controller = growCompanionActivityControllers.get(root);
+  if (!controller) throw new Error("Session Journal images are unavailable.");
+  const eligibility = getSessionJournalWriteEligibility(controller.session);
+  if (!eligibility.canWrite) throw new Error(eligibility.reason);
+  const currentImages = getSessionJournalImages(controller);
+  const image = currentImages.find((candidate) => String(candidate.id || candidate.path) === String(imageKey));
+  if (!image) throw new Error("That Session image is no longer available.");
+  const pendingKey = `journal-image-remove:${imageKey}`;
+  if (controller.pending.has(pendingKey)) return;
+  controller.pending.add(pendingKey);
+  const remaining = currentImages.filter((candidate) => candidate !== image);
+  try {
+    await persistSessionImages(controller.session, remaining);
+    try {
+      await removeSessionImageFromStorage(image);
+    } catch (storageError) {
+      await persistSessionImages(controller.session, currentImages);
+      throw storageError;
+    }
+    controller.session.sessionImages = remaining;
+    controller.photos = getPhotosComposition().mapSessionImagesToCanonicalPhotos(remaining, {
+      sessionId: controller.sessionId,
+      ownerId: String(appState.user.id),
+    });
+    controller.journalSignedImageUrls.delete(image.path);
+    controller.selectedJournalImageId = String(remaining[0]?.id || remaining[0]?.path || "");
+    controller.journalImageFeedback = "Session image removed.";
+  } finally {
+    controller.pending.delete(pendingKey);
+  }
+  renderSessionJournalWorkspace(root, controller);
+}
+
+function openSessionJournalNoteEditor(root = null, record = null) {
+  const controller = growCompanionActivityControllers.get(root);
+  if (!controller || !record) return;
+  const eligibility = getSessionJournalWriteEligibility(controller.session);
+  if (!eligibility.canWrite) return;
+  const dialog = document.createElement("dialog");
+  dialog.className = "grow-companion-record-dialog session-journal-note-dialog";
+  dialog.setAttribute("aria-labelledby", "session-journal-note-dialog-title");
+  dialog.innerHTML = `
+    <form method="dialog" class="grow-companion-record-form" data-session-journal-edit-form>
+      <header><p class="eyebrow">Private Session Journal</p><h2 id="session-journal-note-dialog-title">Edit observation</h2></header>
+      <label><span>Observation</span><textarea name="narrative" maxlength="${SESSION_JOURNAL_NOTE_MAX_LENGTH}" rows="8" required>${escapeHtml(record.narrative)}</textarea></label>
+      <p class="form-message" data-session-journal-edit-feedback role="alert" aria-live="polite"></p>
+      <footer><button type="button" class="button button-secondary" data-session-journal-dialog-cancel>Cancel</button><button type="submit" class="button button-primary">Save changes</button></footer>
+    </form>
+  `;
+  document.body.append(dialog);
+  const close = () => { if (dialog.open) dialog.close(); dialog.remove(); };
+  dialog.querySelector("[data-session-journal-dialog-cancel]")?.addEventListener("click", close);
+  dialog.addEventListener("cancel", (event) => { event.preventDefault(); close(); });
+  dialog.querySelector("form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+      await persistSessionJournalNote(root, new FormData(form).get("narrative"), record);
+      close();
+    } catch (error) {
+      submit.disabled = false;
+      form.querySelector("[data-session-journal-edit-feedback]").textContent = error.message || "Could not update this note.";
+    }
+  });
+  dialog.showModal();
+  dialog.querySelector("textarea")?.focus();
+}
+
+function bindSessionJournal(root = null, session = null) {
+  const journal = root?.querySelector?.("[data-session-journal]");
+  if (!(journal instanceof HTMLElement) || journal.dataset.sessionJournalBound === "true") return;
+  journal.dataset.sessionJournalBound = "true";
+  journal.addEventListener("input", (event) => {
+    const textarea = event.target instanceof Element ? event.target.closest("#session-journal-note-input") : null;
+    if (!(textarea instanceof HTMLTextAreaElement)) return;
+    const count = journal.querySelector("[data-session-journal-note-count]");
+    const save = journal.querySelector("[data-session-journal-note-save]");
+    if (count) count.textContent = `${textarea.value.length} / ${SESSION_JOURNAL_NOTE_MAX_LENGTH}`;
+    if (save instanceof HTMLButtonElement) save.disabled = !textarea.value.trim();
+  });
+  journal.addEventListener("submit", async (event) => {
+    const form = event.target instanceof HTMLFormElement ? event.target.closest("[data-session-journal-note-form]") : null;
+    if (!(form instanceof HTMLFormElement)) return;
+    event.preventDefault();
+    const textarea = form.querySelector("textarea");
+    const submit = form.querySelector('button[type="submit"]');
+    const feedback = form.querySelector("[data-session-journal-note-feedback]");
+    const narrative = String(textarea?.value || "");
+    if (!narrative.trim()) {
+      if (feedback) feedback.textContent = "Enter an observation before saving.";
+      return;
+    }
+    if (submit instanceof HTMLButtonElement) submit.disabled = true;
+    if (feedback) feedback.textContent = "Saving note…";
+    try {
+      await persistSessionJournalNote(root, narrative);
+    } catch (error) {
+      if (submit instanceof HTMLButtonElement) submit.disabled = false;
+      if (feedback) feedback.textContent = error.message || "Could not save this note.";
+    }
+  });
+  journal.addEventListener("click", async (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const acquisition = target?.closest("[data-session-journal-acquire]");
+    if (acquisition instanceof HTMLButtonElement && !acquisition.disabled) {
+      const type = acquisition.dataset.sessionJournalAcquire;
+      journal.querySelector(type === "camera" ? "[data-session-journal-camera-input]" : "[data-session-journal-library-input]")?.click();
+      return;
+    }
+    const selection = target?.closest("[data-session-journal-image-select]");
+    if (selection instanceof HTMLButtonElement) {
+      const controller = growCompanionActivityControllers.get(root);
+      controller.selectedJournalImageId = selection.dataset.sessionJournalImageSelect || "";
+      renderSessionJournalWorkspace(root, controller);
+      return;
+    }
+    const imageEdit = target?.closest("[data-session-journal-image-edit]");
+    if (imageEdit instanceof HTMLButtonElement) {
+      const controller = growCompanionActivityControllers.get(root);
+      const imageKey = imageEdit.dataset.sessionJournalImageEdit || "";
+      controller.selectedJournalImageId = imageKey;
+      renderSessionJournalWorkspace(root, controller);
+      const management = journal.querySelector(".session-journal-images");
+      const selectedImage = [...(management?.querySelectorAll("[data-session-journal-image-select]") || [])]
+        .find((candidate) => candidate.dataset.sessionJournalImageSelect === imageKey);
+      management?.scrollIntoView({ behavior: "smooth", block: "center" });
+      selectedImage?.focus({ preventScroll: true });
+      return;
+    }
+    const edit = target?.closest("[data-session-journal-note-edit]");
+    if (edit instanceof HTMLButtonElement) {
+      const controller = growCompanionActivityControllers.get(root);
+      const note = controller?.notes.find((candidate) => candidate.id === edit.dataset.sessionJournalNoteEdit);
+      if (note) openSessionJournalNoteEditor(root, note);
+      return;
+    }
+    const remove = target?.closest("[data-session-journal-image-remove]");
+    if (remove instanceof HTMLButtonElement) {
+      if (!window.confirm("Remove this private Session image? This cannot be undone.")) return;
+      const controller = growCompanionActivityControllers.get(root);
+      try {
+        await removeSessionJournalImage(root, remove.dataset.sessionJournalImageRemove || "");
+      } catch (error) {
+        controller.journalImageFeedback = error.message || "Could not remove this Session image.";
+        renderSessionJournalWorkspace(root, controller);
+      }
+    }
+  });
+  journal.addEventListener("change", async (event) => {
+    const input = event.target instanceof Element
+      ? event.target.closest("[data-session-journal-camera-input], [data-session-journal-library-input]")
+      : null;
+    if (!(input instanceof HTMLInputElement)) return;
+    const files = [...(input.files || [])];
+    input.value = "";
+    const controller = growCompanionActivityControllers.get(root);
+    try {
+      controller.journalImageFeedback = "Saving private Session image…";
+      renderSessionJournalWorkspace(root, controller);
+      await persistSessionJournalImages(root, files);
+    } catch (error) {
+      controller.journalImageFeedback = error.message || "Could not add this Session image.";
+      renderSessionJournalWorkspace(root, controller);
+    }
+  });
+}
+
+function initializeSessionJournal(root = null, session = null) {
+  const journal = root?.querySelector?.("[data-session-journal]");
+  if (!(journal instanceof HTMLElement) || !session?.id) return;
+  const controller = getGrowCompanionActivityController(root, session);
+  renderSessionJournalWorkspace(root, controller);
+  bindSessionJournal(root, session);
+  void loadGrowCompanionActivity(root, session).then(() => hydrateSessionJournalImageUrls(root, controller));
+}
+
 function renderGrowCompanionActivityWorkspace(root = null, controller = null) {
   if (!(root instanceof HTMLElement) || !controller) return;
   const eligibility = getGrowCompanionWriteEligibility(controller.session);
@@ -97093,23 +97624,21 @@ function renderGrowCompanionActivityWorkspace(root = null, controller = null) {
   root.dataset.workspaceComposition = "canonical";
   root.dataset.workspacePhotoCount = String(composition.photos.length);
   root.dataset.workspaceDocumentCount = String(composition.documents.length);
-  root.querySelectorAll('[data-grow-companion-action="add-task"], [data-grow-companion-action="add-event"], [data-grow-companion-action="add-note"]').forEach((button) => {
+  root.querySelectorAll('[data-grow-companion-action="add-task"], [data-grow-companion-action="add-event"]').forEach((button) => {
     button.disabled = !eligibility.canWrite || controller.pending.size > 0;
     button.title = eligibility.canWrite ? "" : eligibility.reason;
   });
   const note = root.querySelector("[data-grow-companion-activity-note]");
   if (note) note.textContent = eligibility.canWrite
-    ? "Tasks, Events, and Notes are private to this Session and its owner."
+    ? "Tasks and Events are private to this Session and its owner."
     : eligibility.reason;
   const feedback = root.querySelector("[data-grow-companion-feedback]");
   if (feedback) feedback.textContent = controller.feedback || "";
   const upcoming = root.querySelector("[data-grow-companion-upcoming]");
   const activity = root.querySelector("[data-grow-companion-activity]");
-  const notes = root.querySelector("[data-grow-companion-notes]");
   const temporal = root.querySelector("[data-grow-companion-temporal]");
   if (upcoming) upcoming.innerHTML = renderGrowCompanionUpcomingPanel(presentation, eligibility, composition);
   if (activity) activity.innerHTML = renderGrowCompanionActivityPanel(presentation, eligibility, composition);
-  if (notes) notes.innerHTML = renderGrowCompanionNotesPanel(presentation, eligibility);
   if (temporal) temporal.innerHTML = renderGrowCompanionTemporalPanel(presentation, composition);
 }
 
@@ -97146,9 +97675,10 @@ async function loadGrowCompanionActivity(root = null, session = null) {
     const contract = getGrowCompanionContract();
     controller.tasks = (tasksResponse.data || []).map(contract.normalizeTaskRecord);
     controller.events = (eventsResponse.data || []).map(contract.normalizeEventRecord);
-    controller.notes = (notesResponse.data || []).map(getGrowingWorkspaceNotesContract().normalizeNoteRecord);
+    controller.notes = (notesResponse.data || []).map(normalizeSessionJournalNoteRecord);
   }
   renderGrowCompanionActivityWorkspace(root, controller);
+  renderSessionJournalWorkspace(root, controller);
 }
 
 function initializeGrowCompanionActivity(root = null, session = null) {
@@ -98812,6 +99342,7 @@ function syncSessionPhaseFoundation(scope = app, session = null) {
   composeSessionCurrentPhaseWorkspace(root, session, lifecycle);
   initializeBeginGrowingInitialConditions(root);
   initializeSessionCurrentConditions(root, session);
+  initializeSessionJournal(root, session);
   initializeGrowCompanionActivity(root, session);
   const navigator = root.querySelector("[data-session-phase-navigator]");
   if (navigator && !navigator.querySelector("[data-session-phase-nav]")) {
@@ -99217,6 +99748,7 @@ function composeSessionPhaseFoundation(scope = app, session = null) {
         <div class="session-grow-companion-workspace-body" data-session-current-phase-body></div>
       </section>
       <section class="session-completed-phase-records" data-session-completed-phase-records aria-label="Completed phase records" hidden></section>
+      ${hasCommenced ? '<section class="session-journal" data-session-journal aria-labelledby="session-journal-title"></section>' : ""}
     </section>
   `;
 
@@ -106511,14 +107043,14 @@ function getPublicSessionRecognitionAwardedLabel(snapshot = null, publicDetails 
 
 function getPublicSessionHeroImageUrl(snapshot = null) {
   const linkedSession = getGallerySnapshotSession(snapshot);
-  const sessionImage = getEffectiveSessionImages(linkedSession).find((image) => image?.url);
+  const sessionImage = getEffectiveSessionImages(linkedSession).find((image) => image?.url && image?.privateJournal !== true);
   return String(snapshot?.imageUrl || sessionImage?.url || "").trim();
 }
 
 function getPublicSessionEvidenceImages(snapshot = null) {
   const linkedSession = getGallerySnapshotSession(snapshot);
   const candidates = [
-    ...(getEffectiveSessionImages(linkedSession) || []).map((image) => ({
+    ...(getEffectiveSessionImages(linkedSession) || []).filter((image) => image?.privateJournal !== true).map((image) => ({
       url: String(image?.url || "").trim(),
       label: String(image?.filename || image?.name || "Session evidence").trim() || "Session evidence",
     })),
