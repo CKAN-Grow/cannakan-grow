@@ -43072,6 +43072,12 @@ function buildSnapshotRenderKey(state, data, selectedImage) {
     totalSeeds: Number(data.totalSeeds) || 0,
     totalPlanted: Number(data.totalPlanted) || 0,
     percentage: Number(data.percentage) || 0,
+    varietyDisplay: {
+      count: Number(data.varietyDisplay?.count) || 0,
+      names: Array.isArray(data.varietyDisplay?.names) ? data.varietyDisplay.names : [],
+      primary: String(data.varietyDisplay?.primary || "").trim(),
+      summary: String(data.varietyDisplay?.summary || "").trim(),
+    },
     partitionResults: (data.partitionResults || []).map((partition) => [
       partition.label,
       partition.germinatedCount,
@@ -43113,30 +43119,31 @@ function stripSnapshotFooterDateFromSessionName(sessionName = "", dateLabel = ""
 
 async function buildSessionSnapshotBlob(data, imageSource = "") {
   const canvas = document.createElement("canvas");
-  const size = 1080;
-  const exportRadius = 42;
-  canvas.width = size;
-  canvas.height = size;
+  const width = 1080;
+  const height = 1350;
+  const imageWidth = 1080;
+  const imageHeight = 1040;
+  canvas.width = width;
+  canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) {
     throw new Error("Could not generate the snapshot image.");
   }
 
-  context.save();
-  drawRoundedRectPath(context, 0, 0, size, size, exportRadius);
-  context.clip();
-  drawSnapshotBackground(context, size);
-  const brandLogo = await loadSnapshotBrandLogo();
-  const profileAvatar = await loadSnapshotProfileAvatar(data?.profileAttribution?.imageUrl || "");
-
-  if (imageSource) {
-    const image = await loadSnapshotImage(imageSource);
-    drawSnapshotHeroImage(context, image, size);
-    drawSnapshotImageFooter(context, size, data, brandLogo, profileAvatar);
-  } else {
-    drawSnapshotTextLayout(context, size, data, brandLogo, profileAvatar);
+  context.fillStyle = "#070b08";
+  context.fillRect(0, 0, width, height);
+  if (!imageSource) {
+    throw new Error("Choose a Snapshot image before continuing.");
   }
-  context.restore();
+
+  const [image, brandLogo] = await Promise.all([
+    loadSnapshotImage(imageSource),
+    loadSnapshotBrandLogo(),
+  ]);
+  drawGrowSnapshotContainedImage(context, image, 0, 0, imageWidth, imageHeight);
+  drawGrowSnapshotPercentageBadge(context, data, imageWidth - 38, 38);
+  drawGrowSnapshotImageBranding(context, brandLogo, 0, 0, imageWidth, imageHeight);
+  drawGrowSnapshotInformationBand(context, data, 0, imageHeight, width, height - imageHeight);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -43365,11 +43372,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
 }
 
 async function loadSnapshotBrandLogo() {
-  try {
-    return await loadImageElement("/src/assets/Cannakan_GROW_darkmode.png");
-  } catch {
-    return null;
-  }
+  return loadSnapshotImage("/assets/images/ck-grow-app-snapshot.png");
 }
 
 async function loadSnapshotProfileAvatar(source) {
@@ -43986,6 +43989,541 @@ async function shareSnapshotBlob(blob, fileName, text) {
     }
     return false;
   }
+}
+
+function getGrowSnapshotCandidateImages(root = null, session = null) {
+  const controller = root ? growCompanionActivityControllers.get(root) : null;
+  const images = controller ? getSessionJournalImages(controller) : getEffectiveSessionImages(session);
+  return (images || []).slice(0, MAX_SESSION_IMAGES).map((image, index) => ({
+    ...image,
+    key: String(image.id || image.path || image.url || `session-image-${index + 1}`),
+    displayUrl: controller
+      ? getSessionJournalImageSource(controller, image)
+      : String(image.previewUrl || image.url || "").trim(),
+    label: String(image.filename || image.name || `Session image ${index + 1}`).trim(),
+  })).filter((image) => image.displayUrl);
+}
+
+function getGrowSnapshotPublicProfileAttribution() {
+  const userId = String(appState.user?.id || "").trim();
+  const profile = userId ? getPublicMemberProfile(userId) : null;
+  if (!profile?.isPublicVisible) return null;
+  const name = String(profile.displayName || profile.username || "").trim();
+  if (!name) return null;
+  return {
+    name,
+    imageUrl: String(profile.avatarUrl || "").trim(),
+  };
+}
+
+function buildGrowSnapshotPresentationData(session = null, includeProfile = false) {
+  const data = getSessionSnapshotData(session);
+  if (!data) return null;
+  const resultStatus = getPartitionSuccessStatus(data.percentage, data.totalPlanted, data.totalSeeds);
+  const qualitativeResult = data.totalSeeds > 0 && Number(data.totalPlanted) >= 0
+    ? getActiveGerminationResultPresentation(resultStatus).label
+    : "";
+  const varietyDisplay = buildGrowSnapshotVarietyDisplay(session, data.seedVarietyName);
+  return {
+    ...data,
+    durationLabel: getSessionCommandCenterElapsedLabel(session),
+    varietyLabel: varietyDisplay.primary,
+    varietyDisplay,
+    qualitativeResult,
+    profileAttribution: includeProfile ? getGrowSnapshotPublicProfileAttribution() : null,
+  };
+}
+
+function buildGrowSnapshotVarietyDisplay(session = null, fallbackName = "") {
+  const canonicalNames = getSessionIdentityVarietyNames(session);
+  const normalizedFallback = String(fallbackName || "").trim();
+  const names = canonicalNames.length
+    ? canonicalNames
+    : (normalizedFallback ? [normalizedFallback] : []);
+  const count = names.length;
+
+  if (count === 0) {
+    return Object.freeze({
+      count,
+      names: Object.freeze([]),
+      primary: "Not available",
+      summary: "",
+      heading: "Variety unavailable",
+    });
+  }
+
+  if (count === 1) {
+    return Object.freeze({
+      count,
+      names: Object.freeze([...names]),
+      primary: names[0],
+      summary: "",
+      heading: names[0],
+    });
+  }
+
+  if (count === 2) {
+    return Object.freeze({
+      count,
+      names: Object.freeze([...names]),
+      primary: names[0],
+      summary: names[1],
+      heading: names.join(" + "),
+    });
+  }
+
+  return Object.freeze({
+    count,
+    names: Object.freeze([...names]),
+    primary: `${count} varieties`,
+    summary: `${names[0]} + ${count - 1} more`,
+    heading: `${count} varieties`,
+  });
+}
+
+function renderGrowSnapshotStepIndicatorMarkup(step = 1) {
+  return `
+    <ol class="grow-snapshot-steps" aria-label="Grow Snapshot progress">
+      ${["Select", "Review", "Share"].map((label, index) => {
+        const number = index + 1;
+        const state = number === step ? "current" : (number < step ? "complete" : "future");
+        return `<li class="is-${state}"${number === step ? ' aria-current="step"' : ""}><span>${number}</span><strong>${label}</strong></li>`;
+      }).join("")}
+    </ol>
+  `;
+}
+
+function renderGrowSnapshotCandidateMarkup(image = {}, index = 0, selectedKey = "") {
+  const selected = image.key === selectedKey;
+  return `
+    <button
+      type="button"
+      class="grow-snapshot-candidate${selected ? " is-selected" : ""}"
+      data-grow-snapshot-candidate="${escapeHtml(image.key)}"
+      role="radio"
+      aria-checked="${String(selected)}"
+      aria-label="${escapeHtml(`${selected ? "Selected: " : "Select "}${image.label || `Session image ${index + 1}`}`)}"
+    >
+      <img src="${escapeHtml(image.displayUrl)}" alt="${escapeHtml(image.label || `Session image ${index + 1}`)}">
+      ${selected ? `<span class="grow-snapshot-selected-check" aria-hidden="true">${renderAppIconSvgMarkup("check")}</span>` : ""}
+    </button>
+  `;
+}
+
+function renderGrowSnapshotCandidatesMarkup(state = {}, heading = "Choose your Snapshot image", helper = "Select one image to represent your Germination results.") {
+  const images = state.images || [];
+  return `
+    <section class="grow-snapshot-candidates" aria-labelledby="grow-snapshot-candidates-title">
+      <header>
+        <h3 id="grow-snapshot-candidates-title">${escapeHtml(heading)}</h3>
+        ${helper ? `<p>${escapeHtml(helper)}</p>` : ""}
+      </header>
+      ${images.length ? `
+        <div class="grow-snapshot-candidate-row" role="radiogroup" aria-label="Representative Session image">
+          ${images.map((image, index) => renderGrowSnapshotCandidateMarkup(image, index, state.selectedImageKey)).join("")}
+        </div>
+      ` : '<p class="grow-snapshot-empty">Add a Session image in the private Journal before creating a Snapshot.</p>'}
+    </section>
+  `;
+}
+
+function renderGrowSnapshotDetailsMarkup(state = {}) {
+  const rows = getGrowSnapshotInformationRows(state.presentationData || {});
+  return `
+    <section class="grow-snapshot-details" aria-labelledby="grow-snapshot-details-title">
+      <header><h3 id="grow-snapshot-details-title">Snapshot details</h3><p>Included automatically from this Session.</p></header>
+      <dl>${rows.map((row) => `<div><dt>${escapeHtml(row.label)}</dt><dd>${escapeHtml(row.value)}</dd></div>`).join("")}</dl>
+    </section>
+  `;
+}
+
+function renderGrowSnapshotPreviewMarkup(state = {}) {
+  const imageUrl = state.generatedUrl || "";
+  return `
+    <figure class="grow-snapshot-finished" data-grow-snapshot-finished data-export-width="1080" data-export-height="1350">
+      ${imageUrl
+        ? `<img data-grow-snapshot-export-preview src="${escapeHtml(imageUrl)}" alt="CK Grow App">`
+        : '<div class="grow-snapshot-preview-pending" role="status">Preparing finished Snapshot…</div>'}
+    </figure>
+  `;
+}
+
+function renderGrowSnapshotDestinationMarkup(state = {}) {
+  const destinations = [
+    {
+      value: "community-social",
+      title: "Grow Community + Social",
+      description: "Publish to Grow Community, then pass the Snapshot to your device’s social-share capability.",
+      recommended: true,
+      icon: "communityGroup",
+    },
+    {
+      value: "community",
+      title: "Grow Community only",
+      description: "Publish only within the CannaKAN Grow Community.",
+      icon: "communityGroup",
+    },
+    {
+      value: "social",
+      title: "Social only",
+      description: "Use your device’s sharing capability without creating a Grow Community post.",
+      icon: "growNetworkNodes",
+    },
+  ];
+  return `
+    <fieldset class="grow-snapshot-destinations">
+      <legend>Choose where to share</legend>
+      ${destinations.map((destination) => `
+        <label class="grow-snapshot-destination${state.destination === destination.value ? " is-selected" : ""}">
+          <input type="radio" name="grow-snapshot-destination" value="${destination.value}"${state.destination === destination.value ? " checked" : ""}>
+          <span class="grow-snapshot-destination-icon" aria-hidden="true">${renderAppIconSvgMarkup(destination.icon)}</span>
+          <span class="grow-snapshot-destination-copy"><strong>${destination.title}</strong>${destination.recommended ? '<small>Recommended</small>' : ""}<em>${destination.description}</em></span>
+          <span class="grow-snapshot-radio" aria-hidden="true"></span>
+        </label>
+      `).join("")}
+    </fieldset>
+  `;
+}
+
+function renderGrowSnapshotPrivacyMarkup(state = {}) {
+  const profileAvailable = Boolean(getGrowSnapshotPublicProfileAttribution());
+  return `
+    <section class="grow-snapshot-privacy" aria-labelledby="grow-snapshot-privacy-title">
+      <h3 id="grow-snapshot-privacy-title">Privacy review</h3>
+      <div class="grow-snapshot-privacy-card">
+        <strong><span aria-hidden="true">${renderAppIconSvgMarkup("lock")}</span>This Snapshot includes:</strong>
+        <ul>
+          <li><span aria-hidden="true">${renderAppIconSvgMarkup("check")}</span>The chosen Snapshot image</li>
+          <li><span aria-hidden="true">${renderAppIconSvgMarkup("check")}</span>Session results and metrics</li>
+          <li><span aria-hidden="true">${renderAppIconSvgMarkup("check")}</span>Grow method and duration</li>
+          <li><span aria-hidden="true">${renderAppIconSvgMarkup("check")}</span>Variety information</li>
+          ${state.includeProfile ? `<li><span aria-hidden="true">${renderAppIconSvgMarkup("check")}</span>Public Grow Profile attribution</li>` : ""}
+        </ul>
+      </div>
+      <label class="grow-snapshot-attribution${profileAvailable ? "" : " is-unavailable"}">
+        <span><strong>Grow Profile attribution</strong><em>${profileAvailable ? "Show my public Grow Profile name with this Snapshot" : "No public Grow Profile identity is available"}</em></span>
+        <input type="checkbox" role="switch" data-grow-snapshot-attribution${state.includeProfile ? " checked" : ""}${profileAvailable ? "" : " disabled"}>
+        <i aria-hidden="true"></i>
+      </label>
+      <p class="grow-snapshot-private-note"><span aria-hidden="true">${renderAppIconSvgMarkup("lock")}</span>Creating a Snapshot does not change your private Session Journal.</p>
+    </section>
+  `;
+}
+
+function getGrowSnapshotResultCopy(state = {}) {
+  if (state.resultKind === "community-success") {
+    return { title: "Community post succeeded", body: "Your Snapshot was submitted once through Grow Community’s established publication path." };
+  }
+  if (state.resultKind === "combined-complete") {
+    return { title: "Community succeeded and Social was handed off", body: "The Community post was created once, and the Snapshot was passed to your device’s sharing capability." };
+  }
+  if (state.resultKind === "community-social-incomplete") {
+    return { title: "Community succeeded; Social remains incomplete", body: state.resultMessage || "The Community post is preserved. Retry only the Social portion when ready." };
+  }
+  if (state.resultKind === "social-fallback") {
+    return { title: "Snapshot downloaded", body: "Native file sharing is unavailable here. The exact Snapshot image was downloaded; no external post was confirmed." };
+  }
+  if (state.resultKind === "social-canceled") {
+    return { title: "Social sharing was canceled", body: "No external publication was claimed. You can retry safely." };
+  }
+  if (state.resultKind === "social-complete") {
+    return { title: "Snapshot handed to Social sharing", body: "Your device accepted the Snapshot for sharing. Grow does not claim that an external platform published it." };
+  }
+  return { title: "Sharing failed", body: state.resultMessage || "The Snapshot remains available in this active interaction and can be retried safely." };
+}
+
+function renderGrowSnapshotFlow(state = {}) {
+  const section = state.section;
+  if (!(section instanceof HTMLElement)) return;
+  state.presentationData = buildGrowSnapshotPresentationData(state.session, state.includeProfile);
+  const shareReady = Boolean(state.generatedBlob && state.selectedImageKey && state.destination && !state.busy);
+  section.dataset.growSnapshotStep = String(state.step);
+  section.innerHTML = `
+    <header class="grow-snapshot-header">
+      <div><h2 id="grow-snapshot-title">Grow Snapshot</h2><p>Optional shareable summary</p></div>
+      ${renderGrowSnapshotStepIndicatorMarkup(state.step)}
+    </header>
+    ${state.step === 1 ? `
+      <div class="grow-snapshot-select-layout">
+        <section class="grow-snapshot-build-card">
+          ${renderGrowSnapshotCandidatesMarkup(state)}
+          ${renderGrowSnapshotDetailsMarkup(state)}
+          <button type="button" class="button button-primary grow-snapshot-continue" data-grow-snapshot-continue${state.selectedImageKey && !state.busy ? "" : " disabled"}><span>${state.busy ? "Preparing Snapshot…" : "Continue to privacy review"}</span>${renderAppIconSvgMarkup("backArrow", { className: "grow-snapshot-button-icon grow-snapshot-button-icon--forward" })}</button>
+        </section>
+      </div>
+    ` : state.step === 2 ? `
+      <div class="grow-snapshot-review-layout">
+        <div class="grow-snapshot-review-preview">
+          ${renderGrowSnapshotPreviewMarkup(state)}
+          ${renderGrowSnapshotCandidatesMarkup(state, "Choose Snapshot image", "")}
+        </div>
+        <div class="grow-snapshot-review-controls">
+          ${renderGrowSnapshotDestinationMarkup(state)}
+          ${renderGrowSnapshotPrivacyMarkup(state)}
+          <button type="button" class="button button-primary grow-snapshot-share-action" data-grow-snapshot-share${shareReady ? "" : " disabled"}>${renderAppIconSvgMarkup("growNetworkNodes", { className: "grow-snapshot-button-icon" })}<span>${state.busy ? "Sharing…" : "Share Grow Snapshot"}</span></button>
+          <button type="button" class="button button-secondary grow-snapshot-back" data-grow-snapshot-back>${renderAppIconSvgMarkup("backArrow", { className: "grow-snapshot-button-icon" })}<span>Back to edit</span></button>
+        </div>
+      </div>
+    ` : `
+      <section class="grow-snapshot-result" role="status" aria-live="polite">
+        ${renderGrowSnapshotPreviewMarkup(state)}
+        <div>
+          <p class="eyebrow">Share result</p>
+          <h3>${escapeHtml(getGrowSnapshotResultCopy(state).title)}</h3>
+          <p>${escapeHtml(getGrowSnapshotResultCopy(state).body)}</p>
+          ${state.communityPost?.id ? `<a class="button button-secondary" href="#gallery/${escapeHtml(state.communityPost.id)}">View Community post</a>` : ""}
+          ${["community-social-incomplete", "social-canceled", "share-failed"].includes(state.resultKind) ? '<button type="button" class="button button-primary" data-grow-snapshot-retry>Retry sharing</button>' : ""}
+        </div>
+      </section>
+    `}
+    <p class="grow-snapshot-feedback${state.error ? " is-error" : ""}" role="status" aria-live="polite">${escapeHtml(state.error || "")}</p>
+  `;
+}
+
+function clearGrowSnapshotGeneratedFile(state = {}) {
+  if (state.generatedUrl) URL.revokeObjectURL(state.generatedUrl);
+  state.generatedUrl = "";
+  state.generatedBlob = null;
+  state.generatedData = null;
+}
+
+async function generateGrowSnapshotFlowFile(state = {}) {
+  const selectedImage = state.images.find((image) => image.key === state.selectedImageKey);
+  if (!selectedImage) throw new Error("Choose a Snapshot image before continuing.");
+  const data = buildGrowSnapshotPresentationData(state.session, state.includeProfile);
+  const integrity = getSnapshotDataIntegrity(data);
+  if (!integrity.ok) throw new Error(integrity.message || "Snapshot details are unavailable.");
+  const blob = await buildSessionSnapshotBlob(data, selectedImage.displayUrl);
+  clearGrowSnapshotGeneratedFile(state);
+  state.generatedBlob = blob;
+  state.generatedData = data;
+  state.generatedUrl = URL.createObjectURL(blob);
+  return blob;
+}
+
+async function shareGrowSnapshotFlowSocial(state = {}) {
+  const blob = state.generatedBlob;
+  const data = state.generatedData;
+  if (!blob || !data) return { status: "failed", message: "The finished Snapshot is unavailable." };
+  const fileName = buildSnapshotFileName(data);
+  const file = new File([blob], fileName, { type: "image/png" });
+  if (!navigator.share || (navigator.canShare && !navigator.canShare({ files: [file] }))) {
+    downloadSnapshotBlob(blob, fileName);
+    return { status: "fallback", message: "Native file sharing is unavailable; the Snapshot was downloaded." };
+  }
+  try {
+    await navigator.share({ files: [file], title: `${BRAND_APP_NAME} Snapshot`, text: buildSnapshotShareText(data) });
+    return { status: "handed-off", message: "The Snapshot was handed to the device sharing capability." };
+  } catch (error) {
+    if (error?.name === "AbortError") return { status: "canceled", message: "Social sharing was canceled." };
+    return { status: "failed", message: error?.message || "Social sharing did not complete." };
+  }
+}
+
+async function publishGrowSnapshotFlowCommunity(state = {}) {
+  if (state.communityPost?.id) return state.communityPost;
+  const published = await publishSnapshotToGallery(state.session, state.generatedData, state.generatedBlob, {
+    includeProfileInGallery: Boolean(state.includeProfile),
+    includeNotes: false,
+    publicGrowNote: "",
+    usageConsent: true,
+  });
+  state.communityPost = published;
+  return published;
+}
+
+async function executeGrowSnapshotShare(state = {}, { retrySocialOnly = false } = {}) {
+  if (state.busy) return;
+  state.busy = true;
+  state.error = "";
+  renderGrowSnapshotFlow(state);
+  try {
+    const destination = state.destination;
+    if (!retrySocialOnly && ["community", "community-social"].includes(destination)) {
+      await publishGrowSnapshotFlowCommunity(state);
+    }
+    if (destination === "community") {
+      state.resultKind = "community-success";
+    } else {
+      const socialResult = await shareGrowSnapshotFlowSocial(state);
+      state.resultMessage = socialResult.message || "";
+      if (destination === "community-social") {
+        state.resultKind = socialResult.status === "handed-off"
+          ? "combined-complete"
+          : "community-social-incomplete";
+      } else if (socialResult.status === "handed-off") state.resultKind = "social-complete";
+      else if (socialResult.status === "fallback") state.resultKind = "social-fallback";
+      else if (socialResult.status === "canceled") state.resultKind = "social-canceled";
+      else state.resultKind = "share-failed";
+    }
+    state.step = 3;
+  } catch (error) {
+    state.resultKind = "share-failed";
+    state.resultMessage = error?.message || "Sharing failed.";
+    state.error = state.resultMessage;
+    state.step = 3;
+  } finally {
+    state.busy = false;
+    renderGrowSnapshotFlow(state);
+  }
+}
+
+async function selectGrowSnapshotImage(state = {}, imageKey = "") {
+  if (!state.images.some((image) => image.key === imageKey)) return;
+  state.selectedImageKey = imageKey;
+  state.error = "";
+  if (state.step !== 2) {
+    clearGrowSnapshotGeneratedFile(state);
+    renderGrowSnapshotFlow(state);
+    return;
+  }
+  state.busy = true;
+  renderGrowSnapshotFlow(state);
+  try {
+    await generateGrowSnapshotFlowFile(state);
+  } catch (error) {
+    state.error = error?.message || "Could not update the finished Snapshot.";
+  } finally {
+    state.busy = false;
+    renderGrowSnapshotFlow(state);
+  }
+}
+
+function bindGrowSnapshotFlow(state = {}) {
+  const section = state.section;
+  if (!(section instanceof HTMLElement) || section.__growSnapshotFlowState !== state) return;
+  if (state.listenersBound === true) {
+    section.dataset.growSnapshotBound = "true";
+    return;
+  }
+  section.dataset.growSnapshotBound = "true";
+  section.addEventListener("click", async (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const candidate = target?.closest("[data-grow-snapshot-candidate]");
+    if (candidate instanceof HTMLButtonElement) {
+      await selectGrowSnapshotImage(state, candidate.dataset.growSnapshotCandidate || "");
+      return;
+    }
+    if (target?.closest("[data-grow-snapshot-continue]")) {
+      if (!state.selectedImageKey || state.busy) return;
+      state.busy = true;
+      state.error = "";
+      renderGrowSnapshotFlow(state);
+      try {
+        await generateGrowSnapshotFlowFile(state);
+        state.step = 2;
+      } catch (error) {
+        state.error = error?.message || "Could not prepare the finished Snapshot.";
+      } finally {
+        state.busy = false;
+        renderGrowSnapshotFlow(state);
+      }
+      return;
+    }
+    if (target?.closest("[data-grow-snapshot-back]")) {
+      state.step = 1;
+      state.error = "";
+      renderGrowSnapshotFlow(state);
+      return;
+    }
+    if (target?.closest("[data-grow-snapshot-share]")) {
+      if (!state.destination || !state.generatedBlob) return;
+      await executeGrowSnapshotShare(state);
+      return;
+    }
+    if (target?.closest("[data-grow-snapshot-retry]")) {
+      const retrySocialOnly = Boolean(state.communityPost?.id && state.destination === "community-social");
+      await executeGrowSnapshotShare(state, { retrySocialOnly });
+    }
+  });
+  section.addEventListener("change", async (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    if (input.name === "grow-snapshot-destination") {
+      state.destination = input.value;
+      state.error = "";
+      renderGrowSnapshotFlow(state);
+      return;
+    }
+    if (input.matches("[data-grow-snapshot-attribution]")) {
+      state.includeProfile = Boolean(input.checked);
+      state.busy = true;
+      renderGrowSnapshotFlow(state);
+      try {
+        await generateGrowSnapshotFlowFile(state);
+      } catch (error) {
+        state.error = error?.message || "Could not update Grow Profile attribution.";
+      } finally {
+        state.busy = false;
+        renderGrowSnapshotFlow(state);
+      }
+    }
+  });
+  state.listenersBound = true;
+}
+
+function mountGrowSnapshotFlowSection(root = null, content = null) {
+  const section = content?.querySelector?.("#detail-share-snapshot-section") || root?.querySelector?.("#detail-share-snapshot-section");
+  const journal = root?.querySelector?.("[data-session-journal]");
+  if (!(section instanceof HTMLElement) || !(journal instanceof HTMLElement)) return null;
+  section.className = "grow-snapshot-flow";
+  section.setAttribute("aria-labelledby", "grow-snapshot-title");
+  section.dataset.growSnapshotFlow = "true";
+  journal.insertAdjacentElement("afterend", section);
+  return section;
+}
+
+function initializeGrowSnapshotFlow(root = null, session = null) {
+  const section = root?.querySelector?.("[data-grow-snapshot-flow]");
+  if (!(section instanceof HTMLElement) || !session?.id) return;
+  if (section.__growSnapshotFlowState) {
+    bindGrowSnapshotFlow(section.__growSnapshotFlowState);
+    syncGrowSnapshotFlowCandidateState(root);
+    return;
+  }
+  if (section.dataset.growSnapshotBound === "true") {
+    delete section.dataset.growSnapshotBound;
+  }
+  const state = {
+    section,
+    root,
+    session,
+    step: 1,
+    images: getGrowSnapshotCandidateImages(root, session),
+    selectedImageKey: "",
+    destination: "",
+    includeProfile: false,
+    presentationData: buildGrowSnapshotPresentationData(session, false),
+    generatedBlob: null,
+    generatedUrl: "",
+    generatedData: null,
+    communityPost: null,
+    resultKind: "",
+    resultMessage: "",
+    error: "",
+    busy: false,
+    listenersBound: false,
+  };
+  section.__growSnapshotFlowState = state;
+  bindGrowSnapshotFlow(state);
+  renderGrowSnapshotFlow(state);
+}
+
+function syncGrowSnapshotFlowCandidateState(root = null) {
+  const section = root?.querySelector?.("[data-grow-snapshot-flow]");
+  const state = section?.__growSnapshotFlowState;
+  if (!state) return;
+  const nextImages = getGrowSnapshotCandidateImages(root, state.session);
+  const previousSignature = state.images.map((image) => `${image.key}:${image.displayUrl}`).join("|");
+  const nextSignature = nextImages.map((image) => `${image.key}:${image.displayUrl}`).join("|");
+  if (previousSignature === nextSignature) return;
+  state.images = nextImages;
+  if (state.selectedImageKey && !nextImages.some((image) => image.key === state.selectedImageKey)) {
+    state.selectedImageKey = "";
+    state.step = 1;
+    clearGrowSnapshotGeneratedFile(state);
+  }
+  renderGrowSnapshotFlow(state);
 }
 
 function render() {
@@ -97107,6 +97645,217 @@ function getSessionJournalContext(session = null) {
   });
 }
 
+function drawGrowSnapshotContainedImage(context, image, x, y, width, height) {
+  const sourceWidth = Number(image?.naturalWidth || image?.width) || 1;
+  const sourceHeight = Number(image?.naturalHeight || image?.height) || 1;
+  const scale = Math.min(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  const drawX = x + (width - drawWidth) / 2;
+  const drawY = y + (height - drawHeight) / 2;
+  context.fillStyle = "#090e0b";
+  context.fillRect(x, y, width, height);
+  context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+}
+
+function drawGrowSnapshotPercentageBadge(context, data = {}, rightX = 1042, y = 38) {
+  const percentage = normalizePartitionSuccessRateValue(data?.percentage);
+  const label = percentage === null ? "N/A" : `${percentage}%`;
+  context.save();
+  context.font = "800 70px Arial, sans-serif";
+  const paddingX = 30;
+  const height = 104;
+  const width = context.measureText(label).width + paddingX * 2;
+  const x = rightX - width;
+  context.fillStyle = "rgba(5, 9, 6, 0.9)";
+  drawRoundedRectPath(context, x, y, width, height, height / 2);
+  context.fill();
+  context.strokeStyle = "#9be31a";
+  context.lineWidth = 4;
+  drawRoundedRectPath(context, x + 2, y + 2, width - 4, height - 4, (height - 4) / 2);
+  context.stroke();
+  context.fillStyle = "#b6f23c";
+  context.textBaseline = "middle";
+  context.fillText(label, x + paddingX, y + height / 2 + 2);
+  context.restore();
+}
+
+function getGrowSnapshotInformationRows(data = {}) {
+  const varietyDisplay = data.varietyDisplay || {};
+  return [
+    { label: "Method", value: String(data.systemLabel || "Not available").trim() || "Not available" },
+    { label: "Duration", value: String(data.durationLabel || "Not available").trim() || "Not available" },
+    { label: "Germination result", value: Number(data.totalSeeds) > 0 ? `${Number(data.totalPlanted) || 0} of ${Number(data.totalSeeds) || 0}` : "Not available" },
+    {
+      label: "Variety",
+      value: String(varietyDisplay.primary || data.varietyLabel || data.seedVarietyName || "Not available").trim() || "Not available",
+      summary: String(varietyDisplay.summary || "").trim(),
+      varietyCount: Math.max(0, Number(varietyDisplay.count) || 0),
+    },
+  ];
+}
+
+function drawGrowSnapshotVarietyValue(context, row = {}, x = 0, y = 0, maxWidth = 0, maxHeight = 58) {
+  const primary = String(row.value || "Not available").trim() || "Not available";
+  const summary = String(row.summary || "").trim();
+  const varietyCount = Math.max(0, Number(row.varietyCount) || 0);
+
+  context.save();
+  context.beginPath();
+  context.rect(x, y, maxWidth, maxHeight);
+  context.clip();
+  context.fillStyle = "#ffffff";
+
+  if (varietyCount === 2 && summary) {
+    const firstSize = fitTextSize(context, primary, maxWidth, 31, 24, "700");
+    context.font = `700 ${firstSize}px Arial, sans-serif`;
+    context.fillText(primary, x, y + 25);
+    const secondSize = fitTextSize(context, summary, maxWidth, 31, 24, "700");
+    context.font = `700 ${secondSize}px Arial, sans-serif`;
+    context.fillText(summary, x, y + 55);
+  } else if (varietyCount >= 3 && summary) {
+    context.font = "700 36px Arial, sans-serif";
+    context.fillText(truncateTextToWidth(context, primary, maxWidth), x, y + 28);
+    context.fillStyle = "#aeb9b0";
+    context.font = "600 24px Arial, sans-serif";
+    context.fillText(truncateTextToWidth(context, summary, maxWidth), x, y + 55);
+  } else {
+    const fittedSize = fitTextSize(context, primary, maxWidth, 38, 30, "700");
+    context.font = `700 ${fittedSize}px Arial, sans-serif`;
+    if (context.measureText(primary).width <= maxWidth) {
+      context.fillText(primary, x, y + 38);
+    } else {
+      wrapCanvasText(context, primary, x, y + 25, maxWidth, 30, 2);
+    }
+  }
+
+  context.restore();
+}
+
+function drawGrowSnapshotBrandLogo(context, image, x, y, width, height) {
+  const sourceWidth = Number(image?.naturalWidth || image?.width) || 1;
+  const sourceHeight = Number(image?.naturalHeight || image?.height) || 1;
+  const scale = Math.min(width / sourceWidth, height / sourceHeight);
+  const drawWidth = sourceWidth * scale;
+  const drawHeight = sourceHeight * scale;
+  context.drawImage(image, x, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawGrowSnapshotImageBranding(context, brandLogo, x = 0, y = 0, width = 1080, height = 1040) {
+  const inset = 38;
+  const bottom = y + height - inset;
+  context.save();
+
+  const communityLabel = "Cannakan® Grow Community";
+  context.font = "700 38px Arial, sans-serif";
+  const communityPaddingX = 20;
+  const communityHeight = 72;
+  const communityWidth = context.measureText(communityLabel).width + communityPaddingX * 2;
+  const communityX = x + inset;
+  const communityY = y + inset;
+  context.fillStyle = "rgba(5, 9, 6, 0.78)";
+  drawRoundedRectPath(context, communityX, communityY, communityWidth, communityHeight, 18);
+  context.fill();
+  context.fillStyle = "#f5f8f5";
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  context.fillText(communityLabel, communityX + communityPaddingX, communityY + communityHeight / 2 + 1);
+
+  if (brandLogo) {
+    const logoBackingWidth = 310;
+    const logoBackingHeight = 138;
+    const logoBackingY = bottom - logoBackingHeight;
+    context.fillStyle = "rgba(5, 9, 6, 0.78)";
+    drawRoundedRectPath(context, x + inset - 10, logoBackingY, logoBackingWidth, logoBackingHeight, 18);
+    context.fill();
+    drawGrowSnapshotBrandLogo(context, brandLogo, x + inset + 4, logoBackingY + 12, 270, 114);
+  }
+  context.restore();
+}
+
+function drawGrowSnapshotInformationBand(context, data = {}, x = 0, y = 1040, width = 1080, height = 310) {
+  context.save();
+  context.fillStyle = "#0a100c";
+  context.fillRect(x, y, width, height);
+  context.strokeStyle = "rgba(155, 227, 26, 0.34)";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(x, y + 1);
+  context.lineTo(x + width, y + 1);
+  context.stroke();
+
+  const inset = 38;
+  const dateLabel = String(data.dateLabel || "Session date unavailable").trim() || "Session date unavailable";
+  const varietyHeading = String(data.varietyDisplay?.heading || data.varietyLabel || data.seedVarietyName || "Variety unavailable").trim() || "Variety unavailable";
+  const qualitativeLabel = String(data.qualitativeResult || "").trim();
+  const profileName = String(data?.profileAttribution?.name || "").trim();
+  let qualitativePillWidth = 0;
+  if (qualitativeLabel) {
+    context.font = "700 26px Arial, sans-serif";
+    qualitativePillWidth = Math.min(316, context.measureText(qualitativeLabel).width + 42);
+  }
+  context.textBaseline = "alphabetic";
+  context.fillStyle = "#dfe7e1";
+  context.font = "700 40px Arial, sans-serif";
+  const headingWidth = width - inset * 2 - qualitativePillWidth - (qualitativePillWidth ? 26 : 0);
+  context.fillText(truncateTextToWidth(context, `${dateLabel} · ${varietyHeading}`, headingWidth), x + inset, y + 61);
+  if (qualitativeLabel) {
+    context.font = "700 26px Arial, sans-serif";
+    const pillX = x + width - inset - qualitativePillWidth;
+    context.fillStyle = "rgba(155, 227, 26, 0.12)";
+    drawRoundedRectPath(context, pillX, y + 18, qualitativePillWidth, 46, 23);
+    context.fill();
+    context.strokeStyle = "rgba(155, 227, 26, 0.64)";
+    context.lineWidth = 2;
+    drawRoundedRectPath(context, pillX, y + 18, qualitativePillWidth, 46, 23);
+    context.stroke();
+    context.fillStyle = "#c9f66c";
+    context.fillText(truncateTextToWidth(context, qualitativeLabel, qualitativePillWidth - 42), pillX + 21, y + 50);
+  }
+  if (profileName) {
+    context.font = "600 22px Arial, sans-serif";
+    context.fillStyle = "#aeb9b0";
+    context.textAlign = "right";
+    context.fillText(truncateTextToWidth(context, `Grower · ${profileName}`, 330), x + width - inset, y + 88);
+    context.textAlign = "left";
+  }
+
+  const rows = getGrowSnapshotInformationRows(data);
+  const gridTop = y + 96;
+  const gridBottom = y + height - 20;
+  const leftColumnWidth = Math.round(width / 3);
+  const rightColumnWidth = width - leftColumnWidth;
+  const rowHeight = (gridBottom - gridTop) / 2;
+  context.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(x + leftColumnWidth, gridTop);
+  context.lineTo(x + leftColumnWidth, gridBottom);
+  context.moveTo(x + inset, gridTop + rowHeight);
+  context.lineTo(x + width - inset, gridTop + rowHeight);
+  context.stroke();
+  rows.forEach((row, index) => {
+    const column = index % 2;
+    const rowIndex = Math.floor(index / 2);
+    const columnX = x + (column ? leftColumnWidth : 0);
+    const columnWidth = column ? rightColumnWidth : leftColumnWidth;
+    const cellX = columnX + inset;
+    const cellY = gridTop + rowIndex * rowHeight;
+    context.fillStyle = "#8f9b92";
+    context.font = "600 26px Arial, sans-serif";
+    context.fillText(row.label, cellX, cellY + 30);
+    context.fillStyle = "#ffffff";
+    context.font = "700 38px Arial, sans-serif";
+    const valueWidth = columnWidth - inset * 2;
+    if (index === 3) {
+      drawGrowSnapshotVarietyValue(context, row, cellX, cellY + 35, valueWidth, rowHeight - 41);
+    } else {
+      context.fillText(truncateTextToWidth(context, row.value, valueWidth), cellX, cellY + 69);
+    }
+  });
+  context.restore();
+}
+
 function getSessionJournalWriteEligibility(session = null) {
   if (!session?.id || !appState.user?.id) {
     return Object.freeze({ canWrite: false, reason: "Sign in to use this Session Journal." });
@@ -97318,6 +98067,7 @@ function renderSessionJournalWorkspace(root = null, controller = null) {
     </div>
     ${renderSessionJournalRecordMarkup(controller, eligibility)}
   `;
+  syncGrowSnapshotFlowCandidateState(root);
 }
 
 async function hydrateSessionJournalImageUrls(root = null, controller = null) {
@@ -99343,6 +100093,7 @@ function syncSessionPhaseFoundation(scope = app, session = null) {
   initializeBeginGrowingInitialConditions(root);
   initializeSessionCurrentConditions(root, session);
   initializeSessionJournal(root, session);
+  initializeGrowSnapshotFlow(root, session);
   initializeGrowCompanionActivity(root, session);
   const navigator = root.querySelector("[data-session-phase-navigator]");
   if (navigator && !navigator.querySelector("[data-session-phase-nav]")) {
@@ -99753,6 +100504,7 @@ function composeSessionPhaseFoundation(scope = app, session = null) {
   `;
 
   overview.insertAdjacentElement("afterend", root);
+  mountGrowSnapshotFlowSection(root, content);
   bindSessionPhaseFoundation(root, session);
   syncSessionPhaseFoundation(root, session);
   return root;
