@@ -38585,7 +38585,8 @@ body.theme-dark .theme-toggle-button:hover {
 .session-journal-image-strip {
   grid-area: strip;
   display: grid;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
+  align-content: start;
   gap: 7px;
   min-width: 0;
 }
@@ -38595,8 +38596,9 @@ body.theme-dark .theme-toggle-button:hover {
   display: grid;
   place-items: center;
   width: 100%;
+  aspect-ratio: 1 / 1;
   min-width: 0;
-  min-height: 56px;
+  min-height: 0;
   padding: 0;
   overflow: hidden;
   border: 1px dashed rgba(148, 209, 89, 0.28);
@@ -38962,11 +38964,7 @@ button.session-journal-image-slot {
 
   .session-journal-image-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: minmax(74px, 92px);
-  }
-
-  .session-journal-image-slot {
-    min-height: 74px;
+    grid-template-rows: auto;
   }
 
   .session-journal-image-actions {
@@ -56843,9 +56841,9 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .active-germination-results__legend > span > i {
   flex: 0 0 auto;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
+  width: 20px;
+  height: 10px;
+  border-radius: 999px;
   background: var(--active-result-color, var(--partition-success-accent));
   box-shadow: 0 0 10px color-mix(in srgb, var(--active-result-color, var(--partition-success-glow)) 46%, transparent);
 }

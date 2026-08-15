@@ -99666,6 +99666,8 @@ function renderActiveGerminationResultsMarkup(session = null, options = {}) {
         </article>
       </div>
 
+      ${renderActiveGerminationResultLegendMarkup()}
+
       <section class="active-germination-results__groups" data-active-germination-result-groups aria-labelledby="active-germination-results-groups-title">
         <header>
           <h4 id="active-germination-results-groups-title">Results by Group</h4>
@@ -99706,7 +99708,6 @@ function renderActiveGerminationResultsMarkup(session = null, options = {}) {
         </div>
       </section>
 
-      ${renderActiveGerminationResultLegendMarkup()}
     </section>
   `;
 }
