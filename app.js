@@ -10570,6 +10570,10 @@ function syncDeveloperScenariosUi() {
 
 function syncDeveloperScenarioPageBadge(route = getCurrentAppRawRoute().split("/")[0]) {
   document.querySelectorAll(".developer-scenario-page-badge").forEach((badge) => badge.remove());
+  const [, sessionRouteId = ""] = getCurrentAppRawRoute().split("/");
+  if (route === "sessions" && sessionRouteId && sessionRouteId !== "public") {
+    return;
+  }
   let moduleName = ({
     "seed-vault": "seedVault",
     sessions: "sessions",
