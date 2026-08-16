@@ -9,13 +9,13 @@ html {
   --bc-brand-deep: #79b83d;
   --bc-deepest: #050706;
   --bc-canvas: #080c09;
-  --bc-card: #121a14;
-  --bc-raised: #1a241d;
-  --bc-selected: #203024;
-  --bc-border: #304036;
-  --bc-border-strong: #4b624f;
+  --bc-card: #0b110e;
+  --bc-raised: #111914;
+  --bc-selected: rgba(148, 209, 89, 0.08);
+  --bc-border: rgba(148, 209, 89, 0.16);
+  --bc-border-strong: rgba(148, 209, 89, 0.3);
   --bc-text: #f2f5f3;
-  --bc-muted: #a4aea7;
+  --bc-muted: #9ca89f;
   --bc-shadow: 0 22px 56px rgba(0, 0, 0, 0.34);
   --bc-radius-lg: 18px;
   --bc-radius-md: 12px;
@@ -27,12 +27,10 @@ html {
   padding: clamp(20px, 3vw, 40px);
   color: var(--bc-text);
   color-scheme: dark;
-  background:
-    radial-gradient(circle at 82% 4%, rgba(34, 65, 42, 0.38), transparent 32%),
-    linear-gradient(145deg, var(--bc-deepest) 0%, var(--bc-canvas) 45%, #0b110d 100%);
-  border: 1px solid #18231b;
+  background: #050907;
+  border: 0;
   border-radius: 24px;
-  box-shadow: var(--bc-shadow);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.38);
   font-family: inherit;
   overflow: visible;
 }
@@ -88,7 +86,7 @@ html {
   background-image: url("/public/assets/images/seed-vault-entry-profile-bg.png");
   background-position: center right;
   background-size: cover;
-  border: 1px solid var(--bc-border);
+  border: 1px solid #304036;
   border-radius: var(--bc-radius-lg);
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
 }
@@ -130,6 +128,10 @@ html {
   color: rgba(242, 245, 243, 0.76);
   font-size: 1rem;
   line-height: 1.55;
+}
+
+.germination-setup-preview__header > div > .grow-companion-page-identity__copy {
+  margin-bottom: 14px;
 }
 
 .germination-setup-preview__status {
@@ -216,6 +218,14 @@ html {
   font-weight: 720;
   letter-spacing: -0.015em;
   white-space: nowrap;
+}
+
+.germination-setup-preview > .germination-progress-preview__start {
+  margin-bottom: 8px;
+}
+
+.germination-setup-preview > .germination-progress-preview__start-status {
+  margin: 0 0 22px;
 }
 
 .germination-progress-preview {
@@ -344,6 +354,12 @@ html {
   background: linear-gradient(145deg, #142018, var(--bc-card) 62%);
 }
 
+.germination-setup-preview .botanical-panel {
+  background: var(--bc-card);
+  border-color: var(--bc-border);
+  box-shadow: none;
+}
+
 .botanical-panel__heading {
   display: flex;
   align-items: flex-start;
@@ -412,8 +428,9 @@ html {
 
 .germination-identity-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(150px, 0.8fr) minmax(220px, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  column-gap: clamp(16px, 1.5vw, 20px);
+  row-gap: 12px;
 }
 
 .germination-identity-fields label,
@@ -446,6 +463,7 @@ html {
 .germination-seed-entry__age select,
 .germination-seed-entry__identity input {
   width: 100%;
+  min-width: 0;
   min-height: 44px;
   padding: 10px 12px;
   color: var(--bc-text);
@@ -665,10 +683,13 @@ button.germination-kan-contents__row {
 
 .germination-kan-filter-paper {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 4px;
   width: min(100%, 608px);
   margin: 14px auto 0;
   padding: 12px 14px;
+  align-items: center;
   color: var(--bc-text);
   background: rgba(184, 255, 92, 0.08);
   border: 1px solid var(--bc-border-strong);
@@ -678,6 +699,57 @@ button.germination-kan-contents__row {
 
 .germination-kan-filter-paper span {
   color: var(--bc-muted);
+}
+
+.germination-kan-filter-paper > strong,
+.germination-kan-filter-paper > span:not(.germination-kan-filter-paper__icon) {
+  grid-column: 2;
+}
+
+.germination-kan-filter-paper__icon {
+  display: inline-flex;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 30px;
+  height: 30px;
+  padding: 5px;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+}
+
+.germination-kan-filter-paper__icon .command-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+.germination-kan-filter-paper
+  .germination-kan-filter-paper__icon
+  .filter-disc-base {
+  fill: rgba(255, 255, 255, 0.14);
+}
+
+.germination-kan-filter-paper
+  .germination-kan-filter-paper__icon
+  .filter-disc-rim {
+  stroke: rgba(255, 255, 255, 0.78);
+  stroke-width: 1;
+}
+
+.germination-kan-filter-paper
+  .germination-kan-filter-paper__icon
+  .filter-disc-detail {
+  stroke: rgba(255, 255, 255, 0.46);
+  stroke-width: 0.8;
+}
+
+.germination-kan-filter-paper
+  .germination-kan-filter-paper__icon
+  .filter-disc-core {
+  fill: rgba(255, 255, 255, 0.76);
 }
 
 .germination-method-change-notice {
@@ -978,6 +1050,16 @@ button.germination-kan-contents__row {
   transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
 }
 
+.germination-seed-entry--manual:has(.partition-identity-suggestions:not([hidden])) {
+  position: relative;
+  z-index: 100;
+  overflow: visible;
+}
+
+.germination-seed-entry--manual .partition-identity-suggestions[hidden] {
+  display: none;
+}
+
 .germination-seed-entry:hover {
   transform: translateY(-1px);
   border-color: var(--bc-border-strong);
@@ -1043,7 +1125,7 @@ button.germination-kan-contents__row {
   border: 1px solid var(--bc-border);
   border-radius: 999px;
   font-size: 0.76rem;
-  font-weight: 720;
+  font-weight: 400;
 }
 
 .germination-entry-origin label:has(input:checked) {
@@ -1250,6 +1332,13 @@ button.germination-kan-contents__row {
   font-size: 0.68rem;
 }
 
+.germination-vault-picker__helper {
+  margin: 0;
+  color: var(--bc-muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
 .germination-entry-lineage-note {
   margin: 0 !important;
   color: var(--bc-muted);
@@ -1290,28 +1379,39 @@ button.germination-kan-contents__row {
 }
 
 .germination-seed-entry__topline .germination-entry-origin {
+  position: relative;
   display: grid;
   grid-column: 3;
   grid-row: 1;
-  grid-template-columns: repeat(2, minmax(0, 252px));
-  gap: 8px;
+  grid-template-columns: minmax(190px, 252px) minmax(120px, 170px);
+  row-gap: 0;
+  column-gap: 8px;
   min-width: 0;
-  padding: 0 0 0 8px;
-  align-items: stretch;
+  min-height: 34px;
+  padding: 0 0 0 120px;
+  align-items: center;
+  justify-content: start;
 }
 
 .germination-seed-entry__topline .germination-entry-origin legend {
-  grid-column: 1 / -1;
-  width: 100%;
-  margin: 0 0 4px;
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  width: auto;
+  margin: 0;
   color: var(--bc-text);
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 740;
-  line-height: 1.3;
+  line-height: 1.15;
+  transform: translateY(-50%);
+  white-space: nowrap;
 }
 
 .germination-seed-entry__topline .germination-entry-origin label {
   width: 100%;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 8px;
   white-space: nowrap;
 }
 
@@ -1435,6 +1535,20 @@ button.germination-kan-contents__row {
   margin-top: 0;
 }
 
+.germination-seed-entry__identity-row--manual
+  .germination-seed-entry__identity
+  > div
+  > label {
+  gap: 10px;
+}
+
+.germination-seed-entry__identity-row--manual
+  .germination-seed-entry__identity
+  > div
+  > small {
+  margin-top: 8px;
+}
+
 .germination-seed-entry__identity:has(> div > .germination-vault-picker:first-child) > .germination-seed-entry__leaf {
   top: 11px;
   left: 12px;
@@ -1538,6 +1652,32 @@ button.germination-kan-contents__row {
   border-bottom: 1px solid var(--bc-border);
 }
 
+.germination-seed-entry__age.germination-seed-entry__age--vault-linked {
+  grid-column: 1 / -1;
+  padding-left: 14px;
+}
+
+.germination-seed-entry__age--vault-linked.germination-seed-entry__age--paired {
+  grid-template-columns: minmax(0, 1.25fr) minmax(92px, 0.75fr);
+}
+
+.germination-seed-entry__quantity--vault-linked {
+  grid-column: 1 / -1;
+  padding: 0 14px 12px;
+}
+
+.germination-seed-entry__quantity--manual {
+  padding: 10px 14px 14px;
+  background: var(--bc-card);
+  border-bottom: 1px solid var(--bc-border);
+}
+
+.germination-seed-entry__quantity--vault-pending {
+  padding: 8px 14px 12px;
+  background: var(--bc-card);
+  border-bottom: 1px solid var(--bc-border);
+}
+
 .germination-seed-entry__details > .germination-entry-field--source {
   grid-column: span 2;
 }
@@ -1568,6 +1708,124 @@ button.germination-kan-contents__row {
 
   .germination-seed-entry__details > .germination-entry-field--source {
     grid-column: auto;
+  }
+
+  .germination-seed-entry--manual
+    > .germination-seed-entry__details {
+    padding-right: 14px;
+  }
+
+  .germination-seed-entry--manual
+    > .germination-seed-entry__details
+    > .germination-entry-field--source {
+    grid-column: span 2;
+  }
+
+  .germination-seed-entry--vault-pending {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .germination-seed-entry--vault-pending
+    > :not(
+      .germination-seed-entry__age--vault-pending,
+      .germination-seed-entry__quantity--vault-pending
+    ) {
+    grid-column: 1 / -1;
+  }
+
+  .germination-seed-entry--vault-pending
+    > .germination-seed-entry__age--vault-pending {
+    grid-column: 1;
+    grid-template-columns: 180px;
+    padding: 10px 10px 10px 14px;
+    justify-content: start;
+    border-top: 1px solid var(--bc-border);
+  }
+
+  .germination-seed-entry--vault-pending
+    > .germination-seed-entry__age--vault-pending.germination-seed-entry__age--paired {
+    grid-template-columns: 180px 190px;
+  }
+
+  .germination-seed-entry--vault-pending
+    > .germination-seed-entry__quantity--vault-pending {
+    grid-column: 2;
+    align-self: stretch;
+    padding: 10px 14px 10px 0;
+    background: var(--bc-card);
+    border-top: 1px solid var(--bc-border);
+    border-bottom: 1px solid var(--bc-border);
+  }
+
+  .germination-seed-entry--vault-pending
+    > .germination-seed-entry__quantity--vault-pending
+    > div {
+    align-self: flex-end;
+  }
+
+  .germination-seed-entry--vault-pending
+    > .germination-seed-entry__validation:empty {
+    min-height: 0;
+    padding-block: 0;
+  }
+
+  .germination-seed-entry:has(
+      > .germination-seed-entry__age--vault-linked
+        + .germination-seed-entry__quantity--vault-linked
+    ) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .germination-seed-entry:has(
+      > .germination-seed-entry__age--vault-linked
+        + .germination-seed-entry__quantity--vault-linked
+    )
+    > :not(
+      .germination-seed-entry__age--vault-linked,
+      .germination-seed-entry__quantity--vault-linked
+    ) {
+    grid-column: 1 / -1;
+  }
+
+  .germination-seed-entry
+    > .germination-seed-entry__age--vault-linked {
+    grid-column: 1;
+    grid-template-columns: 180px;
+    min-width: 0;
+    padding-right: 10px;
+    justify-content: start;
+  }
+
+  .germination-seed-entry
+    > .germination-seed-entry__age--vault-linked.germination-seed-entry__age--paired {
+    grid-template-columns: 180px 190px;
+  }
+
+  .germination-seed-entry
+    > .germination-seed-entry__quantity--vault-linked {
+    grid-column: 2;
+    align-self: stretch;
+    padding: 10px 14px 10px 0;
+    background: var(--bc-card);
+    border-top: 1px solid var(--bc-border);
+    border-bottom: 1px solid var(--bc-border);
+  }
+
+  .germination-seed-entry
+    > .germination-seed-entry__quantity--vault-linked
+    > div {
+    align-self: flex-end;
+  }
+
+  .germination-seed-entry:has(
+      > .germination-seed-entry__age--vault-linked
+        + .germination-seed-entry__quantity--vault-linked
+    )
+    > .germination-seed-entry__validation:empty {
+    min-height: 0;
+    padding-block: 0;
   }
 }
 
@@ -2352,7 +2610,8 @@ button.germination-kan-contents__row {
 
   .germination-seed-entry__topline {
     grid-template-columns: 38px minmax(0, 1fr);
-    gap: 16px 8px;
+    row-gap: 12px;
+    column-gap: 8px;
     align-items: start;
     padding: 14px;
   }
@@ -2388,16 +2647,37 @@ button.germination-kan-contents__row {
   }
 
   .germination-seed-entry__topline .germination-entry-origin {
+    position: static;
     display: grid;
     grid-column: 1 / -1;
     grid-row: 2;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 5px;
+    column-gap: 5px;
+    min-height: 0;
     padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
   }
 
   .germination-seed-entry__topline .germination-entry-origin legend {
+    position: static;
+    grid-column: 1 / -1;
+    top: auto;
+    left: auto;
     width: 100%;
-    margin: 0 0 4px;
+    margin: 0 0 6px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    transform: none;
+  }
+
+  .germination-seed-entry__topline .germination-entry-origin label {
+    min-height: 42px;
+    padding: 4px 6px;
+    font-size: 0.72rem;
+    line-height: 1.15;
+    white-space: normal;
   }
 
   .germination-seed-entry__identity-row {
@@ -2430,6 +2710,31 @@ button.germination-kan-contents__row {
   .germination-seed-entry__age {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 10px 14px;
+  }
+
+  .germination-seed-entry__age--vault-linked.germination-seed-entry__age--paired {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .germination-seed-entry__age--vault-linked.germination-seed-entry__age--paired
+    select[data-germination-entry-field="ageReferenceKind"] {
+    padding-left: 8px;
+    padding-right: 26px;
+  }
+
+  .germination-seed-entry__age--vault-linked.germination-seed-entry__age--paired
+    > label
+    > span {
+    display: flex;
+    min-height: 2.5em;
+    align-items: flex-end;
+    line-height: 1.25;
+  }
+
+  .germination-seed-entry__quantity--vault-linked {
+    padding-top: 8px;
   }
 
   .germination-seed-entry__details > .germination-entry-field--source {
@@ -96535,7 +96840,10 @@ img.person-profile-avatar {
   margin: 0;
 }
 
-.grow-companion-page-identity h1 {
+.grow-companion-page-identity h1,
+.grow-companion-page-identity__title {
+  display: block;
+  margin: 0;
   color: #f2f6f2;
   font-size: clamp(1.55rem, 2.4vw, 2rem);
   font-weight: 760;

@@ -184,6 +184,7 @@ const DEVELOPER_SCENARIOS_DEFAULT_ENABLED = false;
 const DEVELOPER_SCENARIO_WRITE_MESSAGE = "Preview Studio data is preview-only and cannot be saved or published.";
 const DEVELOPER_SCENARIO_MODES = Object.freeze({ LIVE: "live", UNIFIED: "unified", MIXED: "mixed" });
 const DEVELOPER_UNIFIED_SCENARIO_ID = "full-grow-demo";
+const DEVELOPER_GERMINATION_SETUP_REVIEW_ROUTE = "new/germination-setup-preview";
 const DEVELOPER_SCENARIO_MODULES = Object.freeze(["seedVault", "sessions", "profile", "community", "explore"]);
 const DEVELOPER_SCENARIO_OPTIONS = Object.freeze({
   seedVault: Object.freeze([
@@ -563,6 +564,7 @@ const PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT = 6;
 const PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS = 2;
 const SOURCE_DIRECTORY_AUTOCOMPLETE_LIMIT = 10;
 const SOURCE_DIRECTORY_AUTOCOMPLETE_MIN_CHARS = 2;
+const SOURCE_DIRECTORY_BREEDER_TYPES = Object.freeze(["breeder", "autoflower_breeder", "legacy_breeder"]);
 const SOURCE_DIRECTORY_FALLBACK_ROWS = Object.freeze([
   { name: "Poppin Fire Genetics", aliases: ["Poppin Fire", "Poppin Fire Seeds"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
   { name: "Good Genetix", aliases: ["Good Genetics"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
@@ -10159,6 +10161,22 @@ function normalizeDeveloperScenarioMode(value = DEVELOPER_SCENARIO_MODES.LIVE) {
   return DEVELOPER_SCENARIO_MODES.LIVE;
 }
 
+function isPreparedGerminationSetupReviewRoute() {
+  return isApprovedDeveloperScenariosEnvironment()
+    && getCurrentAppRawRoute() === DEVELOPER_GERMINATION_SETUP_REVIEW_ROUTE;
+}
+
+function applyPreparedPreviewStudioReviewScenario() {
+  if (!isPreparedGerminationSetupReviewRoute()) return false;
+  appState.developerScenariosEnabled = true;
+  appState.developerScenarioMode = DEVELOPER_SCENARIO_MODES.MIXED;
+  appState.developerUnifiedScenario = DEVELOPER_UNIFIED_SCENARIO_ID;
+  appState.developerScenarioSelections = {
+    ...getDefaultDeveloperScenarioSelections({ previewDefaults: true }),
+  };
+  return true;
+}
+
 function getDeveloperScenarioControlMode() {
   if (appState.developerScenariosEnabled !== true) {
     return DEVELOPER_SCENARIO_MODES.LIVE;
@@ -10211,6 +10229,7 @@ function readDeveloperScenariosState({ force = false } = {}) {
     return;
   }
   if (appState.developerScenariosStateLoaded && !force) {
+    applyPreparedPreviewStudioReviewScenario();
     return;
   }
   appState.developerScenariosStateLoaded = true;
@@ -10237,6 +10256,7 @@ function readDeveloperScenariosState({ force = false } = {}) {
     try { localStorage.removeItem(DEVELOPER_SCENARIOS_STORAGE_KEY); } catch {}
     console.warn("[Developer Scenarios] Ignored malformed local preference.", error);
   }
+  applyPreparedPreviewStudioReviewScenario();
 }
 
 function persistDeveloperScenariosState() {
@@ -11456,13 +11476,18 @@ function getSourceDirectorySuggestionReason(suggestion = {}) {
   return parts.join(" · ") || "Source Explorer";
 }
 
-function getSourceDirectorySuggestions(query = "") {
+function getSourceDirectorySuggestions(query = "", { sourceTypes = null } = {}) {
   const normalizedQuery = normalizeSourceDirectoryText(query);
   if (normalizedQuery.length < SOURCE_DIRECTORY_AUTOCOMPLETE_MIN_CHARS) {
     return [];
   }
 
+  const permittedSourceTypes = Array.isArray(sourceTypes) && sourceTypes.length
+    ? new Set(sourceTypes.map((sourceType) => String(sourceType || "").trim().toLowerCase()).filter(Boolean))
+    : null;
+
   return getSourceDirectoryAutocompleteEntries()
+    .filter((entry) => !permittedSourceTypes || permittedSourceTypes.has(String(entry.sourceType || "").trim().toLowerCase()))
     .map((entry) => {
       const values = getSourceDirectoryEntrySearchValues(entry);
       let bestMatch = null;
@@ -88527,12 +88552,16 @@ function buildConnectedGerminationSetupState(savedSetup = null, vaultEntries = [
 
 function renderConnectedGerminationSetupLoading(message = "Loading your Germination Setup…") {
   app.innerHTML = `
-    <section class="germination-setup-preview" data-germination-setup-preview data-preview-state="incomplete">
-      <header class="germination-setup-preview__header">
-        <div><h1>Germination Setup</h1><p>Add the seeds for this Session and review their setup details.</p></div>
-        <p class="germination-setup-preview__status" role="status">${escapeHtml(message)}</p>
-      </header>
-    </section>
+      <section class="germination-setup-preview" data-germination-setup-preview data-preview-state="incomplete">
+        <header class="germination-setup-preview__header">
+          <div>
+            ${renderGrowCompanionIdentityCopyMarkup({ pageTitle: false })}
+            <h1>Germination Setup</h1>
+            <p>Add the seeds for this Session and review their setup details.</p>
+          </div>
+          <p class="germination-setup-preview__status" role="status">${escapeHtml(message)}</p>
+        </header>
+      </section>
   `;
 }
 
@@ -88650,13 +88679,14 @@ function renderGerminationSetupFounderPreview(options = {}) {
   `).join("");
 
   app.innerHTML = `
-    <section class="germination-setup-preview" data-germination-setup-preview data-preview-state="ready">
-      <header class="germination-setup-preview__header">
-        <div>
-          <h1>Germination Setup</h1>
-          <p>Add the seeds for this Session and review their setup details.</p>
-        </div>
-        <p class="germination-setup-preview__status" role="status">
+      <section class="germination-setup-preview" data-germination-setup-preview data-preview-state="ready">
+        <header class="germination-setup-preview__header">
+          <div>
+            ${renderGrowCompanionIdentityCopyMarkup({ pageTitle: false })}
+            <h1>Germination Setup</h1>
+            <p>Add the seeds for this Session and review their setup details.</p>
+          </div>
+          <p class="germination-setup-preview__status" role="status">
           ${connected ? "" : '<span aria-hidden="true">&lt;/&gt;</span>'}
           <span data-germination-connection-status>${connected
             ? (initialState.persisted ? "Saved setup · Germination has not started." : "Setup draft · Not saved")
@@ -88666,19 +88696,16 @@ function renderGerminationSetupFounderPreview(options = {}) {
 
       ${renderBotanicalPhaseTimelineMarkup()}
 
-      ${renderGerminationProgressPreviewMarkup({
-        description: connected && initialState.persisted ? "Setup saved · Germination has not started." : "Setup draft · Germination has not started.",
-        afterRailMarkup: connected && initialState.persisted ? `
-          <div class="germination-progress-preview__start">
-            <div>
-              <strong>Ready to begin?</strong>
-              <span>Start the active Germination workspace when the seeds are in place.</span>
-            </div>
-            <button type="button" class="botanical-primary-action" data-germination-begin>Begin Germination</button>
+      ${connected && initialState.persisted ? `
+        <div class="germination-progress-preview__start">
+          <div>
+            <strong>Ready to begin?</strong>
+            <span>Start the active Germination workspace when the seeds are in place.</span>
           </div>
-          <p class="germination-progress-preview__start-status" data-germination-begin-status role="status" aria-live="polite"></p>
-        ` : "",
-      })}
+          <button type="button" class="botanical-primary-action" data-germination-begin>Begin Germination</button>
+        </div>
+        <p class="germination-progress-preview__start-status" data-germination-begin-status role="status" aria-live="polite"></p>
+      ` : ""}
 
       <div class="germination-setup-preview__layout">
         <main class="germination-setup-preview__main">
@@ -89224,6 +89251,7 @@ function renderGerminationSetupFounderPreview(options = {}) {
         </div>
       </div>
       <div class="germination-kan-filter-paper" data-germination-kan-filter-paper>
+        ${renderCommandCenterIconMarkup("filter-paper", "command-icon--supply germination-kan-filter-paper__icon")}
         <strong>Filter paper required at Germination start: 1</strong>
         <span>Nothing is deducted while this setup remains a draft.</span>
       </div>
@@ -89301,6 +89329,7 @@ function renderGerminationSetupFounderPreview(options = {}) {
               `;
             }).join("") : '<p>No readable Vault records match this search.</p>'}
           </div>
+          ${!entry.vaultEntryId ? '<p class="germination-vault-picker__helper">Choose a record to autofill variety, source, breeder, type, sex, age, and available quantity.</p>' : ""}
         ` : ""}
       </div>
     `;
@@ -89330,6 +89359,7 @@ function renderGerminationSetupFounderPreview(options = {}) {
       const isManual = entry.referenceType === "manual";
       const hasOrigin = isVault || isManual;
       const hasVaultSelection = isVault && Boolean(entry.vaultEntryId);
+      const isPendingVault = isVault && !hasVaultSelection;
       const vaultAge = getEntryVaultAge(entry);
       const effectiveAge = getEntryAge(entry);
       const seedTypePrompt = entry.seedType === "unknown" && entry.emptyStatePrompts?.seedType === true;
@@ -89363,10 +89393,10 @@ function renderGerminationSetupFounderPreview(options = {}) {
           </label>
           ${ageValueControl}`;
       const evidenceFieldsMarkup = isVault
-        ? (hasVaultSelection ? "" : '<div class="germination-vault-autofill-pending"><span>Vault details</span><strong>Choose a record to autofill variety, source, breeder, type, sex, age, and available quantity.</strong></div>')
+        ? ""
         : isManual ? `
-            <label class="germination-entry-field--source"><span>Source</span><input type="text" value="${escapeHtml(entry.source)}" placeholder="Select" data-germination-entry-field="source"></label>
-            <label class="germination-entry-field--source"><span>Breeder</span><input type="text" value="${escapeHtml(entry.breeder)}" placeholder="Select" data-germination-entry-field="breeder"></label>
+            <label class="germination-entry-field--source partition-identity-field" data-source-directory-autocomplete="true"><span>Source</span><input type="text" value="${escapeHtml(entry.source)}" placeholder="Select" autocomplete="off" data-source-directory-input="true" data-germination-entry-field="source" aria-autocomplete="list"><div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div></label>
+            <label class="germination-entry-field--source partition-identity-field" data-source-directory-autocomplete="true" data-source-directory-kind="breeder"><span>Breeder</span><input type="text" value="${escapeHtml(entry.breeder)}" placeholder="Select" autocomplete="off" data-source-directory-input="true" data-germination-entry-field="breeder" aria-autocomplete="list"><div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div></label>
             <label>
               <span>Type</span>
               <select data-germination-entry-field="seedType">
@@ -89390,8 +89420,19 @@ function renderGerminationSetupFounderPreview(options = {}) {
             </label>
           ` : "";
       const detailsMarkup = `${renderStructureControl(entry)}${evidenceFieldsMarkup}`;
+      const quantityControlMarkup = isSingleQuantity ? "" : `<div class="germination-seed-entry__quantity${hasVaultSelection ? " germination-seed-entry__quantity--vault-linked" : isPendingVault ? " germination-seed-entry__quantity--vault-pending" : isManual ? " germination-seed-entry__quantity--manual" : ""}">
+              <span>Quantity</span>
+              <div>
+                    <button type="button" data-germination-quantity="decrease" aria-label="Decrease ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${entry.quantity <= 1 ? " disabled" : ""}>−</button>
+                    <strong>${entry.quantity}</strong>
+                    <button type="button" data-germination-quantity="increase" aria-label="Increase ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${cannotIncrease ? " disabled" : ""}>+</button>
+              </div>
+            </div>`;
+      const ageControlSectionMarkup = ageControlMarkup
+        ? `<div class="germination-seed-entry__age${hasVaultSelection ? ` germination-seed-entry__age--vault-linked${ageValueControl ? " germination-seed-entry__age--paired" : ""}` : isPendingVault ? ` germination-seed-entry__age--vault-pending${ageValueControl ? " germination-seed-entry__age--paired" : ""}` : ""}">${ageControlMarkup}</div>`
+        : "";
       return `
-        <article class="germination-seed-entry${isSelected ? " is-selected" : ""}${state.reviewAttempted && entryValidations.length ? " is-invalid" : ""}" data-germination-entry="${escapeHtml(entry.id)}" tabindex="-1" aria-labelledby="${escapeHtml(entryHeadingId)}">
+        <article class="germination-seed-entry${isManual ? " germination-seed-entry--manual" : ""}${isPendingVault ? " germination-seed-entry--vault-pending" : ""}${isSelected ? " is-selected" : ""}${state.reviewAttempted && entryValidations.length ? " is-invalid" : ""}" data-germination-entry="${escapeHtml(entry.id)}" tabindex="-1" aria-labelledby="${escapeHtml(entryHeadingId)}">
           <div class="germination-seed-entry__topline${isSingleQuantity ? " germination-seed-entry__topline--fixed" : ""}${hasVaultSelection ? " germination-seed-entry__topline--linked" : ""}">
             <button type="button" class="germination-seed-entry__selector" data-germination-entry-select="${escapeHtml(entry.id)}" aria-pressed="${isSelected}" aria-label="Focus ${escapeHtml(entryHeading)}">
               <span aria-hidden="true"></span>
@@ -89406,7 +89447,7 @@ function renderGerminationSetupFounderPreview(options = {}) {
             </fieldset>
             <button type="button" class="germination-seed-entry__remove" data-germination-remove-entry aria-label="Remove ${escapeHtml(entryHeading)}">×</button>
           </div>
-          <div class="germination-seed-entry__identity-row">
+          <div class="germination-seed-entry__identity-row${isManual ? " germination-seed-entry__identity-row--manual" : ""}">
             <div class="germination-seed-entry__identity">
               <span class="germination-seed-entry__leaf" aria-hidden="true">${renderBotanicalCarbonPhaseIconMarkup()}</span>
               <div>
@@ -89415,23 +89456,21 @@ function renderGerminationSetupFounderPreview(options = {}) {
                     ? renderVaultOriginControl(entry)
                     : `<strong>Choose from My Seed Vault</strong><small>Choose from My Seed Vault</small>${renderVaultOriginControl(entry)}`
                   : isManual
-                    ? `<label><span>Variety</span><input type="text" value="${escapeHtml(entry.variety)}" placeholder="Seed variety" data-germination-entry-field="variety"></label>`
+                    ? `<label class="partition-identity-field" data-variety-directory-autocomplete="true"><span>Variety</span><input type="text" value="${escapeHtml(entry.variety)}" placeholder="Seed variety" autocomplete="off" data-variety-directory-input="true" data-germination-entry-field="variety" aria-autocomplete="list"><div class="partition-identity-suggestions" data-variety-directory-suggestions hidden></div></label>`
                     : '<strong>Choose an origin</strong><small>Origin required</small>'}
                 ${isManual ? "<small>Enter manually</small>" : ""}
               </div>
             </div>
-            ${isSingleQuantity ? "" : `<div class="germination-seed-entry__quantity">
-              <span>Quantity</span>
-              <div>
-                    <button type="button" data-germination-quantity="decrease" aria-label="Decrease ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${entry.quantity <= 1 ? " disabled" : ""}>−</button>
-                    <strong>${entry.quantity}</strong>
-                    <button type="button" data-germination-quantity="increase" aria-label="Increase ${escapeHtml(entry.variety || `Seed Entry ${index + 1}`)} quantity"${cannotIncrease ? " disabled" : ""}>+</button>
-              </div>
-            </div>`}
+            ${hasVaultSelection || isPendingVault || isManual ? "" : quantityControlMarkup}
           </div>
+          ${isManual
+            ? detailsMarkup || ageControlMarkup
+              ? `<div class="germination-seed-entry__details">${detailsMarkup}${ageControlMarkup}</div>`
+              : ""
+            : detailsMarkup ? `<div class="germination-seed-entry__details">${detailsMarkup}</div>` : ""}
+          ${isManual ? "" : ageControlSectionMarkup}
+          ${hasVaultSelection || isPendingVault || isManual ? quantityControlMarkup : ""}
           ${isManual ? '<p class="germination-entry-lineage-note germination-entry-lineage-note--manual">Retained evidence is now manually controlled. No Seed Vault relationship remains, and this entry has no Vault inventory effect.</p>' : ""}
-          ${detailsMarkup ? `<div class="germination-seed-entry__details">${detailsMarkup}</div>` : ""}
-          ${ageControlMarkup ? `<div class="germination-seed-entry__age">${ageControlMarkup}</div>` : ""}
           ${isManual ? `<div class="germination-seed-entry__evidence">
             <span>Added for this Session</span>
             <strong>${escapeHtml(getEntryEvidenceLabel(getEntryAge(entry)))}</strong>
@@ -89441,6 +89480,8 @@ function renderGerminationSetupFounderPreview(options = {}) {
         </article>
       `;
     }).join("");
+    initializeSourceDirectoryAutocompletes(entryList);
+    initializeVarietyDirectoryAutocompletes(entryList);
     renderMethodStructure();
   };
 
@@ -92215,6 +92256,12 @@ function syncSourceDirectoryInputMatch(input) {
   input.dataset.reviewCandidateName = match.reviewCandidateName;
 }
 
+function getSourceDirectorySuggestionsForField(field, query = "") {
+  return getSourceDirectorySuggestions(query, {
+    sourceTypes: field?.dataset.sourceDirectoryKind === "breeder" ? SOURCE_DIRECTORY_BREEDER_TYPES : null,
+  });
+}
+
 function renderSourceDirectorySuggestions(field) {
   if (!(field instanceof HTMLElement)) {
     return;
@@ -92227,7 +92274,7 @@ function renderSourceDirectorySuggestions(field) {
     return;
   }
 
-  const suggestions = getSourceDirectorySuggestions(input.value);
+  const suggestions = getSourceDirectorySuggestionsForField(field, input.value);
   if (!suggestions.length) {
     closeSourceDirectorySuggestions(field);
     return;
@@ -92311,7 +92358,7 @@ function initializeSourceDirectoryAutocompletes(scope) {
       window.setTimeout(() => closeSourceDirectorySuggestions(field), 120);
     });
     input.addEventListener("keydown", (event) => {
-      const suggestions = getSourceDirectorySuggestions(input.value);
+      const suggestions = getSourceDirectorySuggestionsForField(field, input.value);
       if (!suggestions.length) {
         return;
       }
@@ -92342,7 +92389,7 @@ function initializeSourceDirectoryAutocompletes(scope) {
       if (!(button instanceof HTMLButtonElement)) {
         return;
       }
-      const suggestions = getSourceDirectorySuggestions(input.value);
+      const suggestions = getSourceDirectorySuggestionsForField(field, input.value);
       const suggestion = suggestions[Number(button.dataset.sourceDirectorySuggestionIndex) || 0];
       applySourceDirectorySuggestion(input, suggestion);
     });
@@ -99034,15 +99081,25 @@ function getGrowCompanionPageContextLabel(session = null) {
   return `Active ${lifecycle.currentPhase.label}${dayLabel ? ` · ${dayLabel}` : ""}`;
 }
 
-function renderGrowCompanionPageIdentityMarkup(session = null) {
+function renderGrowCompanionIdentityCopyMarkup(options = {}) {
+  const pageTitle = options.pageTitle !== false;
+  const titleMarkup = pageTitle
+    ? '<h1 id="grow-companion-page-title">Grow Companion</h1>'
+    : '<strong class="grow-companion-page-identity__title">Grow Companion</strong>';
   return `
     <div class="grow-companion-page-identity__copy">
       <span class="grow-companion-page-identity__icon" aria-hidden="true">${renderAppIconSvgMarkup("seedSprout")}</span>
       <div>
-        <h1 id="grow-companion-page-title">Grow Companion</h1>
+        ${titleMarkup}
         <p>Your guided workspace from germination through reflection.</p>
       </div>
     </div>
+  `;
+}
+
+function renderGrowCompanionPageIdentityMarkup(session = null) {
+  return `
+    ${renderGrowCompanionIdentityCopyMarkup()}
     <p class="grow-companion-page-identity__context" data-grow-companion-page-context>${escapeHtml(getGrowCompanionPageContextLabel(session))}</p>
   `;
 }
