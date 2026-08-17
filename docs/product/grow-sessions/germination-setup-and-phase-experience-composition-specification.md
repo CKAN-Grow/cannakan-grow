@@ -744,7 +744,17 @@ method-specific action or Germination completion.
 
 ## 12. Notes, Photos, Documents, Snapshot, and Sharing
 
-### 12.1 Notes
+### 12.1 Session Journal and Notes
+
+The Session Journal is always the grower's private record for notes,
+observations, Session images, progress, and growing documentation. Its
+canonical privacy concept is **Private to you**. Journal records do not become
+public directly, and the Journal supplies no public/private toggle.
+
+Intentional sharing occurs only through the optional Snapshot and sharing
+experience. A Snapshot may use selected eligible Session content, but sharing
+the Snapshot does not change the privacy or ownership of the underlying
+Journal record. The original Journal remains private.
 
 Private Session Notes remain intentionally authored narrative owned by Notes.
 They are available through Notes and may be contextually previewed only when
@@ -805,9 +815,21 @@ The grower deliberately selects authorized existing images and public-safe
 fields. Private Notes are excluded by default. Any public grow caption is a
 separate intentionally public value, not an implicit copy of private Notes.
 
+Completing Germination preserves useful Source, Variety, germination result,
+and germination performance information. Sharing a Germination Snapshot may
+optionally contribute selected Germination insight to Community, but sharing
+is never required for completion.
+
 ### 12.5 Destination choices
 
-The optional sharing step preserves three explicit choices:
+Only Germination Snapshot content is eligible for in-app Community sharing.
+An image selected for a Community Snapshot must come from the Germination
+portion of that Session. Sharing reuses the existing Session image reference;
+it does not convert the Journal image into a public Journal record or require a
+duplicate stored image.
+
+For eligible Germination content, the optional sharing step preserves three
+explicit choices:
 
 1. **Social + Community Grow** — prepare an external-share result and submit a
    separately authorized Community contribution;
@@ -817,6 +839,13 @@ The optional sharing step preserves three explicit choices:
    without claiming a Community submission.
 
 No destination is preselected. Generation alone shares nothing.
+
+Growing may continue to be documented privately in the Session Journal.
+Growing content is not eligible for Grow Community, and the Community Grow and
+Social + Community Grow destinations are unavailable for non-Germination
+content. Where the established external sharing path supports it, a grower may
+still choose Social only for Growing content. This rule creates no general
+in-app grow social feed and no new external social integration.
 
 Community participation requires:
 
@@ -1250,6 +1279,11 @@ CS-GS-001 itself is not implementation-ready authority.
     reconciliation required remain distinct.
 24. Product owns no canonical persistence or analytical formula.
 25. Presentation remains replaceable and retains meaningful design freedom.
+26. The Session Journal remains private; Snapshot is the intentional sharing
+    boundary and never changes the underlying Journal record's privacy.
+27. Grow Community accepts only eligible Germination Snapshot content;
+    Growing remains private in Grow and may use only an established external
+    sharing path where supported.
 
 ## 21. Review Acceptance Criteria
 

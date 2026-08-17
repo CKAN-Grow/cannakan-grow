@@ -59,24 +59,13 @@ At this checkpoint:
 
 `Current Conditions: published and closed.`
 
-`Next Grow capability: Germination Setup, Evidence & Inventory.`
+Founder-authorized Grow work may proceed when it is explicitly bounded by the
+current task prompt. The current task prompt defines the permitted product
+scope. Work must not expand beyond that scope.
 
-The approved Germination Setup frontend checkpoint is complete, committed, and
-pushed at `8fa68c8997fe26a4cd89292fee2c7f80316ced65`. The committed frontend is the
-approved grower-facing interface contract. The complete Germination Setup
-capability remains open.
-
-`Next eligible action: minimum Germination Setup backend implementation and
-focused local verification under FN-008 and the approved frontend contract.`
-
-That backend task must stop for founder review with all task changes unstaged
-and uncommitted. A subsequent explicit backend implementation prompt
-constitutes the authorization required to begin that work. No additional
-architecture, foundation, governance, repository-adoption, or approval
-prerequisite is required before the authorized backend implementation and
-focused local verification.
-
-This checkpoint does not itself authorize backend implementation without that
-subsequent explicit prompt; connected or hosted database access; hosted SQL or
-migration execution; restoration work; commit or push of backend changes;
-deployment; production activity; or removal of any existing hold.
+A bounded task prompt does not itself authorize connected or hosted database
+access; hosted SQL or migration execution; restoration work; staging, commit,
+or push; deployment; production activity; or removal of any existing hold.
+Each of those actions requires separate explicit founder authorization within
+the current task prompt and remains subject to all other repository safety
+instructions above.

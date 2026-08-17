@@ -86,6 +86,7 @@ const AUTH_NAVIGATION_KEYS = [
   "cannakan-grow-last-session-route",
 ];
 const MAX_SESSION_IMAGES = 3;
+const MAX_SESSION_JOURNAL_IMAGES = 18;
 const SESSION_JOURNAL_NOTE_MAX_LENGTH = 2000;
 const SESSION_JOURNAL_IMAGE_URL_TTL_SECONDS = 60 * 60;
 const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
@@ -30879,6 +30880,7 @@ async function uploadSessionImageFile(sessionId, file, metadata = {}) {
     ...(metadata.phaseKey ? { phaseKey: metadata.phaseKey } : {}),
     ...(metadata.phaseLabel ? { phaseLabel: metadata.phaseLabel } : {}),
     ...(metadata.dayLabel ? { dayLabel: metadata.dayLabel } : {}),
+    ...(metadata.journalEntryId ? { journalEntryId: metadata.journalEntryId } : {}),
     ...(isPrivateJournalImage ? { privateJournal: true } : {}),
   };
 }
@@ -32198,6 +32200,7 @@ function normalizePersistedSessionImages(images) {
       const phaseKey = String(image?.phaseKey || image?.phase_key || "").trim();
       const phaseLabel = String(image?.phaseLabel || image?.phase_label || "").trim();
       const dayLabel = String(image?.dayLabel || image?.day_label || "").trim();
+      const journalEntryId = String(image?.journalEntryId || image?.journal_entry_id || "").trim();
 
       if (!url && !path) {
         return null;
@@ -32213,6 +32216,7 @@ function normalizePersistedSessionImages(images) {
         ...(phaseKey ? { phaseKey } : {}),
         ...(phaseLabel ? { phaseLabel } : {}),
         ...(dayLabel ? { dayLabel } : {}),
+        ...(journalEntryId ? { journalEntryId } : {}),
         ...(privateJournal ? { privateJournal: true } : {}),
       };
     })
@@ -35587,6 +35591,13 @@ const APP_ICON_LIBRARY = Object.freeze({
     <path d="M12 14V8.5"></path>
     <path d="m9.5 11 2.5-2.5 2.5 2.5"></path>
     <path d="M7 18.5h10"></path>
+  `,
+  photoPlus: `
+    <rect x="3.5" y="5.5" width="13.5" height="13" rx="2.25"></rect>
+    <circle cx="8" cy="9.5" r="1.35"></circle>
+    <path d="m5.5 16 3.15-3.2 2.65 2.45 1.7-1.7 4 3.7"></path>
+    <path d="M19.5 7.5v6"></path>
+    <path d="M16.5 10.5h6"></path>
   `,
   filter: `
     <path d="M4.5 6h15l-6 7v4.5l-3 1V13Z"></path>
@@ -40734,7 +40745,10 @@ function ensureSessionImageLightboxModal() {
     showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) + 1);
   });
   modal.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowLeft") {
+    if (event.key === "Escape" && modal.classList.contains("session-image-lightbox-modal--journal")) {
+      event.preventDefault();
+      closeLightbox();
+    } else if (event.key === "ArrowLeft") {
       event.preventDefault();
       showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) - 1);
     } else if (event.key === "ArrowRight") {
@@ -40811,13 +40825,19 @@ function showSessionImageLightboxIndex(modal, requestedIndex = 0) {
   });
 }
 
-function openSessionImageLightbox(state, requestedIndex = 0) {
+function openSessionImageLightbox(state, requestedIndex = 0, options = {}) {
   const images = getSessionImageLightboxEntries(state);
   if (!images.length) {
     return;
   }
 
   const modal = ensureSessionImageLightboxModal();
+  const journalPreview = options.variant === "journal-preview";
+  modal.classList.toggle("session-image-lightbox-modal--journal", journalPreview);
+  const caption = modal.querySelector(".session-image-lightbox-caption");
+  if (caption instanceof HTMLElement) {
+    caption.hidden = journalPreview;
+  }
   modal.__sessionImageLightboxEntries = images;
   showSessionImageLightboxIndex(modal, requestedIndex);
   document.body.classList.add("modal-open");
@@ -43165,14 +43185,15 @@ async function buildSessionSnapshotBlob(data, imageSource = "") {
     throw new Error("Choose a Snapshot image before continuing.");
   }
 
-  const [image, brandLogo] = await Promise.all([
+  const [image, brandLogo, profileAvatar] = await Promise.all([
     loadSnapshotImage(imageSource),
     loadSnapshotBrandLogo(),
+    loadSnapshotProfileAvatar(data?.profileAttribution?.imageUrl || ""),
   ]);
   drawGrowSnapshotContainedImage(context, image, 0, 0, imageWidth, imageHeight);
   drawGrowSnapshotPercentageBadge(context, data, imageWidth - 38, 38);
   drawGrowSnapshotImageBranding(context, brandLogo, 0, 0, imageWidth, imageHeight);
-  drawGrowSnapshotInformationBand(context, data, 0, imageHeight, width, height - imageHeight);
+  drawGrowSnapshotInformationBand(context, data, 0, imageHeight, width, height - imageHeight, profileAvatar);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -44023,14 +44044,36 @@ async function shareSnapshotBlob(blob, fileName, text) {
 function getGrowSnapshotCandidateImages(root = null, session = null) {
   const controller = root ? growCompanionActivityControllers.get(root) : null;
   const images = controller ? getSessionJournalImages(controller) : getEffectiveSessionImages(session);
+  const sessionPhaseKey = getSessionJournalContext(session).phaseKey;
   return (images || []).slice(0, MAX_SESSION_IMAGES).map((image, index) => ({
     ...image,
     key: String(image.id || image.path || image.url || `session-image-${index + 1}`),
+    phaseKey: String(image.phaseKey || image.phase_key || sessionPhaseKey).trim(),
     displayUrl: controller
       ? getSessionJournalImageSource(controller, image)
       : String(image.previewUrl || image.url || "").trim(),
     label: String(image.filename || image.name || `Session image ${index + 1}`).trim(),
   })).filter((image) => image.displayUrl);
+}
+
+function isGrowSnapshotCommunityDestination(destination = "") {
+  return ["community", "community-social"].includes(String(destination || "").trim());
+}
+
+function getGrowSnapshotSelectedImage(state = {}) {
+  return (state.images || []).find((image) => image.key === state.selectedImageKey) || null;
+}
+
+function isGrowSnapshotCommunityEligible(state = {}) {
+  if (String(state.phaseKey || "").trim() !== "germination") return false;
+  const selectedImage = getGrowSnapshotSelectedImage(state);
+  return !selectedImage || String(selectedImage.phaseKey || "").trim() === "germination";
+}
+
+function getGrowSnapshotCommunityRestrictionMessage(state = {}) {
+  return String(state.phaseKey || "").trim() === "germination"
+    ? "Grow Community requires an image from the Germination portion of this Session. Social sharing remains available."
+    : "Growing stays private in Grow unless you choose to share it externally.";
 }
 
 function getGrowSnapshotPublicProfileAttribution() {
@@ -44122,6 +44165,15 @@ function renderGrowSnapshotStepIndicatorMarkup(step = 1) {
   `;
 }
 
+function renderGrowSnapshotInlineStepMarkup(number = 1, active = false, content = "", className = "") {
+  return `
+    <section class="grow-snapshot-inline-step${active ? " is-active" : ""}${className ? ` ${className}` : ""}">
+      <span class="grow-snapshot-inline-step__number" aria-hidden="true">${number}</span>
+      <div class="grow-snapshot-inline-step__content">${content}</div>
+    </section>
+  `;
+}
+
 function renderGrowSnapshotCandidateMarkup(image = {}, index = 0, selectedKey = "") {
   const selected = image.key === selectedKey;
   return `
@@ -44139,21 +44191,66 @@ function renderGrowSnapshotCandidateMarkup(image = {}, index = 0, selectedKey = 
   `;
 }
 
-function renderGrowSnapshotCandidatesMarkup(state = {}, heading = "Choose your Snapshot image", helper = "Select one image to represent your Germination results.") {
+function renderGrowSnapshotCandidatesMarkup(state = {}, heading = "Choose your Snapshot image", helper = null) {
   const images = state.images || [];
+  const resolvedHelper = helper === null
+    ? (String(state.phaseKey || "").trim() === "germination"
+      ? "Select one image to represent your Germination results."
+      : "Select one image to share through the established external path.")
+    : helper;
   return `
     <section class="grow-snapshot-candidates" aria-labelledby="grow-snapshot-candidates-title">
       <header>
         <h3 id="grow-snapshot-candidates-title">${escapeHtml(heading)}</h3>
-        ${helper ? `<p>${escapeHtml(helper)}</p>` : ""}
+        ${resolvedHelper ? `<p>${escapeHtml(resolvedHelper)}</p>` : ""}
       </header>
       ${images.length ? `
-        <div class="grow-snapshot-candidate-row" role="radiogroup" aria-label="Representative Session image">
-          ${images.map((image, index) => renderGrowSnapshotCandidateMarkup(image, index, state.selectedImageKey)).join("")}
+        <div class="grow-snapshot-candidate-browser">
+          <button type="button" class="grow-snapshot-candidate-nav grow-snapshot-candidate-nav--previous" data-grow-snapshot-candidate-step="-1" aria-label="Previous Snapshot images" disabled>${renderAppIconSvgMarkup("backArrow")}</button>
+          <div class="grow-snapshot-candidate-row" data-grow-snapshot-candidate-viewport role="radiogroup" aria-label="Representative Session image">
+            ${images.map((image, index) => renderGrowSnapshotCandidateMarkup(image, index, state.selectedImageKey)).join("")}
+          </div>
+          <button type="button" class="grow-snapshot-candidate-nav grow-snapshot-candidate-nav--next" data-grow-snapshot-candidate-step="1" aria-label="Next Snapshot images"${images.length <= 2 ? " disabled" : ""}>${renderAppIconSvgMarkup("backArrow")}</button>
         </div>
+        <p class="grow-snapshot-candidate-count">${escapeHtml(`${images.length} eligible ${images.length === 1 ? "image" : "images"}`)}</p>
       ` : '<p class="grow-snapshot-empty">Add a Session image in the private Journal before creating a Snapshot.</p>'}
     </section>
   `;
+}
+
+function syncGrowSnapshotCandidateViewportControls(section = null) {
+  const viewport = section?.querySelector?.("[data-grow-snapshot-candidate-viewport]");
+  if (!(viewport instanceof HTMLElement)) return;
+  const previous = section.querySelector('[data-grow-snapshot-candidate-step="-1"]');
+  const next = section.querySelector('[data-grow-snapshot-candidate-step="1"]');
+  const maximumScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+  if (previous instanceof HTMLButtonElement) previous.disabled = viewport.scrollLeft <= 1;
+  if (next instanceof HTMLButtonElement) next.disabled = maximumScroll <= 1 || viewport.scrollLeft >= maximumScroll - 1;
+}
+
+function scrollGrowSnapshotCandidateViewport(section = null, direction = 1) {
+  const viewport = section?.querySelector?.("[data-grow-snapshot-candidate-viewport]");
+  const candidate = viewport?.querySelector?.("[data-grow-snapshot-candidate]");
+  if (!(viewport instanceof HTMLElement) || !(candidate instanceof HTMLElement)) return;
+  const gap = Number.parseFloat(getComputedStyle(viewport).columnGap || getComputedStyle(viewport).gap || "0") || 0;
+  const distance = Math.max(1, candidate.getBoundingClientRect().width + gap);
+  viewport.scrollBy({ left: Math.sign(Number(direction) || 1) * distance, behavior: "smooth" });
+}
+
+function bindGrowSnapshotCandidateViewport(section = null) {
+  const viewport = section?.querySelector?.("[data-grow-snapshot-candidate-viewport]");
+  if (!(viewport instanceof HTMLElement)) return;
+  viewport.addEventListener("scroll", () => syncGrowSnapshotCandidateViewportControls(section), { passive: true });
+  window.requestAnimationFrame(() => {
+    const selected = viewport.querySelector('[data-grow-snapshot-candidate][aria-checked="true"]');
+    if (selected instanceof HTMLElement) {
+      const selectedLeft = selected.offsetLeft;
+      const selectedRight = selectedLeft + selected.offsetWidth;
+      if (selectedLeft < viewport.scrollLeft) viewport.scrollLeft = selectedLeft;
+      else if (selectedRight > viewport.scrollLeft + viewport.clientWidth) viewport.scrollLeft = selectedRight - viewport.clientWidth;
+    }
+    syncGrowSnapshotCandidateViewportControls(section);
+  });
 }
 
 function renderGrowSnapshotDetailsMarkup(state = {}) {
@@ -44178,6 +44275,7 @@ function renderGrowSnapshotPreviewMarkup(state = {}) {
 }
 
 function renderGrowSnapshotDestinationMarkup(state = {}) {
+  const communityEligible = isGrowSnapshotCommunityEligible(state);
   const destinations = [
     {
       value: "community-social",
@@ -44198,7 +44296,7 @@ function renderGrowSnapshotDestinationMarkup(state = {}) {
       description: "Use your device’s sharing capability without creating a Grow Community post.",
       icon: "growNetworkNodes",
     },
-  ];
+  ].filter((destination) => communityEligible || destination.value === "social");
   return `
     <fieldset class="grow-snapshot-destinations">
       <legend>Choose where to share</legend>
@@ -44210,7 +44308,22 @@ function renderGrowSnapshotDestinationMarkup(state = {}) {
           <span class="grow-snapshot-radio" aria-hidden="true"></span>
         </label>
       `).join("")}
+      ${communityEligible ? "" : `<p class="grow-snapshot-destination-restriction">${escapeHtml(getGrowSnapshotCommunityRestrictionMessage(state))}</p>`}
     </fieldset>
+  `;
+}
+
+function renderGrowSnapshotPurposeMarkup(state = {}) {
+  const isGermination = String(state.phaseKey || "").trim() === "germination";
+  return `
+    <section class="grow-snapshot-purpose" aria-label="Snapshot sharing purpose">
+      <p class="eyebrow">${isGermination ? "Share germination insight" : "Share outside Grow"}</p>
+      <p>${isGermination
+        ? "Completed Germination Sessions help build real Source, Variety, and germination outcome information."
+        : "Growing stays private in Grow unless you choose to share it externally."}</p>
+      ${isGermination ? "<p>Share a Germination Snapshot if you want to contribute selected results to the Grow Community.</p>" : ""}
+      <p class="grow-snapshot-purpose__privacy"><span aria-hidden="true">${renderAppIconSvgMarkup("lock")}</span>Your Session Journal remains private. Only the Snapshot you choose to share becomes public.</p>
+    </section>
   `;
 }
 
@@ -44266,31 +44379,34 @@ function renderGrowSnapshotFlow(state = {}) {
   if (!(section instanceof HTMLElement)) return;
   state.presentationData = buildGrowSnapshotPresentationData(state.session, state.includeProfile);
   const shareReady = Boolean(state.generatedBlob && state.selectedImageKey && state.destination && !state.busy);
-  section.dataset.growSnapshotStep = String(state.step);
+  const progressStep = state.step === 3 || shareReady ? 3 : (state.selectedImageKey ? 2 : 1);
+  section.dataset.growSnapshotStep = String(progressStep);
   section.innerHTML = `
     <header class="grow-snapshot-header">
       <div><h2 id="grow-snapshot-title">Grow Snapshot</h2><p>Optional shareable summary</p></div>
-      ${renderGrowSnapshotStepIndicatorMarkup(state.step)}
+      ${renderGrowSnapshotStepIndicatorMarkup(progressStep)}
     </header>
-    ${state.step === 1 ? `
-      <div class="grow-snapshot-select-layout">
-        <section class="grow-snapshot-build-card">
-          ${renderGrowSnapshotCandidatesMarkup(state)}
-          ${renderGrowSnapshotDetailsMarkup(state)}
-          <button type="button" class="button button-primary grow-snapshot-continue" data-grow-snapshot-continue${state.selectedImageKey && !state.busy ? "" : " disabled"}><span>${state.busy ? "Preparing Snapshot…" : "Continue to privacy review"}</span>${renderAppIconSvgMarkup("backArrow", { className: "grow-snapshot-button-icon grow-snapshot-button-icon--forward" })}</button>
-        </section>
-      </div>
-    ` : state.step === 2 ? `
-      <div class="grow-snapshot-review-layout">
-        <div class="grow-snapshot-review-preview">
-          ${renderGrowSnapshotPreviewMarkup(state)}
-          ${renderGrowSnapshotCandidatesMarkup(state, "Choose Snapshot image", "")}
+    ${renderGrowSnapshotPurposeMarkup(state)}
+    ${state.step !== 3 ? `
+      <div class="grow-snapshot-inline-workspace">
+        <div class="grow-snapshot-inline-column grow-snapshot-inline-column--select">
+          ${renderGrowSnapshotInlineStepMarkup(1, Boolean(state.selectedImageKey), `
+            ${renderGrowSnapshotCandidatesMarkup(state, "Choose Snapshot image")}
+            ${state.selectedImageKey && (state.generatedUrl || state.busy) ? renderGrowSnapshotPreviewMarkup(state) : ""}
+            ${state.generatedUrl ? "" : renderGrowSnapshotDetailsMarkup(state)}
+          `, "grow-snapshot-inline-step--select")}
         </div>
-        <div class="grow-snapshot-review-controls">
-          ${renderGrowSnapshotDestinationMarkup(state)}
-          ${renderGrowSnapshotPrivacyMarkup(state)}
-          <button type="button" class="button button-primary grow-snapshot-share-action" data-grow-snapshot-share${shareReady ? "" : " disabled"}>${renderAppIconSvgMarkup("growNetworkNodes", { className: "grow-snapshot-button-icon" })}<span>${state.busy ? "Sharing…" : "Share Grow Snapshot"}</span></button>
-          <button type="button" class="button button-secondary grow-snapshot-back" data-grow-snapshot-back>${renderAppIconSvgMarkup("backArrow", { className: "grow-snapshot-button-icon" })}<span>Back to edit</span></button>
+        <div class="grow-snapshot-inline-column grow-snapshot-inline-column--share">
+          ${renderGrowSnapshotInlineStepMarkup(2, Boolean(state.destination), `
+            ${renderGrowSnapshotDestinationMarkup(state)}
+            ${renderGrowSnapshotPrivacyMarkup(state)}
+          `, "grow-snapshot-inline-step--review")}
+          ${renderGrowSnapshotInlineStepMarkup(3, shareReady, `
+            <div class="grow-snapshot-inline-share-copy">
+              <h3>Share Grow Snapshot</h3>
+            </div>
+            <button type="button" class="button button-primary grow-snapshot-share-action" data-grow-snapshot-share${shareReady ? "" : " disabled"}>${renderAppIconSvgMarkup("growNetworkNodes", { className: "grow-snapshot-button-icon" })}<span>${state.busy ? "Sharing…" : "Share Grow Snapshot"}</span></button>
+          `, "grow-snapshot-inline-step--share")}
         </div>
       </div>
     ` : `
@@ -44301,12 +44417,14 @@ function renderGrowSnapshotFlow(state = {}) {
           <h3>${escapeHtml(getGrowSnapshotResultCopy(state).title)}</h3>
           <p>${escapeHtml(getGrowSnapshotResultCopy(state).body)}</p>
           ${state.communityPost?.id ? `<a class="button button-secondary" href="#gallery/${escapeHtml(state.communityPost.id)}">View Community post</a>` : ""}
-          ${["community-social-incomplete", "social-canceled", "share-failed"].includes(state.resultKind) ? '<button type="button" class="button button-primary" data-grow-snapshot-retry>Retry sharing</button>' : ""}
+          ${["community-social-incomplete", "social-canceled", "share-failed"].includes(state.resultKind) ? '<button type="button" class="button grow-snapshot-result-retry" data-grow-snapshot-retry>Retry sharing</button>' : ""}
+          ${state.error ? `<p class="grow-snapshot-result-error">${escapeHtml(state.error)}</p>` : ""}
         </div>
       </section>
     `}
-    <p class="grow-snapshot-feedback${state.error ? " is-error" : ""}" role="status" aria-live="polite">${escapeHtml(state.error || "")}</p>
+    <p class="grow-snapshot-feedback${state.step !== 3 && state.error ? " is-error" : ""}" role="status" aria-live="polite">${escapeHtml(state.step !== 3 ? state.error || "" : "")}</p>
   `;
+  bindGrowSnapshotCandidateViewport(section);
 }
 
 function clearGrowSnapshotGeneratedFile(state = {}) {
@@ -44350,6 +44468,9 @@ async function shareGrowSnapshotFlowSocial(state = {}) {
 }
 
 async function publishGrowSnapshotFlowCommunity(state = {}) {
+  if (!isGrowSnapshotCommunityEligible(state)) {
+    throw new Error(getGrowSnapshotCommunityRestrictionMessage(state));
+  }
   if (state.communityPost?.id) return state.communityPost;
   const published = await publishSnapshotToGallery(state.session, state.generatedData, state.generatedBlob, {
     includeProfileInGallery: Boolean(state.includeProfile),
@@ -44363,6 +44484,11 @@ async function publishGrowSnapshotFlowCommunity(state = {}) {
 
 async function executeGrowSnapshotShare(state = {}, { retrySocialOnly = false } = {}) {
   if (state.busy) return;
+  if (isGrowSnapshotCommunityDestination(state.destination) && !isGrowSnapshotCommunityEligible(state)) {
+    state.error = getGrowSnapshotCommunityRestrictionMessage(state);
+    renderGrowSnapshotFlow(state);
+    return;
+  }
   state.busy = true;
   state.error = "";
   renderGrowSnapshotFlow(state);
@@ -44401,10 +44527,9 @@ async function selectGrowSnapshotImage(state = {}, imageKey = "") {
   if (!state.images.some((image) => image.key === imageKey)) return;
   state.selectedImageKey = imageKey;
   state.error = "";
-  if (state.step !== 2) {
-    clearGrowSnapshotGeneratedFile(state);
-    renderGrowSnapshotFlow(state);
-    return;
+  if (isGrowSnapshotCommunityDestination(state.destination) && !isGrowSnapshotCommunityEligible(state)) {
+    state.destination = "social";
+    state.error = getGrowSnapshotCommunityRestrictionMessage(state);
   }
   state.busy = true;
   renderGrowSnapshotFlow(state);
@@ -44431,6 +44556,11 @@ function bindGrowSnapshotFlow(state = {}) {
     const candidate = target?.closest("[data-grow-snapshot-candidate]");
     if (candidate instanceof HTMLButtonElement) {
       await selectGrowSnapshotImage(state, candidate.dataset.growSnapshotCandidate || "");
+      return;
+    }
+    const candidateStep = target?.closest("[data-grow-snapshot-candidate-step]");
+    if (candidateStep instanceof HTMLButtonElement) {
+      scrollGrowSnapshotCandidateViewport(section, Number(candidateStep.dataset.growSnapshotCandidateStep) || 1);
       return;
     }
     if (target?.closest("[data-grow-snapshot-continue]")) {
@@ -44469,8 +44599,14 @@ function bindGrowSnapshotFlow(state = {}) {
     const input = event.target;
     if (!(input instanceof HTMLInputElement)) return;
     if (input.name === "grow-snapshot-destination") {
-      state.destination = input.value;
-      state.error = "";
+      const requestedDestination = String(input.value || "").trim();
+      if (isGrowSnapshotCommunityDestination(requestedDestination) && !isGrowSnapshotCommunityEligible(state)) {
+        state.destination = "social";
+        state.error = getGrowSnapshotCommunityRestrictionMessage(state);
+      } else {
+        state.destination = requestedDestination;
+        state.error = "";
+      }
       renderGrowSnapshotFlow(state);
       return;
     }
@@ -44518,6 +44654,7 @@ function initializeGrowSnapshotFlow(root = null, session = null) {
     root,
     session,
     step: 1,
+    phaseKey: getSessionJournalContext(session).phaseKey,
     images: getGrowSnapshotCandidateImages(root, session),
     selectedImageKey: "",
     destination: "",
@@ -97415,7 +97552,7 @@ function getGrowCompanionActivityController(root = null, session = null) {
     session,
     tasks: [],
     events: [],
-    notes: [],
+    notes: (session.sessionJournalNotes || session.session_journal_notes || []).map(normalizeSessionJournalNoteRecord),
     photos: getPhotosComposition().mapSessionImagesToCanonicalPhotos(session.sessionImages, {
       sessionId: String(session.id),
       ownerId: String(session.userId || session.user_id || "").trim(),
@@ -97433,6 +97570,7 @@ function getGrowCompanionActivityController(root = null, session = null) {
     temporalSource: "all",
     pending: new Set(),
     requestToken: 0,
+    activeJournalEntryId: "",
     selectedJournalImageId: "",
     journalSignedImageUrls: new Map(),
     journalImageUrlsLoading: false,
@@ -97824,7 +97962,7 @@ function drawGrowSnapshotImageBranding(context, brandLogo, x = 0, y = 0, width =
   context.restore();
 }
 
-function drawGrowSnapshotInformationBand(context, data = {}, x = 0, y = 1040, width = 1080, height = 310) {
+function drawGrowSnapshotInformationBand(context, data = {}, x = 0, y = 1040, width = 1080, height = 310, profileAvatar = null) {
   context.save();
   context.fillStyle = "#0a100c";
   context.fillRect(x, y, width, height);
@@ -97863,14 +98001,6 @@ function drawGrowSnapshotInformationBand(context, data = {}, x = 0, y = 1040, wi
     context.fillStyle = "#c9f66c";
     context.fillText(truncateTextToWidth(context, qualitativeLabel, qualitativePillWidth - 42), pillX + 21, y + 50);
   }
-  if (profileName) {
-    context.font = "600 22px Arial, sans-serif";
-    context.fillStyle = "#aeb9b0";
-    context.textAlign = "right";
-    context.fillText(truncateTextToWidth(context, `Grower · ${profileName}`, 330), x + width - inset, y + 88);
-    context.textAlign = "left";
-  }
-
   const rows = getGrowSnapshotInformationRows(data);
   const gridTop = y + 96;
   const gridBottom = y + height - 20;
@@ -97899,11 +98029,34 @@ function drawGrowSnapshotInformationBand(context, data = {}, x = 0, y = 1040, wi
     context.font = "700 38px Arial, sans-serif";
     const valueWidth = columnWidth - inset * 2;
     if (index === 3) {
-      drawGrowSnapshotVarietyValue(context, row, cellX, cellY + 35, valueWidth, rowHeight - 41);
+      const attributionReserve = profileName
+        ? Math.min(360, Math.max(260, valueWidth * 0.5), Math.max(0, valueWidth - 220))
+        : 0;
+      const varietyWidth = Math.max(180, valueWidth - attributionReserve - (attributionReserve ? 20 : 0));
+      drawGrowSnapshotVarietyValue(context, row, cellX, cellY + 35, varietyWidth, rowHeight - 41);
     } else {
       context.fillText(truncateTextToWidth(context, row.value, valueWidth), cellX, cellY + 69);
     }
   });
+
+  if (profileName) {
+    const profileAvatarSize = 64;
+    const profileGap = 14;
+    const profileRightX = x + width - inset;
+    const profileAvatarX = profileRightX - profileAvatarSize;
+    const profileCenterY = gridTop + rowHeight + rowHeight * 0.4;
+    const profileAvatarY = profileCenterY - profileAvatarSize / 2;
+    const profileTextMaxWidth = Math.min(290, profileAvatarX - profileGap - (x + leftColumnWidth + inset + 220));
+    const profileFontSize = fitTextSize(context, profileName, profileTextMaxWidth, 32, 26, "700");
+    context.font = `700 ${profileFontSize}px Arial, sans-serif`;
+    const profileText = truncateTextToWidth(context, profileName, profileTextMaxWidth);
+    const profileTextWidth = context.measureText(profileText).width;
+    const profileTextX = profileAvatarX - profileGap - profileTextWidth;
+    context.fillStyle = "#eef4ef";
+    context.textBaseline = "middle";
+    context.fillText(profileText, profileTextX, profileCenterY + 1);
+    drawSnapshotProfileAvatar(context, profileAvatar, profileName, profileAvatarX, profileAvatarY, profileAvatarSize, true);
+  }
   context.restore();
 }
 
@@ -97953,6 +98106,34 @@ function getSessionJournalImages(controller = {}) {
   return normalizePersistedSessionImages(controller.session?.sessionImages || controller.session?.session_images || []);
 }
 
+function getSessionJournalImageEntryId(image = null) {
+  return String(image?.journalEntryId || image?.journal_entry_id || "").trim();
+}
+
+function getSessionJournalActiveEntryId(controller = {}, images = getSessionJournalImages(controller)) {
+  const activeEntryId = String(controller.activeJournalEntryId || "").trim();
+  if (activeEntryId) return activeEntryId;
+  const selectedImageId = String(controller.selectedJournalImageId || "").trim();
+  if (!selectedImageId) return "";
+  const selectedImage = images.find((image) => String(image.id || image.path) === selectedImageId);
+  return getSessionJournalImageEntryId(selectedImage);
+}
+
+function getSessionJournalEntryImages(controller = {}, images = getSessionJournalImages(controller)) {
+  const journalEntryId = getSessionJournalActiveEntryId(controller, images);
+  if (!journalEntryId) return [];
+  return images.filter((image) => getSessionJournalImageEntryId(image) === journalEntryId);
+}
+
+function selectSessionJournalImageEntry(controller = {}, imageKey = "") {
+  const images = getSessionJournalImages(controller);
+  const normalizedKey = String(imageKey || "").trim();
+  const selectedImage = images.find((image) => String(image.id || image.path) === normalizedKey);
+  controller.selectedJournalImageId = selectedImage ? normalizedKey : "";
+  controller.activeJournalEntryId = getSessionJournalImageEntryId(selectedImage);
+  return selectedImage || null;
+}
+
 function getSessionJournalSelectedImage(controller = {}, images = getSessionJournalImages(controller)) {
   const selected = images.find((image) => String(image.id || image.path) === String(controller.selectedJournalImageId || ""));
   return selected || images[0] || null;
@@ -97988,10 +98169,38 @@ function renderSessionJournalObservationMarkup(controller = {}, eligibility = {}
   `;
 }
 
+function renderSessionJournalSummaryMarkup(controller = {}, context = getSessionJournalContext(controller?.session)) {
+  const session = controller?.session || null;
+  const activeState = getActiveGerminationWorkspaceState(session);
+  const methodType = getSessionMethodType(session);
+  const methodLabel = activeState?.methodLabel
+    || (methodType === "KAN" ? getGerminationSetupMethodLabel(methodType) : formatMethodTypeLabel(methodType));
+  const startedAt = activeState?.startedAt || getSessionDurationStartAt(session);
+  const startedLabel = activeState?.startedLabel
+    || (startedAt instanceof Date && !Number.isNaN(startedAt.getTime()) ? formatTimingDateTime(startedAt) : "Not started");
+  const dayLabel = activeState?.dayNumber ? `Day ${activeState.dayNumber}` : (context?.dayLabel || "Not started");
+  return `
+    <section class="session-journal-card session-journal-summary" aria-labelledby="session-journal-summary-title">
+      <div class="session-journal-card-heading">
+        <div>
+          <h3 id="session-journal-summary-title"><span aria-hidden="true">${renderAppIconSvgMarkup("seedSprout")}</span>Germination Session</h3>
+        </div>
+      </div>
+      <div class="session-journal-summary__body">
+        <span class="session-journal-summary__icon" aria-hidden="true">${renderAppIconSvgMarkup("seedSprout")}</span>
+        <dl>
+          <div><dt>Stage</dt><dd>${escapeHtml(context?.phaseLabel || "Germination")}</dd></div>
+          <div><dt>Day</dt><dd>${escapeHtml(dayLabel)}</dd></div>
+          <div><dt>Started</dt><dd>${escapeHtml(startedLabel)}</dd></div>
+          <div><dt>Method</dt><dd class="session-journal-summary__method">${escapeHtml(methodLabel || "Not set")}</dd></div>
+        </dl>
+      </div>
+    </section>
+  `;
+}
+
 function renderSessionJournalImageSlotMarkup(controller = {}, image = null, index = 0, selectedImage = null) {
-  if (!image) {
-    return `<span class="session-journal-image-slot is-empty" aria-label="Empty image position ${index + 1}">${renderAppIconSvgMarkup("addPlus", { className: "session-journal-empty-slot-icon" })}<small>${index + 1}</small></span>`;
-  }
+  if (!image) return "";
   const key = String(image.id || image.path || index);
   const selected = selectedImage && String(selectedImage.id || selectedImage.path) === key;
   return `
@@ -98005,35 +98214,47 @@ function renderSessionJournalImageSlotMarkup(controller = {}, image = null, inde
 function renderSessionJournalImagesMarkup(controller = {}, eligibility = {}) {
   const images = getSessionJournalImages(controller);
   const selectedImage = getSessionJournalSelectedImage(controller, images);
-  const atLimit = images.length >= MAX_SESSION_IMAGES;
+  const selectedIndex = selectedImage ? images.indexOf(selectedImage) : -1;
+  const sessionImageCount = images.length;
+  const sessionAtLimit = sessionImageCount >= MAX_SESSION_JOURNAL_IMAGES;
+  const canAcquire = eligibility.canWrite && !sessionAtLimit;
+  const sessionUsagePercentage = Math.min(100, (sessionImageCount / MAX_SESSION_JOURNAL_IMAGES) * 100);
+  const sessionImagesRemaining = Math.max(0, MAX_SESSION_JOURNAL_IMAGES - sessionImageCount);
   const selectedKey = selectedImage ? String(selectedImage.id || selectedImage.path || "") : "";
   return `
     <section class="session-journal-card session-journal-images" aria-labelledby="session-journal-images-title">
       <div class="session-journal-card-heading session-journal-images-heading">
         <div>
           <h3 id="session-journal-images-title"><span aria-hidden="true">${renderAppIconSvgMarkup("uploadImage")}</span>Session images</h3>
-          <p>Add up to 3 images to document your session.</p>
+          <p>Add up to ${MAX_SESSION_JOURNAL_IMAGES} images to document this Session.</p>
         </div>
       </div>
+      <div class="session-journal-session-usage" aria-label="${sessionImageCount} of ${MAX_SESSION_JOURNAL_IMAGES} Session photos used">
+        <span><strong>${sessionImageCount}</strong> of ${MAX_SESSION_JOURNAL_IMAGES} Session photos used</span>
+        <span class="session-journal-session-usage__track" role="progressbar" aria-label="Session photo allowance" aria-valuemin="0" aria-valuemax="${MAX_SESSION_JOURNAL_IMAGES}" aria-valuenow="${sessionImageCount}"><span style="width: ${sessionUsagePercentage}%"></span></span>
+        <output>${sessionImagesRemaining} remaining</output>
+      </div>
       <div class="session-journal-image-preview${selectedImage ? " has-image" : ""}" data-session-journal-image-preview>
-        <strong class="session-journal-image-count">${images.length} of ${MAX_SESSION_IMAGES}</strong>
         ${selectedImage
-          ? `<img src="${escapeHtml(getSessionJournalImageSource(controller, selectedImage))}" alt="Selected Session image: ${escapeHtml(selectedImage.filename || "Session image")}">`
+          ? `<button type="button" class="session-journal-image-preview__open" data-session-journal-image-preview-open aria-label="Open ${escapeHtml(selectedImage.filename || "selected Session image")} in 1:1 image preview"><img src="${escapeHtml(getSessionJournalImageSource(controller, selectedImage))}" alt="Selected Session image: ${escapeHtml(selectedImage.filename || "Session image")}"></button>`
           : `<div>${renderSessionImagePlaceholderIconMarkup()}<span>No Session image selected</span></div>`}
+        ${images.length > 1 ? `
+          <button type="button" class="session-journal-image-nav session-journal-image-nav--previous" data-session-journal-image-step="-1" aria-label="Previous Session image"${selectedIndex <= 0 ? " disabled" : ""}>${renderAppIconSvgMarkup("backArrow", { className: "session-journal-image-nav__icon" })}</button>
+          <button type="button" class="session-journal-image-nav session-journal-image-nav--next" data-session-journal-image-step="1" aria-label="Next Session image"${selectedIndex < 0 || selectedIndex >= images.length - 1 ? " disabled" : ""}>${renderAppIconSvgMarkup("backArrow", { className: "session-journal-image-nav__icon" })}</button>
+        ` : ""}
         ${eligibility.canWrite && selectedImage ? `<button type="button" class="session-journal-image-remove" data-session-journal-image-remove="${escapeHtml(selectedKey)}" aria-label="Remove selected image">${renderAppIconSvgMarkup("deleteTrash", { className: "session-journal-action-icon" })}<span>Remove image</span></button>` : ""}
       </div>
-      <div class="session-journal-image-strip" aria-label="Three Session image positions">
-        ${Array.from({ length: MAX_SESSION_IMAGES }, (_, index) => renderSessionJournalImageSlotMarkup(controller, images[index] || null, index, selectedImage)).join("")}
-      </div>
+      ${images.length ? `<div class="session-journal-image-strip" aria-label="Session image gallery">${images.map((image, index) => renderSessionJournalImageSlotMarkup(controller, image, index, selectedImage)).join("")}</div>` : ""}
+      ${sessionAtLimit ? `<div class="session-journal-photo-limit" role="status"><span aria-hidden="true">!</span><div><strong>Session photo limit reached</strong><p>Remove an existing photo to add another.</p></div></div>` : ""}
       ${eligibility.canWrite ? `
         <div class="session-journal-image-actions">
-          <button type="button" class="button button-secondary session-journal-upload-desktop" data-session-journal-acquire="library"${atLimit ? " disabled" : ""}>${renderAppIconSvgMarkup("uploadImage", { className: "session-journal-action-icon" })}<span>Upload image</span></button>
-          <button type="button" class="button button-secondary session-journal-upload-mobile" data-session-journal-acquire="camera"${atLimit ? " disabled" : ""}>${renderAppIconSvgMarkup("uploadImage", { className: "session-journal-action-icon" })}<span>Take photo</span></button>
-          <button type="button" class="button button-secondary session-journal-upload-mobile" data-session-journal-acquire="library"${atLimit ? " disabled" : ""}>${renderSessionImagePlaceholderIconMarkup()}<span>Choose from library</span></button>
+          <button type="button" class="button button-primary" data-session-journal-acquire="library"${canAcquire ? "" : " disabled"}>${renderAppIconSvgMarkup("photoPlus", { className: "session-journal-action-icon" })}<span>Add image</span></button>
+          <button type="button" class="button button-secondary" data-session-journal-acquire="camera"${canAcquire ? "" : " disabled"}>${renderAppIconSvgMarkup("uploadImage", { className: "session-journal-action-icon" })}<span>Camera</span></button>
         </div>
         <input type="file" accept="image/*" capture="environment" data-session-journal-camera-input hidden>
         <input type="file" accept="image/*" multiple data-session-journal-library-input hidden>
       ` : ""}
+      <p class="session-journal-snapshot-guidance">When you create a Snapshot, you can choose from eligible Germination images saved with this Session.</p>
       <p class="form-message session-journal-image-feedback" data-session-journal-image-feedback role="status" aria-live="polite">${escapeHtml(controller.journalImageFeedback || "")}</p>
     </section>
   `;
@@ -98063,6 +98284,38 @@ function getSessionJournalTimelineEntries(controller = {}) {
   });
 }
 
+function canDeleteSessionJournalTimelineEntry(controller = {}, entry = null, eligibility = {}) {
+  if (!eligibility.canWrite || !entry?.id) return false;
+  if (entry.type === "image") {
+    return entry.image?.privateJournal === true
+      && Boolean(String(entry.image.id || entry.image.path || "").trim());
+  }
+  if (entry.type !== "note") return false;
+  const ownerId = String(appState.user?.id || "").trim();
+  const noteSessionId = String(entry.note?.sessionId || entry.note?.session_id || "").trim();
+  const phaseKey = String(entry.note?.phaseKey || entry.note?.journal_phase || "").trim();
+  return Boolean(ownerId)
+    && String(entry.note?.authorId || entry.note?.author_user_id || "").trim() === ownerId
+    && noteSessionId === String(controller.sessionId || "")
+    && String(entry.note?.contextType || entry.note?.context_type || "session").trim() === "session"
+    && ["germination", "grow", "reflection"].includes(phaseKey);
+}
+
+function renderSessionJournalTimelineActionsMarkup(controller = {}, entry = null, eligibility = {}) {
+  if (!eligibility.canWrite || !entry) return "";
+  const recordId = String(entry.id || "");
+  const edit = entry.type === "note"
+    ? `<button type="button" class="button button-secondary" data-session-journal-note-edit="${escapeHtml(recordId)}">${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Edit</span></button>`
+    : entry.type === "image"
+      ? `<button type="button" class="button button-secondary" data-session-journal-image-edit="${escapeHtml(recordId)}">${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Edit</span></button>`
+      : "";
+  if (!edit) return "";
+  const deleteAction = canDeleteSessionJournalTimelineEntry(controller, entry, eligibility)
+    ? `<span class="session-journal-entry-action-separator" aria-hidden="true">·</span><button type="button" class="button button-secondary session-journal-entry-delete" data-session-journal-record-delete="${escapeHtml(recordId)}" data-session-journal-record-delete-type="${escapeHtml(entry.type)}">${renderAppIconSvgMarkup("deleteTrash", { className: "session-journal-action-icon" })}<span>Delete</span></button>`
+    : "";
+  return `<div class="session-journal-entry-actions">${edit}${deleteAction}</div>`;
+}
+
 function renderSessionJournalRecordMarkup(controller = {}, eligibility = {}) {
   const entries = getSessionJournalTimelineEntries(controller);
   return `
@@ -98087,8 +98340,8 @@ function renderSessionJournalRecordMarkup(controller = {}, eligibility = {}) {
                 <span class="session-journal-entry-divider" aria-hidden="true"></span>
                 <time datetime="${escapeHtml(entry.createdAt || "")}">${escapeHtml(entry.createdAt ? formatSessionJournalTimestamp(entry.createdAt) : "Recorded with this Session")}</time>
                 ${entry.type === "note"
-                  ? `<div class="session-journal-entry-evidence"><p>${escapeHtml(entry.note.narrative)}</p></div><figure class="session-journal-entry-image is-placeholder" aria-hidden="true"><span>${renderSessionImagePlaceholderIconMarkup()}</span></figure>${eligibility.canWrite ? `<button type="button" class="button button-secondary" data-session-journal-note-edit="${escapeHtml(entry.note.id)}">${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Edit</span></button>` : ""}`
-                  : `<div class="session-journal-entry-evidence"><strong>Session image added</strong>${entry.image.filename ? `<span>${escapeHtml(entry.image.filename)}</span>` : ""}</div><figure class="session-journal-entry-image"><img src="${escapeHtml(getSessionJournalImageSource(controller, entry.image))}" alt="${escapeHtml(entry.image.filename || "Session image")}"></figure>${eligibility.canWrite ? `<button type="button" class="button button-secondary" data-session-journal-image-edit="${escapeHtml(String(entry.image.id || entry.image.path || ""))}">${renderAppIconSvgMarkup("editPencil", { className: "session-journal-action-icon" })}<span>Edit</span></button>` : ""}`}
+                  ? `<div class="session-journal-entry-evidence"><p>${escapeHtml(entry.note.narrative)}</p></div><figure class="session-journal-entry-image is-placeholder" aria-hidden="true"><span>${renderSessionImagePlaceholderIconMarkup()}</span></figure>${renderSessionJournalTimelineActionsMarkup(controller, entry, eligibility)}`
+                  : `<div class="session-journal-entry-evidence"><strong>Session image added</strong>${entry.image.filename ? `<span>${escapeHtml(entry.image.filename)}</span>` : ""}</div><figure class="session-journal-entry-image"><img src="${escapeHtml(getSessionJournalImageSource(controller, entry.image))}" alt="${escapeHtml(entry.image.filename || "Session image")}"></figure>${renderSessionJournalTimelineActionsMarkup(controller, entry, eligibility)}`}
               </article>
             </li>
           `).join("")}
@@ -98105,18 +98358,22 @@ function renderSessionJournalWorkspace(root = null, controller = null) {
   const eligibility = getSessionJournalWriteEligibility(controller.session);
   journal.innerHTML = `
     <header class="session-journal-header">
-      <div>
+      <div class="session-journal-header__copy">
         <div><h2 id="session-journal-title">Session Journal</h2><p><span aria-hidden="true">${renderAppIconSvgMarkup("lock")}</span>Private to you</p></div>
+        <p class="session-journal-privacy-boundary">Your Journal stays private. Sharing happens through Snapshot.</p>
       </div>
       <div class="session-journal-context"><span>${escapeHtml(context.contextLabel || "Session record")}</span></div>
     </header>
     ${controller.loading && !controller.loaded ? '<p class="session-journal-loading" role="status">Loading private Session Journal…</p>' : ""}
     ${controller.error ? `<p class="form-message is-error" role="alert">${escapeHtml(controller.error)}</p>` : ""}
     <div class="session-journal-top-grid">
-      ${renderSessionJournalObservationMarkup(controller, eligibility)}
+      <div class="session-journal-left-stack">
+        ${renderSessionJournalObservationMarkup(controller, eligibility)}
+        ${renderSessionJournalSummaryMarkup(controller, context)}
+      </div>
       ${renderSessionJournalImagesMarkup(controller, eligibility)}
+      ${renderSessionJournalRecordMarkup(controller, eligibility)}
     </div>
-    ${renderSessionJournalRecordMarkup(controller, eligibility)}
   `;
   syncGrowSnapshotFlowCandidateState(root);
 }
@@ -98183,9 +98440,10 @@ async function persistSessionJournalImages(root = null, files = []) {
   if (!eligibility.canWrite) throw new Error(eligibility.reason);
   const currentImages = getSessionJournalImages(controller);
   if (!files.length) return currentImages;
-  if (currentImages.length + files.length > MAX_SESSION_IMAGES) {
-    throw new Error(`You can add up to ${MAX_SESSION_IMAGES} images to this Session.`);
+  if (currentImages.length + files.length > MAX_SESSION_JOURNAL_IMAGES) {
+    throw new Error("Session photo limit reached. Remove an existing photo to add another.");
   }
+  const journalEntryId = getSessionJournalActiveEntryId(controller, currentImages) || crypto.randomUUID();
   for (const file of files) {
     if (!String(file?.type || "").startsWith("image/")) throw new Error("Choose an image file.");
     if (Number(file.size) > MAX_IMAGE_SIZE_BYTES) throw new Error("Image is too large. Choose an image under 12 MB.");
@@ -98202,6 +98460,7 @@ async function persistSessionJournalImages(root = null, files = []) {
         phaseKey: context.phaseKey,
         phaseLabel: context.phaseLabel,
         dayLabel: context.dayLabel,
+        journalEntryId,
         privateJournal: true,
       }));
     }
@@ -98211,6 +98470,7 @@ async function persistSessionJournalImages(root = null, files = []) {
       sessionId: controller.sessionId,
       ownerId: String(appState.user.id),
     });
+    controller.activeJournalEntryId = journalEntryId;
     controller.selectedJournalImageId = String(uploaded.at(-1)?.id || uploaded.at(-1)?.path || "");
     controller.journalImageFeedback = `${uploaded.length} ${uploaded.length === 1 ? "image" : "images"} added privately.`;
   } catch (error) {
@@ -98250,7 +98510,7 @@ async function removeSessionJournalImage(root = null, imageKey = "") {
       ownerId: String(appState.user.id),
     });
     controller.journalSignedImageUrls.delete(image.path);
-    controller.selectedJournalImageId = String(remaining[0]?.id || remaining[0]?.path || "");
+    selectSessionJournalImageEntry(controller, String(remaining[0]?.id || remaining[0]?.path || ""));
     controller.journalImageFeedback = "Session image removed.";
   } finally {
     controller.pending.delete(pendingKey);
@@ -98295,6 +98555,39 @@ function openSessionJournalNoteEditor(root = null, record = null) {
   dialog.querySelector("textarea")?.focus();
 }
 
+function confirmSessionJournalRecordDeletion() {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "snapshot-modal session-journal-delete-dialog";
+    dialog.setAttribute("aria-labelledby", "session-journal-delete-title");
+    dialog.setAttribute("aria-describedby", "session-journal-delete-description");
+    dialog.innerHTML = `
+      <form method="dialog" class="snapshot-modal-card profile-modal-card session-journal-delete-card">
+        <div class="snapshot-modal-copy">
+          <p class="eyebrow">Session Journal</p>
+          <h3 id="session-journal-delete-title">Delete this Session record?</h3>
+          <p id="session-journal-delete-description">This removes the saved Journal content from this Session.</p>
+        </div>
+        <div class="snapshot-modal-actions">
+          <button type="button" class="button button-secondary" data-session-journal-delete-cancel>Cancel</button>
+          <button type="button" class="button button-danger" data-session-journal-delete-confirm>Delete</button>
+        </div>
+      </form>
+    `;
+    const close = (confirmed = false) => {
+      if (dialog.open) dialog.close();
+      dialog.remove();
+      resolve(Boolean(confirmed));
+    };
+    dialog.querySelector("[data-session-journal-delete-cancel]")?.addEventListener("click", () => close(false));
+    dialog.querySelector("[data-session-journal-delete-confirm]")?.addEventListener("click", () => close(true));
+    dialog.addEventListener("cancel", (event) => { event.preventDefault(); close(false); });
+    document.body.append(dialog);
+    dialog.showModal();
+    dialog.querySelector("[data-session-journal-delete-cancel]")?.focus();
+  });
+}
+
 function bindSessionJournal(root = null, session = null) {
   const journal = root?.querySelector?.("[data-session-journal]");
   if (!(journal instanceof HTMLElement) || journal.dataset.sessionJournalBound === "true") return;
@@ -98330,6 +98623,62 @@ function bindSessionJournal(root = null, session = null) {
   });
   journal.addEventListener("click", async (event) => {
     const target = event.target instanceof Element ? event.target : null;
+    const imageStep = target?.closest("[data-session-journal-image-step]");
+    if (imageStep instanceof HTMLButtonElement && !imageStep.disabled) {
+      const controller = growCompanionActivityControllers.get(root);
+      const images = getSessionJournalImages(controller);
+      const selectedImage = getSessionJournalSelectedImage(controller, images);
+      const selectedIndex = images.indexOf(selectedImage);
+      const nextIndex = selectedIndex + Number(imageStep.dataset.sessionJournalImageStep || 0);
+      const nextImage = images[nextIndex];
+      if (nextImage) {
+        selectSessionJournalImageEntry(controller, String(nextImage.id || nextImage.path || ""));
+        renderSessionJournalWorkspace(root, controller);
+        const selectedThumbnail = [...journal.querySelectorAll("[data-session-journal-image-select]")]
+          .find((candidate) => candidate.getAttribute("aria-pressed") === "true");
+        selectedThumbnail?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      }
+      return;
+    }
+    const previewOpen = target?.closest("[data-session-journal-image-preview-open]");
+    if (previewOpen instanceof HTMLButtonElement) {
+      const controller = growCompanionActivityControllers.get(root);
+      const selectedImage = getSessionJournalSelectedImage(controller);
+      if (selectedImage) {
+        openSessionImageLightbox({
+          images: [{
+            ...selectedImage,
+            previewUrl: getSessionJournalImageSource(controller, selectedImage),
+            name: selectedImage.filename || "Session image",
+          }],
+          pendingFiles: [],
+        }, 0, { variant: "journal-preview" });
+      }
+      return;
+    }
+    const recordDelete = target?.closest("[data-session-journal-record-delete]");
+    if (recordDelete instanceof HTMLButtonElement) {
+      const controller = growCompanionActivityControllers.get(root);
+      const eligibility = getSessionJournalWriteEligibility(controller?.session);
+      const entryType = String(recordDelete.dataset.sessionJournalRecordDeleteType || "");
+      const entryId = String(recordDelete.dataset.sessionJournalRecordDelete || "");
+      const entry = getSessionJournalTimelineEntries(controller).find((candidate) => candidate.type === entryType && String(candidate.id) === entryId);
+      if (!canDeleteSessionJournalTimelineEntry(controller, entry, eligibility)) return;
+      if (!(await confirmSessionJournalRecordDeletion())) return;
+      try {
+        if (entry.type === "note") {
+          await deleteGrowCompanionNote(root, entry.note, { surface: "session-journal" });
+        } else {
+          await removeSessionJournalImage(root, String(entry.image.id || entry.image.path || ""));
+        }
+      } catch (error) {
+        const message = error.message || "Could not delete this Session record.";
+        if (entry.type === "image") controller.journalImageFeedback = message;
+        else controller.journalFeedback = message;
+        renderSessionJournalWorkspace(root, controller);
+      }
+      return;
+    }
     const acquisition = target?.closest("[data-session-journal-acquire]");
     if (acquisition instanceof HTMLButtonElement && !acquisition.disabled) {
       const type = acquisition.dataset.sessionJournalAcquire;
@@ -98339,15 +98688,19 @@ function bindSessionJournal(root = null, session = null) {
     const selection = target?.closest("[data-session-journal-image-select]");
     if (selection instanceof HTMLButtonElement) {
       const controller = growCompanionActivityControllers.get(root);
-      controller.selectedJournalImageId = selection.dataset.sessionJournalImageSelect || "";
+      selectSessionJournalImageEntry(controller, selection.dataset.sessionJournalImageSelect || "");
       renderSessionJournalWorkspace(root, controller);
+      const selectedKey = String(controller.selectedJournalImageId || "");
+      const selectedThumbnail = [...journal.querySelectorAll("[data-session-journal-image-select]")]
+        .find((candidate) => candidate.dataset.sessionJournalImageSelect === selectedKey);
+      selectedThumbnail?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
       return;
     }
     const imageEdit = target?.closest("[data-session-journal-image-edit]");
     if (imageEdit instanceof HTMLButtonElement) {
       const controller = growCompanionActivityControllers.get(root);
       const imageKey = imageEdit.dataset.sessionJournalImageEdit || "";
-      controller.selectedJournalImageId = imageKey;
+      selectSessionJournalImageEntry(controller, imageKey);
       renderSessionJournalWorkspace(root, controller);
       const management = journal.querySelector(".session-journal-images");
       const selectedImage = [...(management?.querySelectorAll("[data-session-journal-image-select]") || [])]
@@ -98644,21 +98997,31 @@ async function persistGrowCompanionNote(root = null, input = {}, record = null) 
   return normalized;
 }
 
-async function deleteGrowCompanionNote(root = null, record = null) {
+async function deleteGrowCompanionNote(root = null, record = null, options = {}) {
   const controller = growCompanionActivityControllers.get(root);
   if (!controller || !record) return;
-  assertGrowCompanionMutationAllowed(controller.session);
+  const journalSurface = options.surface === "session-journal";
+  const journalEligibility = journalSurface ? getSessionJournalWriteEligibility(controller.session) : null;
+  if (journalSurface) {
+    if (!journalEligibility.canWrite) throw new Error(journalEligibility.reason);
+  } else {
+    assertGrowCompanionMutationAllowed(controller.session);
+  }
   const pendingKey = `delete:note:${record.id}`;
   if (controller.pending.has(pendingKey)) return;
   controller.pending.add(pendingKey);
-  renderGrowCompanionActivityWorkspace(root, controller);
+  const render = () => journalSurface
+    ? renderSessionJournalWorkspace(root, controller)
+    : renderGrowCompanionActivityWorkspace(root, controller);
+  render();
   const { error } = await appState.supabase.from(GROW_COMPANION_ACTIVITY_TABLES.notes).delete()
     .eq("id", record.id).eq("session_id", controller.sessionId);
   controller.pending.delete(pendingKey);
-  if (error) { renderGrowCompanionActivityWorkspace(root, controller); throw error; }
+  if (error) { render(); throw error; }
   controller.notes = controller.notes.filter((item) => item.id !== record.id);
-  controller.feedback = "Note deleted.";
-  renderGrowCompanionActivityWorkspace(root, controller);
+  if (journalSurface) controller.journalFeedback = "Session record deleted.";
+  else controller.feedback = "Note deleted.";
+  render();
 }
 
 function openGrowCompanionNoteModal(root = null, record = null) {
@@ -99145,7 +99508,9 @@ function getActiveGerminationWorkspaceState(session = null, now = new Date()) {
     dayNumber: Math.floor(elapsedMinutes / (24 * 60)) + 1,
     sessionLabel: formatSessionLabel(session),
     varietyLabel: formatSessionIdentityVarietyCount(session),
-    methodLabel: formatMethodTypeLabel(method.id),
+    methodLabel: method.id === "KAN"
+      ? getGerminationSetupMethodLabel(method.id)
+      : formatMethodTypeLabel(method.id),
     unitLabel: method.rowLabel || "Seed Entry",
     entries,
     totalSeeds: summary.overall.totalSeeds,
@@ -99181,7 +99546,6 @@ const ACTIVE_GERMINATION_RESULT_LEGEND_PERCENTAGES = Object.freeze({
   good: 80,
   strong: 100,
 });
-
 function getActiveGerminationResultScaleColor(percentage) {
   const normalizedPercentage = normalizePartitionSuccessRateValue(percentage);
   if (normalizedPercentage === null) return "";
@@ -99203,6 +99567,12 @@ function getActiveGerminationResultScaleColor(percentage) {
 function getActiveGerminationResultColorStyle(percentage) {
   const color = getActiveGerminationResultScaleColor(percentage);
   return color ? `--active-result-color: ${color}` : "";
+}
+
+function getActiveGerminationResultStatusColorStyle(status = {}) {
+  const legendPercentage = ACTIVE_GERMINATION_RESULT_LEGEND_PERCENTAGES[status?.key];
+  const color = getActiveGerminationResultScaleColor(legendPercentage);
+  return color ? `--active-result-status-color: ${color}` : "";
 }
 
 function getActiveGerminationResultScaleGradient() {
@@ -99422,10 +99792,14 @@ function renderActiveGerminationResultClassificationUnitRowMarkup(unit = {}) {
   const evidenceLabel = hasSavedResult
     ? `${germinatedCount} / ${totalCount} germinated`
     : `No saved outcome · ${totalCount} tracked`;
+  const resultColorStyles = [
+    getActiveGerminationResultColorStyle(canonicalPercentage),
+    getActiveGerminationResultStatusColorStyle(status),
+  ].filter(Boolean).join("; ");
   return `
     <article
       class="active-germination-results__classification-unit-row partition-success-card ${escapeHtml(status.className)}${hasSavedResult ? "" : " is-tracking"}"
-      style="${escapeHtml(getActiveGerminationResultColorStyle(canonicalPercentage))}"
+      style="${escapeHtml(resultColorStyles)}"
       data-active-germination-result-classification-unit="${escapeHtml(String(unit.id))}"
       ${hasSavedResult ? `data-result-classification="${escapeHtml(status.key)}" data-result-percentage="${escapeHtml(percentageLabel)}"` : "data-result-state=\"tracking\""}
       aria-label="${escapeHtml(unit.label)}, variety ${escapeHtml(unit.varietyLabel)}, source ${escapeHtml(unit.sourceLabel)}, ${escapeHtml(evidenceLabel)}${hasSavedResult ? `, ${escapeHtml(percentageLabel)}, ${escapeHtml(resultLabel)}` : ", Tracking"}"
@@ -99487,10 +99861,14 @@ function renderActiveGerminationResultUnitRowMarkup(unit = {}, options = {}) {
   const countLabel = hasSavedResult
     ? `${germinatedCount} / ${totalCount} germinated`
     : `— / ${totalCount} tracked`;
+  const resultColorStyles = [
+    getActiveGerminationResultColorStyle(hasSavedResult ? canonicalPercentage : null),
+    getActiveGerminationResultStatusColorStyle(status),
+  ].filter(Boolean).join("; ");
   return `
     <article
       class="active-germination-results__all-unit-row partition-success-card ${escapeHtml(status.className)}${isTracking ? " is-tracking" : ""}"
-      style="${escapeHtml(getActiveGerminationResultColorStyle(hasSavedResult ? canonicalPercentage : null))}"
+      style="${escapeHtml(resultColorStyles)}"
       data-active-germination-result-all-unit="${escapeHtml(String(unit.id))}"
       ${hasSavedResult ? `data-result-classification="${escapeHtml(status.key)}"` : "data-result-state=\"tracking\""}
       data-result-percentage="${escapeHtml(percentageLabel)}"
@@ -99595,12 +99973,8 @@ function renderActiveGerminationResultsMarkup(session = null, options = {}) {
     },
     ...(summary.varietyGroups.length ? [{ key: "variety", label: "Variety", rows: sortActiveGerminationResultGroupsAlphabetically(summary.varietyGroups) }] : []),
     ...(summary.sourceGroups.length ? [{ key: "source", label: "Source", rows: sortActiveGerminationResultGroupsAlphabetically(summary.sourceGroups) }] : []),
-    {
-      key: "unit",
-      label: "Partition / Unit",
-      rows: sortActiveGerminationResultUnitRows(unitResultRows),
-      useDisplayLabel: true,
-    },
+    ...(summary.breederGroups.length ? [{ key: "breeder", label: "Breeder", rows: sortActiveGerminationResultGroupsAlphabetically(summary.breederGroups) }] : []),
+    ...(summary.seedAgeGroups.length ? [{ key: "seed-age", label: "Seed age", rows: summary.seedAgeGroups }] : []),
   ];
   const selectedFilter = groupFilters.find((filter) => filter.key === presentationState.selectedGroup)
     || groupFilters[0];
@@ -99769,6 +100143,74 @@ function renderActiveGerminationResultsMarkup(session = null, options = {}) {
   `;
 }
 
+function formatActiveGerminationProgressHourLabel(hours) {
+  const numericHours = Number(hours);
+  if (!Number.isFinite(numericHours)) return "";
+  const roundedHours = Math.abs(numericHours - Math.round(numericHours)) < 0.05
+    ? Math.round(numericHours)
+    : Math.round(numericHours * 10) / 10;
+  return `${roundedHours}h`;
+}
+
+function getActiveGerminationElapsedSizeCategory(elapsedLabel = "") {
+  const labelLength = String(elapsedLabel || "").trim().length;
+  if (labelLength >= 14) return "compact";
+  if (labelLength >= 11) return "extended";
+  if (labelLength >= 8) return "long";
+  return "short";
+}
+
+function getActiveGerminationTimeProgressPresentation(engineState = null, options = {}) {
+  const startedAtMs = Date.parse(String(engineState?.startedAt || ""));
+  const windowEndAtMs = Date.parse(String(engineState?.expectedCompletionWindow?.endAt || ""));
+  const hasCanonicalWindow = Number.isFinite(startedAtMs)
+    && Number.isFinite(windowEndAtMs)
+    && windowEndAtMs > startedAtMs;
+  const windowDurationMs = hasCanonicalWindow ? windowEndAtMs - startedAtMs : 0;
+  const progressPercentage = Math.max(0, Math.min(100, Number(engineState?.progressPercentage) || 0));
+  const timelineSteps = Array.isArray(engineState?.timelineSteps) ? engineState.timelineSteps : [];
+  const segments = hasCanonicalWindow
+    ? timelineSteps.map((step) => {
+        const startAtMs = Date.parse(String(step?.startAt || ""));
+        const endAtMs = Date.parse(String(step?.endAt || ""));
+        if (!Number.isFinite(startAtMs) || !Number.isFinite(endAtMs) || endAtMs <= startAtMs) return null;
+        const boundedStartAtMs = Math.max(startedAtMs, Math.min(windowEndAtMs, startAtMs));
+        const boundedEndAtMs = Math.max(startedAtMs, Math.min(windowEndAtMs, endAtMs));
+        if (boundedEndAtMs <= boundedStartAtMs) return null;
+        return {
+          key: String(step?.key || "stage"),
+          label: String(step?.label || "Germination stage"),
+          isCurrent: step?.isCurrent === true,
+          isComplete: step?.isComplete === true,
+          leftPercentage: ((boundedStartAtMs - startedAtMs) / windowDurationMs) * 100,
+          widthPercentage: ((boundedEndAtMs - boundedStartAtMs) / windowDurationMs) * 100,
+          endHour: (boundedEndAtMs - startedAtMs) / (60 * 60 * 1000),
+        };
+      }).filter(Boolean)
+    : [];
+  const boundaryHours = [0, ...segments.map((segment) => segment.endHour)]
+    .filter((hours, index, values) => values.findIndex((candidate) => Math.abs(candidate - hours) < 0.05) === index)
+    .sort((left, right) => left - right);
+  const totalHours = windowDurationMs / (60 * 60 * 1000);
+  const currentPhase = engineState?.currentPhase || null;
+  const currentStageTiming = String(currentPhase?.timing || "Tracking").trim()
+    .replace(/(\d)\s*-\s*(\d)/g, "$1–$2");
+
+  return {
+    progressPercentage,
+    segments,
+    boundaries: boundaryHours.map((hours) => ({
+      label: formatActiveGerminationProgressHourLabel(hours),
+      leftPercentage: totalHours > 0 ? (hours / totalHours) * 100 : 0,
+    })),
+    currentStageLabel: String(currentPhase?.label || engineState?.phaseLabel || "Tracking").trim(),
+    currentStageTiming,
+    nextMilestoneLabel: String(options.nextMilestoneLabel || "Review Germination").trim(),
+    nextMilestoneTimingLabel: String(options.nextMilestoneTimingLabel || "Continue tracking").trim(),
+    windowDurationLabel: hasCanonicalWindow ? formatActiveGerminationProgressHourLabel(totalHours) : "—",
+  };
+}
+
 function renderActiveGerminationWorkspaceMarkup(session = null) {
   const state = getActiveGerminationWorkspaceState(session);
   if (!state) return "";
@@ -99787,6 +100229,23 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
   const nextMilestoneTimingLabel = nextMilestoneTiming
     ? nextMilestoneTiming.replace(/(\d)\s*-\s*(\d)/g, "$1–$2")
     : (completionAvailable ? "Ready when all outcomes are recorded" : "Continue checking Seed Entry outcomes");
+  const timeProgress = getActiveGerminationTimeProgressPresentation(engineState, {
+    nextMilestoneLabel,
+    nextMilestoneTimingLabel,
+  });
+  const timeProgressSegmentsMarkup = timeProgress.segments.map((segment) => `
+    <span
+      class="active-germination-time__segment ${segment.isComplete ? "is-complete" : ""} ${segment.isCurrent ? "is-current" : ""}"
+      style="left: ${escapeHtml(String(segment.leftPercentage))}%; width: ${escapeHtml(String(segment.widthPercentage))}%"
+      title="${escapeHtml(segment.label)}"
+    ></span>
+  `).join("");
+  const timeProgressBoundariesMarkup = timeProgress.boundaries.map((boundary, index, boundaries) => `
+    <span
+      class="${index === 0 ? "is-first" : ""} ${index === boundaries.length - 1 ? "is-last" : ""}"
+      style="left: ${escapeHtml(String(boundary.leftPercentage))}%"
+    >${escapeHtml(boundary.label)}</span>
+  `).join("");
   const methodHeroStyle = [
     `--active-method-accent: ${theme.accent}`,
     `--active-method-accent-soft: ${theme.accentSoft}`,
@@ -99870,17 +100329,52 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
       <div class="active-germination-companion-grid">
         <div class="active-germination-companion-column active-germination-companion-column--time">
           <section class="active-germination-time" aria-labelledby="active-germination-time-title">
-            <p class="eyebrow" id="active-germination-time-title">Germination progress</p>
-            <div
-              class="active-germination-time__radial"
-              style="--active-germination-elapsed-angle: ${escapeHtml(String(state.elapsedRadialDegrees))}deg"
-              aria-label="Elapsed Germination time ${escapeHtml(state.elapsedLabel)}"
-            >
-              <div>
-                <strong data-active-germination-elapsed><span class="sr-only">Germination · </span><b>${escapeHtml(state.elapsedLabel)}</b></strong>
-                <span data-active-germination-day>Day ${escapeHtml(String(state.dayNumber))}</span>
+            <p class="eyebrow" id="active-germination-time-title">Elapsed time</p>
+            <div class="active-germination-time__primary">
+              <strong data-active-germination-elapsed data-elapsed-size="${escapeHtml(getActiveGerminationElapsedSizeCategory(state.elapsedLabel))}"><span class="sr-only">Elapsed Germination time </span><b>${escapeHtml(state.elapsedLabel)}</b></strong>
+              <span class="active-germination-time__meta">
                 <span class="active-germination-time__method">${escapeHtml(state.methodLabel)}</span>
+                <b data-active-germination-day>Day ${escapeHtml(String(state.dayNumber))}</b>
+              </span>
+            </div>
+            <div
+              class="active-germination-time__window"
+              style="--active-germination-progress: ${escapeHtml(String(timeProgress.progressPercentage))}%"
+            >
+              <span class="active-germination-time__window-label">Germination window</span>
+              <div
+                class="active-germination-time__track"
+                role="progressbar"
+                aria-label="Elapsed Germination window"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="${escapeHtml(String(timeProgress.progressPercentage))}"
+                data-active-germination-time-progress
+              >
+                <span class="active-germination-time__fill" aria-hidden="true"></span>
+                <span class="active-germination-time__segments" aria-hidden="true">${timeProgressSegmentsMarkup}</span>
               </div>
+              <span class="active-germination-time__scale" aria-hidden="true">${timeProgressBoundariesMarkup}</span>
+            </div>
+            <div class="active-germination-time__tiles">
+              <article class="active-germination-time__tile">
+                <span class="active-germination-time__tile-icon active-germination-time__tile-icon--stage" aria-hidden="true">${renderSessionProgressCompanionIconMarkup("pulse", "active-germination-time__tile-icon-svg active-germination-time__tile-icon-svg--stage")}</span>
+                <span class="active-germination-time__tile-label">Current stage</span>
+                <strong data-active-germination-current-stage>${escapeHtml(timeProgress.currentStageLabel)}</strong>
+                <span data-active-germination-current-stage-timing>${escapeHtml(timeProgress.currentStageTiming)}</span>
+              </article>
+              <article class="active-germination-time__tile">
+                <span class="active-germination-time__tile-icon" aria-hidden="true">${renderSessionProgressCompanionIconMarkup("flag", "active-germination-time__tile-icon-svg")}</span>
+                <span class="active-germination-time__tile-label">Next milestone</span>
+                <strong data-active-germination-next-milestone>${escapeHtml(timeProgress.nextMilestoneLabel)}</strong>
+                <span data-active-germination-next-milestone-timing>${escapeHtml(timeProgress.nextMilestoneTimingLabel)}</span>
+              </article>
+              <article class="active-germination-time__tile">
+                <span class="active-germination-time__tile-icon" aria-hidden="true">${renderSessionProgressCompanionIconMarkup("clock", "active-germination-time__tile-icon-svg")}</span>
+                <span class="active-germination-time__tile-label">Window</span>
+                <strong data-active-germination-window-duration>${escapeHtml(timeProgress.windowDurationLabel)}</strong>
+                <span>Total</span>
+              </article>
             </div>
           </section>
           <aside class="active-germination-milestone ${timelinePresentation?.isActionRequired ? "is-action-required" : ""}" aria-labelledby="active-germination-milestone-title">
@@ -99898,7 +100392,9 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
 
         <div class="active-germination-companion-column active-germination-companion-column--work">
           <section class="active-germination-timeline" aria-label="Method-aware Germination timeline">
-            ${renderSessionEngineVisualTimelineMarkup(engineState, { completionAvailable })}
+            ${renderSessionEngineVisualTimelineMarkup(engineState
+              ? { ...engineState, methodName: state.methodLabel }
+              : engineState, { completionAvailable })}
           </section>
         <form class="active-germination-check-in" data-active-germination-check-in>
           <div class="active-germination-check-in__heading">
@@ -99908,12 +100404,12 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
               <h4>What has germinated?</h4>
               <p>Record the number of seeds showing a successful germination response. You can update this as the Session progresses.</p>
             </div>
-            <span class="active-germination-check-in__state">${state.hasRecordedResults ? "Check-in recorded" : "Not checked yet"}</span>
+            <span class="active-germination-check-in__state">${state.hasRecordedResults ? `${renderSessionProgressCompanionIconMarkup("check", "active-germination-check-in__state-icon")}<span>Check-in recorded</span>` : "Not checked yet"}</span>
           </div>
           <div class="active-germination-check-in-list">${checkInRows}</div>
           <div class="active-germination-check-in__footer">
             <p data-active-germination-check-in-status role="status" aria-live="polite">${escapeHtml(readOnly ? "Developer scenario preview — check-in is read-only." : getActiveGerminationCheckInConfirmation(session))}</p>
-            <button type="submit" class="button button-secondary active-germination-check-in__save" data-action-icon-exempt="true" ${readOnly ? "disabled" : ""}><span>Save check-in</span></button>
+            <button type="submit" class="button button-secondary active-germination-check-in__save" data-action-icon-exempt="true" ${readOnly ? "disabled" : ""}>${renderSessionProgressCompanionIconMarkup("save", "active-germination-check-in__save-icon")}<span>Save check-in</span></button>
           </div>
         </form>
         </div>
@@ -99925,11 +100421,20 @@ function renderActiveGerminationWorkspaceMarkup(session = null) {
           </section>
           <section class="active-germination-result" aria-label="Saved germinated seed total">
             <strong data-active-germination-saved-total>${escapeHtml(String(state.germinatedCount))}</strong>
-            <span>Germinated</span>
+            <span class="active-germination-result__label">Germinated</span>
+            ${state.hasRecordedResults ? `
+              <span class="active-germination-result__status">
+                ${renderSessionProgressCompanionIconMarkup("check", "active-germination-result__status-icon")}
+                <span>Results recorded</span>
+              </span>
+            ` : ""}
           </section>
         <aside class="active-germination-next" aria-labelledby="active-germination-next-title">
           <p class="eyebrow">Completion readiness</p>
-          <h4 id="active-germination-next-title">Complete Session</h4>
+          <h4 id="active-germination-next-title">
+            <span class="active-germination-next__title-icon">${renderSessionProgressCompanionIconMarkup("flag", "active-germination-next__title-icon-svg")}</span>
+            <span>Complete Session</span>
+          </h4>
           <p>${completionAvailable
             ? "At least one saved germination is recorded. Complete Germination when you are ready to continue the established Session lifecycle."
             : "Record and save at least one germinated seed before completing Germination."}</p>
@@ -100002,15 +100507,44 @@ function syncActiveGerminationWorkspace(root = null, session = null) {
   const state = getActiveGerminationWorkspaceState(session);
   const workspace = root?.querySelector?.("[data-active-germination-workspace]");
   if (!state || !(workspace instanceof HTMLElement)) return;
-  const radial = workspace.querySelector(".active-germination-time__radial");
+  const engineState = buildSessionEngineState(session);
+  const completionAvailable = isSessionGerminationCompletionEligible(session);
+  const timelineSteps = Array.isArray(engineState?.timelineSteps) ? engineState.timelineSteps : [];
+  const timelinePresentation = getSessionEngineVisualTimelinePresentation(timelineSteps, engineState, { completionAvailable });
+  const actionStep = timelineSteps.find((step) => String(step?.key || "") === timelinePresentation?.actionStepKey)
+    || timelineSteps.find((step) => step?.isCurrent)
+    || timelineSteps.find((step) => step?.isFuture)
+    || null;
+  const nextMilestoneLabel = String(actionStep?.label || "Review Germination").trim();
+  const nextMilestoneTiming = String(actionStep?.timing || "").trim();
+  const nextMilestoneTimingLabel = nextMilestoneTiming
+    ? nextMilestoneTiming.replace(/(\d)\s*-\s*(\d)/g, "$1–$2")
+    : (completionAvailable ? "Ready when all outcomes are recorded" : "Continue checking Seed Entry outcomes");
+  const timeProgress = getActiveGerminationTimeProgressPresentation(engineState, {
+    nextMilestoneLabel,
+    nextMilestoneTimingLabel,
+  });
+  const timeWindow = workspace.querySelector(".active-germination-time__window");
+  const progress = workspace.querySelector("[data-active-germination-time-progress]");
   const elapsed = workspace.querySelector("[data-active-germination-elapsed]");
   const day = workspace.querySelector("[data-active-germination-day]");
-  if (radial) {
-    radial.style.setProperty("--active-germination-elapsed-angle", `${state.elapsedRadialDegrees}deg`);
-    radial.setAttribute("aria-label", `Elapsed Germination time ${state.elapsedLabel}`);
+  const currentStage = workspace.querySelector("[data-active-germination-current-stage]");
+  const currentStageTiming = workspace.querySelector("[data-active-germination-current-stage-timing]");
+  const nextMilestone = workspace.querySelector("[data-active-germination-next-milestone]");
+  const nextMilestoneTimingElement = workspace.querySelector("[data-active-germination-next-milestone-timing]");
+  const windowDuration = workspace.querySelector("[data-active-germination-window-duration]");
+  if (timeWindow) timeWindow.style.setProperty("--active-germination-progress", `${timeProgress.progressPercentage}%`);
+  if (progress) progress.setAttribute("aria-valuenow", String(timeProgress.progressPercentage));
+  if (elapsed) {
+    elapsed.dataset.elapsedSize = getActiveGerminationElapsedSizeCategory(state.elapsedLabel);
+    elapsed.innerHTML = `<span class="sr-only">Germination · </span><b>${escapeHtml(state.elapsedLabel)}</b>`;
   }
-  if (elapsed) elapsed.innerHTML = `<span class="sr-only">Germination · </span><b>${escapeHtml(state.elapsedLabel)}</b>`;
   if (day) day.textContent = `Day ${state.dayNumber}`;
+  if (currentStage) currentStage.textContent = timeProgress.currentStageLabel;
+  if (currentStageTiming) currentStageTiming.textContent = timeProgress.currentStageTiming;
+  if (nextMilestone) nextMilestone.textContent = timeProgress.nextMilestoneLabel;
+  if (nextMilestoneTimingElement) nextMilestoneTimingElement.textContent = timeProgress.nextMilestoneTimingLabel;
+  if (windowDuration) windowDuration.textContent = timeProgress.windowDurationLabel;
 }
 
 function positionActiveGerminationTimelineCurrentStep(workspace = null) {
@@ -102119,6 +102653,8 @@ function getSessionResultSummary(session = null, options = {}) {
   const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
   const sourceGroups = new Map();
   const varietyGroups = new Map();
+  const breederGroups = new Map();
+  const seedAgeGroups = new Map();
   const sourceKeys = new Set();
   const varietyKeys = new Set();
   const partitionResults = partitions.map((partition, index) => {
@@ -102142,8 +102678,10 @@ function getSessionResultSummary(session = null, options = {}) {
       : null;
     const sourceLabel = normalizeSessionResultLabel(formatPartitionSource(partition), "");
     const varietyLabel = normalizeSessionResultLabel(formatPartitionSeedVariety(partition), "");
+    const breederLabel = normalizeSessionResultLabel(partition.breeder, "");
     const sourceKey = sourceLabel ? getPartitionSourceAnalyticsKey(partition) || normalizeComparableSourceKey(sourceLabel) : "";
     const varietyKey = varietyLabel ? getPartitionSeedVarietyAnalyticsKey(partition) || normalizeComparableSourceKey(varietyLabel) : "";
+    const breederKey = breederLabel ? normalizeComparableSourceKey(breederLabel) : "";
     const seedType = normalizeSeedTypeId(partition.seedType || partition.seed_type || "");
     const seedSex = normalizeSeedSexValue(partition.feminized || partition.seedSex || partition.seed_sex || partition.sex || "");
     const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
@@ -102156,6 +102694,8 @@ function getSessionResultSummary(session = null, options = {}) {
       unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
       disabledLabel: "",
     });
+    const normalizedSeedAgeLabel = String(seedAgeLabel || "").trim();
+    const seedAgeKey = normalizedSeedAgeLabel ? normalizeComparableSourceKey(normalizedSeedAgeLabel) : "";
 
     if (sourceKey) {
       sourceKeys.add(sourceKey);
@@ -102176,12 +102716,16 @@ function getSessionResultSummary(session = null, options = {}) {
       seedVariety: varietyLabel,
       varietyLabel: varietyLabel || "Not shared",
       varietyKey,
+      breeder: breederLabel,
+      breederLabel: breederLabel || "Not shared",
+      breederKey,
       seedType,
       seedTypeLabel: getSeedTypeLabel(seedType) || "",
       sex: seedSex,
       sexLabel: getSeedSexLabel(seedSex) || "",
       seedAgeYears,
-      seedAgeLabel: String(seedAgeLabel || "").trim(),
+      seedAgeLabel: normalizedSeedAgeLabel,
+      seedAgeKey,
       germinatedCount,
       totalCount,
       totalSeeds: totalCount,
@@ -102215,7 +102759,18 @@ function getSessionResultSummary(session = null, options = {}) {
       addPartitionResultToGroup(group, result);
       varietyGroups.set(result.varietyKey, group);
     }
-
+    if (result.hasSeeds && result.breederKey && !result.isPendingResult) {
+      const group = breederGroups.get(result.breederKey)
+        || createEmptySessionResultGroup(result.breederKey, result.breederLabel, "breeder");
+      addPartitionResultToGroup(group, result);
+      breederGroups.set(result.breederKey, group);
+    }
+    if (result.hasSeeds && result.seedAgeKey && !result.isPendingResult) {
+      const group = seedAgeGroups.get(result.seedAgeKey)
+        || createEmptySessionResultGroup(result.seedAgeKey, result.seedAgeLabel, "seed-age");
+      addPartitionResultToGroup(group, result);
+      seedAgeGroups.set(result.seedAgeKey, group);
+    }
     return result;
   });
 
@@ -102253,6 +102808,8 @@ function getSessionResultSummary(session = null, options = {}) {
     countedPartitions,
     sourceGroups: [...sourceGroups.values()],
     varietyGroups: [...varietyGroups.values()],
+    breederGroups: [...breederGroups.values()],
+    seedAgeGroups: [...seedAgeGroups.values()],
     mixedContext: {
       hasMultipleSources: sourceKeys.size > 1,
       hasMultipleVarieties: varietyKeys.size > 1,
@@ -106476,6 +107033,7 @@ function renderSessionProgressCompanionIconMarkup(iconKey = "info", className = 
     bell: '<path d="M6 16h12l-1.2-2V10a4.8 4.8 0 0 0-9.6 0v4L6 16Z" /><path d="M10 19a2 2 0 0 0 4 0" />',
     check: '<path d="M5 12.3 9.2 16.4 19 7" />',
     clipboard: '<rect x="5" y="5" width="14" height="16" rx="2" /><path d="M9 5V3.5h6V5" /><path d="m8.5 13 2 2 4.5-5" />',
+    save: '<path d="M5 4h12l2 2v14H5V4Z" /><path d="M8 4v6h7V4" /><path d="M8 20v-6h8v6" />',
   };
   return `
     <svg class="${escapeHtml(className)}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
